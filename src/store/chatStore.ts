@@ -17,6 +17,7 @@ interface ChatState {
   selectArtifact: (id: string | null) => void;
   toggleArtifactWindow: () => void;
   processMessage: (content: string) => Promise<void>;
+  clearMessages: () => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -27,13 +28,21 @@ export const useChatStore = create<ChatState>()(
       selectedArtifactId: null,
       showArtifactWindow: false,
 
-      addMessage: (message) => set((state) => ({
-        messages: [...state.messages, {
-          ...message,
-          id: crypto.randomUUID(),
-          timestamp: new Date(),
-        }],
-      })),
+      clearMessages: () => set({ messages: [] }),
+
+      addMessage: (message) => set((state) => {
+        if (!message.content || message.content.trim() === '') {
+          console.warn('Attempted to add empty message, ignoring');
+          return state;
+        }
+        return {
+          messages: [...state.messages, {
+            ...message,
+            id: crypto.randomUUID(),
+            timestamp: new Date(),
+          }],
+        };
+      }),
 
       updateMessage: (id, content) => set((state) => ({
         messages: state.messages.map((msg) =>
@@ -88,10 +97,12 @@ export const useChatStore = create<ChatState>()(
             },
             body: JSON.stringify({
               message: content,
-              history: get().messages.map(msg => ({
-                role: msg.role,
-                content: msg.content
-              }))
+              history: get().messages
+                .filter(msg => msg.content.trim() !== '')
+                .map(msg => ({
+                  role: msg.role,
+                  content: msg.content
+                }))
             })
           });
 
