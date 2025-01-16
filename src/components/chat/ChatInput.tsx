@@ -22,7 +22,7 @@ export const ChatInput: React.FC = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+    <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 bg-white">
       <div className="flex space-x-4">
         <input
           type="text"
@@ -33,7 +33,7 @@ export const ChatInput: React.FC = () => {
         />
         <button
           type="submit"
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg"
+          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
         >
           Send
         </button>

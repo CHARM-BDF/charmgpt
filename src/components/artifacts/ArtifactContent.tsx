@@ -61,7 +61,7 @@ export const ArtifactContent: React.FC<{
   const canToggleView = ['html', 'image/svg+xml'].includes(artifact.type);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto p-4">
       <div className="mb-4 flex justify-between items-center">
         <div>
           <h3 className="text-lg font-medium">{artifact.title}</h3>
@@ -76,7 +76,9 @@ export const ArtifactContent: React.FC<{
           </button>
         )}
       </div>
-      {renderContent()}
+      <div className="overflow-y-auto">
+        {renderContent()}
+      </div>
     </div>
   );
 };

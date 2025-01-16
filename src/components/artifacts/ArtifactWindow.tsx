@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { ArtifactContent } from './ArtifactContent';
 
@@ -9,6 +9,7 @@ export const ArtifactWindow: React.FC = () => {
     selectArtifact,
     toggleArtifactWindow,
   } = useChatStore();
+  const [showList, setShowList] = useState(false);
 
   const formatTimestamp = (timestamp: Date | string) => {
     try {
@@ -26,38 +27,50 @@ export const ArtifactWindow: React.FC = () => {
     <div className="w-1/2 border-l border-gray-200 bg-white flex flex-col">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Artifacts</h2>
-        <button
-          onClick={() => toggleArtifactWindow()}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <span className="sr-only">Close</span>
-          ×
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowList(!showList)}
+            className="text-blue-500 hover:text-blue-700"
+          >
+            {showList ? 'Hide List' : 'Show List'}
+          </button>
+          <button
+            onClick={() => toggleArtifactWindow()}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <span className="sr-only">Close</span>
+            ×
+          </button>
+        </div>
       </div>
       
       <div className="flex-1 flex">
-        <div className="w-64 border-r border-gray-200 overflow-y-auto">
-          {artifacts.map((artifact) => (
-            <button
-              key={artifact.id}
-              onClick={() => selectArtifact(artifact.id)}
-              className={`w-full p-4 text-left hover:bg-gray-50 ${
-                selectedArtifactId === artifact.id ? 'bg-blue-50' : ''
-              }`}
-            >
-              <div className="font-medium">{artifact.title}</div>
-              <div className="text-sm text-gray-500">
-                {formatTimestamp(artifact.timestamp)}
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto">
           {selectedArtifact && (
             <ArtifactContent artifact={selectedArtifact} />
           )}
         </div>
+
+        {showList && (
+          <div className="w-64 border-l border-gray-200 overflow-y-auto h-full max-h-[calc(100vh-8rem)]">
+            <div className="h-full">
+              {artifacts.map((artifact) => (
+                <button
+                  key={artifact.id}
+                  onClick={() => selectArtifact(artifact.id)}
+                  className={`w-full p-4 text-left hover:bg-gray-50 ${
+                    selectedArtifactId === artifact.id ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <div className="font-medium">{artifact.title}</div>
+                  <div className="text-sm text-gray-500">
+                    {formatTimestamp(artifact.timestamp)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -43,9 +43,13 @@ export const ChatInterface: React.FC = () => {
             Clear Chat History
           </button>
         </div>
-        <ChatMessages messages={messages} />
-        <ChatInput />
-        {activeServer && <MCPTools />}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ChatMessages messages={messages} />
+          <div className="flex-shrink-0">
+            <ChatInput />
+            {activeServer && <MCPTools />}
+          </div>
+        </div>
       </div>
       {showArtifactWindow && <ArtifactWindow />}
     </div>
