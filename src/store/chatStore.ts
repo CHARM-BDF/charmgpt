@@ -40,25 +40,41 @@ export const useChatStore = create<ChatState>()(
         }
         
         // Check if message contains code blocks that should create artifacts
-        const codeBlockRegex = /```[\s\S]*?```/g;
-        const codeBlocks = message.content.match(codeBlockRegex);
+        const codeBlockRegex = /```([\w-]*)\n([\s\S]*?)```/g;
+        let match;
+        const newArtifacts: string[] = [];
         
-        if (codeBlocks && message.role === 'assistant') {
-          console.log(`ChatStore: Found ${codeBlocks.length} code blocks in assistant message`);
-          codeBlocks.forEach((block, index) => {
-            const language = block.split('\n')[0].replace('```', '').trim();
-            const content = block.replace(/```[\s\S]*?\n/, '').replace(/```$/, '');
+        if (message.role === 'assistant') {
+          while ((match = codeBlockRegex.exec(message.content)) !== null) {
+            const [_, language, content] = match;
+            console.log(`ChatStore: Processing code block with language: ${language}`);
+            
+            // Determine the artifact type based on the language/content
+            let type: 'code' | 'html' | 'image/svg+xml' | 'text' | 'application/vnd.ant.mermaid' = 'code';
+            let title = 'Code Block';
+            
+            if (language === 'html') {
+              type = 'html';
+              title = 'HTML Content';
+            } else if (language === 'svg' || (language === 'xml' && content.includes('<svg'))) {
+              type = 'image/svg+xml';
+              title = 'SVG Image';
+            } else if (language === 'mermaid') {
+              type = 'application/vnd.ant.mermaid';
+              title = 'Mermaid Diagram';
+            }
             
             const artifactId = get().addArtifact({
-              type: 'code',
-              title: `Code Block ${index + 1}`,
-              content: content,
+              type,
+              title,
+              content: content.trim(),
               messageId: crypto.randomUUID(),
-              language
+              language: language || undefined
             });
             
-            console.log(`ChatStore: Created artifact ${artifactId} for code block ${index + 1}`);
-          });
+            console.log(`ChatStore: Created ${type} artifact ${artifactId}`);
+            newArtifacts.push(artifactId);
+          }
         }
 
         return {
@@ -66,6 +82,7 @@ export const useChatStore = create<ChatState>()(
             ...message,
             id: crypto.randomUUID(),
             timestamp: new Date(),
+            artifactId: newArtifacts.length > 0 ? newArtifacts[0] : undefined
           }],
         };
       }),

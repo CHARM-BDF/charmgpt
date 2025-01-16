@@ -10,6 +10,16 @@ export const ArtifactWindow: React.FC = () => {
     toggleArtifactWindow,
   } = useChatStore();
 
+  const formatTimestamp = (timestamp: Date | string) => {
+    try {
+      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+      return date.toLocaleTimeString();
+    } catch (e) {
+      console.warn('Invalid timestamp format:', timestamp);
+      return 'Unknown time';
+    }
+  };
+
   const selectedArtifact = artifacts.find(a => a.id === selectedArtifactId);
 
   return (
@@ -37,7 +47,7 @@ export const ArtifactWindow: React.FC = () => {
             >
               <div className="font-medium">{artifact.title}</div>
               <div className="text-sm text-gray-500">
-                {artifact.timestamp.toLocaleTimeString()}
+                {formatTimestamp(artifact.timestamp)}
               </div>
             </button>
           ))}
