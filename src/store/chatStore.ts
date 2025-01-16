@@ -79,32 +79,32 @@ export const useChatStore = create<ChatState>()(
           content
         });
 
-        if (!activeServer) {
-          console.log('ChatStore: No active server found');
-          get().addMessage({
-            role: 'assistant',
-            content: 'No MCP server is currently active. Please connect to a server first.'
-          });
-          return;
-        }
-
         try {
-          console.log('ChatStore: Executing chat tool on server');
-          // Execute tool on active server
-          const response = await mcpStore.executeTool(activeServer, 'chat', { 
-            message: content,
-            history: get().messages.map(msg => ({
-              role: msg.role,
-              content: msg.content
-            }))
+          // Always use the server for message processing
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: content,
+              history: get().messages.map(msg => ({
+                role: msg.role,
+                content: msg.content
+              }))
+            })
           });
 
-          console.log('ChatStore: Received response:', response);
+          if (!response.ok) {
+            throw new Error('Failed to get response from chat API');
+          }
 
+          const data = await response.json();
+          
           // Add assistant response
           get().addMessage({
             role: 'assistant',
-            content: response
+            content: data.response
           });
 
         } catch (error) {
