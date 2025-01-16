@@ -28,13 +28,39 @@ export const useChatStore = create<ChatState>()(
       selectedArtifactId: null,
       showArtifactWindow: false,
 
-      clearMessages: () => set({ messages: [] }),
+      clearMessages: () => {
+        console.log('ChatStore: Clearing all messages and artifacts');
+        set({ messages: [] });
+      },
 
       addMessage: (message) => set((state) => {
         if (!message.content || message.content.trim() === '') {
-          console.warn('Attempted to add empty message, ignoring');
+          console.warn('ChatStore: Attempted to add empty message, ignoring');
           return state;
         }
+        
+        // Check if message contains code blocks that should create artifacts
+        const codeBlockRegex = /```[\s\S]*?```/g;
+        const codeBlocks = message.content.match(codeBlockRegex);
+        
+        if (codeBlocks && message.role === 'assistant') {
+          console.log(`ChatStore: Found ${codeBlocks.length} code blocks in assistant message`);
+          codeBlocks.forEach((block, index) => {
+            const language = block.split('\n')[0].replace('```', '').trim();
+            const content = block.replace(/```[\s\S]*?\n/, '').replace(/```$/, '');
+            
+            const artifactId = get().addArtifact({
+              type: 'code',
+              title: `Code Block ${index + 1}`,
+              content: content,
+              messageId: crypto.randomUUID(),
+              language
+            });
+            
+            console.log(`ChatStore: Created artifact ${artifactId} for code block ${index + 1}`);
+          });
+        }
+
         return {
           messages: [...state.messages, {
             ...message,
@@ -44,14 +70,18 @@ export const useChatStore = create<ChatState>()(
         };
       }),
 
-      updateMessage: (id, content) => set((state) => ({
-        messages: state.messages.map((msg) =>
-          msg.id === id ? { ...msg, content } : msg
-        ),
-      })),
+      updateMessage: (id, content) => {
+        console.log(`ChatStore: Updating message ${id}`);
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === id ? { ...msg, content } : msg
+          ),
+        }));
+      },
 
       addArtifact: (artifact) => {
         const id = crypto.randomUUID();
+        console.log(`ChatStore: Adding new artifact ${id} of type ${artifact.type}`);
         set((state) => ({
           artifacts: [...state.artifacts, {
             ...artifact,
@@ -64,17 +94,26 @@ export const useChatStore = create<ChatState>()(
         return id;
       },
 
-      updateArtifact: (id, content) => set((state) => ({
-        artifacts: state.artifacts.map((art) =>
-          art.id === id ? { ...art, content } : art
-        ),
-      })),
+      updateArtifact: (id, content) => {
+        console.log(`ChatStore: Updating artifact ${id}`);
+        set((state) => ({
+          artifacts: state.artifacts.map((art) =>
+            art.id === id ? { ...art, content } : art
+          ),
+        }));
+      },
 
-      selectArtifact: (id) => set({ selectedArtifactId: id }),
+      selectArtifact: (id) => {
+        console.log(`ChatStore: Selecting artifact ${id}`);
+        set({ selectedArtifactId: id });
+      },
 
-      toggleArtifactWindow: () => set((state) => ({
-        showArtifactWindow: !state.showArtifactWindow,
-      })),
+      toggleArtifactWindow: () => {
+        console.log('ChatStore: Toggling artifact window visibility');
+        set((state) => ({
+          showArtifactWindow: !state.showArtifactWindow,
+        }));
+      },
 
       processMessage: async (content) => {
         const mcpStore = useMCPStore.getState();
