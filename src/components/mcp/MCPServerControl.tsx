@@ -5,9 +5,20 @@ export const MCPServerControl: React.FC = () => {
   const { servers, activeServer, connectServer, disconnectServer, setActiveServer } = useMCPStore();
 
   const handleAddServer = async () => {
-    // This is a simplified example - you'd want to get these values from a form
-    await connectServer('filesystem', 'npx', ['-y', '@modelcontextprotocol/server-filesystem', '/']);
+    console.log('MCPServerControl: Attempting to connect to server...');
+    try {
+      // Connect to the TypeScript server file
+      await connectServer('llm-chat-server', 'tsx', ['src/server/llm-server.ts']);
+      console.log('MCPServerControl: Server connected successfully');
+      // Set this server as active immediately after connection
+      setActiveServer('llm-chat-server');
+    } catch (error) {
+      console.error('MCPServerControl: Failed to connect to server:', error);
+    }
   };
+
+  console.log('MCPServerControl: Current servers:', Object.keys(servers));
+  console.log('MCPServerControl: Active server:', activeServer);
 
   return (
     <div className="border-b border-gray-200 p-4">

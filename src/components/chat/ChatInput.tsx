@@ -2,18 +2,23 @@ import React, { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 
 export const ChatInput: React.FC = () => {
-  const [input, setInput] = useState('');
-  const { addMessage } = useChatStore();
+  const [input, setInput] = useState('hello, who am I speaking to');
+  const { addMessage, processMessage } = useChatStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    addMessage({
-      role: 'user',
-      content: input,
-    });
-    setInput('');
+    console.log('ChatInput: Submitting message:', input);
+    
+    try {
+      await processMessage(input);
+      console.log('ChatInput: Message processed successfully');
+    } catch (error) {
+      console.error('ChatInput: Error processing message:', error);
+    }
+    
+    setInput('hello, who am I speaking to');
   };
 
   return (

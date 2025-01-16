@@ -20,7 +20,7 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
             {message.content}
             {message.artifactId && (
               <button
-                onClick={() => selectArtifact(message.artifactId)}
+                onClick={() => selectArtifact(message.artifactId ?? null)}
                 className="mt-2 text-sm underline"
               >
                 View Artifact

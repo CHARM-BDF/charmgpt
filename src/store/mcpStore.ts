@@ -1,10 +1,17 @@
 import { create } from 'zustand';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { MCPServer } from '../types/mcp';
+import { MCPServer, MCPResource, MCPPrompt, MCPTool } from '../types/mcp';
+import { z } from 'zod';
+
+const responseSchema = z.object({});
+
+interface ExtendedMCPServer extends MCPServer {
+  client: Client;
+}
 
 interface MCPState {
-  servers: Record<string, MCPServer>;
+  servers: Record<string, ExtendedMCPServer>;
   activeServer: string | null;
   
   connectServer: (name: string, command: string, args: string[]) => Promise<void>;
@@ -44,18 +51,18 @@ export const useMCPStore = create<MCPState>()((set, get) => ({
 
       await client.connect(transport);
 
-      const tools = await client.request({ method: "tools/list" });
-      const resources = await client.request({ method: "resources/list" });
-      const prompts = await client.request({ method: "prompts/list" });
+      const toolsResponse = await client.request({ method: "tools/list", params: {} }, responseSchema);
+      const resourcesResponse = await client.request({ method: "resources/list", params: {} }, responseSchema);
+      const promptsResponse = await client.request({ method: "prompts/list", params: {} }, responseSchema);
 
       set((state) => ({
         servers: {
           ...state.servers,
           [name]: {
             name,
-            tools: tools.tools,
-            resources: resources.resources,
-            prompts: prompts.prompts,
+            tools: (toolsResponse as any).tools || [],
+            resources: (resourcesResponse as any).resources || [],
+            prompts: (promptsResponse as any).prompts || [],
             connected: true,
             client
           }
@@ -70,16 +77,14 @@ export const useMCPStore = create<MCPState>()((set, get) => ({
   disconnectServer: async (name) => {
     const server = get().servers[name];
     if (server?.client) {
-      await server.client.disconnect();
+      set((state) => {
+        const { [name]: removed, ...rest } = state.servers;
+        return {
+          servers: rest,
+          activeServer: state.activeServer === name ? null : state.activeServer
+        };
+      });
     }
-    
-    set((state) => {
-      const { [name]: removed, ...rest } = state.servers;
-      return {
-        servers: rest,
-        activeServer: state.activeServer === name ? null : state.activeServer
-      };
-    });
   },
 
   setActiveServer: (name) => set({ activeServer: name }),
@@ -94,9 +99,9 @@ export const useMCPStore = create<MCPState>()((set, get) => ({
         name: toolName,
         arguments: args
       }
-    });
+    }, responseSchema);
 
-    return response.content[0].text;
+    return (response as any).content[0].text;
   },
 
   listResources: async (serverName) => {
@@ -104,10 +109,10 @@ export const useMCPStore = create<MCPState>()((set, get) => ({
     if (!server?.client) throw new Error(`Server ${serverName} not connected`);
 
     const response = await server.client.request({
-      method: "resources/list"
-    });
-
-    return response.resources;
+      method: "resources/list",
+      params: {}
+    }, responseSchema);
+    return (response as any).resources || [];
   },
 
   readResource: async (serverName, uri) => {
@@ -117,9 +122,9 @@ export const useMCPStore = create<MCPState>()((set, get) => ({
     const response = await server.client.request({
       method: "resources/read",
       params: { uri }
-    });
+    }, responseSchema);
 
-    return response.contents[0].text;
+    return (response as any).contents[0].text;
   },
 
   listPrompts: async (serverName) => {
@@ -127,10 +132,10 @@ export const useMCPStore = create<MCPState>()((set, get) => ({
     if (!server?.client) throw new Error(`Server ${serverName} not connected`);
 
     const response = await server.client.request({
-      method: "prompts/list"
-    });
-
-    return response.prompts;
+      method: "prompts/list",
+      params: {}
+    }, responseSchema);
+    return (response as any).prompts || [];
   },
 
   getPrompt: async (serverName, name, args) => {
@@ -143,8 +148,8 @@ export const useMCPStore = create<MCPState>()((set, get) => ({
         name,
         arguments: args
       }
-    });
+    }, responseSchema);
 
-    return response.messages[0].content.text;
+    return (response as any).messages[0].content.text;
   }
 }));
