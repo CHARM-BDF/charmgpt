@@ -48,12 +48,14 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
           key={message.id}
           className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'} animate-fade-in`}
         >
-          <div className={`max-w-3/4 rounded-lg p-4 ${
-            message.role === 'assistant' 
-              ? 'bg-white border border-gray-200' 
-              : 'bg-blue-500 text-white'
-          }`}>
-            {message.content}
+          <div 
+            className={`max-w-3/4 rounded-lg p-4 ${
+              message.role === 'assistant' 
+                ? 'bg-white border border-gray-200' 
+                : 'bg-blue-500 text-white'
+            }`}
+          >
+            <pre className="whitespace-pre-wrap break-words font-sans">{message.content}</pre>
             {message.artifactId && (
               <button
                 onClick={() => selectArtifact(message.artifactId ?? null)}

@@ -1,6 +1,17 @@
+export type ArtifactType = 
+  | 'code'
+  | 'html'
+  | 'image/svg+xml'
+  | 'text'
+  | 'application/vnd.ant.mermaid'
+  | 'text/markdown'
+  | 'application/python'
+  | 'application/javascript'
+  | 'application/vnd.react';
+
 export interface Artifact {
   id: string;
-  type: 'code' | 'text' | 'html' | 'image/svg+xml' | 'application/vnd.ant.mermaid';
+  type: ArtifactType;
   title: string;
   content: string;
   timestamp: Date;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 
 export const ChatInput: React.FC = () => {
-  const [input, setInput] = useState('hello, who am I speaking to');
+  const [input, setInput] = useState('think about it seriously and then create an svg of a sacred geometry shape and include your reasoning for choosing that one.');
   const { addMessage, processMessage } = useChatStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -18,7 +18,7 @@ export const ChatInput: React.FC = () => {
       console.error('ChatInput: Error processing message:', error);
     }
     
-    setInput('hello, who am I speaking to');
+    setInput('think about it seriously and then create an svg of a sacred geometry shape and include your reasoning for choosing that one.');
   };
 
   return (

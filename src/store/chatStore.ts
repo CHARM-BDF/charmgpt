@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Message } from '../types/chat';
 import { Artifact } from '../types/artifacts';
 import { useMCPStore } from './mcpStore';
+import { parseXMLResponse, extractReferences, cleanConversationContent } from '../utils/xmlParser';
 
 interface ChatState {
   messages: Message[];
@@ -12,7 +13,7 @@ interface ChatState {
   
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, content: string) => void;
-  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void;
+  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => string;
   updateArtifact: (id: string, content: string) => void;
   selectArtifact: (id: string | null) => void;
   toggleArtifactWindow: () => void;
@@ -168,11 +169,62 @@ export const useChatStore = create<ChatState>()(
 
           const data = await response.json();
           
-          // Add assistant response
-          get().addMessage({
-            role: 'assistant',
-            content: data.response
-          });
+          try {
+            console.log('ChatStore: Attempting to parse response as XML:', {
+              responseLength: data.response.length,
+              preview: data.response.slice(0, 200) + '...'
+            });
+
+            // Try to parse as XML response
+            const xmlResponse = parseXMLResponse(data.response);
+            
+            // Process artifacts first
+            const artifactIds = xmlResponse.artifacts.map(artifact => {
+              return get().addArtifact({
+                type: artifact.type,
+                title: artifact.title,
+                content: artifact.content,
+                messageId: crypto.randomUUID()
+              });
+            });
+
+            // Extract references from conversation (for tracking purposes)
+            const refs = extractReferences(xmlResponse.conversation);
+            
+            // Clean conversation content (now just returns the same content)
+            let cleanContent = cleanConversationContent(xmlResponse.conversation);
+
+            console.log('\nChatStore: Final Content for Display:', {
+              conversation: {
+                preview: cleanContent.slice(0, 100) + '...',
+                hasReferences: refs.length > 0,
+                referenceCount: refs.length
+              },
+              artifacts: xmlResponse.artifacts.map(a => ({
+                title: a.title,
+                type: a.type
+              }))
+            });
+
+            // Add assistant message with first artifact (if any)
+            get().addMessage({
+              role: 'assistant',
+              content: cleanContent,
+              artifactId: artifactIds[0] // Link to first artifact if any
+            });
+
+          } catch (parseError) {
+            console.warn('ChatStore: Failed to parse XML response, falling back to plain text', parseError);
+            console.log('ChatStore: Using raw response:', {
+              length: data.response.length,
+              preview: data.response.slice(0, 200) + '...'
+            });
+            // Fall back to treating response as plain text
+            get().addMessage({
+              role: 'assistant',
+              content: data.response
+            });
+          }
 
         } catch (error) {
           console.error('ChatStore: Error processing message:', error);
