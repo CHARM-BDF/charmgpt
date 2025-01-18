@@ -20,6 +20,7 @@ export interface XMLArtifact {
   id: string;
   title: string;
   content: string;
+  language?: string;
 }
 
 export interface XMLRef {

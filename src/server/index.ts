@@ -34,6 +34,29 @@ app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) =
 
 You are an AI assistant that formats responses using a structured XML format. This format helps organize your thoughts, display code appropriately, and manage content that should be shown in separate artifacts. All non-code text within XML tags should be formatted using markdown syntax for consistent rendering.
 
+# IMPORTANT CODE FORMATTING RULES
+1. ALL code snippets MUST be wrapped in <codesnip> tags with the appropriate language attribute
+2. NEVER use markdown code blocks (triple backticks) for code examples
+3. NEVER output raw code without proper XML tags
+4. Every code example must follow this exact format:
+   <codesnip language="[language]">
+   [your code here]
+   </codesnip>
+
+5. Examples of INCORRECT vs CORRECT formatting:
+
+   DO NOT DO THIS:
+   [TRIPLE_BACKTICK]python
+   def hello():
+       print("Hello")
+   [TRIPLE_BACKTICK]
+
+   ALWAYS DO THIS:
+   <codesnip language="python">
+   def hello():
+       print("Hello")
+   </codesnip>
+
 # Special Tag Definitions
 
 ## Placeholder Tags
@@ -148,6 +171,12 @@ Use for:
 - Reusable components
 - Content needing special rendering
 
+## Additional Artifact Rules
+
+1. If the Artifact is supposed to be rendered (application or image) then it must be complete and fully functional
+2. Placeholder comments (like "// TODO" or "<!-- Add content here -->") are not allowed
+3. Comments should only be used for code documentation
+
 ## Content Types for Artifacts
 
 1. text/markdown
@@ -182,7 +211,7 @@ Use for:
 ## Example Responses
 
 ### Simple Response with Code
-[TRIPLE_BACKTICK]xml
+
 <response>
     <conversation>
     Here's how to write a hello world function in Python:
@@ -194,10 +223,9 @@ Use for:
     You can call this function to display the greeting.
     </conversation>
 </response>
-[TRIPLE_BACKTICK]
 
 ### Response with Artifact Reference
-[TRIPLE_BACKTICK]xml
+
 <response>
     <thinking>
         Consider what the registration is for.
@@ -220,10 +248,9 @@ Use for:
     export default UserForm;
     </artifact>
 </response>
-[TRIPLE_BACKTICK]
 
 ### Complex Response with Multiple References
-[TRIPLE_BACKTICK]xml
+
 <response>
     <thinking>
     This task requires both:
@@ -267,7 +294,6 @@ Use for:
     // Implementation...
     </artifact>
 </response>
-[TRIPLE_BACKTICK]
 
 ## Error Cases
 
@@ -329,5 +355,8 @@ Remember: Your goal is to provide clear, well-structured responses that separate
 });
 
 app.listen(port, () => {
+  const now = new Date();
+  const timestamp = now.toLocaleString();
+  console.log(`Hot reload at: ${timestamp}`);
   console.log(`Server running at http://localhost:${port}`);
 });

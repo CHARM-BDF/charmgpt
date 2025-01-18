@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 
 export const ChatInput: React.FC = () => {
-  const [input, setInput] = useState('think about it seriously and then create an svg of a sacred geometry shape and include your reasoning for choosing that one. include three lines of code as a coode snippet to test formatting');
+  const [input, setInput] = useState('think about it seriously and then create an svg of a sacred geometry shape and include your reasoning for choosing that one. include three lines of code as a coode snippet to test formatting, but also create an artifact to test the ref tag');
   const { addMessage, processMessage } = useChatStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -18,7 +18,7 @@ export const ChatInput: React.FC = () => {
       console.error('ChatInput: Error processing message:', error);
     }
     
-    setInput('think about it seriously and then create an svg of a sacred geometry shape and include your reasoning for choosing that one. include three lines of code as a coode snippet to test formatting');
+    setInput('think about it seriously and then create an svg of a sacred geometry shape and include your reasoning for choosing that one. include three lines of code as a coode snippet to test formatting, but also create an artifact to test the ref tag');
   };
 
   return (

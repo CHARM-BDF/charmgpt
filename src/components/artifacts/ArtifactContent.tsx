@@ -46,7 +46,9 @@ export const ArtifactContent: React.FC<{
         return (
           <div 
             className="border rounded-lg p-4 bg-white flex justify-center items-center"
-            dangerouslySetInnerHTML={{ __html: sanitizeHTML(artifact.content) }}
+            dangerouslySetInnerHTML={{ 
+              __html: sanitizeHTML(artifact.content.trim()) 
+            }}
           />
         );
       

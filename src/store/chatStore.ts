@@ -40,50 +40,12 @@ export const useChatStore = create<ChatState>()(
           return state;
         }
         
-        // Check if message contains code blocks that should create artifacts
-        const codeBlockRegex = /```([\w-]*)\n([\s\S]*?)```/g;
-        let match;
-        const newArtifacts: string[] = [];
-        
-        if (message.role === 'assistant') {
-          while ((match = codeBlockRegex.exec(message.content)) !== null) {
-            const [_, language, content] = match;
-            console.log(`ChatStore: Processing code block with language: ${language}`);
-            
-            // Determine the artifact type based on the language/content
-            let type: 'code' | 'html' | 'image/svg+xml' | 'text' | 'application/vnd.ant.mermaid' = 'code';
-            let title = 'Code Block';
-            
-            if (language === 'html') {
-              type = 'html';
-              title = 'HTML Content';
-            } else if (language === 'svg' || (language === 'xml' && content.includes('<svg'))) {
-              type = 'image/svg+xml';
-              title = 'SVG Image';
-            } else if (language === 'mermaid') {
-              type = 'application/vnd.ant.mermaid';
-              title = 'Mermaid Diagram';
-            }
-            
-            const artifactId = get().addArtifact({
-              type,
-              title,
-              content: content.trim(),
-              messageId: crypto.randomUUID(),
-              language: language || undefined
-            });
-            
-            console.log(`ChatStore: Created ${type} artifact ${artifactId}`);
-            newArtifacts.push(artifactId);
-          }
-        }
-
+        // We no longer need to convert code blocks to artifacts
         return {
           messages: [...state.messages, {
             ...message,
             id: crypto.randomUUID(),
             timestamp: new Date(),
-            artifactId: newArtifacts.length > 0 ? newArtifacts[0] : undefined
           }],
         };
       }),
@@ -191,7 +153,15 @@ export const useChatStore = create<ChatState>()(
             // Extract references from conversation (for tracking purposes)
             const refs = extractReferences(xmlResponse.conversation);
             
-            // Clean conversation content (now just returns the same content)
+            // Define content cleaning function
+            const cleanConversationContent = (content: string) => {
+              // Keep XML tags for code snippets
+              return content.replace(/\[TRIPLE_BACKTICK\]([^\[]+)\[\/TRIPLE_BACKTICK\]/g, (_, code) => {
+                return `\`\`\`${code}\`\`\``;
+              });
+            };
+
+            // Clean conversation content
             let cleanContent = cleanConversationContent(xmlResponse.conversation);
 
             console.log('\nChatStore: Final Content for Display:', {
