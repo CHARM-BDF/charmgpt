@@ -39,7 +39,12 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
   }
   
   // Get conversation content, preserving markdown
-  const conversation = processConversationContent(conversationElement);
+  let conversation = processConversationContent(conversationElement);
+
+  // If thinking exists, prepend it to the conversation with clear separation
+  if (thinking) {
+    conversation = `${thinking}\n\n---\n\n${conversation}`;
+  }
 
   // Extract artifacts
   const artifacts: XMLArtifact[] = [];
