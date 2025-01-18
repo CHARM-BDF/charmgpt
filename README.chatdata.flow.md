@@ -153,6 +153,63 @@ Processed Output:
 }
 ```
 
+## Chat Store Structure
+
+The chat state is managed in ChatStore using Zustand, with the following structure:
+
+```typescript
+interface ChatStore {
+  // Core Message State
+  messages: Message[];              // Array of all messages in the conversation
+  artifacts: Map<string, Artifact>; // Map of all artifacts by their ID
+  selectedArtifact: string | null;  // Currently selected artifact ID
+  
+  // UI State
+  isLoading: boolean;              // Whether a response is being generated
+  error: string | null;            // Any error messages
+  
+  // Actions
+  submitMessage: (content: string) => Promise<void>;
+  handleResponse: (response: XMLResponse) => void;
+  selectArtifact: (id: string | null) => void;
+  clearMessages: () => void;
+}
+
+// Example of store state:
+{
+  messages: [
+    {
+      id: "msg1",
+      role: "user",
+      content: "Create a system diagram"
+    },
+    {
+      id: "msg2",
+      role: "assistant",
+      content: "I should create a diagram to illustrate the system architecture.\n\n---\n\nHere's a system architecture diagram that shows the main components:\n\n[System Architecture](artifact:diagram1)\n\nThe diagram shows the key interactions between the frontend and backend components."
+    }
+  ],
+  artifacts: Map(1) {
+    "diagram1" => {
+      type: "image/svg+xml",
+      id: "diagram1",
+      title: "System Architecture",
+      content: "<svg>...</svg>"
+    }
+  },
+  selectedArtifact: "diagram1",
+  isLoading: false,
+  error: null
+}
+```
+
+Key points about the store:
+- Messages maintain chronological order
+- Artifacts are stored separately for efficient access
+- Selected artifact tracks currently viewed artifact
+- Loading and error states manage UI feedback
+- Actions encapsulate all state modifications
+
 ## Error Handling
 - XML parsing errors trigger error state
 - Invalid artifact types default to 'text/markdown'
@@ -164,3 +221,36 @@ Processed Output:
 - Blockquote styling for thinking content
 - Enhanced artifact type validation
 - Real-time artifact updates 
+
+## Current Display Format
+
+When a response is displayed in the chat UI, it follows this format:
+
+```
+[Thinking Content (if present)]
+
+---
+
+[Main Conversation Content]
+```
+
+Example of how it appears:
+```
+I should create a diagram to illustrate the system architecture.
+
+---
+
+Here's a system architecture diagram that shows the main components:
+
+[System Architecture](artifact:diagram1)
+
+The diagram shows the key interactions between the frontend and backend components.
+
+Key formatting details:
+- Thinking content appears at the top
+- Double newline + separator line (`---`) + double newline between thinking and conversation
+- References appear as clickable links in their original position in the text
+- Whitespace and line breaks are preserved
+- Code blocks are formatted with triple backticks and language specification
+
+## Error Handling 
