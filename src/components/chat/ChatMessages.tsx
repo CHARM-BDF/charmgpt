@@ -1,6 +1,13 @@
 import React, { useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import remarkGfm from 'remark-gfm';
 import { Message } from '../../types/chat';
 import { useChatStore } from '../../store/chatStore';
+
+// Remove or set to a past date to enable copy buttons for all messages
+const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
 export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) => {
   const { selectArtifact } = useChatStore();
@@ -38,6 +45,20 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
     lastMessageRef.current = lastMessage.id;
   }, [messages]);
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here if you want
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  };
+
+  // Helper function to determine if copy button should be shown
+  const shouldShowCopyButton = (message: Message) => {
+    return true; // Show copy button for all messages
+  };
+
   return (
     <div 
       ref={containerRef}
@@ -49,13 +70,144 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
           className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'} animate-fade-in`}
         >
           <div 
-            className={`max-w-3/4 rounded-lg p-4 ${
+            className={`max-w-3/4 rounded-lg p-4 relative group ${
               message.role === 'assistant' 
-                ? 'bg-white border border-gray-200' 
+                ? 'bg-white border border-gray-200 prose prose-sm max-w-none dark:bg-gray-800 dark:border-gray-700 dark:prose-invert' 
                 : 'bg-blue-500 text-white'
             }`}
           >
-            <pre className="whitespace-pre-wrap break-words font-sans">{message.content}</pre>
+            {/* Copy button - only shown for new messages */}
+            {shouldShowCopyButton(message) && (
+              <button
+                onClick={() => copyToClipboard(message.content)}
+                className={`absolute top-2 right-2 p-1.5 rounded-md 
+                  opacity-0 group-hover:opacity-100 transition-opacity duration-200
+                  ${message.role === 'assistant' 
+                    ? 'hover:bg-gray-100 text-gray-500 hover:text-gray-700 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-gray-300' 
+                    : 'hover:bg-blue-600 text-white'
+                  }`}
+                title="Copy message"
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" 
+                  />
+                </svg>
+              </button>
+            )}
+
+            {message.role === 'assistant' ? (
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h1: ({node, ...props}) => <h1 className="text-4xl font-bold mb-6 mt-8 text-gray-900 dark:text-gray-100" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-3xl font-semibold mb-4 mt-6 text-gray-800 dark:text-gray-200" {...props} />,
+                  h3: ({node, ...props}) => <h3 className="text-2xl font-medium mb-3 mt-5 text-gray-700 dark:text-gray-300" {...props} />,
+                  p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4" {...props} />,
+                  ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4" {...props} />,
+                  li: ({node, ...props}) => <li className="mb-2 text-gray-700 dark:text-gray-300" {...props} />,
+                  blockquote: ({node, ...props}) => (
+                    <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
+                  ),
+                  pre: ({node, ...props}) => {
+                    // Find the code element in children
+                    const codeElement = Array.isArray(props.children) 
+                      ? props.children.find(child => (child as any)?.type === 'code')
+                      : null;
+                    
+                    // Get the className directly from the code element
+                    const match = /language-(\w+)/.exec((codeElement as any)?.props?.className || '');
+                    console.log('Code Element:', codeElement);
+                    console.log('Class Name:', (codeElement as any)?.props?.className);
+                    console.log('Language Match:', match);
+                    const language = match ? match[1] : '';
+                    const codeContent = (codeElement as any)?.props?.children || '';
+                    
+                    return (
+                      <div className="mb-4 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
+                        <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
+                          <span>{language}</span>
+                          <button 
+                            onClick={() => codeContent && copyToClipboard(String(codeContent))} 
+                            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="[&>pre]:m-0">
+                          <pre {...props} className="bg-gray-100 rounded-b-md"/>
+                        </div>
+                      </div>
+                    );
+                  },
+                  code: ({node, className, children, ...props}) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return match ? (
+                      <SyntaxHighlighter
+                        style={dark as any}
+                        language={match[1]}
+                        PreTag="div"
+                        customStyle={{
+                          margin: 0,
+                          borderRadius: 0
+                        }}
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm" {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                  img: ({node, ...props}) => (
+                    <img className="max-w-full h-auto rounded-lg shadow-md my-4" {...props} />
+                  ),
+                  hr: ({node, ...props}) => (
+                    <hr className="my-8 border-t border-gray-300 dark:border-gray-700" {...props} />
+                  ),
+                  a: ({node, href, children, ...props}) => {
+                    if (href?.startsWith('artifact:')) {
+                      return (
+                        <button
+                          onClick={() => selectArtifact(href.replace('artifact:', ''))}
+                          className="text-blue-500 hover:underline"
+                          type="button"
+                        >
+                          {children}
+                        </button>
+                      );
+                    }
+                    return (
+                      <a 
+                        href={href} 
+                        className="text-blue-500 hover:underline" 
+                        {...props}
+                      >
+                        {children}
+                      </a>
+                    );
+                  },
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            ) : (
+              <div className="whitespace-pre-wrap break-words">{message.content}</div>
+            )}
             {message.artifactId && (
               <button
                 onClick={() => selectArtifact(message.artifactId ?? null)}
