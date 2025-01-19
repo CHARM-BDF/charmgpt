@@ -66,15 +66,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant MSG as Message Handler
-    participant XML as XML Parser
+    participant MCP as MCP Server
     participant Store as ChatStore
     participant Art as ArtifactWindow
     
-    MSG->>XML: Parse XML response
-    XML->>XML: Extract thinking & conversation
-    XML->>XML: Process codesnip tags in chat
-    XML->>XML: Extract artifacts after conversation
-    XML-->>Store: Return parsed content
+    MSG->>MCP: Process message
+    MCP-->>MSG: Return response
     MSG->>Store: Add assistant message
     alt Has artifact
         MSG->>Store: Create artifact
@@ -316,36 +313,3 @@ sequenceDiagram
    - Optimize persistence strategy
 
 This documentation should provide a comprehensive understanding of the data flow in the application. Each section can be expanded based on specific implementation details or requirements.
-
-### XML Response Structure
-```typescript
-interface XMLResponse {
-  thinking?: string;  // Optional thinking content
-  conversation: string; // Main conversation content
-  artifacts: XMLArtifact[]; // Artifacts after conversation
-}
-
-interface XMLArtifact {
-  type: ArtifactType;
-  id: string;
-  title: string;
-  content: string;
-  language?: string;
-}
-```
-
-### Content Processing Rules
-1. **Code Snippets**
-   - `<codesnip>` tags remain in chat as formatted code blocks
-   - Language attribute preserved for syntax highlighting
-   - No artifact creation for code snippets
-
-2. **Artifacts**
-   - Only processed after conversation tag
-   - Content preserved with full structure
-   - HTML entities properly decoded for rendering
-
-3. **SVG Content**
-   - Preserved as structured content
-   - Sanitized for security
-   - Rendered in artifact window
