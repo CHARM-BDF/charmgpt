@@ -119,6 +119,9 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                   blockquote: ({node, ...props}) => (
                     <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
                   ),
+                  pre: ({node, ...props}) => (
+                    <pre className="bg-white" {...props} />
+                  ),
                   code: ({node, inline, className, children, ...props}) => {
                     const match = /language-(\w+)/.exec(className || '');
                     const language = match ? match[1] : '';
@@ -138,17 +141,20 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                             </svg>
                           </button>
                         </div>
+                        <div className="bg-white">
                         <SyntaxHighlighter
                           style={oneLight as any}
                           language={language}
                           PreTag="div"
                           customStyle={{
                             margin: 0,
-                            borderRadius: 0
+                            borderRadius: 0,
+                            background: 'white'
                           }}
                         >
                           {String(children).replace(/\n$/, '')}
                         </SyntaxHighlighter>
+                        </div>
                       </div>
                     ) : (
                       <code className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm" {...props}>
