@@ -1,13 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { Message } from '../../types/chat';
 import { useChatStore } from '../../store/chatStore';
 
 // Remove or set to a past date to enable copy buttons for all messages
-const COPY_FEATURE_START_DATE = new Date('2000-01-01');
+// const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
 export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) => {
   const { selectArtifact } = useChatStore();
@@ -119,27 +119,18 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                   blockquote: ({node, ...props}) => (
                     <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
                   ),
-                  pre: ({node, ...props}) => {
-                    // Find the code element in children
-                    const codeElement = Array.isArray(props.children) 
-                      ? props.children.find(child => (child as any)?.type === 'code')
-                      : null;
-                    
-                    // Get the className directly from the code element
-                    const match = /language-(\w+)/.exec((codeElement as any)?.props?.className || '');
-                    console.log('Code Element:', codeElement);
-                    console.log('Class Name:', (codeElement as any)?.props?.className);
-                    console.log('Language Match:', match);
+                  code: ({node, inline, className, children, ...props}) => {
+                    const match = /language-(\w+)/.exec(className || '');
                     const language = match ? match[1] : '';
-                    const codeContent = (codeElement as any)?.props?.children || '';
                     
-                    return (
+                    return !inline ? (
                       <div className="mb-4 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
                         <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
-                          <span>{language}</span>
+                          <span className="uppercase font-semibold">{language || 'Text'}</span>
                           <button 
-                            onClick={() => codeContent && copyToClipboard(String(codeContent))} 
+                            onClick={() => copyToClipboard(String(children))} 
                             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            title="Copy code"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                               <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
@@ -147,26 +138,18 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                             </svg>
                           </button>
                         </div>
-                        <div className="[&>pre]:m-0">
-                          <pre {...props} className="bg-gray-100 rounded-b-md"/>
-                        </div>
+                        <SyntaxHighlighter
+                          style={oneLight as any}
+                          language={language}
+                          PreTag="div"
+                          customStyle={{
+                            margin: 0,
+                            borderRadius: 0
+                          }}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
                       </div>
-                    );
-                  },
-                  code: ({node, className, children, ...props}) => {
-                    const match = /language-(\w+)/.exec(className || '');
-                    return match ? (
-                      <SyntaxHighlighter
-                        style={dark as any}
-                        language={match[1]}
-                        PreTag="div"
-                        customStyle={{
-                          margin: 0,
-                          borderRadius: 0
-                        }}
-                      >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
                     ) : (
                       <code className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm" {...props}>
                         {children}
