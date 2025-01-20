@@ -45,14 +45,20 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
   };
 
   // Clean up content by removing leading spaces while preserving markdown
-  const cleanContent = content.split('\n').map(line => {
-    // Preserve markdown syntax while cleaning spaces
-    if (line.startsWith('    ') && !line.trim().startsWith('```')) {
-      // Remove exactly 4 spaces from the start if it's not a code block
-      return line.slice(4);
-    }
-    return line;
-  }).join('\n');
+  const cleanContent = content
+    // First, replace [BACKTICK] tags with actual backticks
+    .replace(/\[BACKTICK\]/g, '`')
+    // Then handle the spacing
+    .split('\n')
+    .map(line => {
+      // Preserve markdown syntax while cleaning spaces
+      if (line.startsWith('    ') && !line.trim().startsWith('```')) {
+        // Remove exactly 4 spaces from the start if it's not a code block
+        return line.slice(4);
+      }
+      return line;
+    })
+    .join('\n');
 
   const markdownComponents = {
     h1: ({node, ...props}: any) => <h1 className="text-4xl font-bold mb-6 mt-8 text-gray-900 dark:text-gray-100" {...props} />,
@@ -171,24 +177,24 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
         </a>
       );
     },
-    table: ({node, ...props}: any) => (
+    table: ({node, isHeader, ...props}: any) => (
       <div className="overflow-x-auto my-4">
         <table className="min-w-full divide-y divide-gray-200 border dark:divide-gray-700" {...props} />
       </div>
     ),
-    thead: ({node, ...props}: any) => (
+    thead: ({node, isHeader, ...props}: any) => (
       <thead className="bg-gray-50 dark:bg-gray-800" {...props} />
     ),
-    tbody: ({node, ...props}: any) => (
+    tbody: ({node, isHeader, ...props}: any) => (
       <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700" {...props} />
     ),
-    tr: ({node, ...props}: any) => (
+    tr: ({node, isHeader, ...props}: any) => (
       <tr className="hover:bg-gray-50 dark:hover:bg-gray-800" {...props} />
     ),
-    th: ({node, ...props}: any) => (
+    th: ({node, isHeader, ...props}: any) => (
       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400" {...props} />
     ),
-    td: ({node, ...props}: any) => (
+    td: ({node, isHeader, ...props}: any) => (
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" {...props} />
     ),
   };
