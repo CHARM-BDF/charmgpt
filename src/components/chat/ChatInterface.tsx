@@ -9,7 +9,7 @@ import { useMCPStore } from '../../store/mcpStore';
 import { DarkModeToggle } from '../DarkModeToggle';
 
 export const ChatInterface: React.FC = () => {
-  const { messages, showArtifactWindow, toggleArtifactWindow, clearMessages } = useChatStore();
+  const { messages, showArtifactWindow, toggleArtifactWindow, clearMessages, clearChat } = useChatStore();
   const { activeServer } = useMCPStore();
 
   return (
@@ -45,6 +45,13 @@ export const ChatInterface: React.FC = () => {
             className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:underline dark:text-red-400 dark:hover:text-red-300"
           >
             Clear Chat History
+          </button>
+          <button
+            onClick={clearChat}
+            className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-200"
+            title="Clear chat history"
+          >
+            Clear Chat
           </button>
         </div>
         <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-800">

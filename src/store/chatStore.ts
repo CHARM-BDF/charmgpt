@@ -10,6 +10,8 @@ interface ChatState {
   artifacts: Artifact[];
   selectedArtifactId: string | null;
   showArtifactWindow: boolean;
+  isLoading: boolean;
+  error: string | null;
   
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, content: string) => void;
@@ -21,6 +23,7 @@ interface ChatState {
   toggleArtifactWindow: () => void;
   processMessage: (content: string) => Promise<void>;
   clearMessages: () => void;
+  clearChat: () => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -30,6 +33,8 @@ export const useChatStore = create<ChatState>()(
       artifacts: [],
       selectedArtifactId: null,
       showArtifactWindow: false,
+      isLoading: false,
+      error: null,
 
       clearMessages: () => {
         console.log('ChatStore: Clearing all messages and artifacts');
@@ -221,7 +226,15 @@ export const useChatStore = create<ChatState>()(
             content: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
           });
         }
-      }
+      },
+
+      clearChat: () => set(state => ({
+        messages: [],
+        selectedArtifactId: null,
+        artifacts: [],
+        isLoading: false,
+        error: null
+      })),
     }),
     {
       name: 'chat-storage',

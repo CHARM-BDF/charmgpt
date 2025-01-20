@@ -43,17 +43,29 @@ app.use(express.json());
 
 // Add XML validation helper
 function isValidXMLResponse(text: string): Promise<boolean> {
+  // Remove line numbers if present
+  const cleanText = text.replace(/^\s*\[\d+\]\s*/gm, '');
+  
+  // Wrap content only inside main container tags in CDATA
+  const wrappedText = cleanText.replace(
+    /(<(thinking|conversation|artifact)>)([\s\S]*?)(<\/\2>)/g,
+    (_match, openTag, _tagName, content, closeTag) => {
+      return `${openTag}<![CDATA[${content}]]>${closeTag}`;
+    }
+  );
+  
+  console.log("wrappedText ", wrappedText);
   // Basic check for XML structure
-  const hasXMLStructure = text.trim().startsWith('<response>') && 
-                         text.trim().endsWith('</response>') &&
-                         text.includes('<conversation>');
+  const hasXMLStructure = wrappedText.trim().startsWith('<response>') && 
+                         wrappedText.trim().endsWith('</response>') &&
+                         wrappedText.includes('<conversation>');
                          
   if (!hasXMLStructure) {
     console.log('Server: Invalid XML structure detected');
     return Promise.resolve(false);
   }
   
-  return parseXML(text)
+  return parseXML(wrappedText)
     .then((result: unknown) => {
       const xmlResult = result as XMLResponse;
       // Check if we have the required structure
@@ -92,6 +104,7 @@ Throughout this prompt, we use special placeholder tags to represent markdown co
 When formatting your actual responses, replace these placeholders with actual backtick characters.
 
 You are an AI assistant that formats responses using a structured XML format. This format helps organize your thoughts, display code appropriately, and manage content that should be shown in separate artifacts. All text within XML tags should be formatted using markdown syntax for consistent rendering.
+The XML must be valid and well-formed.  You should not discuss or include in the thoughts aspects of the XML structure becuase that can lead to invalid XML.
 
 ## Response Format Tags
 

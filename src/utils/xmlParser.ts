@@ -35,10 +35,7 @@ function validateArtifactType(type: string | null): ArtifactType {
 }
 
 export function parseXMLResponse(xmlString: string): XMLResponse {
-    console.log('\nXML Parser: Starting to parse XML response:', {
-        responseLength: xmlString.length,
-        preview: xmlString.slice(0, 200) + '...'
-    });
+    console.log('\nXML Parser: Starting to parse XML response');
 
     // Create a DOM parser
     const parser = new DOMParser();
@@ -47,10 +44,6 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
     // Extract thinking content if present
     const thinkingElement = xmlDoc.querySelector('thinking');
     const thinking = thinkingElement?.textContent || undefined;
-    console.log('XML Parser: Thinking content:', {
-        hasThinking: !!thinking,
-        thinkingPreview: thinking?.slice(0, 100)
-    });
 
     // Extract conversation content
     const conversationElement = xmlDoc.querySelector('conversation');
@@ -65,39 +58,18 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
     // Find the innermost response element if there are nested ones
     const responseElements = xmlDoc.querySelectorAll('response');
     const responseElement = responseElements[responseElements.length - 1];
-    
-    console.log('XML Parser: Found response elements:', {
-        totalResponses: responseElements.length,
-        hasResponse: !!responseElement,
-        childNodes: responseElement?.childNodes.length
-    });
 
     if (responseElement) {
         let foundConversation = false;
         
         // First pass: find conversation and collect subsequent artifact nodes
-        Array.from(responseElement.children).forEach((elem, index) => {
-            console.log(`XML Parser: Processing child element ${index}:`, {
-                tagName: elem.tagName.toLowerCase(),
-                foundConversation,
-                isArtifact: elem.tagName.toLowerCase() === 'artifact',
-                attributes: elem.getAttributeNames().map(name => `${name}="${elem.getAttribute(name)}"`)
-            });
-
+        Array.from(responseElement.children).forEach((elem) => {
             if (elem.tagName.toLowerCase() === 'conversation') {
                 foundConversation = true;
             } else if (foundConversation && elem.tagName.toLowerCase() === 'artifact') {
                 const artifactType = elem.getAttribute('type');
                 // Use innerHTML for SVG content, textContent for everything else
                 const content = artifactType === 'image/svg+xml' ? elem.innerHTML : elem.textContent || '';
-                
-                console.log('XML Parser: Processing artifact:', {
-                    type: artifactType,
-                    id: elem.getAttribute('id'),
-                    title: elem.getAttribute('title'),
-                    contentLength: content.length,
-                    contentPreview: content.slice(0, 100) + '...'
-                });
 
                 artifacts.push({
                     type: validateArtifactType(artifactType),
@@ -110,23 +82,8 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
         });
     }
 
-    console.log('XML Parser: Final artifacts list:', {
-        count: artifacts.length,
-        artifacts: artifacts.map(a => ({
-            id: a.id,
-            type: a.type,
-            title: a.title,
-            contentLength: a.content.length,
-            contentPreview: a.content.slice(0, 50) + '...'
-        }))
-    });
-
     // Get conversation content, preserving markdown and keeping codesnip content inline
     let conversation = processConversationContent(conversationElement);
-    console.log('XML Parser: Processed conversation content:', {
-        contentLength: conversation.length,
-        preview: conversation.slice(0, 100) + '...'
-    });
 
     // If thinking exists, prepend it to the conversation with clear separation
     if (thinking) {
@@ -142,52 +99,20 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
 
 function processConversationContent(element: Element): string {
     let content = '';
-    console.log('XML Parser: Processing conversation element:', {
-        childNodes: element.childNodes.length
-    });
 
-    element.childNodes.forEach((node, index) => {
-        console.log(`XML Parser: Processing conversation child node ${index}:`, {
-            type: node.nodeType,
-            nodeName: node.nodeName,
-            isElement: node.nodeType === Node.ELEMENT_NODE,
-            textContent: node.nodeType === Node.TEXT_NODE ? node.textContent?.trim() : undefined
-        });
-
+    element.childNodes.forEach((node) => {
         if (node.nodeType === Node.TEXT_NODE) {
-            // Preserve markdown formatting in text nodes
-            content += node.textContent;
+            content += node.textContent || '';
         } else if (node.nodeType === Node.ELEMENT_NODE) {
             const elem = node as Element;
-            console.log('XML Parser: Processing conversation element:', {
-                tagName: elem.tagName.toLowerCase(),
-                attributes: elem.getAttributeNames().reduce((acc, name) => ({
-                    ...acc,
-                    [name]: elem.getAttribute(name)
-                }), {})
-            });
 
             if (elem.tagName.toLowerCase() === 'ref') {
                 const artifactId = elem.getAttribute('artifact');
                 const description = elem.textContent;
                 content += `\n[${description}](artifact:${artifactId})\n`;
             } else if (elem.tagName.toLowerCase() === 'code' || elem.tagName.toLowerCase() === 'codesnip') {
-                const codeContent = elem.innerHTML.trim() || '';
+                const codeContent = elem.textContent?.trim() || '';
                 const language = elem.getAttribute('language') || '';
-                // Add detailed logging for code content
-                console.log('XML Parser: Code block details:', {
-                    type: elem.tagName.toLowerCase(),
-                    language,
-                    contentLength: codeContent.length,
-                    rawContent: elem.innerHTML,
-                    textContent: elem.textContent,
-                    hasChildren: elem.hasChildNodes(),
-                    childNodes: Array.from(elem.childNodes).map(n => ({
-                        type: n.nodeType,
-                        nodeName: n.nodeName,
-                        content: n.textContent
-                    }))
-                });
                 content += `\n\`\`\`${language}\n${codeContent}\n\`\`\`\n`;
             }
         }
