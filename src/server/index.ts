@@ -2,6 +2,26 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { Anthropic } from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
+import { parseString } from 'xml2js';
+import { promisify } from 'util';
+
+const parseXML = promisify(parseString);
+
+// Define types for XML structure
+interface XMLResponse {
+  response: {
+    thinking?: string[];
+    conversation: string[];
+    artifact?: Array<{
+      $: {
+        type: string;
+        id: string;
+        title: string;
+      };
+      _: string;
+    }>;
+  };
+}
 
 dotenv.config();
 
@@ -20,6 +40,39 @@ interface ChatRequest {
 
 app.use(cors());
 app.use(express.json());
+
+// Add XML validation helper
+function isValidXMLResponse(text: string): Promise<boolean> {
+  // Basic check for XML structure
+  const hasXMLStructure = text.trim().startsWith('<response>') && 
+                         text.trim().endsWith('</response>') &&
+                         text.includes('<conversation>');
+                         
+  if (!hasXMLStructure) {
+    console.log('Server: Invalid XML structure detected');
+    return Promise.resolve(false);
+  }
+  
+  return parseXML(text)
+    .then((result: unknown) => {
+      const xmlResult = result as XMLResponse;
+      // Check if we have the required structure
+      const hasValidStructure = 
+        xmlResult?.response && 
+        (xmlResult.response.conversation || []).length > 0;
+      
+      if (!hasValidStructure) {
+        console.log('Server: Missing required XML elements');
+        return false;
+      }
+      
+      return true;
+    })
+    .catch(error => {
+      console.log('Server: XML validation error:', error);
+      return false;
+    });
+}
 
 app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) => {
   try {
@@ -72,7 +125,7 @@ You are an AI assistant that formats responses using a structured XML format. Th
 ## Response Structure
 
 Your responses should follow this XML structure, with markdown formatting inside tags:
-
+\`\`\`xml
 <response>
     <!-- Optional - Use when explaining decisions -->
     <thinking>
@@ -104,7 +157,7 @@ Your responses should follow this XML structure, with markdown formatting inside
     Content for separate rendering
     </artifact>
 </response>
-
+\`\`\`
 ## Markdown Usage
 
 - Use markdown formatting for all non-code text within tags
@@ -117,6 +170,10 @@ Your responses should follow this XML structure, with markdown formatting inside
   - Code blocks: Triple backticks with language
 
 ## When to Use Different Components
+
+### Response Tag
+- Use for all responses
+- Each respons should start and end with a <response> tag
 
 ### Thinking Tag
 - Use when making complex decisions
@@ -161,10 +218,9 @@ Use for:
 - Content needing special rendering
 
 ## Additional Artifact Rules
-
-1. If the Artifact is supposed to be rendered (application or image) then it must be complete and fully functional
+1. If the user asks for something to be an artifact or in the artifact window then you should provide an artifact. 
 2. Placeholder comments (like "// TODO" or "<!-- Add content here -->") are not allowed
-3. Comments should only be used for code documentation
+2. Comments should only be used for code documentation
 
 ## Content Types for Artifacts
 
@@ -200,7 +256,7 @@ Use for:
 ## Example Responses
 
 ### Simple Response with Code
-
+\`\`\`xml
 <response>
     <conversation>
     Here's how to write a hello world function in Python:
@@ -212,9 +268,9 @@ Use for:
     You can call this function to display the greeting.
     </conversation>
 </response>
-
+\`\`\`
 ### Response with Artifact Reference
-
+\`\`\`xml
 <response>
     <thinking>
         Consider what the registration is for.
@@ -222,7 +278,7 @@ Use for:
     </thinking>
     <conversation>
         I've created a registration form for your application. 
-        <ref artifact="user-form">User Registration Form Component</ref>
+        <ref artifact_id="user-form" label="User Registration Form" type="application/vnd.react"/>        
         The form includes all the fields you requested...
     </conversation>
     
@@ -237,9 +293,10 @@ Use for:
     export default UserForm;
     </artifact>
 </response>
+\`\`\`
 
 ### Complex Response with Multiple References
-
+\`\`\`xml
 <response>
     <thinking>
     This task requires both:
@@ -253,10 +310,10 @@ Use for:
     # Data Analysis Solution
     
     I'll help you analyze and visualize your data. First, here's a Python script to process your CSV file:
-    <ref id="data-processor" label="Process CSV Data" type="application/python"/>. 
-    
+    <ref artifact_id="data-processor" label="Process CSV Data" type="application/python"/>. 
+
     Once the data is processed, this React component will create an interactive visualization:
-    <ref artifact="data-viz">Data Visualization Component</ref>.
+    <ref artifact_id="data-viz" label="Data Visualization Component" type="application/vnd.react"/>.
     
     You can combine these by passing the processed data to the visualization component.
 
@@ -283,7 +340,7 @@ Use for:
     // Implementation...
     </artifact>
 </response>
-
+\`\`\`
 ## Error Cases
 
 1. If uncertain about content type, default to text/markdown
@@ -317,26 +374,92 @@ Remember: Your goal is to provide clear, well-structured responses that separate
       throw new Error('Expected text response from Claude');
     }
 
-    console.log('Server: Received Claude response:', {
-      responseLength: response.content[0].text.length,
-      preview: response.content[0].text.slice(0, 500) + '...',
-      usage: response.usage
-    });
+    const responseText = response.content[0].text;
+
+    // Log initial response
+    console.log('\nServer: Initial Claude Response:\n');
+    console.log('----------------------------------------');
+    console.log('Response Length:', responseText.length);
+    console.log('Preview:', responseText.slice(0, 500) + '...');
+    console.log('Full Response:');
+    console.log(responseText);
+    console.log('----------------------------------------\n');
 
     // Log if response appears to be XML
-    if (response.content[0].text.trim().startsWith('<response>')) {
+    if (responseText.trim().startsWith('<response>')) {
       console.log('Server: Response appears to be XML formatted');
     } else {
       console.log('Server: Response does not appear to be XML formatted');
     }
 
-    // Add plain text log of the full response
-    console.log('\nServer: Full Claude Response (text only):\n');
-    console.log('----------------------------------------');
-    console.log(response.content[0].text);
-    console.log('----------------------------------------\n');
+    // Validate XML structure
+    const isValid = await isValidXMLResponse(responseText);
+    if (!isValid) {
+      console.log('Server: Received invalid XML response, requesting reformatting');
+      console.log('Server: Original response that failed validation:\n', responseText);
+      
+      // Request reformatting if invalid
+      const reformatResponse = await anthropic.messages.create({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 1000,
+        messages: [
+          ...history,
+          { role: 'assistant', content: responseText },
+          { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
+        ],
+        system: systemPrompt,
+        temperature: 0.7,
+      });
 
-    res.json({ response: response.content[0].text });
+      if (reformatResponse.content[0].type !== 'text') {
+        throw new Error('Expected text response from Claude');
+      }
+
+      // Use reformatted response if valid, otherwise wrap original in error XML
+      const reformattedText = reformatResponse.content[0].text;
+
+      // Log reformatting attempt
+      console.log('\nServer: Reformatting Attempt Result:\n');
+      console.log('----------------------------------------');
+      console.log('Reformatted Length:', reformattedText.length);
+      console.log('Reformatted Preview:', reformattedText.slice(0, 500) + '...');
+      console.log('Full Reformatted Response:');
+      console.log(reformattedText);
+      console.log('----------------------------------------\n');
+
+      const isReformattedValid = await isValidXMLResponse(reformattedText);
+      if (isReformattedValid) {
+        console.log('Server: Successfully reformatted response as XML');
+        res.json({ response: reformattedText });
+        return;
+      } else {
+        console.log('Server: Failed to get valid XML after reformatting attempt');
+        console.log('Server: Both original and reformatted responses failed validation');
+        // Wrap the original response in valid XML structure
+        const wrappedResponse = `<response>
+          <conversation>
+          # Error: Response Formatting Issue
+          
+          I apologize, but I had trouble formatting the response properly. Here is the raw response:
+
+          ---
+          ${responseText}
+          </conversation>
+        </response>`;
+        res.json({ response: wrappedResponse });
+        return;
+      }
+    }
+
+    // Log response details
+    console.log('Server: Response validation:', {
+      responseLength: responseText.length,
+      preview: responseText.slice(0, 500) + '...',
+      usage: response.usage,
+      isValidXML: isValid
+    });
+
+    res.json({ response: responseText });
   } catch (error) {
     console.error('Server: Error in chat API:', error);
     res.status(500).json({ error: 'Failed to process chat message' });

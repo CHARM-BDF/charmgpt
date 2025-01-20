@@ -155,10 +155,15 @@ export const useChatStore = create<ChatState>()(
             
             // Define content cleaning function
             const cleanConversationContent = (content: string) => {
-              // Keep XML tags for code snippets
-              return content.replace(/\[TRIPLE_BACKTICK\]([^\[]+)\[\/TRIPLE_BACKTICK\]/g, (_, code) => {
-                return `\`\`\`${code}\`\`\``;
-              });
+              // Ensure code blocks are properly formatted with markdown
+              let cleanContent = content;
+              
+              // If content isn't already wrapped in code blocks, don't treat it as code
+              if (!cleanContent.includes('```')) {
+                cleanContent = cleanContent.trim();
+              }
+              
+              return cleanContent;
             };
 
             // Clean conversation content

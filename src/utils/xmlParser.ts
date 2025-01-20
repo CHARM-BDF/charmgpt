@@ -19,12 +19,18 @@ function validateArtifactType(type: string | null): ArtifactType {
         return 'code';
     }
 
-    const normalizedType = type || 'text/markdown';
+    // If no type is specified or type is 'text', default to text/markdown
+    if (!type || type === 'text') {
+        return 'text/markdown';
+    }
+
+    const normalizedType = type;
 
     if (validTypes.includes(normalizedType as ArtifactType)) {
         return normalizedType as ArtifactType;
     }
 
+    // Default to text/markdown for unknown types
     return 'text/markdown';
 }
 
@@ -87,28 +93,23 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
                 if (elem.tagName.toLowerCase() === 'conversation') {
                     foundConversation = true;
                 } else if (foundConversation && elem.tagName.toLowerCase() === 'artifact') {
-                    // Get the raw content
-                    const rawContent = elem.innerHTML || '';
+                    const artifactType = elem.getAttribute('type');
+                    // Use innerHTML for SVG content, textContent for everything else
+                    const content = artifactType === 'image/svg+xml' ? elem.innerHTML : elem.textContent || '';
                     
-                    // Decode HTML entities for proper rendering
-                    const decoder = document.createElement('div');
-                    decoder.innerHTML = rawContent;
-                    const decodedContent = decoder.textContent || '';
-
                     console.log('XML Parser: Found artifact after conversation - FULL CONTENT:', {
-                        type: elem.getAttribute('type'),
+                        type: artifactType,
                         id: elem.getAttribute('id'),
                         title: elem.getAttribute('title'),
-                        contentLength: decodedContent.length,
-                        rawContent,
-                        decodedContent
+                        contentLength: content.length,
+                        content
                     });
 
                     artifacts.push({
-                        type: validateArtifactType(elem.getAttribute('type')),
+                        type: validateArtifactType(artifactType),
                         id: elem.getAttribute('id') || crypto.randomUUID(),
                         title: elem.getAttribute('title') || 'Untitled',
-                        content: decodedContent
+                        content: content.trim()
                     });
                 }
             }
@@ -160,6 +161,7 @@ function processConversationContent(element: Element): string {
         });
 
         if (node.nodeType === Node.TEXT_NODE) {
+            // Preserve markdown formatting in text nodes
             content += node.textContent;
         } else if (node.nodeType === Node.ELEMENT_NODE) {
             const elem = node as Element;
@@ -175,10 +177,10 @@ function processConversationContent(element: Element): string {
                 const artifactId = elem.getAttribute('artifact');
                 const description = elem.textContent;
                 content += `\n[${description}](artifact:${artifactId})\n`;
-            } else if (elem.tagName.toLowerCase() === 'codesnip') {
+            } else if (elem.tagName.toLowerCase() === 'code') {
                 const language = elem.getAttribute('language') || '';
                 const codeContent = elem.textContent || '';
-                console.log('XML Parser: Found codesnip:', {
+                console.log('XML Parser: Found code block:', {
                     language,
                     contentLength: codeContent.length,
                     contentPreview: codeContent.slice(0, 50) + '...'

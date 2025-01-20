@@ -15,6 +15,11 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string | null>(null);
   
+  // Log messages when they change
+  useEffect(() => {
+    console.log('ChatMessages received:', messages);
+  }, [messages]);
+
   // Function to check if user is near bottom
   const isNearBottom = () => {
     if (!containerRef.current) return true;
@@ -55,7 +60,7 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
   };
 
   // Helper function to determine if copy button should be shown
-  const shouldShowCopyButton = (message: Message) => {
+  const shouldShowCopyButton = () => {
     return true; // Show copy button for all messages
   };
 
@@ -77,7 +82,7 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
             }`}
           >
             {/* Copy button - only shown for new messages */}
-            {shouldShowCopyButton(message) && (
+            {shouldShowCopyButton() && (
               <button
                 onClick={() => copyToClipboard(message.content)}
                 className={`absolute top-2 right-2 p-1.5 rounded-md 
@@ -149,8 +154,12 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                           customStyle={{
                             margin: 0,
                             borderRadius: 0,
-                            background: 'white'
+                            background: 'white',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word'
                           }}
+                          wrapLines={true}
+                          wrapLongLines={true}
                         >
                           {String(children).replace(/\n$/, '')}
                         </SyntaxHighlighter>
@@ -180,10 +189,24 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                         </button>
                       );
                     }
+                    // Prevent javascript: URLs
+                    if (href?.startsWith('javascript:')) {
+                      return (
+                        <button
+                          onClick={(e) => e.preventDefault()}
+                          className="text-blue-500 hover:underline"
+                          type="button"
+                        >
+                          {children}
+                        </button>
+                      );
+                    }
                     return (
                       <a 
                         href={href} 
                         className="text-blue-500 hover:underline" 
+                        target="_blank"
+                        rel="noopener noreferrer"
                         {...props}
                       >
                         {children}

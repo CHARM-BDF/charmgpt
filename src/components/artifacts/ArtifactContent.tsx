@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { Artifact } from '../../types/artifacts';
 import DOMPurify from 'dompurify';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 export const ArtifactContent: React.FC<{
   artifact: Artifact;
@@ -15,6 +19,21 @@ export const ArtifactContent: React.FC<{
     });
   };
 
+  const getLanguage = (type: string): string => {
+    switch (type) {
+      case 'application/python':
+        return 'python';
+      case 'application/javascript':
+        return 'javascript';
+      case 'application/vnd.react':
+        return 'jsx';
+      case 'code':
+        return 'text';
+      default:
+        return 'text';
+    }
+  };
+
   const renderContent = () => {
     if (viewMode === 'source') {
       return (
@@ -26,12 +45,24 @@ export const ArtifactContent: React.FC<{
 
     switch (artifact.type) {
       case 'code':
+      case 'application/python':
+      case 'application/javascript':
+      case 'application/vnd.react':
         return (
-          <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
-            <code className={artifact.language ? `language-${artifact.language}` : ''}>
-              {artifact.content}
-            </code>
-          </pre>
+          <div className="bg-gray-50 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800">
+              {artifact.type.replace('application/', '')}
+            </div>
+            <div className="p-4">
+              <SyntaxHighlighter
+                language={getLanguage(artifact.type)}
+                style={oneLight}
+                customStyle={{ margin: 0, background: 'transparent' }}
+              >
+                {artifact.content}
+              </SyntaxHighlighter>
+            </div>
+          </div>
         );
       
       case 'html':
@@ -55,8 +86,31 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.ant.mermaid':
         return <div className="mermaid">{artifact.content}</div>;
       
+      case 'text/markdown':
+        return (
+          <div className="prose max-w-none dark:prose-invert">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {artifact.content}
+            </ReactMarkdown>
+          </div>
+        );
+
+      case 'text':
+        return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
+
       default:
-        return <div className="prose max-w-none">{artifact.content}</div>;
+        // Try to render as markdown first, fallback to pre-wrapped text
+        try {
+          return (
+            <div className="prose max-w-none dark:prose-invert">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {artifact.content}
+              </ReactMarkdown>
+            </div>
+          );
+        } catch {
+          return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
+        }
     }
   };
 
