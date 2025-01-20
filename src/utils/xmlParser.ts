@@ -171,13 +171,24 @@ function processConversationContent(element: Element): string {
                 const artifactId = elem.getAttribute('artifact');
                 const description = elem.textContent;
                 content += `\n[${description}](artifact:${artifactId})\n`;
-            } else if (elem.tagName.toLowerCase() === 'code') {
-                const codeContent = elem.textContent || '';
-                console.log('XML Parser: Found code block:', {
+            } else if (elem.tagName.toLowerCase() === 'code' || elem.tagName.toLowerCase() === 'codesnip') {
+                const codeContent = elem.innerHTML.trim() || '';
+                const language = elem.getAttribute('language') || '';
+                // Add detailed logging for code content
+                console.log('XML Parser: Code block details:', {
+                    type: elem.tagName.toLowerCase(),
+                    language,
                     contentLength: codeContent.length,
-                    contentPreview: codeContent.slice(0, 50) + '...'
+                    rawContent: elem.innerHTML,
+                    textContent: elem.textContent,
+                    hasChildren: elem.hasChildNodes(),
+                    childNodes: Array.from(elem.childNodes).map(n => ({
+                        type: n.nodeType,
+                        nodeName: n.nodeName,
+                        content: n.textContent
+                    }))
                 });
-                content += codeContent;
+                content += `\n\`\`\`${language}\n${codeContent}\n\`\`\`\n`;
             }
         }
     });
