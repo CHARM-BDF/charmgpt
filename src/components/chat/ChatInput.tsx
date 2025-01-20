@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 
 export const ChatInput: React.FC = () => {
-  const [input, setInput] = useState('create a bunch of text that will test all of the markdown formats including two different types of code.');
+  const [input, setInput] = useState('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
   const { addMessage, processMessage } = useChatStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,8 +17,9 @@ export const ChatInput: React.FC = () => {
     } catch (error) {
       console.error('ChatInput: Error processing message:', error);
     }
-    
-    setInput('create a bunch of text that will test all of the markdown formats including two different types of code.');
+    // think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one. 
+    // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. And include an artifact of a sacred geometry svg.');
+    setInput('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
   };
 
   return (

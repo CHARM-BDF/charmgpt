@@ -59,9 +59,19 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
     h2: ({node, ...props}: any) => <h2 className="text-3xl font-semibold mb-4 mt-6 text-gray-800 dark:text-gray-200" {...props} />,
     h3: ({node, ...props}: any) => <h3 className="text-2xl font-medium mb-3 mt-5 text-gray-700 dark:text-gray-300" {...props} />,
     p: ({node, ...props}: any) => <p className="mb-4 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />,
-    ul: ({node, ...props}: any) => <ul className="list-disc pl-6 mb-4" {...props} />,
-    ol: ({node, ...props}: any) => <ol className="list-decimal pl-6 mb-4" {...props} />,
-    li: ({node, ...props}: any) => <li className="mb-2 text-gray-700 dark:text-gray-300" {...props} />,
+    ul: ({node, ordered, ...props}: any) => <ul className="list-disc pl-6 mb-4" {...props} />,
+    ol: ({node, ordered, ...props}: any) => <ol className="list-decimal pl-6 mb-4" {...props} />,
+    li: ({node, ordered, checked, ...props}: any) => {
+      const className = "mb-2 text-gray-700 dark:text-gray-300";
+      if (checked !== null && checked !== undefined) {
+        return (
+          <li className={className}>
+            <input type="checkbox" checked={checked} readOnly /> {props.children}
+          </li>
+        );
+      }
+      return <li className={className} {...props} />;
+    },
     blockquote: ({node, ...props}: any) => (
       <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
     ),
