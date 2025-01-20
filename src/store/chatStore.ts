@@ -15,6 +15,8 @@ interface ChatState {
   updateMessage: (id: string, content: string) => void;
   addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => string;
   updateArtifact: (id: string, content: string) => void;
+  deleteArtifact: (id: string) => void;
+  clearArtifacts: () => void;
   selectArtifact: (id: string | null) => void;
   toggleArtifactWindow: () => void;
   processMessage: (content: string) => Promise<void>;
@@ -31,7 +33,11 @@ export const useChatStore = create<ChatState>()(
 
       clearMessages: () => {
         console.log('ChatStore: Clearing all messages and artifacts');
-        set({ messages: [] });
+        set({ 
+          messages: [],
+          artifacts: [],
+          selectedArtifactId: null
+        });
       },
 
       addMessage: (message) => set((state) => {
@@ -81,6 +87,26 @@ export const useChatStore = create<ChatState>()(
             art.id === id ? { ...art, content } : art
           ),
         }));
+      },
+
+      deleteArtifact: (id: string) => {
+        console.log(`ChatStore: Deleting artifact ${id}`);
+        set((state) => {
+          const newArtifacts = state.artifacts.filter(a => a.id !== id);
+          return {
+            artifacts: newArtifacts,
+            selectedArtifactId: state.selectedArtifactId === id ? 
+              (newArtifacts[0]?.id || null) : state.selectedArtifactId
+          };
+        });
+      },
+
+      clearArtifacts: () => {
+        console.log('ChatStore: Clearing all artifacts');
+        set({ 
+          artifacts: [],
+          selectedArtifactId: null
+        });
       },
 
       selectArtifact: (id) => {
@@ -153,20 +179,7 @@ export const useChatStore = create<ChatState>()(
             // Extract references from conversation (for tracking purposes)
             const refs = extractReferences(xmlResponse.conversation);
             
-            // Define content cleaning function
-            const cleanConversationContent = (content: string) => {
-              // Ensure code blocks are properly formatted with markdown
-              let cleanContent = content;
-              
-              // If content isn't already wrapped in code blocks, don't treat it as code
-              if (!cleanContent.includes('```')) {
-                cleanContent = cleanContent.trim();
-              }
-              
-              return cleanContent;
-            };
-
-            // Clean conversation content
+            // Clean conversation content using imported function
             let cleanContent = cleanConversationContent(xmlResponse.conversation);
 
             console.log('\nChatStore: Final Content for Display:', {

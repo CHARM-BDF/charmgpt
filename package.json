@@ -26,6 +26,7 @@
     "dompurify": "^3.2.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "fast-xml-parser": "^4.5.1",
     "mermaid": "^11.4.1",
     "postcss": "^8.5.1",
     "react": "^18.3.1",

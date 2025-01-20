@@ -62,61 +62,55 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
     const artifacts: XMLArtifact[] = [];
 
     // Extract only artifacts that are direct children of the response element and after conversation
-    const responseElement = xmlDoc.querySelector('response');
-    console.log('XML Parser: Found response element:', {
+    // Find the innermost response element if there are nested ones
+    const responseElements = xmlDoc.querySelectorAll('response');
+    const responseElement = responseElements[responseElements.length - 1];
+    
+    console.log('XML Parser: Found response elements:', {
+        totalResponses: responseElements.length,
         hasResponse: !!responseElement,
         childNodes: responseElement?.childNodes.length
     });
 
     if (responseElement) {
         let foundConversation = false;
-        responseElement.childNodes.forEach((node, index) => {
-            console.log(`XML Parser: Processing child node ${index}:`, {
-                type: node.nodeType,
-                nodeName: node.nodeName,
-                isElement: node.nodeType === Node.ELEMENT_NODE,
-                textContent: node.nodeType === Node.TEXT_NODE ? node.textContent?.trim() : undefined
+        
+        // First pass: find conversation and collect subsequent artifact nodes
+        Array.from(responseElement.children).forEach((elem, index) => {
+            console.log(`XML Parser: Processing child element ${index}:`, {
+                tagName: elem.tagName.toLowerCase(),
+                foundConversation,
+                isArtifact: elem.tagName.toLowerCase() === 'artifact',
+                attributes: elem.getAttributeNames().map(name => `${name}="${elem.getAttribute(name)}"`)
             });
 
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const elem = node as Element;
-                console.log('XML Parser: Processing element:', {
-                    tagName: elem.tagName.toLowerCase(),
-                    foundConversation,
-                    attributes: {
-                        type: elem.getAttribute('type'),
-                        id: elem.getAttribute('id'),
-                        title: elem.getAttribute('title')
-                    }
+            if (elem.tagName.toLowerCase() === 'conversation') {
+                foundConversation = true;
+            } else if (foundConversation && elem.tagName.toLowerCase() === 'artifact') {
+                const artifactType = elem.getAttribute('type');
+                // Use innerHTML for SVG content, textContent for everything else
+                const content = artifactType === 'image/svg+xml' ? elem.innerHTML : elem.textContent || '';
+                
+                console.log('XML Parser: Processing artifact:', {
+                    type: artifactType,
+                    id: elem.getAttribute('id'),
+                    title: elem.getAttribute('title'),
+                    contentLength: content.length,
+                    contentPreview: content.slice(0, 100) + '...'
                 });
 
-                if (elem.tagName.toLowerCase() === 'conversation') {
-                    foundConversation = true;
-                } else if (foundConversation && elem.tagName.toLowerCase() === 'artifact') {
-                    const artifactType = elem.getAttribute('type');
-                    // Use innerHTML for SVG content, textContent for everything else
-                    const content = artifactType === 'image/svg+xml' ? elem.innerHTML : elem.textContent || '';
-                    
-                    console.log('XML Parser: Found artifact after conversation - FULL CONTENT:', {
-                        type: artifactType,
-                        id: elem.getAttribute('id'),
-                        title: elem.getAttribute('title'),
-                        contentLength: content.length,
-                        content
-                    });
-
-                    artifacts.push({
-                        type: validateArtifactType(artifactType),
-                        id: elem.getAttribute('id') || crypto.randomUUID(),
-                        title: elem.getAttribute('title') || 'Untitled',
-                        content: content.trim()
-                    });
-                }
+                artifacts.push({
+                    type: validateArtifactType(artifactType),
+                    id: elem.getAttribute('id') || crypto.randomUUID(),
+                    title: elem.getAttribute('title') || 'Untitled',
+                    content: content.trim(),
+                    language: elem.getAttribute('language') || undefined
+                });
             }
         });
     }
 
-    console.log('XML Parser: Extracted artifacts:', {
+    console.log('XML Parser: Final artifacts list:', {
         count: artifacts.length,
         artifacts: artifacts.map(a => ({
             id: a.id,
@@ -178,14 +172,12 @@ function processConversationContent(element: Element): string {
                 const description = elem.textContent;
                 content += `\n[${description}](artifact:${artifactId})\n`;
             } else if (elem.tagName.toLowerCase() === 'code') {
-                const language = elem.getAttribute('language') || '';
                 const codeContent = elem.textContent || '';
                 console.log('XML Parser: Found code block:', {
-                    language,
                     contentLength: codeContent.length,
                     contentPreview: codeContent.slice(0, 50) + '...'
                 });
-                content += `\n\`\`\`${language}\n${codeContent}\n\`\`\`\n`;
+                content += codeContent;
             }
         }
     });

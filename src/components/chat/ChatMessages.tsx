@@ -130,46 +130,62 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                   code: ({node, inline, className, children, ...props}) => {
                     const match = /language-(\w+)/.exec(className || '');
                     const language = match ? match[1] : '';
+                    const isFenced = className?.includes('language-');
                     
-                    return !inline ? (
-                      <div className="mb-4 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
-                        <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
-                          <span className="uppercase font-semibold">{language || 'Text'}</span>
-                          <button 
-                            onClick={() => copyToClipboard(String(children))} 
-                            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                            title="Copy code"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                            </svg>
-                          </button>
+                    // For inline code (single backticks)
+                    if (inline) {
+                      return (
+                        <code className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm" {...props}>
+                          {children}
+                        </code>
+                      );
+                    }
+                    
+                    // For fenced code blocks (triple backticks)
+                    if (isFenced) {
+                      return (
+                        <div className="mb-4 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
+                          <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
+                            <span className="uppercase font-semibold">{language || 'Text'}</span>
+                            <button 
+                              onClick={() => copyToClipboard(String(children))} 
+                              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              title="Copy code"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                                <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="bg-white">
+                            <SyntaxHighlighter
+                              style={oneLight as any}
+                              language={language}
+                              PreTag="div"
+                              customStyle={{
+                                margin: 0,
+                                borderRadius: 0,
+                                background: 'white',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word'
+                              }}
+                              wrapLines={true}
+                              wrapLongLines={true}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          </div>
                         </div>
-                        <div className="bg-white">
-                        <SyntaxHighlighter
-                          style={oneLight as any}
-                          language={language}
-                          PreTag="div"
-                          customStyle={{
-                            margin: 0,
-                            borderRadius: 0,
-                            background: 'white',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word'
-                          }}
-                          wrapLines={true}
-                          wrapLongLines={true}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                        </div>
-                      </div>
-                    ) : (
-                      <code className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm" {...props}>
-                        {children}
-                      </code>
-                    );
+                      );
+                    }
+                    
+                    // For non-code text, remove leading spaces from each line while preserving markdown
+                    const cleanedText = String(children)
+                      .split('\n')
+                      .map(line => line.trimStart())
+                      .join('\n');
+                    return cleanedText;
                   },
                   img: ({node, ...props}) => (
                     <img className="max-w-full h-auto rounded-lg shadow-md my-4" {...props} />
@@ -215,7 +231,7 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                   },
                 }}
               >
-                {message.content}
+                {message.content.split('\n').map(line => line.trimStart()).join('\n')}
               </ReactMarkdown>
             ) : (
               <div className="whitespace-pre-wrap break-words">{message.content}</div>

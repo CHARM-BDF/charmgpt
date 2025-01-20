@@ -8,6 +8,8 @@ export const ArtifactWindow: React.FC = () => {
     selectedArtifactId,
     selectArtifact,
     toggleArtifactWindow,
+    deleteArtifact,
+    clearArtifacts
   } = useChatStore();
   const [showList, setShowList] = useState(false);
 
@@ -34,6 +36,15 @@ export const ArtifactWindow: React.FC = () => {
           >
             {showList ? 'Hide List' : 'Show List'}
           </button>
+          {artifacts.length > 0 && (
+            <button
+              onClick={clearArtifacts}
+              className="text-red-500 hover:text-red-700"
+              title="Clear all artifacts"
+            >
+              Clear All
+            </button>
+          )}
           <button
             onClick={() => toggleArtifactWindow()}
             className="text-gray-500 hover:text-gray-700"
@@ -55,18 +66,32 @@ export const ArtifactWindow: React.FC = () => {
           <div className="w-64 border-l border-gray-200 overflow-y-auto h-full max-h-[calc(100vh-8rem)]">
             <div className="h-full">
               {artifacts.map((artifact) => (
-                <button
+                <div
                   key={artifact.id}
-                  onClick={() => selectArtifact(artifact.id)}
-                  className={`w-full p-4 text-left hover:bg-gray-50 ${
+                  className={`relative group border-b border-gray-100 ${
                     selectedArtifactId === artifact.id ? 'bg-blue-50' : ''
                   }`}
                 >
-                  <div className="font-medium">{artifact.title}</div>
-                  <div className="text-sm text-gray-500">
-                    {formatTimestamp(artifact.timestamp)}
-                  </div>
-                </button>
+                  <button
+                    onClick={() => selectArtifact(artifact.id)}
+                    className="w-full p-4 text-left hover:bg-gray-50"
+                  >
+                    <div className="font-medium">{artifact.title}</div>
+                    <div className="text-sm text-gray-500">
+                      {formatTimestamp(artifact.timestamp)}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteArtifact(artifact.id);
+                    }}
+                    className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    title="Delete artifact"
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           </div>
