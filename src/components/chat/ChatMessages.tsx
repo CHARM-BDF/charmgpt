@@ -118,10 +118,10 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                   h2: ({node, ...props}) => <h2 className="text-3xl font-semibold mb-4 mt-6 text-gray-800 dark:text-gray-200" {...props} />,
                   h3: ({node, ...props}) => <h3 className="text-2xl font-medium mb-3 mt-5 text-gray-700 dark:text-gray-300" {...props} />,
                   p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />,
-                  ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4" {...props} />,
-                  ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4" {...props} />,
-                  li: ({node, ...props}) => <li className="mb-2 text-gray-700 dark:text-gray-300" {...props} />,
-                  blockquote: ({node, ...props}) => (
+                  ul: ({node, ordered, ...props}: { node: any, ordered?: boolean, [key: string]: any }) => <ul className="list-disc pl-6 mb-4" {...props} />,
+                  ol: ({node, ordered, ...props}: { node: any, ordered?: boolean, [key: string]: any }) => <ol className="list-decimal pl-6 mb-4" {...props} />,
+                  li: ({node, ordered, ...props}: { node: any, ordered?: boolean, [key: string]: any }) => <li className="mb-2 text-gray-700 dark:text-gray-300" {...props} />,
+                  blockquote: ({node, ordered, ...props}: { node: any, ordered?: boolean, [key: string]: any }) => (
                     <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
                   ),
                   pre: ({node, ...props}) => (
