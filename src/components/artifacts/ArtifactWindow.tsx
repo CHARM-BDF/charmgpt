@@ -32,14 +32,14 @@ export const ArtifactWindow: React.FC = () => {
         <div className="flex gap-2">
           <button
             onClick={() => setShowList(!showList)}
-            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           >
             {showList ? 'Hide List' : 'Show List'}
           </button>
           {artifacts.length > 0 && (
             <button
               onClick={clearArtifacts}
-              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
               title="Clear all artifacts"
             >
               Clear All
@@ -47,7 +47,7 @@ export const ArtifactWindow: React.FC = () => {
           )}
           <button
             onClick={() => toggleArtifactWindow()}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           >
             <span className="sr-only">Close</span>
             ×
@@ -74,7 +74,7 @@ export const ArtifactWindow: React.FC = () => {
                 >
                   <button
                     onClick={() => selectArtifact(artifact.id)}
-                    className="w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
                   >
                     <div className="font-medium text-gray-900 dark:text-gray-100">{artifact.title}</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -86,7 +86,7 @@ export const ArtifactWindow: React.FC = () => {
                       e.stopPropagation();
                       deleteArtifact(artifact.id);
                     }}
-                    className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
                     title="Delete artifact"
                   >
                     ×

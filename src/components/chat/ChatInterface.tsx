@@ -26,7 +26,7 @@ export const ChatInterface: React.FC = () => {
               <DarkModeToggle />
               <button
                 onClick={clearChat}
-                className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-200"
+                className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
                 title="Clear chat history"
               >
                 Clear Chat
@@ -39,12 +39,12 @@ export const ChatInterface: React.FC = () => {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Chat Section */}
-        <div className={`${showArtifactWindow ? 'w-1/2' : 'w-full'} transition-all duration-300 flex flex-col`}>
+        <div className={`${showArtifactWindow ? 'w-1/2' : 'w-full'} transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col`}>
           <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleArtifactWindow}
-                className="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded flex items-center gap-2"
+                className="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded flex items-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
               >
                 {showArtifactWindow ? (
                   <>

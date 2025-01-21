@@ -47,7 +47,7 @@ export const ChatInput: React.FC = () => {
         />
         <button
           type="submit"
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-400"
+          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-400 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
         >
           Send
         </button>
