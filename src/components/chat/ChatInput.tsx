@@ -15,6 +15,12 @@ export const ChatInput: React.FC = () => {
 
     console.log('ChatInput: Submitting message:', input);
     
+    // Add user message to chat store first
+    addMessage({
+      role: 'user',
+      content: input
+    });
+    
     try {
       await processMessage(input);
       console.log('ChatInput: Message processed successfully');

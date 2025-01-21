@@ -36,21 +36,47 @@ function validateArtifactType(type: string | null): ArtifactType {
 
 // Add helper function to extract content from elements
 function extractContent(elem: Element, useInnerHTML: boolean = false): string {
+    let content = '';
+    
     if (useInnerHTML) {
-        return elem.innerHTML.trim();
+        content = elem.innerHTML.trim();
+    } else {
+        // Handle CDATA sections
+        const cdataContent = Array.from(elem.childNodes)
+            .filter(node => node.nodeType === Node.CDATA_SECTION_NODE)
+            .map(node => node.textContent)
+            .join('');
+            
+        if (cdataContent) {
+            content = cdataContent.trim();
+        } else {
+            content = elem.textContent?.trim() || '';
+        }
     }
+
+    // Replace backtick placeholders with actual backticks
+    return content
+        .replace(/\[TRIPLE_BACKTICK\]/g, '```')
+        .replace(/\\`\\`\\`/g, '```')  // Handle escaped backticks
+        .replace(/\[BACKTICK\]/g, '`');
+}
+
+// Add helper function to clean backtick placeholders
+function cleanBackticks(content: string): string {
+    // First replace the backtick placeholders
+    content = content
+        .replace(/\[TRIPLE_BACKTICK\]/g, '```')
+        .replace(/\\`\\`\\`/g, '```')  // Handle escaped backticks
+        .replace(/\[BACKTICK\]/g, '`');
     
-    // Handle CDATA sections
-    const cdataContent = Array.from(elem.childNodes)
-        .filter(node => node.nodeType === Node.CDATA_SECTION_NODE)
-        .map(node => node.textContent)
-        .join('');
-        
-    if (cdataContent) {
-        return cdataContent.trim();
-    }
-    
-    return elem.textContent?.trim() || '';
+    // Then fix code block formatting - only remove spaces before fences
+    return content.replace(
+        /^\s*(```\w*)\n([\s\S]*?)\n\s*(```)/gm,
+        (match, openFence, codeContent, closeFence) => {
+            // Keep the code content exactly as is, just move the fences to the left margin
+            return `${openFence}\n${codeContent}\n${closeFence}`;
+        }
+    );
 }
 
 export function parseXMLResponse(xmlString: string): XMLResponse {
@@ -72,7 +98,7 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
 
     // Extract thinking content if present
     const thinkingElement = xmlDoc.querySelector('thinking');
-    const thinking = thinkingElement ? extractContent(thinkingElement) : undefined;
+    const thinking = thinkingElement ? cleanBackticks(extractContent(thinkingElement)) : undefined;
 
     // Extract conversation content
     const conversationElement = xmlDoc.querySelector('conversation');
@@ -81,7 +107,7 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
     }
 
     // Get raw conversation content without thinking content
-    const conversationContent = extractContent(conversationElement);
+    const conversationContent = cleanBackticks(extractContent(conversationElement));
 
     // Initialize artifacts array
     const artifacts: XMLArtifact[] = [];
@@ -94,7 +120,7 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
             const artifactType = elem.getAttribute('type');
             const content = artifactType === 'image/svg+xml' 
                 ? extractContent(elem, true)  // use innerHTML for SVG
-                : extractContent(elem);       // handle CDATA for other types
+                : cleanBackticks(extractContent(elem));       // handle CDATA for other types
 
             artifacts.push({
                 type: validateArtifactType(artifactType),
