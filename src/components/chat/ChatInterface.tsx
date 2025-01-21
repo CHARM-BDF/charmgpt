@@ -40,12 +40,7 @@ export const ChatInterface: React.FC = () => {
             </button>
             <DarkModeToggle />
           </div>
-          <button
-            onClick={clearMessages}
-            className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:underline dark:text-red-400 dark:hover:text-red-300"
-          >
-            Clear Chat History
-          </button>
+        
           <button
             onClick={clearChat}
             className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-200"

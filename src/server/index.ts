@@ -7,6 +7,41 @@ import { promisify } from 'util';
 
 const parseXML = promisify(parseString);
 
+// Define repair strategies
+const repairStrategies = [
+  // Strategy 1: Original CDATA wrapping
+  (input: string) => input.replace(
+    /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
+    (_match, openTag, _tagName, content, closeTag) => {
+      return `${openTag}<![CDATA[${content}]]>${closeTag}`;
+    }
+  ),
+  // Strategy 2: More aggressive CDATA wrapping including codesnip
+  (input: string) => input.replace(
+    /(<(thinking|conversation|artifact|codesnip)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
+    (_match, openTag, _tagName, content, closeTag) => {
+      return `${openTag}<![CDATA[${content}]]>${closeTag}`;
+    }
+  ),
+  // Strategy 3: Fix potential XML special characters in attributes
+  (input: string) => input.replace(
+    /(<[^>]+)(["'])(.*?)\2([^>]*>)/g,
+    (match, start, quote, content, end) => {
+      const escaped = content.replace(/[<>&'"]/g, (char: string) => {
+        switch (char) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case "'": return '&apos;';
+          case '"': return '&quot;';
+          default: return char;
+        }
+      });
+      return `${start}${quote}${escaped}${quote}${end}`;
+    }
+  )
+];
+
 // Define types for XML structure
 interface XMLResponse {
   response: {
@@ -43,23 +78,21 @@ app.use(express.json());
 
 // Add XML validation helper
 function isValidXMLResponse(text: string): Promise<boolean> {
-  // Remove line numbers if present
-  const cleanText = text.replace(/^\s*\[\d+\]\s*/gm, '');
-  
-  // Wrap content only inside main container tags in CDATA
-  const wrappedText = cleanText.replace(
-    /(<(thinking|conversation|artifact)>)([\s\S]*?)(<\/\2>)/g,
+  // Wrap content inside main container tags in CDATA
+  const wrappedText = text.replace(
+    /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
     (_match, openTag, _tagName, content, closeTag) => {
       return `${openTag}<![CDATA[${content}]]>${closeTag}`;
     }
   );
   
-  console.log("wrappedText ", wrappedText);
+  console.log("Server: Wrapped text for validation:\n", wrappedText);
+  
   // Basic check for XML structure
   const hasXMLStructure = wrappedText.trim().startsWith('<response>') && 
-                         wrappedText.trim().endsWith('</response>') &&
-                         wrappedText.includes('<conversation>');
-                         
+                       wrappedText.trim().endsWith('</response>') &&
+                       wrappedText.includes('<conversation>');
+                       
   if (!hasXMLStructure) {
     console.log('Server: Invalid XML structure detected');
     return Promise.resolve(false);
@@ -89,9 +122,21 @@ function isValidXMLResponse(text: string): Promise<boolean> {
 app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) => {
   try {
     const { message, history } = req.body;
+    console.log('\n=== Chat Request Processing Start ===');
     console.log('Server: Received chat request:', { 
       messageLength: message.length,
       historyLength: history.length 
+    });
+
+    // Create messages array with history and current message
+    const messages = [
+      ...history,
+      { role: 'user' as const, content: message }
+    ];
+
+    console.log('Server: Sending to Claude:', {
+      messageCount: messages.length,
+      lastMessage: messages[messages.length - 1]
     });
 
     const systemPrompt = `
@@ -100,8 +145,8 @@ app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) =
 IMPORTANT NOTE ON SYNTAX PLACEHOLDERS:
 Throughout this prompt, we use special placeholder tags to represent markdown code formatting characters:
 - [BACKTICK] represents a single backtick character
-- [TRIPLE_BACKTICK] represents three backtick characters
-When formatting your actual responses, replace these placeholders with actual backtick characters.
+- [TRIPLE_BACKTICK] represents three backtick characters.
+The placeholders are only used in this prompt. When formatting your actual responses, replace these placeholders with actual backtick characters.
 
 You are an AI assistant that formats responses using a structured XML format. This format helps organize your thoughts, display code appropriately, and manage content that should be shown in separate artifacts. All text within XML tags should be formatted using markdown syntax for consistent rendering.
 The XML must be valid and well-formed.  You should not discuss or include in the thoughts aspects of the XML structure becuase that can lead to invalid XML.
@@ -111,7 +156,6 @@ The XML must be valid and well-formed.  You should not discuss or include in the
 - <response> - Root container for all response content
 - <thinking> - Internal reasoning process (uses markdown)
 - <conversation> - Main user interaction content (uses markdown)
-- <codesnip> - Code snippets with required language attribute
 - <ref /> - Self-closing reference to artifacts with required attributes:
   - artifact: unique identifier of the referenced artifact
   - label: brief text for UI button (3-5 words)
@@ -153,13 +197,16 @@ The XML must be valid and well-formed.  You should not discuss or include in the
 6. application/vnd.react
    - React components
    - Interactive UI elements
+   - React components should be provided as single-file components by default
+   - Only include necessary imports and the component implementation
+   - Additional files (CSS, utilities, etc.) should only be provided if explicitly requested
 
 ## Response Structure Rules
 
 1. Every response must be wrapped in <response> tags
 2. <thinking> tag is optional but recommended for complex responses
 3. <conversation> tag is required
-4. Use <codesnip> for code examples under 20 lines
+4. Use markdown codeBlocks for code examples under 20 lines
 5. Use <artifact> for:
    - Code over 20 lines
    - Complete implementations
@@ -231,14 +278,14 @@ All text within tags should use markdown formatting. Here's how to format differ
 
     Here's how to properly format strings in Python:
 
-    <codesnip language="python">
+    [TRIPLE_BACKTICK]python
     def format_name(first, last):
         """Format a name in title case."""
         return f"{first.title()} {last.title()}"
 
     # Example usage
     print(format_name("john", "doe"))  # John Doe
-    </codesnip>
+    [TRIPLE_BACKTICK]
 
     The [BACKTICK]title()[BACKTICK] method capitalizes the first letter of each word, making it perfect for formatting names.
     </conversation>
@@ -279,7 +326,7 @@ All text within tags should use markdown formatting. Here's how to format differ
             confirmPassword: ''
         });
 
-        // Component implementation...
+        // React code continues...
     }
 
     export default RegistrationForm;
@@ -312,14 +359,14 @@ All text within tags should use markdown formatting. Here's how to format differ
 
     To demonstrate the basic concept, here's a simple example:
 
-    <codesnip language="python">
+    [TRIPLE_BACKTICK]python
     import json
     from data_processor import process_data
     
     # Load and process data
     data = process_data("sample.csv")
     print(json.dumps(data, indent=2))
-    </codesnip>
+    [TRIPLE_BACKTICK]
     </conversation>
 
     <artifact type="application/vnd.ant.code" id="data-processor" title="Data Processing Script" language="python">
@@ -368,7 +415,7 @@ All text within tags should use markdown formatting. Here's how to format differ
 3. Keep code snippets under 20 lines (prefer artifacts for borderline cases)
 4. Use consistent markdown formatting
 5. Include thinking process for complex tasks
-6. Ensure all code is complete and functional
+6. Ensure all code is complete and functional.
 7. Reference artifacts using self-closing tags
 8. Maintain natural conversation flow
 9. Default to text/markdown when content type is uncertain
@@ -383,7 +430,7 @@ All text within tags should use markdown formatting. Here's how to format differ
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
-      messages: history,
+      messages: messages,
       system: systemPrompt,
       temperature: 0.7,
     });
@@ -394,66 +441,80 @@ All text within tags should use markdown formatting. Here's how to format differ
 
     const responseText = response.content[0].text;
 
-    // Log initial response
-    console.log('\nServer: Initial Claude Response:\n');
+    // Log initial response and tokens
+    console.log('\nServer: Initial Claude Response:');
     console.log('----------------------------------------');
     console.log('Response Length:', responseText.length);
-    console.log('Preview:', responseText.slice(0, 500) + '...');
-    console.log('Full Response:');
+    console.log('Token Usage:', {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      totalTokens: response.usage.input_tokens + response.usage.output_tokens
+    });
+    console.log('Raw Response from Claude:');
     console.log(responseText);
-    console.log('----------------------------------------\n');
-
-    // Log if response appears to be XML
-    if (responseText.trim().startsWith('<response>')) {
-      console.log('Server: Response appears to be XML formatted');
-    } else {
-      console.log('Server: Response does not appear to be XML formatted');
-    }
+    console.log('----------------------------------------');
 
     // Validate XML structure
-    const isValid = await isValidXMLResponse(responseText);
-    if (!isValid) {
-      console.log('Server: Received invalid XML response, requesting reformatting');
-      console.log('Server: Original response that failed validation:\n', responseText);
-      
-      // Request reformatting if invalid
-      const reformatResponse = await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 1000,
-        messages: [
-          ...history,
-          { role: 'assistant', content: responseText },
-          { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
-        ],
-        system: systemPrompt,
-        temperature: 0.7,
-      });
+    try {
+      const isValid = await isValidXMLResponse(responseText);
+      if (!isValid) {
+        console.log('Server: XML validation failed, attempting repairs');
+        
+        // First try automatic repair strategies
+        for (const repair of repairStrategies) {
+          try {
+            const repairedText = repair(responseText);
+            const isRepairedValid = await isValidXMLResponse(repairedText);
+            if (isRepairedValid) {
+              console.log('Server: Successfully repaired XML');
+              res.json({ response: repairedText });
+              return;
+            }
+          } catch (error) {
+            console.log('Server: Repair attempt failed:', error);
+          }
+        }
 
-      if (reformatResponse.content[0].type !== 'text') {
-        throw new Error('Expected text response from Claude');
-      }
+        // If repairs fail, try LLM reformatting
+        console.log('Server: Automatic repairs failed, requesting LLM reformatting');
+        console.log('Server: Original response that failed validation:\n', responseText);
+        
+        const reformatResponse = await anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          messages: [
+            ...history,
+            { role: 'assistant', content: responseText },
+            { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
+          ],
+          system: systemPrompt,
+          temperature: 0.7,
+        });
 
-      // Use reformatted response if valid, otherwise wrap original in error XML
-      const reformattedText = reformatResponse.content[0].text;
+        if (reformatResponse.content[0].type !== 'text') {
+          throw new Error('Expected text response from Claude');
+        }
 
-      // Log reformatting attempt
-      console.log('\nServer: Reformatting Attempt Result:\n');
-      console.log('----------------------------------------');
-      console.log('Reformatted Length:', reformattedText.length);
-      console.log('Reformatted Preview:', reformattedText.slice(0, 500) + '...');
-      console.log('Full Reformatted Response:');
-      console.log(reformattedText);
-      console.log('----------------------------------------\n');
+        const reformattedText = reformatResponse.content[0].text;
 
-      const isReformattedValid = await isValidXMLResponse(reformattedText);
-      if (isReformattedValid) {
-        console.log('Server: Successfully reformatted response as XML');
-        res.json({ response: reformattedText });
-        return;
-      } else {
-        console.log('Server: Failed to get valid XML after reformatting attempt');
-        console.log('Server: Both original and reformatted responses failed validation');
-        // Wrap the original response in valid XML structure
+        // Log reformatting attempt
+        console.log('\nServer: Reformatting Attempt Result:\n');
+        console.log('----------------------------------------');
+        console.log('Reformatted Length:', reformattedText.length);
+        console.log('Reformatted Preview:', reformattedText.slice(0, 500) + '...');
+        console.log('Full Reformatted Response:');
+        console.log(reformattedText);
+        console.log('----------------------------------------\n');
+
+        const isReformattedValid = await isValidXMLResponse(reformattedText);
+        if (isReformattedValid) {
+          console.log('Server: Successfully reformatted response as XML');
+          res.json({ response: reformattedText });
+          return;
+        }
+
+        // If all attempts fail, wrap in error response
+        console.log('Server: All repair attempts failed');
         const wrappedResponse = `<response>
           <conversation>
           # Error: Response Formatting Issue
@@ -467,20 +528,36 @@ All text within tags should use markdown formatting. Here's how to format differ
         res.json({ response: wrappedResponse });
         return;
       }
+      
+      // Log response details for valid XML
+      console.log('Server: Response validation:', {
+        responseLength: responseText.length,
+        preview: responseText.slice(0, 500) + '...',
+        usage: response.usage,
+        isValidXML: true
+      });
+
+      res.json({ response: responseText });
+      
+    } catch (validationError) {
+      console.error('Server: XML Validation Error:', validationError);
+      console.error('Server: Failed Response Text:', responseText);
+      throw validationError;
     }
 
-    // Log response details
-    console.log('Server: Response validation:', {
-      responseLength: responseText.length,
-      preview: responseText.slice(0, 500) + '...',
-      usage: response.usage,
-      isValidXML: isValid
-    });
-
-    res.json({ response: responseText });
   } catch (error) {
-    console.error('Server: Error in chat API:', error);
-    res.status(500).json({ error: 'Failed to process chat message' });
+    console.error('Server: Detailed Error Information:');
+    if (error instanceof Error) {
+      console.error('Error Name:', error.name);
+      console.error('Error Message:', error.message);
+      console.error('Error Stack:', error.stack);
+    } else {
+      console.error('Unknown Error Type:', error);
+    }
+    res.status(500).json({ 
+      error: 'Failed to process chat message',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

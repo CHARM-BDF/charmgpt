@@ -34,16 +34,45 @@ function validateArtifactType(type: string | null): ArtifactType {
     return 'text/markdown';
 }
 
+// Add helper function to extract content from elements
+function extractContent(elem: Element, useInnerHTML: boolean = false): string {
+    if (useInnerHTML) {
+        return elem.innerHTML.trim();
+    }
+    
+    // Handle CDATA sections
+    const cdataContent = Array.from(elem.childNodes)
+        .filter(node => node.nodeType === Node.CDATA_SECTION_NODE)
+        .map(node => node.textContent)
+        .join('');
+        
+    if (cdataContent) {
+        return cdataContent.trim();
+    }
+    
+    return elem.textContent?.trim() || '';
+}
+
 export function parseXMLResponse(xmlString: string): XMLResponse {
-    console.log('\nXML Parser: Starting to parse XML response');
+    console.log('\n=== XML Parser: Input ===');
+    console.log(xmlString);
 
     // Create a DOM parser
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+    
+    // Pre-process CDATA sections for code content
+    const processedXML = xmlString.replace(
+        /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
+        (_match, openTag, _tagName, content, closeTag) => {
+            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
+        }
+    );
+    
+    const xmlDoc = parser.parseFromString(processedXML, 'text/xml');
 
     // Extract thinking content if present
     const thinkingElement = xmlDoc.querySelector('thinking');
-    const thinking = thinkingElement?.textContent || undefined;
+    const thinking = thinkingElement ? extractContent(thinkingElement) : undefined;
 
     // Extract conversation content
     const conversationElement = xmlDoc.querySelector('conversation');
@@ -51,72 +80,97 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
         throw new Error('Response must contain a conversation element');
     }
 
+    // Get raw conversation content without thinking content
+    const conversationContent = extractContent(conversationElement);
+
     // Initialize artifacts array
     const artifacts: XMLArtifact[] = [];
 
-    // Extract only artifacts that are direct children of the response element and after conversation
-    // Find the innermost response element if there are nested ones
-    const responseElements = xmlDoc.querySelectorAll('response');
-    const responseElement = responseElements[responseElements.length - 1];
-
+    // Extract artifacts from the response
+    const responseElement = xmlDoc.querySelector('response');
     if (responseElement) {
-        let foundConversation = false;
-        
-        // First pass: find conversation and collect subsequent artifact nodes
-        Array.from(responseElement.children).forEach((elem) => {
-            if (elem.tagName.toLowerCase() === 'conversation') {
-                foundConversation = true;
-            } else if (foundConversation && elem.tagName.toLowerCase() === 'artifact') {
-                const artifactType = elem.getAttribute('type');
-                // Use innerHTML for SVG content, textContent for everything else
-                const content = artifactType === 'image/svg+xml' ? elem.innerHTML : elem.textContent || '';
+        const artifactElements = responseElement.getElementsByTagName('artifact');
+        Array.from(artifactElements).forEach((elem) => {
+            const artifactType = elem.getAttribute('type');
+            const content = artifactType === 'image/svg+xml' 
+                ? extractContent(elem, true)  // use innerHTML for SVG
+                : extractContent(elem);       // handle CDATA for other types
 
-                artifacts.push({
-                    type: validateArtifactType(artifactType),
-                    id: elem.getAttribute('id') || crypto.randomUUID(),
-                    title: elem.getAttribute('title') || 'Untitled',
-                    content: content.trim(),
-                    language: elem.getAttribute('language') || undefined
-                });
-            }
+            artifacts.push({
+                type: validateArtifactType(artifactType),
+                id: elem.getAttribute('id') || crypto.randomUUID(),
+                title: elem.getAttribute('title') || 'Untitled',
+                content: content.trim(),
+                language: elem.getAttribute('language') || undefined
+            });
         });
     }
 
-    // Get conversation content, preserving markdown and keeping codesnip content inline
-    let conversation = processConversationContent(conversationElement);
+    // Log the content parts for debugging
+    console.log('\n=== Content Parts ===');
+    console.log('Thinking:', thinking);
+    console.log('Raw Conversation:', conversationContent);
 
-    // If thinking exists, prepend it to the conversation with clear separation
-    if (thinking) {
-        conversation = `${thinking}\n\n---\n\n${conversation}`;
-    }
-
-    return {
+    const result = {
         thinking,
-        conversation,
+        conversation: conversationContent,
         artifacts
     };
+
+    console.log('\n=== XML Parser: Output ===');
+    console.log(JSON.stringify(result, null, 2));
+
+    return result;
 }
 
 function processConversationContent(element: Element): string {
     let content = '';
-
-    element.childNodes.forEach((node) => {
+    
+    function processNode(node: Node): string {
         if (node.nodeType === Node.TEXT_NODE) {
-            content += node.textContent || '';
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const text = node.textContent || '';
+            // Only return text if it's not just whitespace
+            return text.trim() ? text : '';
+        }
+        
+        if (node.nodeType === Node.ELEMENT_NODE) {
             const elem = node as Element;
-
-            if (elem.tagName.toLowerCase() === 'ref') {
-                const artifactId = elem.getAttribute('artifact');
-                const description = elem.textContent;
-                content += `\n[${description}](artifact:${artifactId})\n`;
-            } else if (elem.tagName.toLowerCase() === 'code' || elem.tagName.toLowerCase() === 'codesnip') {
-                const codeContent = elem.textContent?.trim() || '';
-                const language = elem.getAttribute('language') || '';
-                content += `\n\`\`\`${language}\n${codeContent}\n\`\`\`\n`;
+            const tagName = elem.tagName.toLowerCase();
+            
+            switch (tagName) {
+                case 'ref': {
+                    const artifactId = elem.getAttribute('artifact');
+                    const label = elem.getAttribute('label') || elem.textContent;
+                    return `\n[${label}](artifact:${artifactId})\n`;
+                }
+                case 'code':
+                case 'codesnip': {
+                    const codeContent = elem.textContent?.trim() || '';
+                    const language = elem.getAttribute('language') || '';
+                    return `\n\`\`\`${language}\n${codeContent}\n\`\`\`\n`;
+                }
+                case 'thinking': {
+                    // Skip thinking content when processing conversation
+                    return '';
+                }
+                default: {
+                    // Process all child nodes and combine their content
+                    const childContent = Array.from(elem.childNodes)
+                        .map(child => processNode(child))
+                        .join('');
+                    return childContent.trim() ? childContent : '';
+                }
             }
         }
-    });
+        
+        return '';
+    }
+    
+    // Process all child nodes and combine their content
+    content = Array.from(element.childNodes)
+        .map(node => processNode(node))
+        .filter(text => text.trim()) // Remove empty strings
+        .join('\n');
 
     // Clean up multiple consecutive newlines but preserve intentional spacing
     return content

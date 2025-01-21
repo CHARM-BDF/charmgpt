@@ -1,0 +1,206 @@
+  <response>
+    <thinking><![CDATA[
+    > Need to create a reusable Markdown renderer component
+    > Should handle all common markdown syntax
+    > Will use react-markdown library for parsing
+    > Should include styling and customization options
+    > Will add proper TypeScript types for better development experience
+    ]]></thinking>
+
+    <conversation><![CDATA[
+    # Markdown Renderer Component
+
+    I've created a flexible Markdown renderer component that can handle any markdown content with proper styling and customization options. Here's a quick example of how to use it:
+
+    <codesnip language="typescript">
+    import { MarkdownRenderer } from './components/MarkdownRenderer';
+
+    function App() {
+        const markdown = `# Hello World\nThis is **bold** and *italic* text`;
+        return <MarkdownRenderer content={markdown} />;
+    }
+    </codesnip>
+
+    Here's the complete implementation:
+
+    <ref artifact="markdown-renderer" label="Markdown Renderer" type="application/vnd.react" />
+
+    And here's the documentation for using the component:
+
+    <ref artifact="markdown-docs" label="Usage Guide" type="text/markdown" />
+
+    The component includes:
+    - Full markdown syntax support
+    - Syntax highlighting for code blocks
+    - Customizable styling
+    - Safe HTML rendering
+    - TypeScript support
+    ]]></conversation>
+
+    <artifact type="application/vnd.react" id="markdown-renderer" title="Markdown Renderer Component"><![CDATA[
+    import React from 'react';
+    import ReactMarkdown from 'react-markdown';
+    import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+    import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+    import remarkGfm from 'remark-gfm';
+    import rehypeRaw from 'rehype-raw';
+
+    interface MarkdownRendererProps {
+        content: string;
+        className?: string;
+        allowHtml?: boolean;
+        customStyles?: React.CSSProperties;
+    }
+
+    export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
+        content,
+        className = '',
+        allowHtml = false,
+        customStyles = {},
+    }) => {
+        const defaultStyles: React.CSSProperties = {
+            padding: '1rem',
+            fontSize: '1rem',
+            lineHeight: '1.6',
+            color: '#333',
+            ...customStyles,
+        };
+
+        return (
+            <div className={`markdown-renderer ${className}`} style={defaultStyles}>
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={allowHtml ? [rehypeRaw] : []}
+                    components={{
+                        code({ node, inline, className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            return !inline && match ? (
+                                <SyntaxHighlighter
+                                    style={tomorrow}
+                                    language={match[1]}
+                                    PreTag="div"
+                                    {...props}
+                                >
+                                    {String(children).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
+                            ) : (
+                                <code className={className} {...props}>
+                                    {children}
+                                </code>
+                            );
+                        },
+                        // Custom heading styles
+                        h1: ({ children }) => (
+                            <h1 style={{ borderBottom: '2px solid #eaecef', paddingBottom: '.3em' }}>
+                                {children}
+                            </h1>
+                        ),
+                        h2: ({ children }) => (
+                            <h2 style={{ borderBottom: '1px solid #eaecef', paddingBottom: '.3em' }}>
+                                {children}
+                            </h2>
+                        ),
+                        // Custom link styles
+                        a: ({ children, href }) => (
+                            <a
+                                href={href}
+                                style={{ color: '#0366d6', textDecoration: 'none' }}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {children}
+                            </a>
+                        ),
+                        // Custom blockquote styles
+                        blockquote: ({ children }) => (
+                            <blockquote
+                                style={{
+                                    borderLeft: '4px solid #dfe2e5',
+                                    color: '#6a737d',
+                                    padding: '0 1em',
+                                    margin: '0',
+                                }}
+                            >
+                                {children}
+                            </blockquote>
+                        ),
+                    }}
+                >
+                    {content}
+                </ReactMarkdown>
+            </div>
+        );
+    };
+    ]]></artifact>
+
+    <artifact type="text/markdown" id="markdown-docs" title="Markdown Renderer Documentation"><![CDATA[
+    # Markdown Renderer Documentation
+
+    ## Installation
+
+    First, install the required dependencies:
+
+    [TRIPLE_BACKTICK]bash
+    npm install react-markdown react-syntax-highlighter remark-gfm rehype-raw
+    # or
+    yarn add react-markdown react-syntax-highlighter remark-gfm rehype-raw
+    [TRIPLE_BACKTICK]
+
+    ## Usage
+
+    ### Basic Usage
+
+    [TRIPLE_BACKTICK]tsx
+    import { MarkdownRenderer } from './components/MarkdownRenderer';
+
+    function App() {
+        const markdown = `
+    # Hello World
+    
+    This is a **bold** text and *italic* text.
+    
+    \`\`\`javascript
+    const greeting = 'Hello, World!';
+    console.log(greeting);
+    \`\`\`
+    `;
+
+        return <MarkdownRenderer content={markdown} />;
+    }
+    [TRIPLE_BACKTICK]
+
+    ### Props
+
+    The component accepts the following props:
+
+    - `content` (required): The markdown string to render
+    - `className` (optional): Additional CSS classes to apply to the container
+    - `allowHtml` (optional): Whether to allow HTML in the markdown (default: false)
+    - `customStyles` (optional): Custom styles to apply to the container
+
+    ### Customization Example
+
+    [TRIPLE_BACKTICK]tsx
+    <MarkdownRenderer
+        content={markdown}
+        allowHtml={true}
+        customStyles={{
+            backgroundColor: '#f6f8fa',
+            borderRadius: '4px',
+        }}
+    />
+    [TRIPLE_BACKTICK]
+
+    ## Features
+
+    1. **Syntax Highlighting**: Code blocks are automatically highlighted
+    2. **GitHub Flavored Markdown**: Supports tables, strikethrough, and more
+    3. **Custom Styling**: Easily customizable through props
+    4. **Safe by Default**: HTML is escaped by default
+    5. **TypeScript Support**: Includes full type definitions
+
+    ## Security
+
+    By default, HTML in markdown is escaped. If you need to render HTML, set `allowHtml={true}`, but be sure to trust the markdown source.
+    ]]></artifact>
+</response> 
