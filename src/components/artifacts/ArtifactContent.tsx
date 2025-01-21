@@ -117,22 +117,22 @@ export const ArtifactContent: React.FC<{
   const canToggleView = ['html', 'image/svg+xml'].includes(artifact.type);
 
   return (
-    <div className="h-full overflow-y-auto p-4">
-      <div className="mb-4 flex justify-between items-center">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+      <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-lg">
         <div>
-          <h3 className="text-lg font-medium">{artifact.title}</h3>
-          <p className="text-sm text-gray-500">Type: {artifact.type}</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{artifact.title}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Type: {artifact.type}</p>
         </div>
         {canToggleView && (
           <button
             onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
-            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+            className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
           >
             {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
           </button>
         )}
       </div>
-      <div className="overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4">
         {renderContent()}
       </div>
     </div>
