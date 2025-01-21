@@ -71,7 +71,7 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
 
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div ref={containerRef} className="w-full space-y-6">
       {messages.map((message) => {
         const messageWithThinking = message as MessageWithThinking;
         const isAssistant = message.role === 'assistant';
@@ -80,10 +80,10 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
         return (
           <div
             key={message.id}
-            className={`flex ${isAssistant ? 'justify-start' : 'justify-end'}`}
+            className={`flex ${isAssistant ? 'justify-start' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-4 ${
+              className={`w-full max-w-2xl rounded-lg p-6 ${
                 isAssistant
                   ? 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
                   : 'bg-blue-500 text-white'
