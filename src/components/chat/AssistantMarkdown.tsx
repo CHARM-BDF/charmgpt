@@ -99,7 +99,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       
       if (isFenced) {
         return (
-          <div className="mb-4 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
+          <div className="mb-4 overflow-hidden rounded-md border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
               <span className="uppercase font-semibold">{language || 'Text'}</span>
               <button 
