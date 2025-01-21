@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { ArtifactContent } from './ArtifactContent';
 
@@ -7,11 +7,9 @@ export const ArtifactWindow: React.FC = () => {
     artifacts,
     selectedArtifactId,
     selectArtifact,
-    toggleArtifactWindow,
     deleteArtifact,
-    clearArtifacts
+    showList
   } = useChatStore();
-  const [showList, setShowList] = useState(false);
 
   const formatTimestamp = (timestamp: Date | string) => {
     try {
@@ -27,34 +25,6 @@ export const ArtifactWindow: React.FC = () => {
 
   return (
     <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col">
-      <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Artifacts</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowList(!showList)}
-            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-          >
-            {showList ? 'Hide List' : 'Show List'}
-          </button>
-          {artifacts.length > 0 && (
-            <button
-              onClick={clearArtifacts}
-              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-              title="Clear all artifacts"
-            >
-              Clear All
-            </button>
-          )}
-          <button
-            onClick={() => toggleArtifactWindow()}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-          >
-            <span className="sr-only">Close</span>
-            ×
-          </button>
-        </div>
-      </div>
-      
       <div className="flex-1 flex min-h-0 bg-gray-200 dark:bg-gray-900">
         <div className="flex-1 overflow-y-auto">
           {selectedArtifact && (

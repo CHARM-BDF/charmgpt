@@ -14,6 +14,7 @@ interface ChatState {
   artifacts: Artifact[];
   selectedArtifactId: string | null;
   showArtifactWindow: boolean;
+  showList: boolean;
   isLoading: boolean;
   error: string | null;
   
@@ -25,6 +26,7 @@ interface ChatState {
   clearArtifacts: () => void;
   selectArtifact: (id: string | null) => void;
   toggleArtifactWindow: () => void;
+  setShowList: (show: boolean) => void;
   processMessage: (content: string) => Promise<void>;
   clearMessages: () => void;
   clearChat: () => void;
@@ -37,6 +39,7 @@ export const useChatStore = create<ChatState>()(
       artifacts: [],
       selectedArtifactId: null,
       showArtifactWindow: false,
+      showList: false,
       isLoading: false,
       error: null,
 
@@ -128,6 +131,11 @@ export const useChatStore = create<ChatState>()(
         set((state) => ({
           showArtifactWindow: !state.showArtifactWindow,
         }));
+      },
+
+      setShowList: (show: boolean) => {
+        console.log('ChatStore: Setting artifact list visibility:', show);
+        set({ showList: show });
       },
 
       processMessage: async (content) => {
