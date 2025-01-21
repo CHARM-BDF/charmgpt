@@ -53,7 +53,7 @@ export const ChatInput: React.FC = () => {
   };
 
   return (
-    <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-900 shadow-lg">
+    <div className="sticky bottom-0 bg-gray-200 dark:bg-gray-900 shadow-lg">
       <div className="w-full max-w-4xl mx-auto px-4 flex">
         <form onSubmit={handleSubmit} className="relative w-full flex">
           <textarea

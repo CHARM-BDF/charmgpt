@@ -13,7 +13,7 @@ export const ChatInterface: React.FC = () => {
   const { activeServer } = useMCPStore();
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
+    <div className="flex flex-col h-screen bg-gradient-to-b from-white to-gray-200 dark:from-gray-800 dark:to-gray-900">
       {/* Main Header */}
       <div className="bg-white/90 dark:bg-gray-800/90 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-sm">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
