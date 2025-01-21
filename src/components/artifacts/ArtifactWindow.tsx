@@ -26,8 +26,8 @@ export const ArtifactWindow: React.FC = () => {
   const selectedArtifact = artifacts.find(a => a.id === selectedArtifactId);
 
   return (
-    <div className="w-1/2 border-l border-gray-200 bg-white dark:bg-gray-800 flex flex-col">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+    <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col">
+      <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Artifacts</h2>
         <div className="flex gap-2">
           <button
@@ -55,15 +55,17 @@ export const ArtifactWindow: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 bg-gray-200 dark:bg-gray-900">
         <div className="flex-1 overflow-y-auto">
           {selectedArtifact && (
-            <ArtifactContent artifact={selectedArtifact} />
+            <div className="p-4">
+              <ArtifactContent artifact={selectedArtifact} />
+            </div>
           )}
         </div>
 
         {showList && (
-          <div className="w-64 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+          <div className="w-64 border-l border-gray-200 dark:border-gray-700 overflow-y-auto bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
             <div className="h-full">
               {artifacts.map((artifact) => (
                 <div

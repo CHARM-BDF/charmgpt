@@ -37,7 +37,7 @@ export const ArtifactContent: React.FC<{
   const renderContent = () => {
     if (viewMode === 'source') {
       return (
-        <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
+        <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto border-2 border-gray-200 dark:border-gray-700 shadow-md">
           <code>{artifact.content}</code>
         </pre>
       );
@@ -49,8 +49,8 @@ export const ArtifactContent: React.FC<{
       case 'application/javascript':
       case 'application/vnd.react':
         return (
-          <div className="bg-gray-50 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800">
+          <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
               {artifact.type.replace('application/', '')}
             </div>
             <div className="p-4">
