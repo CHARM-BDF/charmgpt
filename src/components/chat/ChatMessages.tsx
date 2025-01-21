@@ -83,10 +83,10 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
             className={`flex ${isAssistant ? 'justify-start' : 'justify-start'}`}
           >
             <div
-              className={`w-full max-w-2xl rounded-lg p-6 ${
+              className={`w-full max-w-3xl rounded-lg p-6 shadow-sm ${
                 isAssistant
-                  ? 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
-                  : 'bg-blue-500 text-white'
+                  ? 'bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-gray-100 dark:shadow-gray-900/20'
+                  : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/10'
               }`}
             >
               {isAssistant ? (

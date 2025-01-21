@@ -13,9 +13,9 @@ export const ChatInterface: React.FC = () => {
   const { activeServer } = useMCPStore();
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       {/* Main Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="bg-white/90 dark:bg-gray-800/90 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-sm">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
@@ -40,7 +40,7 @@ export const ChatInterface: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Chat Section */}
         <div className={`${showArtifactWindow ? 'w-1/2' : 'w-full'} transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col`}>
-          <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleArtifactWindow}
@@ -64,16 +64,14 @@ export const ChatInterface: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-800">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
-              <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+              <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
                 <ChatMessages messages={messages} />
               </div>
             </div>
-            <div className="flex-shrink-0 max-w-4xl mx-auto w-full px-4">
-              <ChatInput />
-              {activeServer && <MCPTools />}
-            </div>
+            <ChatInput />
+            {activeServer && <MCPTools />}
           </div>
         </div>
 
