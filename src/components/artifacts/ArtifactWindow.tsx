@@ -13,9 +13,9 @@ export const ArtifactWindow: React.FC = () => {
   return (
     <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col">
       <div className="flex-1 flex min-h-0 bg-gray-200 dark:bg-gray-900">
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 h-full p-4">
           {selectedArtifact && (
-            <div className="p-4">
+            <div className="h-full">
               <ArtifactContent artifact={selectedArtifact} />
             </div>
           )}
