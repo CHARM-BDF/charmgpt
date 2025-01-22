@@ -3,11 +3,12 @@ import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { ArtifactWindow } from '../artifacts/ArtifactWindow';
 import { ArtifactControls } from '../artifacts/ArtifactControls';
-import { MCPServerControl } from '../mcp/MCPServerControl';
+import { ArtifactDrawer } from '../artifacts/ArtifactDrawer';
 import { MCPTools } from '../mcp/MCPTools';
+import { MCPServerControl } from '../mcp/MCPServerControl';
+import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
 import { useMCPStore } from '../../store/mcpStore';
-import { DarkModeToggle } from '../DarkModeToggle';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat } = useChatStore();
@@ -58,6 +59,9 @@ export const ChatInterface: React.FC = () => {
         {/* Artifact Section */}
         {showArtifactWindow && <ArtifactWindow />}
       </div>
+
+      {/* Artifact Drawer - Always mounted, visibility controlled by showList */}
+      <ArtifactDrawer />
     </div>
   );
 };
