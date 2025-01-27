@@ -29,6 +29,7 @@ export default function ChatInterface() {
 
     // Return the response with code blocks removed or marked
     return response.replace(pythonCodeRegex, (match, code) => {
+      void code;
       return `[Code added to editor]\n${match}`
     })
   }
