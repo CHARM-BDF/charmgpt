@@ -1,34 +1,41 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material'
+import { Container, Grid } from '@mui/material'
+import ChatInterface from './components/ChatInterface'
+import CodeEditor from './components/CodeEditor'
+import DataVisualizer from './components/DataVisualizer'
+
+const theme = createTheme({
+  // You can customize your theme here
+})
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Grid container sx={{ flex: 1 }} spacing={2} p={2}>
+          <Grid item xs={8}>
+            <Grid container direction="column" spacing={2} sx={{ height: '100%' }}>
+              <Grid item xs={6}>
+                <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+                  <CodeEditor />
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+                  <DataVisualizer />
+                </Box>
+              </Grid>
+            </Grid>
+          </Grid>
+          <Grid item xs={4}>
+            <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+              <ChatInterface />
+            </Box>
+          </Grid>
+        </Grid>
+      </Box>
+    </ThemeProvider>
   )
 }
 
