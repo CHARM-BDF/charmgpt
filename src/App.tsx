@@ -1,5 +1,5 @@
 import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material'
-import { Container, Grid } from '@mui/material'
+import { Grid } from '@mui/material'
 import ChatInterface from './components/ChatInterface'
 import CodeEditor from './components/CodeEditor'
 import DataVisualizer from './components/DataVisualizer'
@@ -12,10 +12,16 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <Grid container sx={{ flex: 1 }} spacing={2} p={2}>
-          <Grid item xs={8}>
-            <Grid container direction="column" spacing={2} sx={{ height: '100%' }}>
+      <Box sx={{ 
+        height: '100vh', 
+        width: '100vw',
+        display: 'flex', 
+        flexDirection: 'column',
+        overflow: 'hidden' // Prevent scrollbars
+      }}>
+        <Grid container sx={{ flex: 1 }} spacing={1}>
+          <Grid item xs={9}>
+            <Grid container direction="column" spacing={1} sx={{ height: '100%' }}>
               <Grid item xs={6}>
                 <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
                   <CodeEditor />
@@ -28,7 +34,7 @@ function App() {
               </Grid>
             </Grid>
           </Grid>
-          <Grid item xs={4}>
+          <Grid item xs={3}>
             <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
               <ChatInterface />
             </Box>
