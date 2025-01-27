@@ -13,6 +13,7 @@ export const MCPServerControl: React.FC = () => {
     } = useMCPStore();
     const [isInstalling, setIsInstalling] = useState(false);
     const [isLoading, setIsLoading] = useState<string | null>(null);
+    const [showInstallUI, setShowInstallUI] = useState(false);
     const [installConfig, setInstallConfig] = useState<ServerConfig>({
         name: '',
         transport: 'stdio',
@@ -30,6 +31,8 @@ export const MCPServerControl: React.FC = () => {
                 transport: 'stdio',
                 command: '',
             });
+            // Hide the install UI after successful installation
+            setShowInstallUI(false);
         } catch (error) {
             console.error('Failed to install server:', error);
         } finally {
@@ -68,7 +71,15 @@ export const MCPServerControl: React.FC = () => {
     return (
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
             <div className="mb-4">
-                <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">MCP Servers</h2>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">MCP Servers</h2>
+                    <button
+                        onClick={() => setShowInstallUI(!showInstallUI)}
+                        className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/50"
+                    >
+                        {showInstallUI ? 'Hide Install' : 'Install New Server'}
+                    </button>
+                </div>
                 
                 {/* Server List */}
                 <div className="space-y-2">
@@ -132,73 +143,75 @@ export const MCPServerControl: React.FC = () => {
             </div>
 
             {/* Install New Server Form */}
-            <div className="border-t pt-4 dark:border-gray-700">
-                <h3 className="text-md font-semibold mb-2 text-gray-900 dark:text-gray-100">Install New Server</h3>
-                <div className="space-y-3">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Name
-                            <input
-                                type="text"
-                                value={installConfig.name}
-                                onChange={(e) => setInstallConfig({ ...installConfig, name: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-                                placeholder="Server name"
-                            />
-                        </label>
-                    </div>
-                    
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Transport
-                            <select
-                                value={installConfig.transport}
-                                onChange={(e) => setInstallConfig({ ...installConfig, transport: e.target.value as 'stdio' | 'sse' })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-                            >
-                                <option value="stdio">stdio</option>
-                                <option value="sse">SSE</option>
-                            </select>
-                        </label>
-                    </div>
-
-                    {installConfig.transport === 'stdio' ? (
+            {showInstallUI && (
+                <div className="border-t pt-4 dark:border-gray-700">
+                    <h3 className="text-md font-semibold mb-2 text-gray-900 dark:text-gray-100">Install New Server</h3>
+                    <div className="space-y-3">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Command
+                                Name
                                 <input
                                     type="text"
-                                    value={installConfig.command}
-                                    onChange={(e) => setInstallConfig({ ...installConfig, command: e.target.value })}
+                                    value={installConfig.name}
+                                    onChange={(e) => setInstallConfig({ ...installConfig, name: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-                                    placeholder="Command to start server"
+                                    placeholder="Server name"
                                 />
                             </label>
                         </div>
-                    ) : (
+                        
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                URL
-                                <input
-                                    type="text"
-                                    value={installConfig.url || ''}
-                                    onChange={(e) => setInstallConfig({ ...installConfig, url: e.target.value })}
+                                Transport
+                                <select
+                                    value={installConfig.transport}
+                                    onChange={(e) => setInstallConfig({ ...installConfig, transport: e.target.value as 'stdio' | 'sse' })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-                                    placeholder="Server URL"
-                                />
+                                >
+                                    <option value="stdio">stdio</option>
+                                    <option value="sse">SSE</option>
+                                </select>
                             </label>
                         </div>
-                    )}
 
-                    <button
-                        onClick={handleInstall}
-                        disabled={isInstalling || !installConfig.name || (!installConfig.command && !installConfig.url)}
-                        className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600"
-                    >
-                        {isInstalling ? 'Installing...' : 'Install Server'}
-                    </button>
+                        {installConfig.transport === 'stdio' ? (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Command
+                                    <input
+                                        type="text"
+                                        value={installConfig.command}
+                                        onChange={(e) => setInstallConfig({ ...installConfig, command: e.target.value })}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                                        placeholder="Command to start server"
+                                    />
+                                </label>
+                            </div>
+                        ) : (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    URL
+                                    <input
+                                        type="text"
+                                        value={installConfig.url || ''}
+                                        onChange={(e) => setInstallConfig({ ...installConfig, url: e.target.value })}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                                        placeholder="Server URL"
+                                    />
+                                </label>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleInstall}
+                            disabled={isInstalling || !installConfig.name || (!installConfig.command && !installConfig.url)}
+                            className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600"
+                        >
+                            {isInstalling ? 'Installing...' : 'Install Server'}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }; 
