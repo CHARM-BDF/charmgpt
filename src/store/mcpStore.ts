@@ -1,155 +1,220 @@
 import { create } from 'zustand';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { MCPServer, MCPResource, MCPPrompt, MCPTool } from '../types/mcp';
-import { z } from 'zod';
+import { persist } from 'zustand/middleware';
 
-const responseSchema = z.object({});
-
-interface ExtendedMCPServer extends MCPServer {
-  client: Client;
+export interface ServerConfig {
+  name: string;
+  transport: 'stdio' | 'sse';
+  command?: string;
+  args?: string[];
+  url?: string;
 }
 
-interface MCPState {
-  servers: Record<string, ExtendedMCPServer>;
+export interface ResourceInfo {
+  name: string;
+  uri: string;
+  description?: string;
+}
+
+export interface ToolInfo {
+  name: string;
+  description?: string;
+  parameters: Record<string, any>;
+}
+
+export interface PromptInfo {
+  name: string;
+  description?: string;
+  parameters: Record<string, any>;
+}
+
+interface MCPServerState {
+  servers: {
+    [id: string]: {
+      name: string;
+      version: string;
+      status: 'running' | 'stopped' | 'error';
+      capabilities: {
+        resources?: boolean;
+        tools?: boolean;
+        prompts?: boolean;
+      };
+      transport: 'stdio' | 'sse';
+      config: {
+        command?: string;
+        args?: string[];
+        url?: string;
+      };
+    };
+  };
   activeServer: string | null;
-  
-  connectServer: (name: string, command: string, args: string[]) => Promise<void>;
-  disconnectServer: (name: string) => Promise<void>;
-  setActiveServer: (name: string | null) => void;
-  executeTool: (serverName: string, toolName: string, args: any) => Promise<string>;
-  listResources: (serverName: string) => Promise<MCPResource[]>;
-  readResource: (serverName: string, uri: string) => Promise<string>;
-  listPrompts: (serverName: string) => Promise<MCPPrompt[]>;
-  getPrompt: (serverName: string, name: string, args?: Record<string, any>) => Promise<string>;
+  serverResponses: {
+    [serverId: string]: {
+      resources: ResourceInfo[];
+      tools: ToolInfo[];
+      prompts: PromptInfo[];
+    };
+  };
+  installServer: (config: ServerConfig) => Promise<string>;
+  removeServer: (id: string) => void;
+  setActiveServer: (id: string | null) => void;
+  updateServerStatus: (id: string, status: 'running' | 'stopped' | 'error') => void;
+  updateServerCapabilities: (id: string, capabilities: MCPServerState['servers'][string]['capabilities']) => void;
+  updateServerResponses: (
+    id: string,
+    responses: {
+      resources?: ResourceInfo[];
+      tools?: ToolInfo[];
+      prompts?: PromptInfo[];
+    }
+  ) => void;
 }
 
-export const useMCPStore = create<MCPState>()((set, get) => ({
-  servers: {},
-  activeServer: null,
+export const useMCPStore = create<MCPServerState>()(
+  persist(
+    (set, get) => ({
+      servers: {},
+      activeServer: null,
+      serverResponses: {},
 
-  connectServer: async (name, command, args) => {
-    try {
-      const transport = new StdioClientTransport({
-        command,
-        args
-      });
-
-      const client = new Client(
-        {
-          name: "chat-interface",
-          version: "1.0.0"
-        },
-        {
-          capabilities: {
-            tools: {},
-            resources: {},
-            prompts: {}
-          }
+      installServer: async (config: ServerConfig) => {
+        const id = `mcp-${Date.now()}`;
+        // Check if server with same name exists
+        const existingServer = Object.values(get().servers).find(
+          server => server.name === config.name
+        );
+        if (existingServer) {
+          throw new Error(`Server with name ${config.name} already exists`);
         }
-      );
 
-      await client.connect(transport);
+        set((state) => ({
+          servers: {
+            ...state.servers,
+            [id]: {
+              name: config.name,
+              version: '1.0.0', // Default version
+              status: 'stopped',
+              capabilities: {},
+              transport: config.transport,
+              config: {
+                command: config.command,
+                args: config.args,
+                url: config.url,
+              },
+            },
+          },
+        }));
+        return id;
+      },
 
-      const toolsResponse = await client.request({ method: "tools/list", params: {} }, responseSchema);
-      const resourcesResponse = await client.request({ method: "resources/list", params: {} }, responseSchema);
-      const promptsResponse = await client.request({ method: "prompts/list", params: {} }, responseSchema);
-
-      set((state) => ({
-        servers: {
-          ...state.servers,
-          [name]: {
-            name,
-            tools: (toolsResponse as any).tools || [],
-            resources: (resourcesResponse as any).resources || [],
-            prompts: (promptsResponse as any).prompts || [],
-            connected: true,
-            client
-          }
+      removeServer: (id: string) => {
+        const state = get();
+        // Check if server exists
+        if (!state.servers[id]) {
+          throw new Error('Server not found');
         }
-      }));
-    } catch (error) {
-      console.error(`Failed to connect to MCP server ${name}:`, error);
-      throw error;
+        // Don't allow removing running servers
+        if (state.servers[id].status === 'running') {
+          throw new Error('Cannot remove running server');
+        }
+
+        set((state) => {
+          const { [id]: _, ...remainingServers } = state.servers;
+          const { [id]: __, ...remainingResponses } = state.serverResponses;
+          return {
+            servers: remainingServers,
+            serverResponses: remainingResponses,
+            activeServer: state.activeServer === id ? null : state.activeServer,
+          };
+        });
+      },
+
+      setActiveServer: (id: string | null) => {
+        // Validate server exists if id is provided
+        if (id && !get().servers[id]) {
+          throw new Error('Server not found');
+        }
+        set({ activeServer: id });
+      },
+
+      updateServerStatus: (id: string, status: 'running' | 'stopped' | 'error') => {
+        const state = get();
+        // Check if server exists
+        if (!state.servers[id]) {
+          throw new Error('Server not found');
+        }
+        // Clear responses when server stops or errors
+        if (status !== 'running') {
+          set((state) => {
+            const { [id]: _, ...remainingResponses } = state.serverResponses;
+            return { serverResponses: remainingResponses };
+          });
+        }
+
+        set((state) => ({
+          servers: {
+            ...state.servers,
+            [id]: {
+              ...state.servers[id],
+              status,
+            },
+          },
+        }));
+      },
+
+      updateServerCapabilities: (id: string, capabilities: MCPServerState['servers'][string]['capabilities']) => {
+        const state = get();
+        // Check if server exists
+        if (!state.servers[id]) {
+          throw new Error('Server not found');
+        }
+        // Only allow updating capabilities of running servers
+        if (state.servers[id].status !== 'running') {
+          throw new Error('Can only update capabilities of running servers');
+        }
+
+        set((state) => ({
+          servers: {
+            ...state.servers,
+            [id]: {
+              ...state.servers[id],
+              capabilities,
+            },
+          },
+        }));
+      },
+
+      updateServerResponses: (
+        id: string,
+        responses: {
+          resources?: ResourceInfo[];
+          tools?: ToolInfo[];
+          prompts?: PromptInfo[];
+        }
+      ) => {
+        const state = get();
+        // Check if server exists
+        if (!state.servers[id]) {
+          throw new Error('Server not found');
+        }
+        // Only allow updating responses of running servers
+        if (state.servers[id].status !== 'running') {
+          throw new Error('Can only update responses of running servers');
+        }
+
+        set((state) => ({
+          serverResponses: {
+            ...state.serverResponses,
+            [id]: {
+              resources: responses.resources || state.serverResponses[id]?.resources || [],
+              tools: responses.tools || state.serverResponses[id]?.tools || [],
+              prompts: responses.prompts || state.serverResponses[id]?.prompts || [],
+            },
+          },
+        }));
+      },
+    }),
+    {
+      name: 'mcp-store',
     }
-  },
-
-  disconnectServer: async (name) => {
-    const server = get().servers[name];
-    if (server?.client) {
-      set((state) => {
-        const { [name]: removed, ...rest } = state.servers;
-        return {
-          servers: rest,
-          activeServer: state.activeServer === name ? null : state.activeServer
-        };
-      });
-    }
-  },
-
-  setActiveServer: (name) => set({ activeServer: name }),
-
-  executeTool: async (serverName, toolName, args) => {
-    const server = get().servers[serverName];
-    if (!server?.client) throw new Error(`Server ${serverName} not connected`);
-
-    const response = await server.client.request({
-      method: "tools/call",
-      params: {
-        name: toolName,
-        arguments: args
-      }
-    }, responseSchema);
-
-    return (response as any).content[0].text;
-  },
-
-  listResources: async (serverName) => {
-    const server = get().servers[serverName];
-    if (!server?.client) throw new Error(`Server ${serverName} not connected`);
-
-    const response = await server.client.request({
-      method: "resources/list",
-      params: {}
-    }, responseSchema);
-    return (response as any).resources || [];
-  },
-
-  readResource: async (serverName, uri) => {
-    const server = get().servers[serverName];
-    if (!server?.client) throw new Error(`Server ${serverName} not connected`);
-
-    const response = await server.client.request({
-      method: "resources/read",
-      params: { uri }
-    }, responseSchema);
-
-    return (response as any).contents[0].text;
-  },
-
-  listPrompts: async (serverName) => {
-    const server = get().servers[serverName];
-    if (!server?.client) throw new Error(`Server ${serverName} not connected`);
-
-    const response = await server.client.request({
-      method: "prompts/list",
-      params: {}
-    }, responseSchema);
-    return (response as any).prompts || [];
-  },
-
-  getPrompt: async (serverName, name, args) => {
-    const server = get().servers[serverName];
-    if (!server?.client) throw new Error(`Server ${serverName} not connected`);
-
-    const response = await server.client.request({
-      method: "prompts/get",
-      params: {
-        name,
-        arguments: args
-      }
-    }, responseSchema);
-
-    return (response as any).messages[0].content.text;
-  }
-}));
+  )
+);

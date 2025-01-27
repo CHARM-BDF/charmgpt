@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Message } from '../types/chat';
 import { Artifact } from '../types/artifacts';
-import { useMCPStore } from './mcpStore';
-import { parseXMLResponse, extractReferences, cleanConversationContent } from '../utils/xmlParser';
+// import { useMCPStore } from './mcpStore';
+import { parseXMLResponse } from '../utils/xmlParser';
 
 interface MessageWithThinking extends Message {
   thinking?: string;
@@ -139,10 +139,10 @@ export const useChatStore = create<ChatState>()(
       },
 
       processMessage: async (content) => {
-        const mcpStore = useMCPStore.getState();
-        const activeServer = mcpStore.activeServer;
+        // const mcpStore = useMCPStore.getState();
+        // const activeServer = mcpStore.activeServer;
         
-        console.log('ChatStore: Processing message, active server:', activeServer);
+        // console.log('ChatStore: Processing message, active server:', activeServer);
 
         try {
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
@@ -188,7 +188,7 @@ export const useChatStore = create<ChatState>()(
             });
 
             // Extract references from conversation (for tracking purposes)
-            const refs = extractReferences(xmlResponse.conversation);
+            // const refs = extractReferences(xmlResponse.conversation);
             
             // Add assistant message with first artifact (if any)
             get().addMessage({
@@ -215,7 +215,7 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      clearChat: () => set(state => ({
+      clearChat: () => set(_state => ({
         messages: [],
         selectedArtifactId: null,
         artifacts: [],

@@ -52,7 +52,7 @@ export const ChatInterface: React.FC = () => {
               </div>
             </div>
             <ChatInput />
-            {activeServer && <MCPTools />}
+            {activeServer && <MCPTools serverId={activeServer} onToolSelect={() => {}} onResourceSelect={() => {}} onPromptSelect={() => {}} />}
           </div>
         </div>
 

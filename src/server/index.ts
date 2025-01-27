@@ -9,53 +9,53 @@ const parseXML = promisify(parseString);
 
 // Define repair strategies
 const repairStrategies = [
-  // Strategy 1: Original CDATA wrapping
-  (input: string) => input.replace(
-    /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
-    (_match, openTag, _tagName, content, closeTag) => {
-      return `${openTag}<![CDATA[${content}]]>${closeTag}`;
-    }
-  ),
-  // Strategy 2: More aggressive CDATA wrapping including codesnip
-  (input: string) => input.replace(
-    /(<(thinking|conversation|artifact|codesnip)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
-    (_match, openTag, _tagName, content, closeTag) => {
-      return `${openTag}<![CDATA[${content}]]>${closeTag}`;
-    }
-  ),
-  // Strategy 3: Fix potential XML special characters in attributes
-  (input: string) => input.replace(
-    /(<[^>]+)(["'])(.*?)\2([^>]*>)/g,
-    (match, start, quote, content, end) => {
-      const escaped = content.replace(/[<>&'"]/g, (char: string) => {
-        switch (char) {
-          case '<': return '&lt;';
-          case '>': return '&gt;';
-          case '&': return '&amp;';
-          case "'": return '&apos;';
-          case '"': return '&quot;';
-          default: return char;
+    // Strategy 1: Original CDATA wrapping
+    (input: string) => input.replace(
+        /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
+        (_match, openTag, _tagName, content, closeTag) => {
+            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
         }
-      });
-      return `${start}${quote}${escaped}${quote}${end}`;
-    }
-  )
+    ),
+    // Strategy 2: More aggressive CDATA wrapping including codesnip
+    (input: string) => input.replace(
+        /(<(thinking|conversation|artifact|codesnip)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
+        (_match, openTag, _tagName, content, closeTag) => {
+            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
+        }
+    ),
+    // Strategy 3: Fix potential XML special characters in attributes
+    (input: string) => input.replace(
+        /(<[^>]+)(["'])(.*?)\2([^>]*>)/g,
+        (_match, start, quote, content, end) => {
+            const escaped = content.replace(/[<>&'"]/g, (char: string) => {
+                switch (char) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case "'": return '&apos;';
+                    case '"': return '&quot;';
+                    default: return char;
+                }
+            });
+            return `${start}${quote}${escaped}${quote}${end}`;
+        }
+    )
 ];
 
 // Define types for XML structure
 interface XMLResponse {
-  response: {
-    thinking?: string[];
-    conversation: string[];
-    artifact?: Array<{
-      $: {
-        type: string;
-        id: string;
-        title: string;
-      };
-      _: string;
-    }>;
-  };
+    response: {
+        thinking?: string[];
+        conversation: string[];
+        artifact?: Array<{
+            $: {
+                type: string;
+                id: string;
+                title: string;
+            };
+            _: string;
+        }>;
+    };
 }
 
 dotenv.config();
@@ -65,12 +65,12 @@ const port = process.env.PORT || 3000;
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface ChatRequest {
-  message: string;
-  history: Array<{ role: 'user' | 'assistant'; content: string; }>;
+    message: string;
+    history: Array<{ role: 'user' | 'assistant'; content: string; }>;
 }
 
 app.use(cors());
@@ -78,68 +78,68 @@ app.use(express.json());
 
 // Add XML validation helper
 function isValidXMLResponse(text: string): Promise<boolean> {
-  // Wrap content inside main container tags in CDATA
-  const wrappedText = text.replace(
-    /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
-    (_match, openTag, _tagName, content, closeTag) => {
-      return `${openTag}<![CDATA[${content}]]>${closeTag}`;
+    // Wrap content inside main container tags in CDATA
+    const wrappedText = text.replace(
+        /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
+        (_match, openTag, _tagName, content, closeTag) => {
+            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
+        }
+    );
+
+    console.log("Server: Wrapped text for validation:\n", wrappedText);
+
+    // Basic check for XML structure
+    const hasXMLStructure = wrappedText.trim().startsWith('<response>') &&
+        wrappedText.trim().endsWith('</response>') &&
+        wrappedText.includes('<conversation>');
+
+    if (!hasXMLStructure) {
+        console.log('Server: Invalid XML structure detected');
+        return Promise.resolve(false);
     }
-  );
-  
-  console.log("Server: Wrapped text for validation:\n", wrappedText);
-  
-  // Basic check for XML structure
-  const hasXMLStructure = wrappedText.trim().startsWith('<response>') && 
-                       wrappedText.trim().endsWith('</response>') &&
-                       wrappedText.includes('<conversation>');
-                       
-  if (!hasXMLStructure) {
-    console.log('Server: Invalid XML structure detected');
-    return Promise.resolve(false);
-  }
-  
-  return parseXML(wrappedText)
-    .then((result: unknown) => {
-      const xmlResult = result as XMLResponse;
-      // Check if we have the required structure
-      const hasValidStructure = 
-        xmlResult?.response && 
-        (xmlResult.response.conversation || []).length > 0;
-      
-      if (!hasValidStructure) {
-        console.log('Server: Missing required XML elements');
-        return false;
-      }
-      
-      return true;
-    })
-    .catch(error => {
-      console.log('Server: XML validation error:', error);
-      return false;
-    });
+
+    return parseXML(wrappedText)
+        .then((result: unknown) => {
+            const xmlResult = result as XMLResponse;
+            // Check if we have the required structure
+            const hasValidStructure =
+                xmlResult?.response &&
+                (xmlResult.response.conversation || []).length > 0;
+
+            if (!hasValidStructure) {
+                console.log('Server: Missing required XML elements');
+                return false;
+            }
+
+            return true;
+        })
+        .catch(error => {
+            console.log('Server: XML validation error:', error);
+            return false;
+        });
 }
 
 app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) => {
-  try {
-    const { message, history } = req.body;
-    console.log('\n=== Chat Request Processing Start ===');
-    console.log('Server: Received chat request:', { 
-      messageLength: message.length,
-      historyLength: history.length 
-    });
+    try {
+        const { message, history } = req.body;
+        console.log('\n=== Chat Request Processing Start ===');
+        console.log('Server: Received chat request:', {
+            messageLength: message.length,
+            historyLength: history.length
+        });
 
-    // Create messages array with history and current message
-    const messages = [
-      ...history,
-      { role: 'user' as const, content: message }
-    ];
+        // Create messages array with history and current message
+        const messages = [
+            ...history,
+            { role: 'user' as const, content: message }
+        ];
 
-    console.log('Server: Sending to Claude:', {
-      messageCount: messages.length,
-      lastMessage: messages[messages.length - 1]
-    });
+        console.log('Server: Sending to Claude:', {
+            messageCount: messages.length,
+            lastMessage: messages[messages.length - 1]
+        });
 
-    const systemPrompt = `
+        const systemPrompt = `
 # Response Formatting Guidelines
 
 IMPORTANT NOTE ON SYNTAX PLACEHOLDERS:
@@ -427,95 +427,95 @@ All text within tags should use markdown formatting. Here's how to format differ
 15. Always provide context before artifact references
 `
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      messages: messages,
-      system: systemPrompt,
-      temperature: 0.7,
-    });
-
-    if (response.content[0].type !== 'text') {
-      throw new Error('Expected text response from Claude');
-    }
-
-    const responseText = response.content[0].text;
-
-    // Log initial response and tokens
-    console.log('\nServer: Initial Claude Response:');
-    console.log('----------------------------------------');
-    console.log('Response Length:', responseText.length);
-    console.log('Token Usage:', {
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      totalTokens: response.usage.input_tokens + response.usage.output_tokens
-    });
-    console.log('Raw Response from Claude:');
-    console.log(responseText);
-    console.log('----------------------------------------');
-
-    // Validate XML structure
-    try {
-      const isValid = await isValidXMLResponse(responseText);
-      if (!isValid) {
-        console.log('Server: XML validation failed, attempting repairs');
-        
-        // First try automatic repair strategies
-        for (const repair of repairStrategies) {
-          try {
-            const repairedText = repair(responseText);
-            const isRepairedValid = await isValidXMLResponse(repairedText);
-            if (isRepairedValid) {
-              console.log('Server: Successfully repaired XML');
-              res.json({ response: repairedText });
-              return;
-            }
-          } catch (error) {
-            console.log('Server: Repair attempt failed:', error);
-          }
-        }
-
-        // If repairs fail, try LLM reformatting
-        console.log('Server: Automatic repairs failed, requesting LLM reformatting');
-        console.log('Server: Original response that failed validation:\n', responseText);
-        
-        const reformatResponse = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 4000,
-          messages: [
-            ...history,
-            { role: 'assistant', content: responseText },
-            { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
-          ],
-          system: systemPrompt,
-          temperature: 0.7,
+        const response = await anthropic.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 4000,
+            messages: messages,
+            system: systemPrompt,
+            temperature: 0.7,
         });
 
-        if (reformatResponse.content[0].type !== 'text') {
-          throw new Error('Expected text response from Claude');
+        if (response.content[0].type !== 'text') {
+            throw new Error('Expected text response from Claude');
         }
 
-        const reformattedText = reformatResponse.content[0].text;
+        const responseText = response.content[0].text;
 
-        // Log reformatting attempt
-        console.log('\nServer: Reformatting Attempt Result:\n');
+        // Log initial response and tokens
+        console.log('\nServer: Initial Claude Response:');
         console.log('----------------------------------------');
-        console.log('Reformatted Length:', reformattedText.length);
-        console.log('Reformatted Preview:', reformattedText.slice(0, 500) + '...');
-        console.log('Full Reformatted Response:');
-        console.log(reformattedText);
-        console.log('----------------------------------------\n');
+        console.log('Response Length:', responseText.length);
+        console.log('Token Usage:', {
+            inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens,
+            totalTokens: response.usage.input_tokens + response.usage.output_tokens
+        });
+        console.log('Raw Response from Claude:');
+        console.log(responseText);
+        console.log('----------------------------------------');
 
-        const isReformattedValid = await isValidXMLResponse(reformattedText);
-        if (isReformattedValid) {
-          console.log('Server: Successfully reformatted response as XML');
-          res.json({ response: reformattedText });
-          return;
-        }
+        // Validate XML structure
+        try {
+            const isValid = await isValidXMLResponse(responseText);
+            if (!isValid) {
+                console.log('Server: XML validation failed, attempting repairs');
 
-        // If all attempts fail, wrap in error response
-        console.log('Server: All repair attempts failed');
-        const wrappedResponse = `<response>
+                // First try automatic repair strategies
+                for (const repair of repairStrategies) {
+                    try {
+                        const repairedText = repair(responseText);
+                        const isRepairedValid = await isValidXMLResponse(repairedText);
+                        if (isRepairedValid) {
+                            console.log('Server: Successfully repaired XML');
+                            res.json({ response: repairedText });
+                            return;
+                        }
+                    } catch (error) {
+                        console.log('Server: Repair attempt failed:', error);
+                    }
+                }
+
+                // If repairs fail, try LLM reformatting
+                console.log('Server: Automatic repairs failed, requesting LLM reformatting');
+                console.log('Server: Original response that failed validation:\n', responseText);
+
+                const reformatResponse = await anthropic.messages.create({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 4000,
+                    messages: [
+                        ...history,
+                        { role: 'assistant', content: responseText },
+                        { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
+                    ],
+                    system: systemPrompt,
+                    temperature: 0.7,
+                });
+
+                if (reformatResponse.content[0].type !== 'text') {
+                    throw new Error('Expected text response from Claude');
+                }
+
+                const reformattedText = reformatResponse.content[0].text;
+
+                // Log reformatting attempt
+                console.log('\nServer: Reformatting Attempt Result:\n');
+                console.log('----------------------------------------');
+                console.log('Reformatted Length:', reformattedText.length);
+                console.log('Reformatted Preview:', reformattedText.slice(0, 500) + '...');
+                console.log('Full Reformatted Response:');
+                console.log(reformattedText);
+                console.log('----------------------------------------\n');
+
+                const isReformattedValid = await isValidXMLResponse(reformattedText);
+                if (isReformattedValid) {
+                    console.log('Server: Successfully reformatted response as XML');
+                    res.json({ response: reformattedText });
+                    return;
+                }
+
+                // If all attempts fail, wrap in error response
+                console.log('Server: All repair attempts failed');
+                const wrappedResponse = `<response>
           <conversation>
           # Error: Response Formatting Issue
           
@@ -525,45 +525,45 @@ All text within tags should use markdown formatting. Here's how to format differ
           ${responseText}
           </conversation>
         </response>`;
-        res.json({ response: wrappedResponse });
-        return;
-      }
-      
-      // Log response details for valid XML
-      console.log('Server: Response validation:', {
-        responseLength: responseText.length,
-        preview: responseText.slice(0, 500) + '...',
-        usage: response.usage,
-        isValidXML: true
-      });
+                res.json({ response: wrappedResponse });
+                return;
+            }
 
-      res.json({ response: responseText });
-      
-    } catch (validationError) {
-      console.error('Server: XML Validation Error:', validationError);
-      console.error('Server: Failed Response Text:', responseText);
-      throw validationError;
-    }
+            // Log response details for valid XML
+            console.log('Server: Response validation:', {
+                responseLength: responseText.length,
+                preview: responseText.slice(0, 500) + '...',
+                usage: response.usage,
+                isValidXML: true
+            });
 
-  } catch (error) {
-    console.error('Server: Detailed Error Information:');
-    if (error instanceof Error) {
-      console.error('Error Name:', error.name);
-      console.error('Error Message:', error.message);
-      console.error('Error Stack:', error.stack);
-    } else {
-      console.error('Unknown Error Type:', error);
+            res.json({ response: responseText });
+
+        } catch (validationError) {
+            console.error('Server: XML Validation Error:', validationError);
+            console.error('Server: Failed Response Text:', responseText);
+            throw validationError;
+        }
+
+    } catch (error) {
+        console.error('Server: Detailed Error Information:');
+        if (error instanceof Error) {
+            console.error('Error Name:', error.name);
+            console.error('Error Message:', error.message);
+            console.error('Error Stack:', error.stack);
+        } else {
+            console.error('Unknown Error Type:', error);
+        }
+        res.status(500).json({
+            error: 'Failed to process chat message',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
-    res.status(500).json({ 
-      error: 'Failed to process chat message',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
 });
 
 app.listen(port, () => {
-  const now = new Date();
-  const timestamp = now.toLocaleString();
-  console.log(`Hot reload at: ${timestamp}`);
-  console.log(`Server running at http://localhost:${port}`);
+    const now = new Date();
+    const timestamp = now.toLocaleString();
+    console.log(`Hot reload at: ${timestamp}`);
+    console.log(`Server running at http://localhost:${port}`);
 });
