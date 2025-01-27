@@ -4,7 +4,7 @@ import ChatInterface from './components/ChatInterface'
 import CodeEditor from './components/CodeEditor'
 import DataVisualizer from './components/DataVisualizer'
 import ArtifactList from './components/ArtifactList'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Artifact } from './components/ArtifactList'
 
 const theme = createTheme({
@@ -28,6 +28,10 @@ function App() {
       type: 'visualization'
     }
   ])
+
+  useEffect(() => {
+    document.title = 'CHARMGPT'
+  }, [])
 
   return (
     <ThemeProvider theme={theme}>
