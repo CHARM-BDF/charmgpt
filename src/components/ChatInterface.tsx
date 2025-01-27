@@ -1,8 +1,9 @@
-import { Box, TextField, Button, Stack, Paper, List, ListItem, Typography, Divider } from '@mui/material'
+import { Box, TextField, Button, Stack, Paper, List, ListItem, Typography, Divider, CircularProgress } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import CodeIcon from '@mui/icons-material/Code'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import { useState } from 'react'
+import { chatWithLLM } from '../services/api'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -20,6 +21,8 @@ interface Artifact {
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [artifacts] = useState<Artifact[]>([
     {
       id: 1,
@@ -38,17 +41,43 @@ export default function ChatInterface() {
     // Add more sample artifacts as needed
   ])
 
-  const handleSend = () => {
-    if (!input.trim()) return
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return
     
-    const newMessage: Message = {
+    const userMessage: Message = {
       role: 'user',
       content: input
     }
     
-    setMessages([...messages, newMessage])
+    setMessages(prev => [...prev, userMessage])
     setInput('')
-    // Here you would typically make an API call to your LLM service
+    setError(null)
+    setIsLoading(true)
+
+    try {
+      // Using Claude as default, you might want to make this configurable
+      /*
+      const response = await chatWithLLM(input, {
+        provider: 'claude',
+        model: 'claude-3-sonnet-20240229'
+      })*/
+      const response = await chatWithLLM(input, {
+        provider: 'ollama',
+        model: 'qwen2.5'
+      })
+
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: response
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get response')
+      console.error('Chat error:', err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -119,9 +148,19 @@ export default function ChatInterface() {
                 maxWidth: '80%'
               }}
             >
-              {message.content}
+              <Typography>{message.content}</Typography>
             </Paper>
           ))}
+          {isLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
+          {error && (
+            <Paper sx={{ p: 2, mb: 1, bgcolor: 'error.light', color: 'error.contrastText' }}>
+              <Typography>{error}</Typography>
+            </Paper>
+          )}
         </Box>
         <Stack direction="row" spacing={1}>
           <TextField
@@ -131,11 +170,13 @@ export default function ChatInterface() {
             placeholder="Ask a question..."
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             size="small"
+            disabled={isLoading}
           />
           <Button 
             variant="contained" 
             onClick={handleSend}
-            endIcon={<SendIcon />}
+            endIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+            disabled={isLoading || !input.trim()}
           >
             Send
           </Button>
