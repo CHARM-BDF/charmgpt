@@ -1,6 +1,7 @@
-import { Box, List, ListItem, Typography, Divider } from '@mui/material'
+import { Box, List, ListItem, Typography, Divider, IconButton } from '@mui/material'
 import CodeIcon from '@mui/icons-material/Code'
 import BarChartIcon from '@mui/icons-material/BarChart'
+import { useArtifact } from '../contexts/ArtifactContext'
 
 export interface Artifact {
   id: number
@@ -15,6 +16,8 @@ interface ArtifactListProps {
 }
 
 export default function ArtifactList({ artifacts }: ArtifactListProps) {
+  const { activeArtifact, setActiveArtifact } = useArtifact()
+
   return (
     <Box sx={{ height: '100%', overflow: 'auto', p: 2 }}>
       <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
@@ -26,11 +29,17 @@ export default function ArtifactList({ artifacts }: ArtifactListProps) {
             key={artifact.id}
             sx={{ 
               mb: 1, 
-              bgcolor: 'grey.50',
+              bgcolor: artifact.id === activeArtifact?.id ? 'primary.light' : 'grey.50',
               borderRadius: 1,
               flexDirection: 'column',
-              alignItems: 'flex-start'
+              alignItems: 'flex-start',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              '&:hover': {
+                bgcolor: 'primary.light',
+              }
             }}
+            onClick={() => setActiveArtifact(artifact)}
           >
             <Box sx={{ 
               display: 'flex', 

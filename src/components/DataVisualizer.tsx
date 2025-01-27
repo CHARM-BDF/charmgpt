@@ -1,5 +1,6 @@
 import { Box, MenuItem, TextField } from '@mui/material'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { useArtifact } from '../contexts/ArtifactContext'
 
 const sampleData = [
   { name: 'Jan', value: 400 },
@@ -10,6 +11,23 @@ const sampleData = [
 ]
 
 export default function DataVisualizer() {
+  const { activeArtifact } = useArtifact()
+
+  const getVisualizationData = () => {
+    if (!activeArtifact) return sampleData
+    
+    if (activeArtifact.type === 'visualization') {
+      try {
+        return JSON.parse(activeArtifact.output)
+      } catch (error) {
+        console.warn('Failed to parse visualization data:', error)
+        return sampleData
+      }
+    }
+    
+    return sampleData
+  }
+
   return (
     <Box sx={{ height: '100%', p: 2 }}>
       <TextField
@@ -25,7 +43,7 @@ export default function DataVisualizer() {
         <MenuItem value="scatter">Scatter Plot</MenuItem>
       </TextField>
       
-      <LineChart width={500} height={300} data={sampleData}>
+      <LineChart width={500} height={300} data={getVisualizationData()}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" />
         <YAxis />
