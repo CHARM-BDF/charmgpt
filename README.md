@@ -14,10 +14,15 @@ A collaborative data science environment with LLM support. This project combines
 
 ### Prerequisites
 
+- Docker
 - Node.js (v16 or higher)
 - npm (v7 or higher)
 - Ollama (if using local models)
 - Anthropic API key (if using Claude)
+
+## Docker Installation
+
+`docker build -t my-python-app .`
 
 ### Installation
 

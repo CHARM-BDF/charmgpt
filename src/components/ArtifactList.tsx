@@ -1,6 +1,7 @@
 import { Box, List, ListItem, Typography, Divider, IconButton } from '@mui/material'
 import CodeIcon from '@mui/icons-material/Code'
 import BarChartIcon from '@mui/icons-material/BarChart'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { useArtifact } from '../contexts/ArtifactContext'
 
 export interface Artifact {
@@ -16,7 +17,7 @@ interface ArtifactListProps {
 }
 
 export default function ArtifactList({ artifacts }: ArtifactListProps) {
-  const { activeArtifact, setActiveArtifact } = useArtifact()
+  const { activeArtifact, setActiveArtifact, runArtifact } = useArtifact()
 
   return (
     <Box sx={{ height: '100%', overflow: 'auto', p: 2 }}>
@@ -59,6 +60,17 @@ export default function ArtifactList({ artifacts }: ArtifactListProps) {
             <Typography variant="body2">
               {artifact.output}
             </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+              <IconButton 
+                onClick={(e) => {
+                  e.stopPropagation()
+                  runArtifact(artifact)
+                }}
+                size="small"
+              >
+                <PlayArrowIcon />
+              </IconButton>
+            </Box>
           </ListItem>
         ))}
       </List>

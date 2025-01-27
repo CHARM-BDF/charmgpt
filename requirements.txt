@@ -1,0 +1,73 @@
+# Core Scientific Computing
+numpy
+scipy
+pandas
+
+# Bioinformatics
+biopython
+pysam
+scikit-bio
+cyvcf2
+pybedtools
+
+# Machine Learning
+scikit-learn
+tensorflow
+torch
+# plaidml # too old to support!
+
+# Data Visualization
+matplotlib
+seaborn
+plotly
+bokeh
+
+# Interactive Notebooks
+jupyter
+ipython
+
+# Image Processing
+pillow
+opencv-python
+
+# Genomics Tools
+pyfaidx
+gffutils
+pybigwig
+
+# Phylogenetics
+ete3
+dendropy
+
+# Chemical Informatics
+rdkit
+
+# Web Scraping and API Interaction
+requests
+beautifulsoup4
+
+# Data Format Handling
+h5py
+zarr
+
+# Parallel Processing
+dask
+joblib
+
+# Statistical Analysis
+statsmodels
+
+# Dimensionality Reduction and Clustering
+umap-learn
+hdbscan
+
+# GUI Development (if needed)
+# PyQt5 # too onerous
+
+# Biological Pathway Analysis
+goatools
+gseapy
+
+# Public Dataset Search and Retrieval
+pysradb
+GEOparse
