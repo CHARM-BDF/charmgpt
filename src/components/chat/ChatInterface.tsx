@@ -4,15 +4,15 @@ import { ChatInput } from './ChatInput';
 import { ArtifactWindow } from '../artifacts/ArtifactWindow';
 import { ArtifactControls } from '../artifacts/ArtifactControls';
 import { ArtifactDrawer } from '../artifacts/ArtifactDrawer';
-import { MCPTools } from '../mcp/MCPTools';
-import { MCPServerControl } from '../mcp/MCPServerControl';
+// import { MCPTools } from '../mcp/MCPTools';
+// import { MCPServerControl } from '../mcp/MCPServerControl';
 import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
-import { useMCPStore } from '../../store/mcpStore';
+// import { useMCPStore } from '../../store/mcpStore';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat } = useChatStore();
-  const { activeServer } = useMCPStore();
+  // const { activeServer } = useMCPStore();
 
   return (
     <div className="flex flex-col h-screen bg-gray-200 dark:bg-gray-900">
@@ -22,7 +22,7 @@ export const ChatInterface: React.FC = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">MCP Chat Interface</h1>
-              <MCPServerControl />
+              {/* <MCPServerControl /> */}
             </div>
             <div className="flex items-center space-x-3">
               <DarkModeToggle />
@@ -52,7 +52,7 @@ export const ChatInterface: React.FC = () => {
               </div>
             </div>
             <ChatInput />
-            {activeServer && <MCPTools serverId={activeServer} onToolSelect={() => {}} onResourceSelect={() => {}} onPromptSelect={() => {}} />}
+            {/* {activeServer && <MCPTools serverId={activeServer} onToolSelect={() => {}} onResourceSelect={() => {}} onPromptSelect={() => {}} />} */}
           </div>
         </div>
 

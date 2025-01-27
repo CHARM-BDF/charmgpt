@@ -1,238 +1,253 @@
-# MCP Integration Plan for Chat Application
+# MCP Integration Plan
 
-## Overview
+## 1. Overview
+This document outlines the plan for integrating Model Context Protocol (MCP) into our existing chat application. The integration will enhance our current Claude-based chat system with MCP's tool and resource management capabilities while maintaining existing functionality.
 
-This document outlines the plan for integrating Model Context Protocol (MCP) server functionality into the existing chat application, allowing users to install, manage, and interact with MCP servers directly through the chat interface.
+## 2. Current Architecture
+- Chat server (`src/server/index.ts`)
+- Anthropic Claude integration
+- Frontend chat components
+- XML response handling
+- State management with stores
 
-## Architecture Components
+## 3. Implementation Status
 
-### 1. Store Layer
+### Phase 1: MCP Infrastructure (In Progress)
+
+#### 1.1 MCP Client Module (`src/mcp/client.ts`) ✅
+Implemented core MCP client with:
+- Zod schema validation for all responses
+- Type-safe request/response handling
+- Connection management
+- Tool discovery and execution
+- Resource access
+- Prompt management
+
+Key features:
 ```typescript
-// mcpStore.ts
-interface MCPServerState {
-  servers: {
-    [id: string]: {
-      name: string;
-      version: string;
-      status: 'running' | 'stopped' | 'error';
-      capabilities: {
-        resources?: boolean;
-        tools?: boolean;
-        prompts?: boolean;
-      };
-      transport: 'stdio' | 'sse';
-      config: {
-        command?: string;
-        args?: string[];
-        url?: string;
-      };
-    };
-  };
-  activeServer: string | null;
-  serverResponses: {
-    [serverId: string]: {
-      resources: ResourceInfo[];
-      tools: ToolInfo[];
-      prompts: PromptInfo[];
-    };
-  };
+// Initialize client with configuration
+const client = new MCPClient({
+  name: "my-client",
+  version: "1.0.0"
+});
+
+// Connect to MCP server
+await client.connect("server-command", ["arg1", "arg2"]);
+
+// List available tools
+const tools = await client.listTools();
+
+// Call a tool
+const result = await client.callTool("tool-name", { arg1: "value" });
+```
+
+Response validation using Zod schemas:
+```typescript
+// Example tool response schema
+const toolResponseSchema = z.object({
+  tools: z.array(z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    inputSchema: toolSchemaSchema
+  }))
+});
+
+// Resource response schema
+const resourceResponseSchema = z.object({
+  resources: z.array(z.object({
+    name: z.string(),
+    uri: z.string(),
+    description: z.string().optional()
+  })),
+  resourceTemplates: z.array(z.any())
+});
+```
+
+#### 1.2 Context Manager (`src/mcp/contextManager.ts`) ✅
+- Implemented context caching and refresh
+- Format context for Claude integration
+- Manage tool/resource/prompt availability
+- Handle schema validation and examples
+
+Key features:
+```typescript
+interface LLMContext {
+    available_tools: Array<{
+        name: string;
+        description: string;
+        parameters: Record<string, any>;
+        example?: Record<string, any>;
+    }>;
+    available_prompts: Array<{
+        name: string;
+        description: string;
+        arguments?: Array<{
+            name: string;
+            description: string;
+            required: boolean;
+        }>;
+    }>;
+    available_resources: Array<{
+        name: string;
+        uri: string;
+        description: string;
+    }>;
 }
 ```
 
-### 2. UI Components
+### Phase 2: Server Integration (Next Step)
+#### 2.1 Server Extensions (`src/server/index.ts`)
+- Add MCP capabilities to existing chat server
+- Maintain XML response format
+- Integrate tool execution
+- Handle context injection
 
-#### MCPServerControl Component
-```typescript
-// components/mcp/MCPServerControl.tsx
-interface Props {
-  onServerSelect: (serverId: string) => void;
-  onServerInstall: (config: ServerConfig) => void;
-  onServerStart: (serverId: string) => void;
-  onServerStop: (serverId: string) => void;
-}
-```
+#### 2.2 MCP Service Layer (`src/services/mcpService.ts`)
+- Manage MCP client lifecycle
+- Handle tool execution
+- Manage resource access
+- Format responses
 
-#### MCPTools Component
-```typescript
-// components/mcp/MCPTools.tsx
-interface Props {
-  serverId: string;
-  onToolSelect: (tool: ToolInfo) => void;
-  onResourceSelect: (resource: ResourceInfo) => void;
-  onPromptSelect: (prompt: PromptInfo) => void;
-}
-```
+### Phase 3: Frontend Updates (Pending)
+#### 3.1 MCP Components
+- Tool interface
+- Tool approval UI
+- Resource viewer
 
-### 3. Service Layer
-```typescript
-// services/mcpService.ts
-interface MCPService {
-  installServer(config: ServerConfig): Promise<string>;
-  startServer(serverId: string): Promise<void>;
-  stopServer(serverId: string): Promise<void>;
-  listResources(serverId: string): Promise<ResourceInfo[]>;
-  listTools(serverId: string): Promise<ToolInfo[]>;
-  listPrompts(serverId: string): Promise<PromptInfo[]>;
-  executeToolCall(serverId: string, tool: string, args: any): Promise<any>;
-  fetchResource(serverId: string, uri: string): Promise<any>;
-  executePrompt(serverId: string, prompt: string, args: any): Promise<any>;
-}
-```
+#### 3.2 State Management
+- Update chat store
+- Add MCP store
+- Handle tool states
+- Manage approvals
 
-## Data Flow
+## 4. Integration Flow
 
-### 1. Server Installation Flow
-1. User enters server installation command in chat:
+### MCP Client Flow (✅ Implemented)
+1. **Initialization**
+   ```typescript
+   const client = new MCPClient(config);
+   await client.connect(command, args);
    ```
-   /install-mcp-server --name weather-server --transport stdio --command weather-server
+
+2. **Tool Discovery**
+   ```typescript
+   const tools = await client.listTools();
+   // Returns validated tool list with schemas
    ```
-2. Chat parser recognizes MCP command
-3. `mcpStore.installServer()` is called
-4. New server entry created in store
-5. UI updates to show new server in server list
 
-### 2. Server Interaction Flow
-1. User selects server from MCPServerControl
-2. System fetches server capabilities
-3. MCPTools component updates to show available tools/resources/prompts
-4. User can:
-   - Browse available resources
-   - Execute tools
-   - Use prompts
+3. **Tool Execution**
+   ```typescript
+   const result = await client.callTool("tool-name", args);
+   // Returns validated result with error handling
+   ```
 
-### 3. Chat Integration Flow
-1. User types message
-2. Message parser checks for MCP commands:
-   - Direct tool calls: `/tool weather-forecast --city "New York"`
-   - Resource requests: `/resource weather://current/NY`
-   - Prompt usage: `/prompt weather-report --location "New York"`
-3. If MCP command detected:
-   - Command is parsed
-   - Appropriate MCP client method is called
-   - Response is formatted and added to chat
-4. If regular message:
-   - Message is processed normally
-   - LLM can still access MCP context through system prompt
+4. **Resource Access**
+   ```typescript
+   const resource = await client.readResource("resource-uri");
+   // Returns validated resource content
+   ```
 
-## Implementation Phases
+### Context Management Flow (✅ Implemented)
+1. **Context Preparation**
+   ```typescript
+   const context = await contextManager.prepareLLMContext();
+   ```
 
-### Phase 1: Core Infrastructure
-1. Implement MCPStore
-2. Create basic MCPService
-3. Add server installation/management commands
-4. Create MCPServerControl component
+2. **Claude Integration**
+   ```typescript
+   const systemPrompt = contextManager.asSystemPrompt();
+   const tools = contextManager.formatForClaude();
+   ```
 
-### Phase 2: Server Integration
-1. Implement server transport handlers (stdio/SSE)
-2. Add server capability detection
-3. Create MCPTools component
-4. Implement resource/tool/prompt listing
+## 5. Type System
 
-### Phase 3: Chat Integration
-1. Add MCP command parser
-2. Implement command handlers
-3. Create response formatters
-4. Update chat UI to handle MCP responses
+### Core Types (✅ Implemented)
+```typescript
+interface MCPToolSchema {
+  type: string;
+  properties?: Record<string, MCPToolSchema>;
+  items?: MCPToolSchema;
+}
 
-### Phase 4: UI/UX Enhancement
-1. Add server status indicators
-2. Create tool/resource browsers
-3. Implement auto-completion for MCP commands
-4. Add error handling and recovery
+interface MCPTool {
+  name: string;
+  description?: string;
+  inputSchema: MCPToolSchema;
+}
 
-## Example Interactions
-
-### Installing a Server
-```
-User: /install-mcp-server --name weather-server --transport stdio --command weather-server
-Assistant: Installing MCP server 'weather-server'...
-System: Server installed successfully. ID: ws-123
-
-User: /start-server ws-123
-Assistant: Starting weather-server...
-System: Server started successfully. Available capabilities:
-- Resources: weather://{location}/current
-- Tools: getForecast, getAlerts
-- Prompts: weatherReport
+interface MCPContext {
+  available_tools: MCPToolContext[];
+  available_prompts: MCPPrompt[];
+  available_resources: MCPResource[];
+}
 ```
 
-### Using Server Tools
-```
-User: What's the weather in New York?
-Assistant: Let me check that for you using the weather server.
-[Executes: /tool getForecast --city "New York"]
-System: Current temperature: 72°F, Partly cloudy...
+## 6. Next Steps
 
-User: Are there any weather alerts?
-Assistant: I'll check the alerts system.
-[Executes: /tool getAlerts --location "New York"]
-System: No active weather alerts for New York.
-```
+1. **Server Integration**
+   - Add MCP client to chat server
+   - Implement tool execution flow
+   - Add context injection
 
-## Security Considerations
+2. **Frontend Components**
+   - Create tool interface
+   - Add approval workflow
+   - Implement resource viewer
 
-1. Server Validation
-   - Verify server signatures
-   - Check for known vulnerabilities
-   - Validate server capabilities
+3. **Testing & Validation**
+   - Add integration tests
+   - Validate type safety
+   - Test error handling
 
-2. Command Sanitization
-   - Sanitize all command inputs
-   - Validate resource URIs
-   - Check tool argument types
+## 7. Success Criteria
+1. ✅ Type-safe MCP client implementation
+2. ✅ Response validation with Zod
+3. ✅ Error handling and recovery
+4. ✅ Context management
+5. ⏳ Claude integration
+6. ⏳ Frontend components
 
-3. Resource Access Control
-   - Implement resource access policies
-   - Control file system access
-   - Manage network requests
+## 8. Future Enhancements
+1. Additional tool types
+2. Enhanced resource handling
+3. Improved context management
+4. Advanced approval workflows
+5. Performance optimizations
 
-## Error Handling
+## 9. Dependencies
+- ✅ @modelcontextprotocol/sdk
+- ✅ zod for schema validation
+- Existing chat infrastructure
+- Anthropic Claude integration
 
-1. Server Errors
-   - Connection failures
-   - Timeout handling
-   - Capability mismatches
+## 10. Timeline
+- ✅ Phase 1: Infrastructure
+  - ✅ MCP Client
+  - ✅ Context Manager
+- ⏳ Phase 2: Server Integration (Next)
+- ⏳ Phase 3: Frontend Updates
+- ⏳ Phase 4: Testing & Refinement
 
-2. Command Errors
-   - Invalid syntax
-   - Missing arguments
-   - Type mismatches
+## 11. Risks and Mitigation
+1. **Risk**: Breaking existing chat functionality
+   - **Mitigation**: ✅ Implemented type-safe client with validation
 
-3. Resource Errors
-   - Not found
-   - Access denied
-   - Format errors
+2. **Risk**: Performance degradation
+   - **Mitigation**: ✅ Added caching in context manager
 
-## Testing Strategy
+3. **Risk**: Security vulnerabilities
+   - **Mitigation**: ✅ Added schema validation for all responses
 
-1. Unit Tests
-   - Store operations
-   - Command parsing
-   - Response formatting
+4. **Risk**: Integration complexity
+   - **Mitigation**: ✅ Created modular design with clear interfaces
 
-2. Integration Tests
-   - Server installation
-   - Tool execution
-   - Resource fetching
+## 12. Review Points
+- ✅ MCP client implementation
+- ✅ Context manager implementation
+- ⏳ Server integration
+- ⏳ Frontend implementation
+- ⏳ Testing coverage
+- ⏳ Performance metrics
+- ⏳ Security review
 
-3. End-to-End Tests
-   - Complete interaction flows
-   - Error scenarios
-   - Performance testing
-
-## Future Enhancements
-
-1. Server Management
-   - Server updates
-   - Configuration management
-   - Health monitoring
-
-2. UI Improvements
-   - Interactive tool forms
-   - Resource browsers
-   - Visual capability explorer
-
-3. Advanced Features
-   - Server chaining
-   - Batch operations
-   - Custom transport handlers 
+This plan will be updated as implementation progresses and new requirements or challenges are discovered. 
