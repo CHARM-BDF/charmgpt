@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMCPStore } from '../../store/mcpStore';
 import type { ServerConfig } from '../../store/mcpStore';
+import { MCPService } from '../../services/mcpService';
+
+// Create a singleton instance of MCPService
+const mcpService = new MCPService();
 
 export const MCPServerControl: React.FC = () => {
     const { 
@@ -9,7 +13,9 @@ export const MCPServerControl: React.FC = () => {
         installServer, 
         removeServer, 
         setActiveServer, 
-        updateServerStatus 
+        updateServerStatus,
+        updateServerCapabilities,
+        updateServerResponses
     } = useMCPStore();
     const [isInstalling, setIsInstalling] = useState(false);
     const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -20,11 +26,53 @@ export const MCPServerControl: React.FC = () => {
         command: '',
     });
 
+    // Cleanup servers on unmount
+    useEffect(() => {
+        return () => {
+            // Stop all running servers
+            Object.entries(servers).forEach(([id, server]) => {
+                if (server.status === 'running') {
+                    mcpService.stopServer(id).catch(console.error);
+                }
+            });
+        };
+    }, [servers]);
+
+    // Refresh capabilities and responses for running servers periodically
+    useEffect(() => {
+        const refreshInterval = setInterval(async () => {
+            for (const [id, server] of Object.entries(servers)) {
+                if (server.status === 'running') {
+                    try {
+                        const capabilities = await mcpService.detectCapabilities(id);
+                        updateServerCapabilities(id, capabilities);
+                        
+                        if (capabilities.resources || capabilities.tools || capabilities.prompts) {
+                            const responses = await mcpService.refreshServerResponses(id, capabilities);
+                            updateServerResponses(id, responses);
+                        }
+                    } catch (error) {
+                        console.error(`Failed to refresh server ${id}:`, error);
+                        updateServerStatus(id, 'error');
+                    }
+                }
+            }
+        }, 30000); // Refresh every 30 seconds
+
+        return () => clearInterval(refreshInterval);
+    }, [servers, updateServerCapabilities, updateServerResponses, updateServerStatus]);
+
     const handleInstall = async () => {
+        let newServerId: string | undefined;
         try {
             setIsInstalling(true);
-            const id = await installServer(installConfig);
-            setActiveServer(id);
+            // First create the server in the store
+            newServerId = await installServer(installConfig);
+            
+            // Then install it in the service
+            await mcpService.installServer(installConfig);
+            
+            setActiveServer(newServerId);
             // Reset form
             setInstallConfig({
                 name: '',
@@ -35,6 +83,9 @@ export const MCPServerControl: React.FC = () => {
             setShowInstallUI(false);
         } catch (error) {
             console.error('Failed to install server:', error);
+            if (newServerId) {
+                updateServerStatus(newServerId, 'error');
+            }
         } finally {
             setIsInstalling(false);
         }
@@ -43,9 +94,21 @@ export const MCPServerControl: React.FC = () => {
     const handleStartServer = async (id: string) => {
         try {
             setIsLoading(id);
+            // Start the server in the service
+            await mcpService.startServer(id);
+            
+            // Detect capabilities
+            const capabilities = await mcpService.detectCapabilities(id);
+            updateServerCapabilities(id, capabilities);
+            
+            // If any capability is available, fetch responses
+            if (capabilities.resources || capabilities.tools || capabilities.prompts) {
+                const responses = await mcpService.refreshServerResponses(id, capabilities);
+                updateServerResponses(id, responses);
+            }
+            
+            // Update status
             updateServerStatus(id, 'running');
-            // Note: In Phase 2, this will actually connect to the MCP server
-            // and handle real server lifecycle
         } catch (error) {
             console.error('Failed to start server:', error);
             updateServerStatus(id, 'error');
@@ -57,9 +120,9 @@ export const MCPServerControl: React.FC = () => {
     const handleStopServer = async (id: string) => {
         try {
             setIsLoading(id);
+            // Stop the server in the service
+            await mcpService.stopServer(id);
             updateServerStatus(id, 'stopped');
-            // Note: In Phase 2, this will actually disconnect from the MCP server
-            // and handle real server lifecycle
         } catch (error) {
             console.error('Failed to stop server:', error);
             updateServerStatus(id, 'error');
@@ -104,6 +167,14 @@ export const MCPServerControl: React.FC = () => {
                                         }`}>
                                         {server.status}
                                     </span>
+                                    {server.status === 'running' && (
+                                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            {Object.entries(server.capabilities)
+                                                .filter(([_, enabled]) => enabled)
+                                                .map(([type]) => type)
+                                                .join(', ')}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="space-x-2">
                                     {server.status === 'stopped' ? (
@@ -131,7 +202,8 @@ export const MCPServerControl: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={() => removeServer(id)}
-                                        className="px-2 py-1 text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                        disabled={server.status === 'running'}
+                                        className="px-2 py-1 text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
                                     >
                                         Remove
                                     </button>
