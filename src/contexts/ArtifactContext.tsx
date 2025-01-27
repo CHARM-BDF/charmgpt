@@ -1,15 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import { Artifact } from '../components/ArtifactList'
-
-interface ArtifactContextType {
-  activeArtifact: Artifact | null
-  setActiveArtifact: (artifact: Artifact | null) => void
-  addArtifact: (code: string, output: string, type: 'code' | 'visualization') => void
-  artifacts: Artifact[]
-  runArtifact: (artifact: Artifact) => Promise<void>
-}
-
-const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined)
+import { ArtifactContext } from './ArtifactContext.types'
 
 export function ArtifactProvider({ children }: { children: ReactNode }) {
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null)
@@ -17,7 +8,7 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
 
   const addArtifact = (code: string, output: string, type: 'code' | 'visualization') => {
     const newArtifact: Artifact = {
-      id: Date.now(), // Simple way to generate unique IDs
+      id: Date.now(),
       code,
       output,
       timestamp: new Date(),
@@ -40,14 +31,12 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
       const result = await response.json()
 
       if (result.visualization) {
-        // Create a new visualization artifact
         addArtifact(
           artifact.code,
           result.visualization,
           'visualization'
         )
       } else {
-        // Update the artifact with new output
         const updatedArtifact = {
           ...artifact,
           output: result.output,
@@ -72,12 +61,4 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
       {children}
     </ArtifactContext.Provider>
   )
-}
-
-export function useArtifact() {
-  const context = useContext(ArtifactContext)
-  if (context === undefined) {
-    throw new Error('useArtifact must be used within an ArtifactProvider')
-  }
-  return context
 } 

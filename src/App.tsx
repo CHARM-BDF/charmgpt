@@ -5,7 +5,8 @@ import CodeEditor from './components/CodeEditor'
 import DataVisualizer from './components/DataVisualizer'
 import ArtifactList from './components/ArtifactList'
 import { useEffect } from 'react'
-import { ArtifactProvider, useArtifact } from './contexts/ArtifactContext'
+import { ArtifactProvider } from './contexts/ArtifactContext'
+import { useArtifact } from './contexts/useArtifact'
 
 const theme = createTheme({
   // You can customize your theme here
@@ -57,7 +58,7 @@ function MainContent() {
   )
 }
 
-function App() {
+export default function App() {
   useEffect(() => {
     document.title = 'CHARMGPT'
   }, [])
@@ -71,5 +72,3 @@ function App() {
     </ThemeProvider>
   )
 }
-
-export default App

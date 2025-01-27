@@ -2,7 +2,7 @@ import { Box, List, ListItem, Typography, Divider, IconButton } from '@mui/mater
 import CodeIcon from '@mui/icons-material/Code'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import { useArtifact } from '../contexts/ArtifactContext'
+import { useArtifact } from '../contexts/useArtifact'
 
 export interface Artifact {
   id: number

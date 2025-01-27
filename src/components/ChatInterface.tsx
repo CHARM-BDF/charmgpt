@@ -2,7 +2,7 @@ import { Box, TextField, Button, Stack, Paper, Typography, CircularProgress } fr
 import SendIcon from '@mui/icons-material/Send'
 import { useState } from 'react'
 import { chatWithLLM } from '../services/api'
-import { useArtifact } from '../contexts/ArtifactContext'
+import { useArtifact } from '../contexts/useArtifact'
 
 interface Message {
   role: 'user' | 'assistant'

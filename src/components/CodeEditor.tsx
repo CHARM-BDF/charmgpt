@@ -1,6 +1,6 @@
 import Editor from '@monaco-editor/react'
 import { Box } from '@mui/material'
-import { useArtifact } from '../contexts/ArtifactContext'
+import { useArtifact } from '../contexts/useArtifact'
 import { useState } from 'react'
 import ActionButtons from './ActionButtons'
 

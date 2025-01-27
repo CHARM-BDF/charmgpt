@@ -1,6 +1,6 @@
 import { Box, MenuItem, TextField, Typography, Paper } from '@mui/material'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import { useArtifact } from '../contexts/ArtifactContext'
+import { useArtifact } from '../contexts/useArtifact'
 
 const sampleData = [
   { name: 'Jan', value: 400 },
