@@ -2,6 +2,7 @@ import { Box, TextField, Button, Stack, Paper, Typography, CircularProgress } fr
 import SendIcon from '@mui/icons-material/Send'
 import { useState } from 'react'
 import { chatWithLLM } from '../services/api'
+import { useArtifact } from '../contexts/ArtifactContext'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -13,6 +14,24 @@ export default function ChatInterface() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { addArtifact } = useArtifact()
+
+  const parseCodeFromResponse = (response: string) => {
+    // Look for code blocks with ```python
+    const pythonCodeRegex = /```python\n([\s\S]*?)```/g
+    const matches = [...response.matchAll(pythonCodeRegex)]
+    
+    matches.forEach(match => {
+      const code = match[1].trim()
+      // For now, we'll use the code itself as output since we're not executing it
+      addArtifact(code, 'Code from chat response', 'code')
+    })
+
+    // Return the response with code blocks removed or marked
+    return response.replace(pythonCodeRegex, (match, code) => {
+      return `[Code added to editor]\n${match}`
+    })
+  }
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -33,9 +52,12 @@ export default function ChatInterface() {
         model: 'qwen2.5'
       })
 
+      // Parse code blocks and create artifacts
+      const processedResponse = parseCodeFromResponse(response)
+
       const assistantMessage: Message = {
         role: 'assistant',
-        content: response
+        content: processedResponse
       }
 
       setMessages(prev => [...prev, assistantMessage])
