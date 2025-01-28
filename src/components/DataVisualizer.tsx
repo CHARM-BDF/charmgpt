@@ -1,5 +1,4 @@
 import { Box, Typography, Paper } from '@mui/material'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { useArtifact } from '../contexts/useArtifact'
 import { useEffect } from 'react'
 import { API_BASE_URL, PLOT_PATH } from '../config/index'
