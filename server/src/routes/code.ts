@@ -1,8 +1,15 @@
 import { Router } from 'express'
 import { DockerService } from '../services/docker'
+import * as path from 'path'
 
 const router = Router()
 const dockerService = new DockerService()
+
+// Serve static files from temp directory
+router.get('/plots/:filename', (req, res) => {
+  const plotPath = path.join(process.cwd(), 'temp', req.params.filename)
+  res.sendFile(plotPath)
+})
 
 router.post('/run-code', async (req, res) => {
   try {

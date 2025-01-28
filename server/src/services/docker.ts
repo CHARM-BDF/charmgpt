@@ -74,6 +74,7 @@ export class DockerService {
   }
 
   private wrapCode(code: string): string {
+    void code;
     return `
 import sys
 import json
@@ -92,7 +93,10 @@ try:
     
     # Check if there's a plot to save
     if plt.get_fignums():
-        # Convert plot to visualization data
+        # Save plot as PNG
+        plt.savefig('/app/output/plot.png')
+        
+        # Also save data for interactive visualization
         fig = plt.gcf()
         data = []
         for ax in fig.axes:
@@ -101,7 +105,6 @@ try:
                 y_data = line.get_ydata().tolist()
                 data.extend([{"name": str(x), "value": y} for x, y in zip(x_data, y_data)])
         
-        # Save visualization data
         with open('/app/output/output.json', 'w') as f:
             json.dump(data, f)
         

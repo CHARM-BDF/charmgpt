@@ -1,6 +1,7 @@
 import { Box, MenuItem, TextField, Typography, Paper } from '@mui/material'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { useArtifact } from '../contexts/useArtifact'
+import { API_BASE_URL, PLOT_PATH } from '../config'
 
 const sampleData = [
   { name: 'Jan', value: 400 },
@@ -14,19 +15,22 @@ export default function DataVisualizer() {
   const { activeArtifact } = useArtifact()
 
   const getVisualizationData = () => {
-    if (!activeArtifact) return sampleData
+    // First check if we have an active artifact
+    if (!activeArtifact) return null
     
-    if (activeArtifact.type === 'visualization') {
-      try {
-        return JSON.parse(activeArtifact.output)
-      } catch (error) {
-        console.warn('Failed to parse visualization data:', error)
-        return sampleData
-      }
+    // Then check if it's a visualization type
+    if (activeArtifact.type !== 'visualization') return null
+
+    // Finally try to parse the output
+    try {
+      return JSON.parse(activeArtifact.output)
+    } catch (error) {
+      console.warn('Failed to parse visualization data:', error)
+      return null
     }
-    
-    return sampleData
   }
+
+  const plotData = getVisualizationData()
 
   return (
     <Box sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
@@ -35,26 +39,27 @@ export default function DataVisualizer() {
         {/* Left side: Visualization */}
         <Box sx={{ flex: 1 }}>
           <Typography variant="subtitle2" gutterBottom>Visualization</Typography>
-          <TextField
-            select
-            fullWidth
-            label="Type"
-            defaultValue="line"
-            size="small"
-            sx={{ mb: 2 }}
-          >
-            <MenuItem value="line">Line Chart</MenuItem>
-            <MenuItem value="bar">Bar Chart</MenuItem>
-            <MenuItem value="scatter">Scatter Plot</MenuItem>
-          </TextField>
-          
-          <LineChart width={400} height={250} data={getVisualizationData()}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Line type="monotone" dataKey="value" stroke="#8884d8" />
-          </LineChart>
+          {plotData ? (
+            <LineChart width={400} height={250} data={plotData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="value" stroke="#8884d8" />
+            </LineChart>
+          ) : (
+            activeArtifact?.type === 'visualization' && (
+              <Box 
+                component="img"
+                src={`${PLOT_PATH}/plot.png`}
+                sx={{ 
+                  maxWidth: '100%',
+                  height: 'auto',
+                  objectFit: 'contain'
+                }}
+              />
+            )
+          )}
         </Box>
 
         {/* Right side: Output */}
