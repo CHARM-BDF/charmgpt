@@ -1,0 +1,46 @@
+{
+    "mcpServers": {
+      "filesystem": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+          "/Users/andycrouse/Desktop",
+          "/Users/andycrouse/Downloads",
+          "/Users/andycrouse/Documents/GitHub/MCP/pubmed-mcp"
+        ]
+      },
+      "brave-search": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-brave-search/dist/index.js"
+        ],
+        "env": {
+          "BRAVE_API_KEY": "BSArGWRNVAC-LCtTM-rxk9v799h3Abd"
+        }
+      },
+      "pubmed": {
+        "command": "node",
+        "args": [
+          "/Users/andycrouse/Documents/GitHub/MCP/pubmed-mcp/dist/server.js"
+        ]
+      },
+      "server-sequential-thinking": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"
+        ]
+      },
+      "memory": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-memory/dist/index.js"
+        ]
+      },
+      "string-db": {
+        "command": "node",
+        "args": [
+          "/Users/andycrouse/Documents/GitHub/MCP/string-db-mcp/dist/index.js"
+        ]
+      }
+    }
+}

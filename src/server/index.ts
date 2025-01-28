@@ -4,8 +4,15 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 import { parseString } from 'xml2js';
 import { promisify } from 'util';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import MCPServerManager from '../utils/mcpServerManager';
 
 const parseXML = promisify(parseString);
+
+// ES Module dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Define repair strategies
 const repairStrategies = [
@@ -58,6 +65,12 @@ interface XMLResponse {
     };
 }
 
+// Add new interface for server status response
+interface ServerStatus {
+    name: string;
+    isRunning: boolean;
+}
+
 dotenv.config();
 
 const app = express();
@@ -67,6 +80,10 @@ const port = process.env.PORT || 3000;
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Initialize MCP Server Manager
+const mcpConfigPath = path.join(__dirname, '../config/mcp_server_config.json');
+const mcpManager = new MCPServerManager(mcpConfigPath);
 
 interface ChatRequest {
     message: string;
@@ -561,9 +578,36 @@ All text within tags should use markdown formatting. Here's how to format differ
     }
 });
 
-app.listen(port, () => {
-    const now = new Date();
-    const timestamp = now.toLocaleString();
-    console.log(`Hot reload at: ${timestamp}`);
-    console.log(`Server running at http://localhost:${port}`);
+// Add new endpoint for server status
+app.get('/api/server-status', (req: Request, res: Response) => {
+    try {
+        const serverNames = mcpManager.getServerNames();
+        const serverStatuses: ServerStatus[] = serverNames.map(serverName => ({
+            name: serverName,
+            isRunning: mcpManager.isServerRunning(serverName)
+        }));
+
+        res.json({ servers: serverStatuses });
+    } catch (error) {
+        console.error('Failed to get server status:', error);
+        res.status(500).json({
+            error: 'Failed to get server status',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+
+app.listen(port, async () => {
+    try {
+        // Start all MCP servers
+        await mcpManager.startAllServers();
+        
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+        console.log(`Hot reload at: ${timestamp}`);
+        console.log(`Server running at http://localhost:${port}`);
+    } catch (error) {
+        console.error('Failed to start MCP servers:', error);
+        process.exit(1);
+    }
 });
