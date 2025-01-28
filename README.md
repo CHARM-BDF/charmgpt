@@ -40,7 +40,6 @@ npm install
 
 3. Build the Docker image:
 ```bash
-cd server
 docker build -t my-python-app .
 ```
 
