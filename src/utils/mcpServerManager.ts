@@ -237,6 +237,52 @@ class MCPServerManager {
   getServerTools(serverName: string): any[] | undefined {
     return this.serverTools.get(serverName);
   }
+
+  async callTool(serverName: string, toolName: string, args: Record<string, unknown>): Promise<any> {
+    const serverProcess = this.servers.get(serverName);
+    if (!serverProcess || serverProcess.exitCode !== null) {
+      throw new Error(`Server ${serverName} is not running`);
+    }
+
+    return new Promise((resolve, reject) => {
+      const responseHandler = (data: Buffer) => {
+        const message = data.toString().trim();
+        try {
+          const parsed = JSON.parse(message);
+          // Check if this is the response to our tool call
+          if (parsed.id === 3) { // We use id 3 for tool calls
+            serverProcess.stdout?.removeListener('data', responseHandler);
+            if (parsed.error) {
+              reject(new Error(parsed.error.message));
+            } else {
+              resolve(parsed.result);
+            }
+          }
+        } catch (e) {
+          // Not JSON or not the response we're looking for
+        }
+      };
+
+      serverProcess.stdout?.on('data', responseHandler);
+
+      // Send the tool call request
+      serverProcess.stdin?.write(JSON.stringify({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: {
+          name: toolName,
+          arguments: args
+        }
+      }) + "\n");
+
+      // Set a timeout to prevent hanging
+      setTimeout(() => {
+        serverProcess.stdout?.removeListener('data', responseHandler);
+        reject(new Error('Tool call timed out'));
+      }, 30000); // 30 second timeout
+    });
+  }
 }
 
 export default MCPServerManager; 
