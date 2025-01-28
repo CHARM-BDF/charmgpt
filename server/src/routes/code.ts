@@ -26,9 +26,13 @@ router.delete('/plots/:filename', async (req, res) => {
 
 router.post('/run-code', async (req, res) => {
   try {
-    const { code } = req.body
+    const { code, timestamp } = req.body
+    console.log('Running code at:', new Date(timestamp))
     const result = await dockerService.runCode(code)
-    res.json(result)
+    res.json({
+      ...result,
+      timestamp  // Return the timestamp to confirm we're getting fresh results
+    })
   } catch (error) {
     console.error('Error running code:', error)
     res.status(500).json({ error: 'Failed to run code' })
