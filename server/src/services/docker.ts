@@ -29,28 +29,33 @@ export class DockerService {
 
   async runCode(code: string): Promise<DockerRunResult> {
     const runId = uuidv4()
-    const scriptPath = path.join(this.tempDir, `${runId}.py`)
+    const wrapperPath = path.join(this.tempDir, `${runId}_wrapper.py`)
+    const userCodePath = path.join(this.tempDir, `${runId}_user_code.py`)
     const outputPath = path.join(this.tempDir, `${runId}_output.json`)
 
     try {
-      // Wrap the code to capture output and visualizations
+      // Save both files
       const wrappedCode = this.wrapCode(code)
-      await fs.writeFile(scriptPath, wrappedCode)
+      await Promise.all([
+        fs.writeFile(wrapperPath, wrappedCode),
+        fs.writeFile(userCodePath, code)
+      ])
 
       // Run the code in Docker
-      const result = await this.runDocker(runId, scriptPath)
+      const result = await this.runDocker(runId, wrapperPath, userCodePath)
       
       // Check for visualization output
       let vizData: string | undefined
       try {
         vizData = await fs.readFile(outputPath, 'utf-8')
-      } catch (error) {
+      } catch {
         // No visualization data available
       }
 
       // Cleanup
       await Promise.all([
-        fs.unlink(scriptPath).catch(() => {}),
+        fs.unlink(wrapperPath).catch(() => {}),
+        fs.unlink(userCodePath).catch(() => {}),
         fs.unlink(outputPath).catch(() => {})
       ])
 
@@ -83,8 +88,7 @@ sys.stdout = output_buffer
 
 # Execute user code
 try:
-    # Indent the user's code by 4 spaces
-    ${code.split('\n').map(line => '    ' + line).join('\n')}
+    import user_code
     
     # Check if there's a plot to save
     if plt.get_fignums():
@@ -112,19 +116,20 @@ print(output_buffer.getvalue())
 `
   }
 
-  private runDocker(runId: string, scriptPath: string): Promise<string> {
+  private runDocker(runId: string, wrapperPath: string, userCodePath: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const docker = spawn('docker', [
         'run',
         '--rm',
-        '-v', `${scriptPath}:/app/script.py:ro`,
+        '-v', `${wrapperPath}:/app/wrapper.py:ro`,
+        '-v', `${userCodePath}:/app/user_code.py:ro`,
         '-v', `${this.tempDir}:/app/output`,
-        '--network', 'none', // Disable network access
-        '--memory', '512m',  // Limit memory
-        '--cpus', '0.5',     // Limit CPU
+        '--network', 'none',
+        '--memory', '512m',
+        '--cpus', '0.5',
         this.imageTag,
         'python',
-        '/app/script.py'
+        '/app/wrapper.py'
       ])
 
       let output = ''

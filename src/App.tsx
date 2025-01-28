@@ -24,30 +24,54 @@ function MainContent() {
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
-      <Grid container sx={{ flex: 1 }} spacing={1}>
-        <Grid item xs={9}>
+      <Grid container sx={{ flex: 1, height: '100%' }} spacing={1}>
+        <Grid item xs={9} sx={{ height: '100%' }}>
           <Grid container direction="column" spacing={1} sx={{ height: '100%' }}>
-            <Grid item xs={6}>
-              <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+            <Grid item xs={6} sx={{ minHeight: 0 }}>
+              <Box sx={{ 
+                height: '100%', 
+                bgcolor: 'background.paper', 
+                borderRadius: 1, 
+                boxShadow: 1,
+                overflow: 'hidden'
+              }}>
                 <CodeEditor />
               </Box>
             </Grid>
-            <Grid item xs={6}>
-              <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+            <Grid item xs={6} sx={{ minHeight: 0 }}>
+              <Box sx={{ 
+                height: '100%', 
+                bgcolor: 'background.paper', 
+                borderRadius: 1, 
+                boxShadow: 1,
+                overflow: 'hidden'
+              }}>
                 <DataVisualizer />
               </Box>
             </Grid>
           </Grid>
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={3} sx={{ height: '100%' }}>
           <Grid container direction="column" spacing={1} sx={{ height: '100%' }}>
-            <Grid item xs={6}>
-              <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+            <Grid item xs={6} sx={{ minHeight: 0 }}>
+              <Box sx={{ 
+                height: '100%', 
+                bgcolor: 'background.paper', 
+                borderRadius: 1, 
+                boxShadow: 1,
+                overflow: 'hidden'
+              }}>
                 <ArtifactList artifacts={artifacts} />
               </Box>
             </Grid>
-            <Grid item xs={6}>
-              <Box sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+            <Grid item xs={6} sx={{ minHeight: 0 }}>
+              <Box sx={{ 
+                height: '100%', 
+                bgcolor: 'background.paper', 
+                borderRadius: 1, 
+                boxShadow: 1,
+                overflow: 'hidden'
+              }}>
                 <ChatInterface />
               </Box>
             </Grid>
