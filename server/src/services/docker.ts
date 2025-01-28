@@ -83,7 +83,8 @@ sys.stdout = output_buffer
 
 # Execute user code
 try:
-    ${code}
+    # Indent the user's code by 4 spaces
+    ${code.split('\n').map(line => '    ' + line).join('\n')}
     
     # Check if there's a plot to save
     if plt.get_fignums():

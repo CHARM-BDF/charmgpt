@@ -12,9 +12,12 @@ app.use(express.json())
 
 // Routes
 app.use('/api/llm', LLMRouter)
-app.use('/api/run-code', CodeRouter)
+app.use('/api', CodeRouter)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
+  console.log('Available routes:')
+  console.log('- POST /api/llm/chat')
+  console.log('- POST /api/run-code')
 }) 
