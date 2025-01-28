@@ -579,7 +579,7 @@ All text within tags should use markdown formatting. Here's how to format differ
 });
 
 // Add new endpoint for server status
-app.get('/api/server-status', (req: Request, res: Response) => {
+app.get('/api/server-status', (_req: Request, res: Response) => {
     try {
         const serverNames = mcpManager.getServerNames();
         const serverStatuses: ServerStatus[] = serverNames.map(serverName => ({

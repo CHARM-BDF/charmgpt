@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { ArtifactWindow } from '../artifacts/ArtifactWindow';
@@ -8,10 +8,13 @@ import { ArtifactDrawer } from '../artifacts/ArtifactDrawer';
 // import { MCPServerControl } from '../mcp/MCPServerControl';
 import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
+import { MCPStatusModal } from '../mcp/MCPStatusModal';
+import { ServerIcon } from '@heroicons/react/24/outline';
 // import { useMCPStore } from '../../store/mcpStore';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat } = useChatStore();
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   // const { activeServer } = useMCPStore();
 
   return (
@@ -25,6 +28,13 @@ export const ChatInterface: React.FC = () => {
               {/* <MCPServerControl /> */}
             </div>
             <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setIsStatusModalOpen(true)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                title="Server Status"
+              >
+                <ServerIcon className="w-5 h-5" />
+              </button>
               <DarkModeToggle />
               <button
                 onClick={clearChat}
@@ -62,6 +72,11 @@ export const ChatInterface: React.FC = () => {
 
       {/* Artifact Drawer - Always mounted, visibility controlled by showList */}
       <ArtifactDrawer />
+
+      <MCPStatusModal 
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+      />
     </div>
   );
 };

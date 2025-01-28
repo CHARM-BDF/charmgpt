@@ -1,6 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
 import { readFileSync } from 'fs';
-import path from 'path';
 
 interface MCPServerConfig {
   command: string;
@@ -23,7 +22,21 @@ class MCPServerManager {
   private loadConfig(): MCPServersConfig {
     try {
       const configContent = readFileSync(this.configPath, 'utf-8');
-      return JSON.parse(configContent);
+      const config = JSON.parse(configContent) as MCPServersConfig;
+      
+      // Modify paths to be relative to project root
+      Object.values(config.mcpServers).forEach((server: MCPServerConfig) => {
+        if (server.args) {
+          server.args = server.args.map((arg: string) => {
+            if (arg.startsWith('./node_modules/')) {
+              return arg.replace('./', '');
+            }
+            return arg;
+          });
+        }
+      });
+      
+      return config;
     } catch (error) {
       console.error('Failed to load MCP server config:', error);
       throw error;
@@ -68,13 +81,21 @@ class MCPServerManager {
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
-        // Handle server output
+        // Handle server output - separate normal logs from actual errors
         serverProcess.stdout?.on('data', (data) => {
+          // Normal operational logs go to stdout
           console.log(`[${serverName}] ${data.toString().trim()}`);
         });
 
         serverProcess.stderr?.on('data', (data) => {
-          console.error(`[${serverName}] Error: ${data.toString().trim()}`);
+          const message = data.toString().trim();
+          // Check if it's actually an error or just a status message
+          if (message.includes('running on stdio') || message.includes('Allowed directories')) {
+            console.log(`[${serverName}] ${message}`);
+          } else {
+            // Real errors go to stderr
+            console.error(`[${serverName}] Error: ${message}`);
+          }
         });
 
         // Handle server exit

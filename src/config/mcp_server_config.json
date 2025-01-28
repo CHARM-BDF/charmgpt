@@ -36,6 +36,12 @@
           "./node_modules/@modelcontextprotocol/server-memory/dist/index.js"
         ]
       },
+      "puppeteer": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-puppeteer/dist/index.js"
+        ]
+      },
       "string-db": {
         "command": "node",
         "args": [
