@@ -1,54 +1,47 @@
-# CHARMGPT
+# CharmGPT
 
-A collaborative data science environment with LLM support. This project combines React, TypeScript, and Vite for the frontend with an Express/TypeScript backend that provides a unified interface for different LLM providers.
+A data science environment with integrated chat and visualization capabilities.
 
 ## Features
 
-- Interactive code editor for Python
-- Real-time chat interface with LLM support (Claude, Ollama)
-- Data visualization capabilities
-- Artifact history tracking
-- Support for multiple LLM providers
+- Interactive Python code execution
+- Real-time data visualization
+- Chat interface for assistance
+- History of code artifacts and outputs
+- Support for matplotlib plots
+- Code execution in isolated Docker containers
 
-## Getting Started
+## Setup
 
 ### Prerequisites
 
-- Docker
 - Node.js (v16 or higher)
-- npm (v7 or higher)
-- Ollama (if using local models)
-- Anthropic API key (if using Claude)
-
-## Docker Installation
-
-`docker build -t my-python-app .`
+- Docker
+- Python 3.x
 
 ### Installation
 
-1. Install client dependencies:
+1. Clone the repository:
 ```bash
-npm install
+git clone https://github.com/yourusername/charmgpt.git
+cd charmgpt
 ```
 
-2. Install server dependencies:
+2. Install dependencies:
 ```bash
+# Install frontend dependencies
+npm install
+
+# Install server dependencies
 cd server
 npm install
 ```
 
-### Configuration
-
-1. Create a `.env` file in the `server` directory:
-```env
-PORT=3000
-ANTHROPIC_API_KEY=your_anthropic_api_key
-OLLAMA_BASE_URL=http://localhost:11434
+3. Build the Docker image:
+```bash
+cd server
+docker build -t my-python-app .
 ```
-
-2. If using Ollama:
-   - Install Ollama from https://ollama.ai
-   - Pull your desired model: `ollama pull qwen2.5`
 
 ### Running the Application
 
@@ -58,65 +51,74 @@ cd server
 npm run dev
 ```
 
-2. In a new terminal, start the client:
+2. Start the frontend (in a new terminal):
 ```bash
 npm run dev
 ```
 
-The client will be available at http://localhost:5173
+3. Open your browser and navigate to `http://localhost:5173`
+
+## Usage
+
+### Code Execution
+
+1. Write or paste Python code in the code editor
+2. Click "Run" to execute the code
+3. View results in the output panel
+
+### Data Visualization
+
+The application supports matplotlib plots. Here's an example:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Generate random data
+np.random.seed(42)
+data = np.random.randn(1000)
+
+# Create a histogram
+plt.figure(figsize=(10, 6))
+plt.hist(data, bins=30, alpha=0.7, color='blue')
+plt.title('Histogram of Random Data')
+plt.xlabel('Value')
+plt.ylabel('Frequency')
+plt.grid(True)
+
+print(f"Mean: {data.mean():.2f}")
+print(f"Std Dev: {data.std():.2f}")
+```
+
+### Artifacts
+
+- Code and its output are saved as artifacts
+- Visualizations are automatically captured and displayed
+- Previous artifacts can be rerun or modified
+
+## Security
+
+- Code execution happens in isolated Docker containers
+- Network access is disabled by default
+- Memory and CPU limits are enforced
 
 ## Project Structure
 
 ```
-├── src/                  # Client source code
-│   ├── components/       # React components
-│   └── services/        # API services
-├── server/              # Server source code
-│   ├── src/
-│   │   ├── routes/     # Express routes
-│   │   └── services/   # LLM services
-│   └── .env            # Server configuration
+charmgpt/
+├── src/                    # Frontend source code
+│   ├── components/         # React components
+│   ├── contexts/          # React contexts
+│   └── config/            # Configuration files
+├── server/                # Backend server
+│   ├── src/              # Server source code
+│   └── Dockerfile        # Python environment
 └── README.md
 ```
 
-## Expanding the ESLint configuration
+## Technologies
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
-
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+- Frontend: React, TypeScript, Material-UI
+- Backend: Node.js, Express
+- Code Execution: Docker, Python
+- Visualization: Matplotlib
