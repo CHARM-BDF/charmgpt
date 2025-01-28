@@ -6,7 +6,8 @@ import * as path from 'path'
 interface DockerRunResult {
   success: boolean
   output: string
-  visualization?: string // JSON string for visualization data
+  visualization?: string  // JSON string for visualization data
+  plotFile?: string      // Name of the plot file if generated
 }
 
 export class DockerService {
@@ -32,38 +33,71 @@ export class DockerService {
     const wrapperPath = path.join(this.tempDir, `${runId}_wrapper.py`)
     const userCodePath = path.join(this.tempDir, `${runId}_user_code.py`)
     const outputPath = path.join(this.tempDir, `${runId}_output.json`)
+    const plotPath = path.join(this.tempDir, `${runId}_plot.png`)
 
     try {
+      console.log('Running code with ID:', runId)
+      
       // Save both files
-      const wrappedCode = this.wrapCode(code)
+      const wrappedCode = this.wrapCode(runId)
       await Promise.all([
         fs.writeFile(wrapperPath, wrappedCode),
         fs.writeFile(userCodePath, code)
       ])
+      console.log('Saved code files')
 
       // Run the code in Docker
       const result = await this.runDocker(runId, wrapperPath, userCodePath)
+      console.log('Docker execution result:', result)
       
       // Check for visualization output
       let vizData: string | undefined
+      let plotFile: string | undefined
+      
       try {
         vizData = await fs.readFile(outputPath, 'utf-8')
-      } catch {
-        // No visualization data available
+        console.log('Found visualization data')
+      } catch (error) {
+        console.log('No visualization data found:', error)
       }
 
-      // Cleanup
+      // Check if plot file exists
+      try {
+        await fs.access(plotPath)
+        plotFile = `${runId}_plot.png`
+        console.log('Found plot file:', plotFile)
+      } catch (error) {
+        void error;
+        console.log('No plot file found at:', plotPath)
+        // Try checking for generic plot files
+        try {
+          const genericPlotPath = path.join(this.tempDir, 'plot.png')
+          await fs.access(genericPlotPath)
+          // If found, rename it to include runId
+          await fs.rename(genericPlotPath, plotPath)
+          plotFile = `${runId}_plot.png`
+          console.log('Found and renamed generic plot file:', plotFile)
+        } catch (error) {
+          void error;
+          console.log('No generic plot file found either')
+        }
+      }
+
+      // Only cleanup the Python files
       await Promise.all([
         fs.unlink(wrapperPath).catch(() => {}),
-        fs.unlink(userCodePath).catch(() => {}),
-        fs.unlink(outputPath).catch(() => {})
+        fs.unlink(userCodePath).catch(() => {})
       ])
 
-      return {
+      const response = {
         success: true,
         output: result,
-        visualization: vizData
+        visualization: vizData,
+        plotFile
       }
+      console.log('Returning response:', response)
+      return response
+
     } catch (error) {
       console.error('Error running code:', error)
       return {
@@ -73,8 +107,7 @@ export class DockerService {
     }
   }
 
-  private wrapCode(code: string): string {
-    void code;
+  private wrapCode(runId: string): string {
     return `
 import sys
 import json
@@ -82,6 +115,9 @@ from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+
+# Set the runId for the plot filename
+runId = '${runId}'
 
 # Capture print output
 output_buffer = StringIO()
@@ -93,8 +129,11 @@ try:
     
     # Check if there's a plot to save
     if plt.get_fignums():
-        # Save plot as PNG
-        plt.savefig('/app/output/plot.png')
+        print("Found plot, saving...")
+        # Save plot as PNG with unique name
+        plot_path = f'/app/output/{runId}_plot.png'
+        plt.savefig(plot_path)
+        print(f"Saved plot to {plot_path}")
         
         # Also save data for interactive visualization
         fig = plt.gcf()
@@ -107,6 +146,9 @@ try:
         
         with open('/app/output/output.json', 'w') as f:
             json.dump(data, f)
+            print("Saved visualization data")
+    else:
+        print("No plots found")
         
     plt.close('all')
     

@@ -10,6 +10,7 @@ export interface Artifact {
   output: string
   timestamp: Date
   type: 'visualization' | 'code'
+  plotFile?: string
 }
 
 interface ArtifactListProps {

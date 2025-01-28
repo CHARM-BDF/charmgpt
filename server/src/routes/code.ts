@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { DockerService } from '../services/docker'
 import * as path from 'path'
+import * as fs from 'fs/promises'
 
 const router = Router()
 const dockerService = new DockerService()
@@ -9,6 +10,18 @@ const dockerService = new DockerService()
 router.get('/plots/:filename', (req, res) => {
   const plotPath = path.join(process.cwd(), 'temp', req.params.filename)
   res.sendFile(plotPath)
+})
+
+// Cleanup endpoint
+router.delete('/plots/:filename', async (req, res) => {
+  try {
+    const plotPath = path.join(process.cwd(), 'temp', req.params.filename)
+    await fs.unlink(plotPath)
+    res.json({ success: true })
+  } catch (error) {
+    void error;
+    res.status(500).json({ error: 'Failed to delete plot file' })
+  }
 })
 
 router.post('/run-code', async (req, res) => {

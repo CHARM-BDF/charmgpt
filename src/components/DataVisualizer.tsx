@@ -1,68 +1,71 @@
-import { Box, MenuItem, TextField, Typography, Paper } from '@mui/material'
+import { Box, Typography, Paper } from '@mui/material'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { useArtifact } from '../contexts/useArtifact'
-import { API_BASE_URL, PLOT_PATH } from '../config'
-
-const sampleData = [
-  { name: 'Jan', value: 400 },
-  { name: 'Feb', value: 300 },
-  { name: 'Mar', value: 600 },
-  { name: 'Apr', value: 800 },
-  { name: 'May', value: 700 }
-]
+import { useEffect } from 'react'
+import { API_BASE_URL, PLOT_PATH } from '../config/index'
 
 export default function DataVisualizer() {
   const { activeArtifact } = useArtifact()
+  
+  console.log('Active artifact:', activeArtifact)
 
-  const getVisualizationData = () => {
-    // First check if we have an active artifact
-    if (!activeArtifact) return null
-    
-    // Then check if it's a visualization type
-    if (activeArtifact.type !== 'visualization') return null
-
-    // Finally try to parse the output
-    try {
-      return JSON.parse(activeArtifact.output)
-    } catch (error) {
-      console.warn('Failed to parse visualization data:', error)
-      return null
+  // Cleanup plot files when component unmounts or artifact changes
+  useEffect(() => {
+    return () => {
+      if (activeArtifact?.plotFile) {
+        fetch(`${API_BASE_URL}/plots/${activeArtifact.plotFile}`, {
+          method: 'DELETE'
+        }).catch(console.error)
+      }
     }
-  }
+  }, [activeArtifact?.plotFile])
 
-  const plotData = getVisualizationData()
+  useEffect(() => {
+    if (activeArtifact?.plotFile) {
+      const plotUrl = `${PLOT_PATH}/${activeArtifact.plotFile}`
+      console.log('Plot URL:', plotUrl)
+      
+      // Test if the image is accessible
+      fetch(plotUrl)
+        .then(response => {
+          console.log('Plot fetch response:', response.status, response.statusText)
+        })
+        .catch(error => {
+          console.error('Plot fetch error:', error)
+        })
+    }
+  }, [activeArtifact?.plotFile])
 
   return (
     <Box sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
       <Typography variant="subtitle1" sx={{ mb: 2 }}>Results</Typography>
       <Box sx={{ display: 'flex', gap: 2, flex: 1 }}>
-        {/* Left side: Visualization */}
         <Box sx={{ flex: 1 }}>
           <Typography variant="subtitle2" gutterBottom>Visualization</Typography>
-          {plotData ? (
-            <LineChart width={400} height={250} data={plotData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#8884d8" />
-            </LineChart>
-          ) : (
-            activeArtifact?.type === 'visualization' && (
+          {activeArtifact?.plotFile && (
+            <>
               <Box 
                 component="img"
-                src={`${PLOT_PATH}/plot.png`}
+                src={`${PLOT_PATH}/${activeArtifact.plotFile}`}
                 sx={{ 
                   maxWidth: '100%',
                   height: 'auto',
                   objectFit: 'contain'
                 }}
+                onError={(e) => {
+                  console.error('Image load error:', e)
+                }}
+                onLoad={() => {
+                  console.log('Image loaded successfully')
+                }}
               />
-            )
+              <Typography variant="caption" color="text.secondary">
+                Plot file: {activeArtifact.plotFile}
+              </Typography>
+            </>
           )}
         </Box>
 
-        {/* Right side: Output */}
         <Box sx={{ flex: 1 }}>
           <Typography variant="subtitle2" gutterBottom>Output</Typography>
           <Paper 
