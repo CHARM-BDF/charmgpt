@@ -1,14 +1,13 @@
 # CharmGPT
 
-A data science environment with integrated chat and visualization capabilities.
+A collaborative data science environment with integrated chat and visualization capabilities. This project combines React and TypeScript for the frontend with an Express backend that provides unified interfaces for LLM providers and Python code execution.
 
 ## Features
 
-- Interactive Python code execution
-- Real-time data visualization
-- Chat interface for assistance
+- Interactive Python code execution with matplotlib visualization
+- Real-time chat interface with LLM support (Claude, Ollama)
 - History of code artifacts and outputs
-- Support for matplotlib plots
+- Support for multiple LLM providers
 - Code execution in isolated Docker containers
 
 ## Setup
@@ -18,6 +17,8 @@ A data science environment with integrated chat and visualization capabilities.
 - Node.js (v16 or higher)
 - Docker
 - Python 3.x
+- Ollama (if using local models)
+- Anthropic API key (if using Claude)
 
 ### Installation
 
@@ -43,6 +44,25 @@ cd server
 docker build -t my-python-app .
 ```
 
+### Configuration
+
+1. Create a `.env` file in the `server` directory:
+```env
+PORT=3000
+ANTHROPIC_API_KEY=your_anthropic_api_key
+OLLAMA_BASE_URL=http://localhost:11434
+DEFAULT_LLM_PROVIDER=ollama  # or 'claude'
+```
+
+2. If using Ollama:
+   - Install Ollama from https://ollama.ai
+   - Pull your desired model: `ollama pull qwen2.5`
+
+3. LLM Provider Selection:
+   - Set DEFAULT_LLM_PROVIDER to 'ollama' for local execution
+   - Set DEFAULT_LLM_PROVIDER to 'claude' for Anthropic's Claude
+   - When using Claude, make sure ANTHROPIC_API_KEY is set
+
 ### Running the Application
 
 1. Start the server:
@@ -60,16 +80,13 @@ npm run dev
 
 ## Usage
 
-### Code Execution
+### Code Execution & Visualization
 
 1. Write or paste Python code in the code editor
 2. Click "Run" to execute the code
-3. View results in the output panel
+3. View results and plots in the output panels
 
-### Data Visualization
-
-The application supports matplotlib plots. Here's an example:
-
+Example visualization code:
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
@@ -90,6 +107,23 @@ print(f"Mean: {data.mean():.2f}")
 print(f"Std Dev: {data.std():.2f}")
 ```
 
+### Chat Interface
+
+The chat interface supports two LLM providers:
+
+1. Claude (Anthropic):
+   - Requires API key in `.env`
+   - Higher quality responses
+   - Better code understanding
+
+2. Ollama (Local):
+   - Free and runs locally
+   - No API key needed
+   - Faster responses
+   - Supports multiple models
+
+You can switch between providers in the chat interface.
+
 ### Artifacts
 
 - Code and its output are saved as artifacts
@@ -101,6 +135,7 @@ print(f"Std Dev: {data.std():.2f}")
 - Code execution happens in isolated Docker containers
 - Network access is disabled by default
 - Memory and CPU limits are enforced
+- API keys are stored server-side only
 
 ## Project Structure
 
@@ -111,7 +146,10 @@ charmgpt/
 │   ├── contexts/          # React contexts
 │   └── config/            # Configuration files
 ├── server/                # Backend server
-│   ├── src/              # Server source code
+│   ├── src/
+│   │   ├── routes/       # Express routes
+│   │   ├── services/     # Docker and LLM services
+│   │   └── config/       # Server configuration
 │   └── Dockerfile        # Python environment
 └── README.md
 ```
@@ -122,3 +160,4 @@ charmgpt/
 - Backend: Node.js, Express
 - Code Execution: Docker, Python
 - Visualization: Matplotlib
+- LLM Integration: Claude API, Ollama
