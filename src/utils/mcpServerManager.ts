@@ -13,6 +13,7 @@ interface MCPServersConfig {
 
 class MCPServerManager {
   private servers: Map<string, ChildProcess> = new Map();
+  private serverTools: Map<string, any[]> = new Map();
   private configPath: string;
 
   constructor(configPath: string) {
@@ -172,6 +173,69 @@ class MCPServerManager {
   getServerNames(): string[] {
     const config = this.loadConfig();
     return Object.keys(config.mcpServers);
+  }
+
+  async fetchServerTools(serverName: string): Promise<any[] | undefined> {
+    const serverProcess = this.servers.get(serverName);
+    if (!serverProcess || serverProcess.exitCode !== null) {
+      return undefined;
+    }
+
+    return new Promise((resolve) => {
+      const responseHandler = (data: Buffer) => {
+        const message = data.toString().trim();
+        try {
+          const parsed = JSON.parse(message);
+          if (parsed.result?.tools) {
+            this.serverTools.set(serverName, parsed.result.tools);
+            serverProcess.stdout?.removeListener('data', responseHandler);
+            resolve(parsed.result.tools);
+          }
+        } catch (e) {
+          // Not JSON or not the response we're looking for
+        }
+      };
+
+      serverProcess.stdout?.on('data', responseHandler);
+
+      // Initialize the server and request tools
+      serverProcess.stdin?.write(JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2024-11-05",
+          clientInfo: {
+            name: "test-client",
+            version: "1.0.0"
+          },
+          capabilities: {
+            tools: {},
+            resources: {},
+            prompts: {}
+          }
+        }
+      }) + "\n");
+
+      setTimeout(() => {
+        serverProcess.stdin?.write(JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/list",
+          params: {}
+        }) + "\n");
+      }, 500);
+
+      // Set a timeout to resolve with undefined if we don't get a response
+      setTimeout(() => {
+        serverProcess.stdout?.removeListener('data', responseHandler);
+        resolve(undefined);
+      }, 5000);
+    });
+  }
+
+  getServerTools(serverName: string): any[] | undefined {
+    return this.serverTools.get(serverName);
   }
 }
 

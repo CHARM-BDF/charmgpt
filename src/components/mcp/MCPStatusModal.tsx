@@ -26,7 +26,7 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
             <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
             
             <div className="fixed inset-0 flex items-center justify-center p-4">
-                <Dialog.Panel className="mx-auto max-w-sm rounded-lg bg-white p-6 shadow-xl">
+                <Dialog.Panel className="mx-auto w-[900px] max-h-[80vh] rounded-lg bg-white p-6 shadow-xl">
                     <div className="flex justify-between items-center mb-4">
                         <Dialog.Title className="text-lg font-medium">
                             MCP Server Status
@@ -40,20 +40,38 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                         </button>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="overflow-y-auto max-h-[calc(80vh-8rem)] space-y-3">
                         {servers.map(server => (
-                            <div key={server.name} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <span className="font-medium">{server.name}</span>
-                                <div className="flex items-center">
-                                    <div 
-                                        className={`w-3 h-3 rounded-full ${
-                                            server.isRunning ? 'bg-green-500' : 'bg-red-500'
-                                        }`}
-                                    />
-                                    <span className="ml-2 text-sm text-gray-600">
-                                        {server.isRunning ? 'Running' : 'Stopped'}
-                                    </span>
+                            <div key={server.name} className="flex flex-col p-4 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="font-medium">{server.name}</span>
+                                    <div className="flex items-center">
+                                        <div 
+                                            className={`w-3 h-3 rounded-full ${
+                                                server.isRunning ? 'bg-green-500' : 'bg-red-500'
+                                            }`}
+                                        />
+                                        <span className="ml-2 text-sm text-gray-600">
+                                            {server.isRunning ? 'Running' : 'Stopped'}
+                                        </span>
+                                    </div>
                                 </div>
+                                
+                                {server.isRunning && server.tools && server.tools.length > 0 && (
+                                    <div className="mt-2 pl-4 border-l-2 border-gray-200">
+                                        <div className="text-sm font-medium text-gray-500 mb-1">Available Tools:</div>
+                                        <div className="space-y-1">
+                                            {server.tools.map((tool, index) => (
+                                                <div key={index} className="text-sm">
+                                                    <span className="font-medium text-gray-700">{tool.name}</span>
+                                                    {tool.description && (
+                                                        <p className="text-gray-500 text-xs mt-0.5">{tool.description}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
 

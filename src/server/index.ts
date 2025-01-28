@@ -69,6 +69,7 @@ interface XMLResponse {
 interface ServerStatus {
     name: string;
     isRunning: boolean;
+    tools: string[];
 }
 
 dotenv.config();
@@ -579,13 +580,23 @@ All text within tags should use markdown formatting. Here's how to format differ
 });
 
 // Add new endpoint for server status
-app.get('/api/server-status', (_req: Request, res: Response) => {
+app.get('/api/server-status', async (_req: Request, res: Response) => {
     try {
         const serverNames = mcpManager.getServerNames();
-        const serverStatuses: ServerStatus[] = serverNames.map(serverName => ({
-            name: serverName,
-            isRunning: mcpManager.isServerRunning(serverName)
-        }));
+        const serverStatuses: ServerStatus[] = await Promise.all(
+            serverNames.map(async serverName => {
+                const isRunning = mcpManager.isServerRunning(serverName);
+                let tools = [];
+                if (isRunning) {
+                    tools = await mcpManager.fetchServerTools(serverName) || [];
+                }
+                return {
+                    name: serverName,
+                    isRunning,
+                    tools
+                };
+            })
+        );
 
         res.json({ servers: serverStatuses });
     } catch (error) {

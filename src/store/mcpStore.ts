@@ -1,8 +1,18 @@
 import { create } from 'zustand';
 
+export interface ServerTool {
+    name: string;
+    description?: string;
+    inputSchema?: {
+        type: string;
+        properties?: Record<string, unknown>;
+    };
+}
+
 export interface ServerStatus {
     name: string;
     isRunning: boolean;
+    tools?: ServerTool[];
 }
 
 interface MCPStoreState {
