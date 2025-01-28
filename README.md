@@ -1,4 +1,4 @@
-# CharmGPT
+# CHARMGPT
 
 A collaborative data science environment with integrated chat and visualization capabilities. This project combines React and TypeScript for the frontend with an Express backend that provides unified interfaces for LLM providers and Python code execution.
 
