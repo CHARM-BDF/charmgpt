@@ -1,69 +1,44 @@
 import { Box, Paper } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
+import { API_BASE_URL } from '../config'
 
 interface DataVisualizerProps {
   plotFile?: string
 }
 
 export default function DataVisualizer({ plotFile: propPlotFile }: DataVisualizerProps) {
-  const [imageSrc, setImageSrc] = useState<string | null>(null)
   const { activeArtifact } = useArtifact()
-  
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+
   const plotFile = propPlotFile || activeArtifact?.plotFile
 
   useEffect(() => {
     console.log('Plot file changed:', plotFile)
-    let mounted = true
-    let retryCount = 0
-    const maxRetries = 3
 
-    const loadPlot = async () => {
-      if (!plotFile) {
-        console.log('No plot file, clearing image')
-        setImageSrc(null)
-        return
+    if (plotFile) {
+      // If plotFile is a full URL, use it directly
+      if (plotFile.startsWith('http')) {
+        setImageSrc(plotFile)
+      } else {
+        // Otherwise, construct the URL using API_BASE_URL
+        setImageSrc(`${API_BASE_URL}/plots/${plotFile}`)
       }
+    } else {
+      setImageSrc(null)
+    }
 
-      const tryLoadPlot = async () => {
-        try {
-          // Check if the plot exists
-          const response = await fetch(`/api/plots/${plotFile}`)
-          if (!response.ok) {
-            console.log(`Plot not ready (attempt ${retryCount + 1}), status: ${response.status}`)
-            if (retryCount < maxRetries) {
-              retryCount++
-              // Wait a bit longer between each retry
-              await new Promise(resolve => setTimeout(resolve, 500 * retryCount))
-              return tryLoadPlot()
-            }
-            throw new Error(`Failed to load plot after ${maxRetries} attempts`)
-          }
-
-          // Plot exists, set the image source
-          const newSrc = `/api/plots/${plotFile}?t=${Date.now()}`
-          console.log('Setting new image source:', newSrc)
-          if (mounted) {
-            setImageSrc(newSrc)
-          }
-        } catch (error) {
-          console.error('Error loading plot:', error)
-          if (mounted) setImageSrc(null)
+    // Cleanup function
+    return () => {
+      if (imageSrc) {
+        console.log('Cleaning up plot:', imageSrc)
+        // Revoke object URL if needed
+        if (imageSrc.startsWith('blob:')) {
+          URL.revokeObjectURL(imageSrc)
         }
       }
-
-      // Add initial delay to ensure plot is ready
-      await new Promise(resolve => setTimeout(resolve, 200))
-      await tryLoadPlot()
     }
-
-    loadPlot()
-
-    return () => {
-      console.log('Cleaning up plot:', plotFile)
-      mounted = false
-    }
-  }, [plotFile])
+  }, [activeArtifact?.plotFile])
 
   console.log('Rendering with imageSrc:', imageSrc)
 

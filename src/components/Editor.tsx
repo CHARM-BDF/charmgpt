@@ -3,17 +3,17 @@ import { useArtifact } from '../contexts/useArtifact'
 import MonacoEditor from '@monaco-editor/react'
 
 export default function Editor() {
-  const { activeArtifact, editorContent, updateEditorContent } = useArtifact()
+  const { activeArtifact, updateEditorContent } = useArtifact()
 
   useEffect(() => {
     if (activeArtifact) {
       updateEditorContent(activeArtifact.code)
     }
-  }, [activeArtifact])
+  }, [activeArtifact, updateEditorContent])
 
   return (
     <MonacoEditor
-      value={editorContent}
+      value={activeArtifact?.code || ''}
       onChange={value => updateEditorContent(value || '')}
       // ... other props
     />

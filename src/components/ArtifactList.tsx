@@ -10,7 +10,7 @@ export default function ArtifactList() {
     <Box sx={{ height: '100%', overflow: 'auto', p: 2 }}>
       <Box sx={{ p: 0 }}>
         {artifacts.map((artifact: Artifact) => {
-          const isChat = artifact.source === 'chat'
+          const isChat = artifact.source === 'assistant'
           
           return (
             <Paper
@@ -38,7 +38,7 @@ export default function ArtifactList() {
                   color: isChat ? purple[700] : blue[700],
                 }}
               >
-                {new Date(artifact.timestamp).toLocaleTimeString()}
+                {artifact.timestamp.toLocaleTimeString()}
               </Typography>
               {artifact.output && (
                 <Typography 

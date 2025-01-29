@@ -3,7 +3,6 @@ import { Box } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { useState, useEffect } from 'react'
 import ActionButtons from './ActionButtons'
-import { Artifact } from '../contexts/ArtifactContext.types'
 
 export default function CodeEditor() {
   const { activeArtifact, runArtifact, updateEditorContent } = useArtifact()
@@ -27,27 +26,11 @@ print("Hello, world!")
 
   const handleRun = async () => {
     updateEditorContent(currentCode)
-    
-    const tempArtifact: Artifact = {
-      id: Date.now(),
-      code: currentCode,
-      output: '',
-      timestamp: new Date(),
-      type: 'code',
-      name: 'Code Execution',
-      source: 'user',
-      description: 'Code execution'
-    }
-    
-    await runArtifact(tempArtifact)
+    await runArtifact(currentCode)
   }
 
   const handleSave = () => {
-    const code = currentCode
-    if (code.trim()) {
-      // Assuming addArtifact is called elsewhere in the code
-      // addArtifact(code, 'Saved Code', 'code', { source: 'user', description: 'User saved code' })
-    }
+    // Implement save functionality if needed
   }
 
   return (
