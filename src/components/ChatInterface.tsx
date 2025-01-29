@@ -24,7 +24,6 @@ export default function ChatInterface() {
     matches.forEach(match => {
       if (match[1]) {
         const code = match[1].trim()
-        console.log('Extracted code:', code)
         addArtifact({
           type: 'code',
           name: 'Chat Suggestion',

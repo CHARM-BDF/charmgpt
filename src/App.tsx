@@ -18,7 +18,6 @@ function AppContent() {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
-      console.log('Running code via Cmd+Enter:', editorContent)
       runArtifact(editorContent)
     }
   }, [runArtifact, editorContent])

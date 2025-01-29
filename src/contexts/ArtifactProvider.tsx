@@ -26,7 +26,6 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
     
     // Update editor content when adding a code artifact
     if (artifact.type === 'code') {
-      console.log('Setting editor content from chat:', artifact.code)
       setEditorContent(artifact.code)
     }
   }, [generateId])
@@ -34,16 +33,12 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
   const setActiveArtifactWithContent = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
     if (artifact?.type === 'code') {
-      console.log('Setting editor content from artifact selection:', artifact.code)
       setEditorContent(artifact.code)
     }
   }, [])
 
   const runArtifact = useCallback(async (code: string) => {
     try {
-      console.log('Running code:', code)
-      console.log('Active artifact code:', activeArtifact?.code)
-
       const response = await fetch(`${API_BASE_URL}/run-code`, {
         method: 'POST',
         headers: {
@@ -58,15 +53,12 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
       }
 
       const result = await response.json()
-      console.log('Run result:', result)
-
+     
       if (result.success) {
         // Compare with the last successful run's code
         const isSameCode = code === activeArtifact?.code
-        console.log('Is same code?', isSameCode)
-
+     
         if (activeArtifact && isSameCode) {
-          console.log('Updating existing artifact')
           const updatedArtifact: Artifact = {
             ...activeArtifact,
             output: result.output || '',
@@ -79,7 +71,6 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
           ))
           setActiveArtifact(updatedArtifact)
         } else {
-          console.log('Creating new artifact')
           const newArtifact: Artifact = {
             id: generateId(),
             type: (result.plotFile ? 'visualization' : 'code') as ArtifactType,
@@ -115,7 +106,6 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
   }, [activeArtifact, generateId])
 
   const updateEditorContent = useCallback((content: string) => {
-    console.log('Updating editor content:', content)
     setEditorContent(content)
   }, [])
 

@@ -14,8 +14,6 @@ export default function DataVisualizer({ plotFile: propPlotFile }: DataVisualize
   const plotFile = propPlotFile || activeArtifact?.plotFile
 
   useEffect(() => {
-    console.log('Plot file changed:', plotFile)
-
     if (plotFile) {
       if (plotFile.startsWith('http')) {
         setImageSrc(plotFile)
@@ -32,8 +30,6 @@ export default function DataVisualizer({ plotFile: propPlotFile }: DataVisualize
       }
     }
   }, [plotFile, imageSrc, API_BASE_URL])
-
-  console.log('Rendering with imageSrc:', imageSrc)
 
   return (
     <Box sx={{ 
