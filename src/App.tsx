@@ -5,16 +5,29 @@ import CodeEditor from './components/CodeEditor'
 import DataVisualizer from './components/DataVisualizer'
 import ArtifactList from './components/ArtifactList'
 import { useEffect } from 'react'
-import { ArtifactProvider } from './contexts/ArtifactContext'
 import { useArtifact } from './contexts/useArtifact'
-
+import { ArtifactProvider } from './contexts/ArtifactContext'
 const theme = createTheme({
   // You can customize your theme here
 })
 
 // Separate component for the main content
 function MainContent() {
-  const { activeArtifact } = useArtifact()
+  const { activeArtifact, runArtifact } = useArtifact()
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault()
+        if (activeArtifact?.code) {
+          runArtifact(activeArtifact)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeArtifact, runArtifact])
 
   return (
     <Box sx={{ 

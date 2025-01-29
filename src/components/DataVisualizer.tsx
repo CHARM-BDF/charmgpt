@@ -98,6 +98,7 @@ export default function DataVisualizer({ plotFile: propPlotFile }: DataVisualize
               objectFit: 'contain'
             }}
             onError={(e) => {
+              void e;
               console.error('Image load error for:', imageSrc)
               setImageSrc(null)
             }}
