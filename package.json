@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "server": "tsx src/server/index.ts",
     "server:dev": "nodemon --watch src/server -e ts,js --exec tsx src/server/index.ts",
-    "start": "concurrently \"npm run dev\" \"npm run server:dev\""
+    "start": "concurrently \"npm run dev\" \"npm run server:dev\"",
+    "test:validation": "tsx src/scripts/runValidationTests.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",

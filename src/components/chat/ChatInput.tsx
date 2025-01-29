@@ -6,7 +6,7 @@ export const ChatInput: React.FC = () => {
 
   // const [input, setInput] = useState('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
   // const [input, setInput] = useState('create a bunch of text that will test all of the markdown formats including two different types of code. Include a table.');
-  const [input, setInput] = useState('provide a react component that could render any markdown.');
+  const [input, setInput] = useState('provide a react component that could render markdown.');
   const { addMessage, processMessage } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -39,7 +39,7 @@ export const ChatInput: React.FC = () => {
     }
     // think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one. 
 
-    setInput('provide a react component that could render any markdown.');
+    setInput('provide a react component that could render markdown.');
     // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. Include a table.');
     // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. And include an artifact of a sacred geometry svg.');
     // setInput('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');

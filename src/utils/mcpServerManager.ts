@@ -39,7 +39,7 @@ class MCPServerManager {
       
       return config;
     } catch (error) {
-      console.error('Failed to load MCP server config:', error);
+      console.error('Failed to load MCP server config');
       throw error;
     }
   }
@@ -51,19 +51,19 @@ class MCPServerManager {
       try {
         await this.startServer(serverName, serverConfig);
       } catch (error) {
-        console.error(`Failed to start MCP server ${serverName}:`, error);
+        console.error(`Failed to start MCP server ${serverName}`);
       }
     }
 
     // Set up cleanup handler for graceful shutdown
     process.on('SIGINT', async () => {
-      console.log('\nReceived SIGINT. Shutting down MCP servers...');
+      console.log('Shutting down MCP servers...');
       await this.stopAllServers();
       process.exit(0);
     });
 
     process.on('SIGTERM', async () => {
-      console.log('\nReceived SIGTERM. Shutting down MCP servers...');
+      console.log('Shutting down MCP servers...');
       await this.stopAllServers();
       process.exit(0);
     });
@@ -82,19 +82,19 @@ class MCPServerManager {
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
-        // Handle server output - separate normal logs from actual errors
+        // Handle server output - only log errors and critical status changes
         serverProcess.stdout?.on('data', (data) => {
-          // Normal operational logs go to stdout
-          console.log(`[${serverName}] ${data.toString().trim()}`);
+          // Only log startup and critical operational messages
+          const message = data.toString().trim();
+          if (message.includes('Server started') || message.includes('Initialization complete')) {
+            console.log(`[${serverName}] ${message}`);
+          }
         });
 
         serverProcess.stderr?.on('data', (data) => {
           const message = data.toString().trim();
-          // Check if it's actually an error or just a status message
-          if (message.includes('running on stdio') || message.includes('Allowed directories')) {
-            console.log(`[${serverName}] ${message}`);
-          } else {
-            // Real errors go to stderr
+          // Only log actual errors, not status messages
+          if (!message.includes('running on stdio') && !message.includes('Allowed directories')) {
             console.error(`[${serverName}] Error: ${message}`);
           }
         });
@@ -106,10 +106,10 @@ class MCPServerManager {
         });
 
         serverProcess.on('exit', (code, signal) => {
-          if (code !== null) {
+          if (code !== null && code !== 0) {
             console.log(`[${serverName}] exited with code ${code}`);
           } else if (signal !== null) {
-            console.log(`[${serverName}] was killed with signal ${signal}`);
+            console.log(`[${serverName}] was terminated with signal ${signal}`);
           }
           this.servers.delete(serverName);
         });
@@ -279,7 +279,7 @@ class MCPServerManager {
       // Set a timeout to prevent hanging
       setTimeout(() => {
         serverProcess.stdout?.removeListener('data', responseHandler);
-        reject(new Error('Tool call timed out'));
+        reject(new Error(`Tool call timed out: ${serverName}/${toolName}`));
       }, 30000); // 30 second timeout
     });
   }

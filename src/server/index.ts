@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import MCPServerManager from '../utils/mcpServerManager';
 import { systemPrompt } from './systemPrompt';
 import { testSystemPrompt } from './testSystemPrompt';
+import fs from 'fs/promises';
 
 const parseXML = promisify(parseString);
 
@@ -108,8 +109,9 @@ app.use(cors());
 app.use(express.json());
 
 // Add XML validation helper
-function isValidXMLResponse(text: string): Promise<boolean> {
+export function isValidXMLResponse(text: string): Promise<boolean> {
     // Wrap content inside main container tags in CDATA
+    console.log("Validating XML response...");
     const wrappedText = text.replace(
         /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
         (_match, openTag, _tagName, content, closeTag) => {
@@ -117,7 +119,7 @@ function isValidXMLResponse(text: string): Promise<boolean> {
         }
     );
 
-    console.log("Server: Wrapped text for validation:\n", wrappedText);
+    // console.log("Server: Wrapped text for validation:\n", wrappedText);
 
     // Basic check for XML structure
     const hasXMLStructure = wrappedText.trim().startsWith('<response>') &&
@@ -169,19 +171,52 @@ async function getAllAvailableTools(): Promise<Record<string, ServerTool[]>> {
     return toolsByServer;
 }
 
+// Add logging function
+async function logValidationResult(responseText: string, isValid: boolean, repairAttempts: number = 0) {
+    const timestamp = new Date().toISOString();
+    const logDir = path.join(path.dirname(__dirname), '../logs/production');
+    const logFile = path.join(logDir, 'validation_results.txt');
+    
+    try {
+        // Ensure log directory exists
+        await fs.mkdir(logDir, { recursive: true });
+
+        // Create log entry with full response
+        const logEntry = `
+=== Validation Result ${timestamp} ===
+Success: ${isValid}
+Repair Attempts: ${repairAttempts}
+Full Response:
+${responseText}
+
+=== End Response ===
+
+`;
+
+        // Append to log file
+        await fs.appendFile(logFile, logEntry);
+
+        // If validation failed, save full response
+        if (!isValid) {
+            const failuresDir = path.join(logDir, 'failures');
+            await fs.mkdir(failuresDir, { recursive: true });
+            const failureFile = path.join(failuresDir, `failed_response_${timestamp.replace(/[:.]/g, '-')}.txt`);
+            await fs.writeFile(failureFile, responseText);
+        }
+    } catch (error) {
+        console.error('Failed to write validation log:', error);
+    }
+}
+
 app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) => {
     try {
         const { message, history, useTestPrompt } = req.body;
-        console.log('\n=== Chat Request Processing Start ===');
-        console.log('Server: Received chat request:', {
-            messageLength: message.length,
-            historyLength: history.length
-        });
+        // insert line return
+        console.log('\n ------------------------------');
+        console.log('Processing chat request...');
 
         // Get available tools to include in the system prompt
         const availableTools = await getAllAvailableTools();
-        console.log('\n=== MCP Tools Information ===');
-        console.log('Available Tools by Server:', JSON.stringify(availableTools, null, 2));
 
         const toolsDescription = Object.entries(availableTools)
             .map(([serverName, tools]) => `
@@ -212,13 +247,7 @@ To use a tool, format your response like this:
 
 The tool result will be provided back to you to include in your response.`;
 
-        console.log('\n=== Enhanced System Prompt ===');
-        console.log(enhancedSystemPrompt);
-
-        console.log('\nServer: Sending to Claude:', {
-            messageCount: messages.length,
-            lastMessage: messages[messages.length - 1]
-        });
+        console.log('Sending request to Claude...');
 
         const response = await anthropic.messages.create({
             model: 'claude-3-5-sonnet-20241022',
@@ -232,114 +261,68 @@ The tool result will be provided back to you to include in your response.`;
             throw new Error('Expected text response from Claude');
         }
 
+        let repairAttempts = 0;
         let responseText = response.content[0].text;
+        const isValid = await isValidXMLResponse(responseText);
 
-        // Process tool calls in the response
-        console.log('\n=== Processing Tool Calls ===');
-        const toolCallRegex = /<tool_call server="([^"]+)" tool="([^"]+)">\s*({[\s\S]*?})\s*<\/tool_call>/g;
-        let match;
-        while ((match = toolCallRegex.exec(responseText)) !== null) {
-            const [fullMatch, serverName, toolName, argsJson] = match;
-            console.log(`\nFound tool call:
-- Server: ${serverName}
-- Tool: ${toolName}
-- Arguments: ${argsJson}`);
+        // Log initial validation result
+        await logValidationResult(responseText, isValid);
 
-            try {
-                const args = JSON.parse(argsJson);
-                console.log('Executing tool call...');
-                const result = await mcpManager.callTool(serverName, toolName, args);
-                console.log('Tool execution result:', JSON.stringify(result, null, 2));
+        if (!isValid) {
+            console.log('XML validation failed, attempting repairs...');
 
-                // Replace the tool call with its result
-                responseText = responseText.replace(
-                    fullMatch,
-                    `Tool Result (${serverName}/${toolName}): ${JSON.stringify(result, null, 2)}`
-                );
-            } catch (error) {
-                console.error(`Failed to execute tool ${toolName} on server ${serverName}:`, error);
-                responseText = responseText.replace(
-                    fullMatch,
-                    `Tool Error (${serverName}/${toolName}): ${error instanceof Error ? error.message : 'Unknown error'}`
-                );
-            }
-        }
-
-        // Log initial response and tokens
-        console.log('\nServer: Initial Claude Response:');
-        console.log('----------------------------------------');
-        console.log('Response Length:', responseText.length);
-        console.log('Token Usage:', {
-            inputTokens: response.usage.input_tokens,
-            outputTokens: response.usage.output_tokens,
-            totalTokens: response.usage.input_tokens + response.usage.output_tokens
-        });
-        console.log('Raw Response from Claude:');
-        console.log(responseText);
-        console.log('----------------------------------------');
-
-        // Validate XML structure
-        try {
-            const isValid = await isValidXMLResponse(responseText);
-            if (!isValid) {
-                console.log('Server: XML validation failed, attempting repairs');
-
-                // First try automatic repair strategies
-                for (const repair of repairStrategies) {
-                    try {
-                        const repairedText = repair(responseText);
-                        const isRepairedValid = await isValidXMLResponse(repairedText);
-                        if (isRepairedValid) {
-                            console.log('Server: Successfully repaired XML');
-                            res.json({ response: repairedText });
-                            return;
-                        }
-                    } catch (error) {
-                        console.log('Server: Repair attempt failed:', error);
+            // Try repair strategies
+            for (const repair of repairStrategies) {
+                repairAttempts++;
+                try {
+                    const repairedText = repair(responseText);
+                    const isRepairedValid = await isValidXMLResponse(repairedText);
+                    if (isRepairedValid) {
+                        console.log('XML repair successful');
+                        // Log successful repair
+                        await logValidationResult(repairedText, true, repairAttempts);
+                        res.json({ response: repairedText });
+                        return;
                     }
+                } catch (error) {
+                    // Silent catch - continue to next strategy
                 }
+            }
 
-                // If repairs fail, try LLM reformatting
-                console.log('Server: Automatic repairs failed, requesting LLM reformatting');
-                console.log('Server: Original response that failed validation:\n', responseText);
+            // If repairs fail, try LLM reformatting
+            console.log('Attempting LLM reformatting...');
+            repairAttempts++;
 
-                const reformatResponse = await anthropic.messages.create({
-                    model: 'claude-3-5-sonnet-20241022',
-                    max_tokens: 4000,
-                    messages: [
-                        ...history,
-                        { role: 'assistant', content: responseText },
-                        { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
-                    ],
-                    system: systemPrompt,
-                    temperature: 0.7,
-                });
+            const reformatResponse = await anthropic.messages.create({
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 4000,
+                messages: [
+                    ...history,
+                    { role: 'assistant', content: responseText },
+                    { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
+                ],
+                system: systemPrompt,
+                temperature: 0.7,
+            });
 
-                if (reformatResponse.content[0].type !== 'text') {
-                    throw new Error('Expected text response from Claude');
-                }
+            if (reformatResponse.content[0].type !== 'text') {
+                throw new Error('Expected text response from Claude');
+            }
 
-                const reformattedText = reformatResponse.content[0].text;
+            const reformattedText = reformatResponse.content[0].text;
+            const isReformattedValid = await isValidXMLResponse(reformattedText);
+            
+            // Log reformatting result
+            await logValidationResult(reformattedText, isReformattedValid, repairAttempts);
 
-                // Log reformatting attempt
-                console.log('\nServer: Reformatting Attempt Result:\n');
-                console.log('----------------------------------------');
-                console.log('Reformatted Length:', reformattedText.length);
-                console.log('Reformatted Preview:', reformattedText.slice(0, 500) + '...');
-                console.log('Full Reformatted Response:');
-                console.log(reformattedText);
-                console.log('----------------------------------------\n');
+            if (isReformattedValid) {
+                console.log('LLM reformatting successful');
+                res.json({ response: reformattedText });
+                return;
+            }
 
-                const isReformattedValid = await isValidXMLResponse(reformattedText);
-                if (isReformattedValid) {
-                    console.log('Server: Successfully reformatted response as XML');
-                    res.json({ response: reformattedText });
-                    return;
-                }
-
-                // If all attempts fail, wrap in error response
-                console.log('Server: All repair attempts failed');
-                const wrappedResponse = `<response>
+            // If all attempts fail, wrap in error response
+            const wrappedResponse = `<response>
           <conversation>
           # Error: Response Formatting Issue
           
@@ -349,35 +332,17 @@ The tool result will be provided back to you to include in your response.`;
           ${responseText}
           </conversation>
         </response>`;
-                res.json({ response: wrappedResponse });
-                return;
-            }
-
-            // Log response details for valid XML
-            console.log('Server: Response validation:', {
-                responseLength: responseText.length,
-                preview: responseText.slice(0, 500) + '...',
-                usage: response.usage,
-                isValidXML: true
-            });
-
-            res.json({ response: responseText });
-
-        } catch (validationError) {
-            console.error('Server: XML Validation Error:', validationError);
-            console.error('Server: Failed Response Text:', responseText);
-            throw validationError;
+            
+            // Log final fallback
+            await logValidationResult(wrappedResponse, true, repairAttempts);
+            res.json({ response: wrappedResponse });
+            return;
         }
+
+        res.json({ response: responseText });
 
     } catch (error) {
-        console.error('Server: Detailed Error Information:');
-        if (error instanceof Error) {
-            console.error('Error Name:', error.name);
-            console.error('Error Message:', error.message);
-            console.error('Error Stack:', error.stack);
-        } else {
-            console.error('Unknown Error Type:', error);
-        }
+        console.error('Error processing request:', error);
         res.status(500).json({
             error: 'Failed to process chat message',
             details: error instanceof Error ? error.message : 'Unknown error'
