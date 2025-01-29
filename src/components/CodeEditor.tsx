@@ -1,7 +1,7 @@
 import Editor from '@monaco-editor/react'
 import { Box } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ActionButtons from './ActionButtons'
 import { Artifact } from '../contexts/ArtifactContext.types'
 
@@ -16,6 +16,14 @@ import numpy as np
 # Your data science code goes here
 print("Hello, world!")
 `
+
+  // Update currentCode when activeArtifact changes
+  useEffect(() => {
+    if (activeArtifact?.code) {
+      setCurrentCode(activeArtifact.code)
+      updateEditorContent(activeArtifact.code)
+    }
+  }, [activeArtifact, updateEditorContent])
 
   const getEffectiveCode = () => currentCode || activeArtifact?.code || defaultCode
 
@@ -67,7 +75,7 @@ print("Hello, world!")
         <Editor
           height="100%"
           defaultLanguage="python"
-          value={activeArtifact?.code || defaultCode}
+          value={getEffectiveCode()}
           onChange={(value) => {
             setCurrentCode(value || '')
             updateEditorContent(value || '')
