@@ -17,28 +17,21 @@ export default function DataVisualizer({ plotFile: propPlotFile }: DataVisualize
     console.log('Plot file changed:', plotFile)
 
     if (plotFile) {
-      // If plotFile is a full URL, use it directly
       if (plotFile.startsWith('http')) {
         setImageSrc(plotFile)
       } else {
-        // Otherwise, construct the URL using API_BASE_URL
         setImageSrc(`${API_BASE_URL}/plots/${plotFile}`)
       }
     } else {
       setImageSrc(null)
     }
 
-    // Cleanup function
     return () => {
-      if (imageSrc) {
-        console.log('Cleaning up plot:', imageSrc)
-        // Revoke object URL if needed
-        if (imageSrc.startsWith('blob:')) {
-          URL.revokeObjectURL(imageSrc)
-        }
+      if (imageSrc && imageSrc.startsWith('blob:')) {
+        URL.revokeObjectURL(imageSrc)
       }
     }
-  }, [activeArtifact?.plotFile])
+  }, [plotFile, imageSrc, API_BASE_URL])
 
   console.log('Rendering with imageSrc:', imageSrc)
 

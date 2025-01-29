@@ -18,20 +18,26 @@ export default function ChatInterface() {
 
   const parseCodeFromResponse = (response: string) => {
     // Look for code blocks with ```python
-    const pythonCodeRegex = /```python\n([\s\S]*?)```/g
-    const matches = [...response.matchAll(pythonCodeRegex)]
+    const codeBlockRegex = /```python\n([\s\S]*?)```/g
+    const matches = [...response.matchAll(codeBlockRegex)]
     
     matches.forEach(match => {
-      const code = match[1].trim()
-      // For now, we'll use the code itself as output since we're not executing it
-      addArtifact(code, 'Code from chat response', 'code')
+      if (match[1]) {
+        const code = match[1].trim()
+        console.log('Extracted code:', code)
+        addArtifact({
+          type: 'code',
+          name: 'Chat Suggestion',
+          code,
+          output: '',
+          plotFile: null,
+          source: 'assistant'
+        })
+      }
     })
 
-    // Return the response with code blocks removed or marked
-    return response.replace(pythonCodeRegex, (match, code) => {
-      void code;
-      return `[Code added to editor]\n${match}`
-    })
+    // Return the response with code blocks removed for chat display
+    return response.replace(codeBlockRegex, '[Code added to editor]')
   }
 
   const handleSend = async () => {

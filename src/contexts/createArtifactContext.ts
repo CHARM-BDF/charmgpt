@@ -1,10 +1,5 @@
 import { createContext } from 'react'
 import { ArtifactContextType } from './ArtifactContext.types'
+import { initialArtifactContextValue } from './artifactContextValue'
 
-export const ArtifactContext = createContext<ArtifactContextType>({
-  artifacts: [],
-  activeArtifact: null,
-  setActiveArtifact: () => {},
-  runArtifact: async () => {},
-  updateEditorContent: () => {},
-}) 
+export const ArtifactContext = createContext<ArtifactContextType>(initialArtifactContextValue) 

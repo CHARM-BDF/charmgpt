@@ -1,9 +1,11 @@
 import { ArtifactContextType } from './ArtifactContext.types'
 
-export const defaultArtifactContextValue: ArtifactContextType = {
+export const initialArtifactContextValue: ArtifactContextType = {
   artifacts: [],
   activeArtifact: null,
-  setActiveArtifact: () => {},
-  runArtifact: async () => {},
-  updateEditorContent: () => {},
+  setActiveArtifact: () => void 0,
+  runArtifact: async () => void 0,
+  updateEditorContent: () => void 0,
+  editorContent: '',
+  addArtifact: () => void 0,
 } 

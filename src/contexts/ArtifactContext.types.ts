@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 
-export type ArtifactType = 'code' | 'visualization'
+export type ArtifactType = 'code' | 'visualization' | 'chat'
 export type ArtifactSource = 'user' | 'assistant'
 
 export interface Artifact {
@@ -9,7 +9,7 @@ export interface Artifact {
   name: string
   code: string
   output: string
-  plotFile?: string
+  plotFile: string | null
   source: ArtifactSource
   timestamp: Date
 }
@@ -20,6 +20,8 @@ export interface ArtifactContextType {
   setActiveArtifact: (artifact: Artifact | null) => void
   runArtifact: (code: string) => Promise<void>
   updateEditorContent: (content: string) => void
+  editorContent: string
+  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 
