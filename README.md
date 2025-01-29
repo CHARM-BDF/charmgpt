@@ -1,4 +1,4 @@
-# CharmGPT
+# CHARMGPT
 
 A collaborative data science environment with integrated chat and visualization capabilities. This project combines React and TypeScript for the frontend with an Express backend that provides unified interfaces for LLM providers and Python code execution.
 
@@ -24,7 +24,7 @@ A collaborative data science environment with integrated chat and visualization 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/charmgpt.git
+git clone https://github.com/metareflection/charmgpt.git
 cd charmgpt
 ```
 
@@ -40,7 +40,6 @@ npm install
 
 3. Build the Docker image:
 ```bash
-cd server
 docker build -t my-python-app .
 ```
 
