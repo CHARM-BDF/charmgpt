@@ -2,8 +2,6 @@ import { Box, Paper, Typography } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { Artifact } from '../contexts/ArtifactContext.types'
 import { grey, purple } from '@mui/material/colors'
-import PersonIcon from '@mui/icons-material/Person'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
 
 export default function ArtifactList() {
   const { artifacts, activeArtifact, setActiveArtifact } = useArtifact()
@@ -21,7 +19,6 @@ export default function ArtifactList() {
 
   return (
     <Box sx={{ height: '100%', overflow: 'auto', p: 2 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>History</Typography>
       <Box sx={{ p: 0 }}>
         {artifacts.map((artifact: Artifact) => {
           const isActive = activeArtifact?.id === artifact.id
@@ -44,42 +41,15 @@ export default function ArtifactList() {
               }}
               onClick={() => setActiveArtifact(artifact)}
             >
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 1,
-                gap: 1
-              }}>
-                {isChat ? (
-                  <SmartToyIcon sx={{ color: purple[400] }} />
-                ) : (
-                  <PersonIcon sx={{ color: grey[600] }} />
-                )}
-                <Typography 
-                  variant="subtitle2" 
-                  sx={{ 
-                    color: isChat ? purple[700] : grey[700],
-                    fontWeight: isChat ? 500 : 400
-                  }}
-                >
-                  {artifact.name}
-                </Typography>
-              </Box>
               <Typography 
-                variant="body2" 
+                variant="caption" 
                 sx={{ 
-                  whiteSpace: 'pre-wrap',
-                  fontFamily: 'monospace',
-                  backgroundColor: isChat ? purple[100] : grey[100],
-                  p: 1,
-                  borderRadius: 1,
+                  display: 'block',
                   mb: 1,
-                  maxHeight: '150px',
-                  overflow: 'auto',
-                  fontSize: '0.8rem'
+                  color: isChat ? purple[700] : grey[700],
                 }}
               >
-                {artifact.code}
+                {new Date(artifact.timestamp).toLocaleTimeString()}
               </Typography>
               {artifact.output && (
                 <Typography 
