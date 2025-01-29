@@ -3,15 +3,7 @@ import CodeIcon from '@mui/icons-material/Code'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { useArtifact } from '../contexts/useArtifact'
-
-export interface Artifact {
-  id: number
-  code: string
-  output: string
-  timestamp: Date
-  type: 'visualization' | 'code'
-  plotFile?: string
-}
+import { Artifact } from '../contexts/ArtifactContext.types'
 
 interface ArtifactListProps {
   artifacts: Artifact[]

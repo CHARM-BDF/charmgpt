@@ -20,25 +20,35 @@ print("Hello, world!")
 
   const handleRun = async () => {
     const code = getEffectiveCode()
-    // Update the editor content first
     updateEditorContent(code)
-    // Create a temporary artifact for running
+    
+    // Create a temporary artifact structure without saving it
     const tempArtifact: Artifact = {
       id: Date.now(),
       code,
       output: '',
       timestamp: new Date(),
-      type: 'code'
+      type: 'code',
+      name: 'Code Execution',
+      source: 'user',
+      description: 'Code execution'
     }
-    // Run the temporary artifact
+    
     await runArtifact(tempArtifact)
   }
 
   const handleSave = () => {
-    const codeToSave = getEffectiveCode()
-    if (codeToSave.trim()) {
-      // Save with a more meaningful name for persistent saves
-      addArtifact(codeToSave, 'Saved version', 'code')
+    const code = getEffectiveCode()
+    if (code.trim()) {
+      addArtifact(
+        code,
+        'Saved Code',
+        'code',
+        {
+          source: 'user',
+          description: 'User saved code'
+        }
+      )
     }
   }
 

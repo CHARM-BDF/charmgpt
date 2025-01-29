@@ -1,36 +1,52 @@
 import { ReactNode, useState } from 'react'
-import { Artifact } from '../components/ArtifactList'
-import { ArtifactContext } from './ArtifactContext.types'
+import { Artifact, ArtifactContext, ArtifactSource, ArtifactType } from './ArtifactContext.types'
 
 export function ArtifactProvider({ children }: { children: ReactNode }) {
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null)
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [editorContent, setEditorContent] = useState('')
 
-  const addArtifact = (code: string, output: string, type: 'code' | 'visualization', plotFile?: string) => {
+  const addArtifact = (
+    code: string,
+    name: string,
+    type: ArtifactType,
+    options?: {
+      parentId?: number
+      source?: ArtifactSource
+      description?: string
+      output?: string
+      plotFile?: string
+    }
+  ): Artifact => {
     const newArtifact: Artifact = {
       id: Date.now(),
       code,
-      output,
+      output: options?.output || '',
       timestamp: new Date(),
       type,
-      plotFile
+      plotFile: options?.plotFile,
+      name,
+      parentId: options?.parentId || activeArtifact?.id,
+      source: options?.source || 'user',
+      description: options?.description
     }
+    
     setArtifacts(prev => [...prev, newArtifact])
     setActiveArtifact(newArtifact)
     setEditorContent(code)
+    
+    return newArtifact
   }
 
   const runArtifact = async (artifact: Artifact) => {
     try {
-      // Use the current editor content instead of the artifact's code
       const response = await fetch('http://localhost:3000/api/run-code', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          code: editorContent,  // Use editor content instead of artifact.code
+          code: artifact.code,
           timestamp: Date.now() 
         }),
       })
@@ -39,28 +55,44 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
       console.log('Run result:', result)
 
       if (result.plotFile) {
-        // Create a new visualization artifact with the plot file
-        addArtifact(
-          editorContent,  // Use editor content
-          result.output,
+        return addArtifact(
+          artifact.code,
+          'Visualization Result',
           'visualization',
-          result.plotFile
+          {
+            parentId: artifact.id,
+            source: 'user',
+            output: result.output,
+            plotFile: result.plotFile,
+            description: 'Generated visualization'
+          }
         )
       } else {
-        // Update the artifact with new output
-        const updatedArtifact = {
-          ...artifact,
-          code: editorContent,  // Use editor content
-          output: result.output,
-          timestamp: new Date()
-        }
-        setArtifacts(prev => prev.map(a => 
-          a.id === artifact.id ? updatedArtifact : a
-        ))
-        setActiveArtifact(updatedArtifact)
+        return addArtifact(
+          artifact.code,
+          'Code Result',
+          'code',
+          {
+            parentId: artifact.id,
+            source: 'user',
+            output: result.output,
+            description: 'Code execution result'
+          }
+        )
       }
     } catch (error) {
       console.error('Failed to run code:', error)
+      return addArtifact(
+        artifact.code,
+        'Failed Execution',
+        'code',
+        {
+          parentId: artifact.id,
+          source: 'user',
+          output: `Error: ${error}`,
+          description: 'Failed to execute code'
+        }
+      )
     }
   }
 
@@ -70,13 +102,13 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
 
   return (
     <ArtifactContext.Provider value={{ 
-      activeArtifact, 
-      setActiveArtifact, 
-      addArtifact, 
+      activeArtifact,
+      setActiveArtifact,
       artifacts,
       runArtifact,
       editorContent,
-      updateEditorContent 
+      updateEditorContent,
+      addArtifact
     }}>
       {children}
     </ArtifactContext.Provider>
