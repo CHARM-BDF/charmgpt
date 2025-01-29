@@ -5,6 +5,15 @@ import { formatDistanceToNow } from 'date-fns'
 export default function ArtifactList() {
   const { artifacts, activeArtifact, setActiveArtifact } = useArtifact()
 
+  const getArtifactDescription = (artifact: typeof artifacts[0]) => {
+    if (artifact.type === 'visualization') {
+      return 'Plot generated'
+    }
+    // Get the first line of output, or first 50 chars if no newline
+    const firstLine = artifact.output.split('\n')[0]
+    return firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine
+  }
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
@@ -39,22 +48,45 @@ export default function ArtifactList() {
               dense
             >
               <ListItemText
-                primary={artifact.name}
-                secondary={formatDistanceToNow(artifact.timestamp, { addSuffix: true })}
-                primaryTypographyProps={{
-                  sx: { 
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }
-                }}
-                secondaryTypographyProps={{
-                  sx: {
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }
-                }}
+                primary={
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <Typography
+                      component="span"
+                      sx={{ 
+                        flex: 1,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        mr: 1
+                      }}
+                    >
+                      {artifact.name}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      component="span"
+                      sx={{ 
+                        color: 'text.secondary',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {formatDistanceToNow(artifact.timestamp, { addSuffix: true })}
+                    </Typography>
+                  </Box>
+                }
+                secondary={
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      color: 'text.secondary'
+                    }}
+                  >
+                    {getArtifactDescription(artifact)}
+                  </Typography>
+                }
               />
             </ListItemButton>
           </ListItem>
