@@ -44,6 +44,7 @@ import pandas as pd
 import numpy as np
 
 # Your data science code goes here
+print("Hello, world!")
 `}
           onChange={(value) => setCurrentCode(value || '')}
           theme="light"

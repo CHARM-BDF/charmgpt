@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { useArtifact } from '../contexts/ArtifactContext'
+import { useArtifact } from '../contexts/useArtifact'
 import MonacoEditor from '@monaco-editor/react'
 
 export default function Editor() {
