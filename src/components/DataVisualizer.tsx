@@ -1,86 +1,123 @@
-import { Box, Typography, Paper } from '@mui/material'
+import { Box, Paper } from '@mui/material'
+import { useEffect, useState } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
-import { useEffect } from 'react'
-import { API_BASE_URL, PLOT_PATH } from '../config/index'
 
-export default function DataVisualizer() {
+interface DataVisualizerProps {
+  plotFile?: string
+}
+
+export default function DataVisualizer({ plotFile: propPlotFile }: DataVisualizerProps) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
   const { activeArtifact } = useArtifact()
   
-  console.log('Active artifact:', activeArtifact)
+  const plotFile = propPlotFile || activeArtifact?.plotFile
 
-  // Cleanup plot files when component unmounts or artifact changes
   useEffect(() => {
-    return () => {
-      if (activeArtifact?.plotFile) {
-        fetch(`${API_BASE_URL}/plots/${activeArtifact.plotFile}`, {
-          method: 'DELETE'
-        }).catch(console.error)
+    console.log('Plot file changed:', plotFile)
+    let mounted = true
+    let retryCount = 0
+    const maxRetries = 3
+
+    const loadPlot = async () => {
+      if (!plotFile) {
+        console.log('No plot file, clearing image')
+        setImageSrc(null)
+        return
       }
-    }
-  }, [activeArtifact?.plotFile])
 
-  useEffect(() => {
-    if (activeArtifact?.plotFile) {
-      const plotUrl = `${PLOT_PATH}/${activeArtifact.plotFile}`
-      console.log('Plot URL:', plotUrl)
-      
-      // Test if the image is accessible
-      fetch(plotUrl)
-        .then(response => {
-          console.log('Plot fetch response:', response.status, response.statusText)
-        })
-        .catch(error => {
-          console.error('Plot fetch error:', error)
-        })
+      const tryLoadPlot = async () => {
+        try {
+          // Check if the plot exists
+          const response = await fetch(`/api/plots/${plotFile}`)
+          if (!response.ok) {
+            console.log(`Plot not ready (attempt ${retryCount + 1}), status: ${response.status}`)
+            if (retryCount < maxRetries) {
+              retryCount++
+              // Wait a bit longer between each retry
+              await new Promise(resolve => setTimeout(resolve, 500 * retryCount))
+              return tryLoadPlot()
+            }
+            throw new Error(`Failed to load plot after ${maxRetries} attempts`)
+          }
+
+          // Plot exists, set the image source
+          const newSrc = `/api/plots/${plotFile}?t=${Date.now()}`
+          console.log('Setting new image source:', newSrc)
+          if (mounted) {
+            setImageSrc(newSrc)
+          }
+        } catch (error) {
+          console.error('Error loading plot:', error)
+          if (mounted) setImageSrc(null)
+        }
+      }
+
+      // Add initial delay to ensure plot is ready
+      await new Promise(resolve => setTimeout(resolve, 200))
+      await tryLoadPlot()
     }
-  }, [activeArtifact?.plotFile])
+
+    loadPlot()
+
+    return () => {
+      console.log('Cleaning up plot:', plotFile)
+      mounted = false
+    }
+  }, [plotFile])
+
+  console.log('Rendering with imageSrc:', imageSrc)
 
   return (
-    <Box sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
-      <Typography variant="subtitle1" sx={{ mb: 2 }}>Results</Typography>
-      <Box sx={{ display: 'flex', gap: 2, flex: 1 }}>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="subtitle2" gutterBottom>Visualization</Typography>
-          {activeArtifact?.plotFile && (
-            <>
-              <Box 
-                component="img"
-                src={`${PLOT_PATH}/${activeArtifact.plotFile}`}
-                sx={{ 
-                  maxWidth: '100%',
-                  height: 'auto',
-                  objectFit: 'contain'
-                }}
-                onError={(e) => {
-                  console.error('Image load error:', e)
-                }}
-                onLoad={() => {
-                  console.log('Image loaded successfully')
-                }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                Plot file: {activeArtifact.plotFile}
-              </Typography>
-            </>
-          )}
-        </Box>
-
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="subtitle2" gutterBottom>Output</Typography>
+    <Box sx={{ 
+      display: 'grid', 
+      gridTemplateColumns: '1fr 1fr',
+      gap: 2,
+      p: 2,
+      height: '100%',
+      width: '100%'
+    }}>
+      <Box sx={{ 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: imageSrc ? 'none' : '1px dashed #ccc',
+        borderRadius: 1,
+      }}>
+        {imageSrc ? (
+          <Box
+            component="img"
+            src={imageSrc}
+            alt="Data visualization"
+            sx={{
+              maxWidth: '100%',
+              maxHeight: '400px',
+              objectFit: 'contain'
+            }}
+            onError={(e) => {
+              console.error('Image load error for:', imageSrc)
+              setImageSrc(null)
+            }}
+          />
+        ) : plotFile ? (
+          <Box sx={{ p: 2, color: '#666' }}>Loading plot...</Box>
+        ) : null}
+      </Box>
+      <Box>
+        {activeArtifact?.output && (
           <Paper 
             variant="outlined" 
             sx={{ 
-              p: 2, 
-              height: '300px', 
-              overflowY: 'auto',
+              p: 2,
+              height: '100%',
               fontFamily: 'monospace',
               fontSize: '0.875rem',
-              whiteSpace: 'pre-wrap'
+              whiteSpace: 'pre-wrap',
+              overflowX: 'auto'
             }}
           >
-            {activeArtifact?.output || 'No output'}
+            {activeArtifact.output}
           </Paper>
-        </Box>
+        )}
       </Box>
     </Box>
   )

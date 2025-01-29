@@ -4,7 +4,7 @@ import { Artifact } from '../contexts/ArtifactContext.types'
 import { blue, purple } from '@mui/material/colors'
 
 export default function ArtifactList() {
-  const { artifacts, activeArtifact, setActiveArtifact } = useArtifact()
+  const { artifacts, setActiveArtifact } = useArtifact()
 
   return (
     <Box sx={{ height: '100%', overflow: 'auto', p: 2 }}>

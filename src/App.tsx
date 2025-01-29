@@ -14,6 +14,8 @@ const theme = createTheme({
 
 // Separate component for the main content
 function MainContent() {
+  const { activeArtifact } = useArtifact()
+
   return (
     <Box sx={{ 
       height: '100vh', 
@@ -44,7 +46,7 @@ function MainContent() {
                 boxShadow: 1,
                 overflow: 'hidden'
               }}>
-                <DataVisualizer />
+                <DataVisualizer plotFile={activeArtifact?.plotFile} />
               </Box>
             </Grid>
           </Grid>
