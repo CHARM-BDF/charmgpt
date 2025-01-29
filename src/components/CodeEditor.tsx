@@ -3,10 +3,11 @@ import { Box } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { useState } from 'react'
 import ActionButtons from './ActionButtons'
+import { Artifact } from '../contexts/ArtifactContext.types'
 
 export default function CodeEditor() {
   const { activeArtifact, runArtifact, addArtifact, updateEditorContent } = useArtifact()
-  const [currentCode, setCurrentCode] = useState<string>(activeArtifact?.code || '')
+  const [currentCode, setCurrentCode] = useState<string>('')
 
   const defaultCode = `# Start coding here
 import pandas as pd
@@ -16,16 +17,16 @@ import numpy as np
 print("Hello, world!")
 `
 
-  const getEffectiveCode = () => activeArtifact?.code || currentCode || defaultCode
+  const getEffectiveCode = () => currentCode || activeArtifact?.code || defaultCode
 
   const handleRun = async () => {
     const code = getEffectiveCode()
     updateEditorContent(code)
     
-    // Create a temporary artifact structure without saving it
+    // Create a temporary artifact with the current code
     const tempArtifact: Artifact = {
       id: Date.now(),
-      code,
+      code: code,  // Use the current code
       output: '',
       timestamp: new Date(),
       type: 'code',
@@ -58,11 +59,11 @@ print("Hello, world!")
         <ActionButtons
           onRun={handleRun}
           onSave={handleSave}
-          runDisabled={false}  // Always enabled since we always have code
-          saveDisabled={false} // Always enabled since we always have code
+          runDisabled={false}
+          saveDisabled={false}
         />
       </Box>
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 1, overflow: 'hidden' }}>
         <Editor
           height="100%"
           defaultLanguage="python"

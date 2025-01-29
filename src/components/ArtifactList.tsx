@@ -1,72 +1,87 @@
-import { Box, List, ListItem, Typography, Divider, IconButton } from '@mui/material'
-import CodeIcon from '@mui/icons-material/Code'
-import BarChartIcon from '@mui/icons-material/BarChart'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import { Box, Paper, Typography } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { Artifact } from '../contexts/ArtifactContext.types'
+import { grey, purple } from '@mui/material/colors'
 
-interface ArtifactListProps {
-  artifacts: Artifact[]
-}
+export default function ArtifactList() {
+  const { artifacts, activeArtifact, setActiveArtifact } = useArtifact()
 
-export default function ArtifactList({ artifacts }: ArtifactListProps) {
-  const { activeArtifact, setActiveArtifact, runArtifact } = useArtifact()
+  const getArtifactColor = (source: 'user' | 'chat') => {
+    return source === 'chat' ? purple[50] : grey[50]
+  }
+
+  const getBorderColor = (artifact: Artifact, isActive: boolean) => {
+    if (isActive) {
+      return artifact.source === 'chat' ? purple[300] : grey[400]
+    }
+    return artifact.source === 'chat' ? purple[100] : grey[200]
+  }
 
   return (
     <Box sx={{ height: '100%', overflow: 'auto', p: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
-        Artifacts
-      </Typography>
-      <List sx={{ p: 0 }}>
-        {artifacts.map((artifact) => (
-          <ListItem 
-            key={artifact.id}
-            sx={{ 
-              mb: 1, 
-              bgcolor: artifact.id === activeArtifact?.id ? 'primary.light' : 'grey.50',
-              borderRadius: 1,
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              '&:hover': {
-                bgcolor: 'primary.light',
-              }
-            }}
-            onClick={() => setActiveArtifact(artifact)}
-          >
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              width: '100%',
-              mb: 1
-            }}>
-              {artifact.type === 'code' ? <CodeIcon sx={{ mr: 1 }} /> : <BarChartIcon sx={{ mr: 1 }} />}
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {artifact.timestamp.toLocaleTimeString()}
-              </Typography>
-            </Box>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
-              {artifact.code}
-            </Typography>
-            <Divider sx={{ width: '100%', my: 1 }} />
-            <Typography variant="body2">
-              {artifact.output}
-            </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-              <IconButton 
-                onClick={(e) => {
-                  e.stopPropagation()
-                  runArtifact(artifact)
+      <Typography variant="h6" sx={{ mb: 2 }}>History</Typography>
+      <Box sx={{ p: 0 }}>
+        {artifacts.map((artifact: Artifact) => {
+          const isActive = activeArtifact?.id === artifact.id
+          return (
+            <Paper
+              key={artifact.id}
+              sx={{
+                p: 2,
+                mb: 2,
+                cursor: 'pointer',
+                backgroundColor: getArtifactColor(artifact.source),
+                border: '1px solid',
+                borderColor: getBorderColor(artifact, isActive),
+                transition: 'border-color 0.2s ease',
+                '&:hover': {
+                  borderColor: artifact.source === 'chat' ? purple[200] : grey[300],
+                }
+              }}
+              onClick={() => setActiveArtifact(artifact)}
+            >
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  color: artifact.source === 'chat' ? purple[700] : grey[700],
+                  mb: 1 
                 }}
-                size="small"
               >
-                <PlayArrowIcon />
-              </IconButton>
-            </Box>
-          </ListItem>
-        ))}
-      </List>
+                {artifact.name}
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: 'monospace',
+                  backgroundColor: grey[100],
+                  p: 1,
+                  borderRadius: 1,
+                  mb: 1,
+                  maxHeight: '150px',
+                  overflow: 'auto'
+                }}
+              >
+                {artifact.code}
+              </Typography>
+              {artifact.output && (
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    whiteSpace: 'pre-wrap',
+                    color: artifact.source === 'chat' ? purple[900] : grey[900],
+                    backgroundColor: grey[50],
+                    p: 1,
+                    borderRadius: 1,
+                  }}
+                >
+                  {artifact.output}
+                </Typography>
+              )}
+            </Paper>
+          )
+        })}
+      </Box>
     </Box>
   )
 } 

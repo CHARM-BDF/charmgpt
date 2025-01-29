@@ -14,8 +14,6 @@ const theme = createTheme({
 
 // Separate component for the main content
 function MainContent() {
-  const { artifacts } = useArtifact()
-
   return (
     <Box sx={{ 
       height: '100vh', 
@@ -61,7 +59,7 @@ function MainContent() {
                 boxShadow: 1,
                 overflow: 'hidden'
               }}>
-                <ArtifactList artifacts={artifacts} />
+                <ArtifactList />
               </Box>
             </Grid>
             <Grid item xs={6} sx={{ minHeight: 0 }}>
