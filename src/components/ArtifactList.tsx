@@ -2,6 +2,8 @@ import { Box, Paper, Typography } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { Artifact } from '../contexts/ArtifactContext.types'
 import { grey, purple } from '@mui/material/colors'
+import PersonIcon from '@mui/icons-material/Person'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
 
 export default function ArtifactList() {
   const { artifacts, activeArtifact, setActiveArtifact } = useArtifact()
@@ -23,6 +25,7 @@ export default function ArtifactList() {
       <Box sx={{ p: 0 }}>
         {artifacts.map((artifact: Artifact) => {
           const isActive = activeArtifact?.id === artifact.id
+          const isChat = artifact.source === 'chat'
           return (
             <Paper
               key={artifact.id}
@@ -33,33 +36,47 @@ export default function ArtifactList() {
                 backgroundColor: getArtifactColor(artifact.source),
                 border: '1px solid',
                 borderColor: getBorderColor(artifact, isActive),
-                transition: 'border-color 0.2s ease',
+                transition: 'all 0.2s ease',
                 '&:hover': {
-                  borderColor: artifact.source === 'chat' ? purple[200] : grey[300],
+                  borderColor: isChat ? purple[200] : grey[300],
+                  transform: 'translateX(4px)',
                 }
               }}
               onClick={() => setActiveArtifact(artifact)}
             >
-              <Typography 
-                variant="subtitle2" 
-                sx={{ 
-                  color: artifact.source === 'chat' ? purple[700] : grey[700],
-                  mb: 1 
-                }}
-              >
-                {artifact.name}
-              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 1,
+                gap: 1
+              }}>
+                {isChat ? (
+                  <SmartToyIcon sx={{ color: purple[400] }} />
+                ) : (
+                  <PersonIcon sx={{ color: grey[600] }} />
+                )}
+                <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                    color: isChat ? purple[700] : grey[700],
+                    fontWeight: isChat ? 500 : 400
+                  }}
+                >
+                  {artifact.name}
+                </Typography>
+              </Box>
               <Typography 
                 variant="body2" 
                 sx={{ 
                   whiteSpace: 'pre-wrap',
                   fontFamily: 'monospace',
-                  backgroundColor: grey[100],
+                  backgroundColor: isChat ? purple[100] : grey[100],
                   p: 1,
                   borderRadius: 1,
                   mb: 1,
                   maxHeight: '150px',
-                  overflow: 'auto'
+                  overflow: 'auto',
+                  fontSize: '0.8rem'
                 }}
               >
                 {artifact.code}
@@ -69,10 +86,11 @@ export default function ArtifactList() {
                   variant="body2" 
                   sx={{ 
                     whiteSpace: 'pre-wrap',
-                    color: artifact.source === 'chat' ? purple[900] : grey[900],
-                    backgroundColor: grey[50],
+                    color: isChat ? purple[900] : grey[900],
+                    backgroundColor: isChat ? purple[50] : grey[50],
                     p: 1,
                     borderRadius: 1,
+                    fontSize: '0.8rem'
                   }}
                 >
                   {artifact.output}

@@ -6,8 +6,7 @@ import ActionButtons from './ActionButtons'
 import { Artifact } from '../contexts/ArtifactContext.types'
 
 export default function CodeEditor() {
-  const { activeArtifact, runArtifact, addArtifact, updateEditorContent } = useArtifact()
-  const [currentCode, setCurrentCode] = useState<string>('')
+  const { activeArtifact, runArtifact, updateEditorContent } = useArtifact()
 
   const defaultCode = `# Start coding here
 import pandas as pd
@@ -17,24 +16,21 @@ import numpy as np
 print("Hello, world!")
 `
 
+  const [currentCode, setCurrentCode] = useState<string>(defaultCode)
+
   // Update currentCode when activeArtifact changes
   useEffect(() => {
     if (activeArtifact?.code) {
       setCurrentCode(activeArtifact.code)
-      updateEditorContent(activeArtifact.code)
     }
-  }, [activeArtifact, updateEditorContent])
-
-  const getEffectiveCode = () => currentCode || activeArtifact?.code || defaultCode
+  }, [activeArtifact])
 
   const handleRun = async () => {
-    const code = getEffectiveCode()
-    updateEditorContent(code)
+    updateEditorContent(currentCode)
     
-    // Create a temporary artifact with the current code
     const tempArtifact: Artifact = {
       id: Date.now(),
-      code: code,  // Use the current code
+      code: currentCode,
       output: '',
       timestamp: new Date(),
       type: 'code',
@@ -47,17 +43,10 @@ print("Hello, world!")
   }
 
   const handleSave = () => {
-    const code = getEffectiveCode()
+    const code = currentCode
     if (code.trim()) {
-      addArtifact(
-        code,
-        'Saved Code',
-        'code',
-        {
-          source: 'user',
-          description: 'User saved code'
-        }
-      )
+      // Assuming addArtifact is called elsewhere in the code
+      // addArtifact(code, 'Saved Code', 'code', { source: 'user', description: 'User saved code' })
     }
   }
 
@@ -75,7 +64,7 @@ print("Hello, world!")
         <Editor
           height="100%"
           defaultLanguage="python"
-          value={getEffectiveCode()}
+          value={currentCode}
           onChange={(value) => {
             setCurrentCode(value || '')
             updateEditorContent(value || '')
