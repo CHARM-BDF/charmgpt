@@ -4,27 +4,29 @@ import ChatInterface from './components/ChatInterface'
 import CodeEditor from './components/CodeEditor'
 import DataVisualizer from './components/DataVisualizer'
 import ArtifactList from './components/ArtifactList'
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { ArtifactProvider } from './contexts/ArtifactContext'
+import { useArtifact } from './contexts/useArtifact'
 
 const theme = createTheme({
   // You can customize your theme here
 })
 
 function AppContent() {
-  const handleKeyDown = (event: KeyboardEvent) => {
+  const { runArtifact, editorContent } = useArtifact()
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
-      // We'll handle the run action in the individual components
-      const customEvent = new CustomEvent('run-artifact')
-      window.dispatchEvent(customEvent)
+      console.log('Running code via Cmd+Enter:', editorContent)
+      runArtifact(editorContent)
     }
-  }
+  }, [runArtifact, editorContent])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [handleKeyDown])
 
   return (
     <Box sx={{ 
