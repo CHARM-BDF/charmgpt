@@ -5,23 +5,40 @@ import { useState } from 'react'
 import ActionButtons from './ActionButtons'
 
 export default function CodeEditor() {
-  const { activeArtifact, runArtifact, addArtifact } = useArtifact()
+  const { activeArtifact, runArtifact, addArtifact, updateEditorContent } = useArtifact()
   const [currentCode, setCurrentCode] = useState<string>(activeArtifact?.code || '')
 
-  const handleRun = () => {
-    if (activeArtifact) {
-      // Run with current edited code
-      const artifactWithNewCode = {
-        ...activeArtifact,
-        code: currentCode
-      }
-      runArtifact(artifactWithNewCode)
+  const defaultCode = `# Start coding here
+import pandas as pd
+import numpy as np
+
+# Your data science code goes here
+print("Hello, world!")
+`
+
+  const getEffectiveCode = () => activeArtifact?.code || currentCode || defaultCode
+
+  const handleRun = async () => {
+    const code = getEffectiveCode()
+    // Update the editor content first
+    updateEditorContent(code)
+    // Create a temporary artifact for running
+    const tempArtifact: Artifact = {
+      id: Date.now(),
+      code,
+      output: '',
+      timestamp: new Date(),
+      type: 'code'
     }
+    // Run the temporary artifact
+    await runArtifact(tempArtifact)
   }
 
   const handleSave = () => {
-    if (currentCode.trim()) {
-      addArtifact(currentCode, 'Saved code', 'code')
+    const codeToSave = getEffectiveCode()
+    if (codeToSave.trim()) {
+      // Save with a more meaningful name for persistent saves
+      addArtifact(codeToSave, 'Saved version', 'code')
     }
   }
 
@@ -31,22 +48,19 @@ export default function CodeEditor() {
         <ActionButtons
           onRun={handleRun}
           onSave={handleSave}
-          runDisabled={!activeArtifact}
-          saveDisabled={!currentCode.trim()}
+          runDisabled={false}  // Always enabled since we always have code
+          saveDisabled={false} // Always enabled since we always have code
         />
       </Box>
       <Box sx={{ flex: 1 }}>
         <Editor
           height="100%"
           defaultLanguage="python"
-          value={activeArtifact?.code || `# Start coding here
-import pandas as pd
-import numpy as np
-
-# Your data science code goes here
-print("Hello, world!")
-`}
-          onChange={(value) => setCurrentCode(value || '')}
+          value={activeArtifact?.code || defaultCode}
+          onChange={(value) => {
+            setCurrentCode(value || '')
+            updateEditorContent(value || '')
+          }}
           theme="light"
           options={{
             minimap: { enabled: false },
