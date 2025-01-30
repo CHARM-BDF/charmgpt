@@ -37,10 +37,12 @@ export default function Editor() {
 
   // Handle mode changes
   useEffect(() => {
-    if (mode === 'plan' && (!editorContent || editorContent === DEFAULT_CODE)) {
+    if (mode === 'plan') {
       updateEditorContent(DEFAULT_PLAN)
+    } else if (mode === 'code') {
+      updateEditorContent(activeArtifact?.code || DEFAULT_CODE)
     }
-  }, [mode, editorContent, updateEditorContent])
+  }, [mode, updateEditorContent, activeArtifact])
 
   useEffect(() => {
     if (activeArtifact) {
@@ -63,7 +65,7 @@ ${activeArtifact.plotFile ? `\n![Plot](${activeArtifact.plotFile})\n` : ''}
         updateEditorContent(activeArtifact.code)
       }
     }
-  }, [activeArtifact, updateEditorContent, mode])
+  }, [activeArtifact, updateEditorContent, mode, editorContent])
 
   const handleEditorDidMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
     // Add command to expand artifact references
