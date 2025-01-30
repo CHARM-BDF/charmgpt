@@ -16,17 +16,17 @@ export default function ChatInterface() {
   const [error, setError] = useState<string | null>(null)
   const { addArtifact } = useArtifact()
 
-  const parseCodeFromResponse = (response: string) => {
+  const parseCodeFromResponse = (response: string, input: string) => {
     // Look for code blocks with ```python
     const codeBlockRegex = /```python\n([\s\S]*?)```/g
     const matches = [...response.matchAll(codeBlockRegex)]
-    
+    const inputShort = input.length > 20 ? input.substring(0, 20) + '...' : input
     matches.forEach(match => {
       if (match[1]) {
         const code = match[1].trim()
         addArtifact({
           type: 'code',
-          name: 'Chat Suggestion',
+          name: inputShort,
           code,
           output: '',
           plotFile: null,
@@ -59,7 +59,7 @@ export default function ChatInterface() {
       })
 
       // Parse code blocks and create artifacts
-      const processedResponse = parseCodeFromResponse(response)
+      const processedResponse = parseCodeFromResponse(response, input)
 
       const assistantMessage: Message = {
         role: 'assistant',
