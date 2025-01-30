@@ -9,10 +9,12 @@ export function useArtifact(): ArtifactContextType {
   }
   
   // Add debug logging
+  /*
   console.log('useArtifact hook:', { 
     viewMode: context.viewMode,
     setViewMode: !!context.setViewMode 
   })
+  */
   
   return context
 } 

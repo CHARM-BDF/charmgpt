@@ -14,13 +14,17 @@ export default function ChatInterface() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { addArtifact } = useArtifact()
+  const { addArtifact, setEditorContent, setMode } = useArtifact()
 
   const parseCodeFromResponse = (response: string, input: string) => {
     // Look for code blocks with ```python
     const codeBlockRegex = /```python\n([\s\S]*?)```/g
     const matches = [...response.matchAll(codeBlockRegex)]
     const inputShort = input.length > 20 ? input.substring(0, 20) + '...' : input
+    
+    // Get the last code block to set in editor
+    const lastCodeBlock = matches[matches.length - 1]
+    
     matches.forEach(match => {
       if (match[1]) {
         const code = match[1].trim()
@@ -33,6 +37,12 @@ export default function ChatInterface() {
           dataFile: undefined,
           source: 'assistant'
         })
+        
+        // If this is the last code block, set it in the editor
+        if (match === lastCodeBlock) {
+          setMode('code')
+          setEditorContent(code)
+        }
       }
     })
 
