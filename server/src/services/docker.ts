@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import { v4 as uuidv4 } from 'uuid'
-import * as fs from 'fs/promises'
+import * as fs from 'fs'  // Regular fs for sync operations
+import * as fsPromises from 'fs/promises'  // Promise-based fs for async operations
 import * as path from 'path'
 
 interface DockerRunResult {
@@ -12,125 +13,99 @@ interface DockerRunResult {
 }
 
 export class DockerService {
-  private readonly tempDir: string
+  private tempDir: string
   private readonly imageTag: string
 
   constructor() {
     this.tempDir = path.join(process.cwd(), 'temp')
     this.imageTag = 'my-python-app'
-    this.initTempDir()
+    // Create temp directory if it doesn't exist
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true })
+    }
   }
 
-  private async initTempDir() {
-    try {
-      await fs.mkdir(this.tempDir, { recursive: true })
-    } catch (error) {
-      console.error('Failed to create temp directory:', error)
-    }
+  public getTempDir(): string {
+    return this.tempDir
   }
 
   async runCode(code: string): Promise<DockerRunResult> {
     const runId = uuidv4()
-    const wrapperPath = path.join(this.tempDir, `${runId}_wrapper.py`)
-    const userCodePath = path.join(this.tempDir, `${runId}_user_code.py`)
-    const outputPath = path.join(this.tempDir, `${runId}_output.json`)
-    const plotPath = path.join(this.tempDir, `${runId}_plot.png`)
-    const dataPath = path.join(this.tempDir, `${runId}_data.csv`)
+    console.log('Starting code run:', runId)
+    const tempDir = this.getTempDir()
 
     try {
-      console.log('Running code with ID:', runId)
-      console.log('Temp directory:', this.tempDir)
+      // Save the code to a temporary file
+      const codeDir = path.join(tempDir, runId)
+      await fsPromises.mkdir(codeDir, { recursive: true })
       
-      // Save both files
-      const wrappedCode = this.wrapCode(runId)
-      await Promise.all([
-        fs.writeFile(wrapperPath, wrappedCode),
-        fs.writeFile(userCodePath, code)
-      ])
-      console.log('Saved code files')
+      const userCodePath = path.join(codeDir, 'user_code.py')
+      const wrapperPath = path.join(codeDir, 'wrapper.py')
+      
+      await fsPromises.writeFile(userCodePath, code)
+      await fsPromises.writeFile(wrapperPath, this.wrapCode(runId))
+      
+      console.log('Running code with ID:', runId)
+      console.log('Temp directory:', tempDir)
 
       // Run the code in Docker
-      const result = await this.runDocker(runId, wrapperPath, userCodePath)
-      console.log('Docker execution result:', result)
-      
-      // Check for visualization output
-      let vizData: string | undefined
-      let plotFile: string | undefined
-      let dataFile: string | undefined
-      
-      try {
-        vizData = await fs.readFile(outputPath, 'utf-8')
-        console.log('Found visualization data')
-      } catch (error) {
-        console.log('No visualization data found:', error)
-      }
+      const { stdout } = await this.runDocker(runId, codeDir)
+      console.log('Docker execution result:', stdout)
 
-      // Check if plot file exists
-      try {
-        await fs.access(plotPath)
-        plotFile = `${runId}_plot.png`
-        console.log('Found plot file:', plotFile)
-      } catch (error) {
-        void error;
-        console.log('No plot file found at:', plotPath)
-        // Try checking for generic plot files
-        try {
-          const genericPlotPath = path.join(this.tempDir, 'plot.png')
-          await fs.access(genericPlotPath)
-          // If found, rename it to include runId
-          await fs.rename(genericPlotPath, plotPath)
-          plotFile = `${runId}_plot.png`
-          console.log('Found and renamed generic plot file:', plotFile)
-        } catch (error) {
-          void error;
-          console.log('No generic plot file found either')
-        }
-      }
+      // Check for generated files
+      const plotFilename = `${runId}_plot.png`
+      const plotPath = path.join(tempDir, plotFilename)
+      const hasPlot = fs.existsSync(plotPath)
+      console.log('Plot file status:', { plotPath, exists: hasPlot })
 
-      // Check for data file first
-      try {
-        console.log('Looking for data file at:', dataPath)
-        await fs.access(dataPath)
-        dataFile = `${runId}_data.csv`
-        console.log('Found data file:', dataFile)
-      } catch {
-        console.log('No data file found at:', dataPath)
-        // Try checking for generic data file
-        try {
-          const genericDataPath = path.join(this.tempDir, 'data.csv')
-          console.log('Looking for generic data file at:', genericDataPath)
-          await fs.access(genericDataPath)
-          // If found, rename it to include runId
-          await fs.rename(genericDataPath, dataPath)
-          dataFile = `${runId}_data.csv`
-          console.log('Found and renamed generic data file:', dataFile)
-        } catch {
-          console.log('No generic data file found either')
-        }
-      }
+      const dataFilename = `${runId}_data.csv`
+      const dataPath = path.join(tempDir, dataFilename)
+      const hasData = fs.existsSync(dataPath)
+      console.log('Data file status:', { dataPath, exists: hasData })
 
-      // Only cleanup the Python files
-      await Promise.all([
-        fs.unlink(wrapperPath).catch(() => {}),
-        fs.unlink(userCodePath).catch(() => {})
-      ])
+      if (hasPlot) console.log('Found plot file:', plotFilename)
+      if (hasData) console.log('Found data file:', dataFilename)
 
-      const response = {
+      return {
         success: true,
-        output: result,
-        visualization: vizData,
-        plotFile,
-        dataFile
+        output: stdout,
+        plotFile: hasPlot ? plotFilename : undefined,
+        dataFile: hasData ? dataFilename : undefined
       }
-      console.log('Full response:', response)
-      return response
-
     } catch (error) {
       console.error('Error running code:', error)
       return {
         success: false,
         output: error instanceof Error ? error.message : 'Unknown error occurred'
       }
+    }
+  }
+
+  private async copyFromContainer(runId: string, filename: string): Promise<void> {
+    try {
+      const containerPath = `/app/output/${filename}`
+      const hostPath = path.join(this.getTempDir(), filename)
+      
+      await new Promise<void>((resolve, reject) => {
+        const cp = spawn('docker', [
+          'cp',
+          `${runId}:${containerPath}`,
+          hostPath
+        ])
+        
+        cp.on('close', (code) => {
+          if (code === 0) {
+            console.log(`Successfully copied ${filename} from container`)
+            resolve()
+          } else {
+            reject(new Error(`Failed to copy ${filename} from container`))
+          }
+        })
+        
+        cp.on('error', reject)
+      })
+    } catch (error) {
+      console.error(`Error copying ${filename} from container:`, error)
     }
   }
 
@@ -158,36 +133,19 @@ try:
     # Check if there's a plot to save
     if plt.get_fignums():
         print("Found plot, saving...")
-        # Save plot as PNG with unique name
-        plot_path = f'/app/output/{runId}_plot.png'
-        plt.savefig(plot_path)
-        print(f"Saved plot to {plot_path}")
-        
-        # Also save data for interactive visualization
-        fig = plt.gcf()
-        data = []
-        for ax in fig.axes:
-            for line in ax.lines:
-                x_data = line.get_xdata().tolist()
-                y_data = line.get_ydata().tolist()
-                data.extend([{"name": str(x), "value": y} for x, y in zip(x_data, y_data)])
-        
-        with open(f'/app/output/{runId}_output.json', 'w') as f:
-            json.dump(data, f)
-            print("Saved visualization data")
-    else:
-        print("No plots found")
-        
-    plt.close('all')
-
+        plt.savefig(f'/app/output/{runId}_plot.png')
+        print(f"Saved plot as {runId}_plot.png")
+    
     # Check for any CSV files in the current directory
     import glob
     csv_files = glob.glob('*.csv')
     if csv_files:
-        print(f"Found CSV file: {csv_files[0]}")
+        print(f"Found CSV files: {csv_files}")
         import shutil
-        shutil.move(csv_files[0], f'/app/output/{runId}_data.csv')
-        print(f"Moved CSV file to /app/output/{runId}_data.csv")
+        for csv_file in csv_files:
+            output_path = f'/app/output/{runId}_data.csv'
+            shutil.move(csv_file, output_path)
+            print(f"Moved {csv_file} to {output_path}")
     
 except Exception as e:
     print(f"Error: {str(e)}")
@@ -198,38 +156,56 @@ print(output_buffer.getvalue())
 `
   }
 
-  private runDocker(runId: string, wrapperPath: string, userCodePath: string): Promise<string> {
+  private async runDocker(runId: string, codeDir: string): Promise<{ stdout: string }> {
     return new Promise((resolve, reject) => {
       const docker = spawn('docker', [
         'run',
-        '--rm',
-        '-v', `${wrapperPath}:/app/wrapper.py:ro`,
-        '-v', `${userCodePath}:/app/user_code.py:ro`,
-        '-v', `${this.tempDir}:/app/output`,
+        '--name', runId,
+        '-v', `${codeDir}:/app/code:ro`,
+        '-v', `${this.getTempDir()}:/app/output`,
         '--network', 'none',
         '--memory', '512m',
         '--cpus', '0.5',
         this.imageTag,
         'python',
-        '/app/wrapper.py'
+        '/app/code/wrapper.py'
       ])
 
-      let output = ''
-      let error = ''
+      let stdout = ''
+      let stderr = ''
 
       docker.stdout.on('data', (data) => {
-        output += data.toString()
+        stdout += data.toString()
       })
 
       docker.stderr.on('data', (data) => {
-        error += data.toString()
+        stderr += data.toString()
       })
 
-      docker.on('close', (code) => {
-        if (code === 0) {
-          resolve(output)
-        } else {
-          reject(new Error(`Docker process failed: ${error}`))
+      docker.on('close', async (code) => {
+        try {
+          // Copy files from container before removing it
+          if (code === 0) {
+            await this.copyFromContainer(runId, `${runId}_plot.png`)
+            await this.copyFromContainer(runId, `${runId}_data.csv`)
+          }
+          
+          // Remove the container
+          await new Promise<void>((resolveRm, rejectRm) => {
+            const rm = spawn('docker', ['rm', runId])
+            rm.on('close', (rmCode) => {
+              if (rmCode === 0) resolveRm()
+              else rejectRm(new Error(`Failed to remove container: ${rmCode}`))
+            })
+          })
+
+          if (code === 0) {
+            resolve({ stdout })
+          } else {
+            reject(new Error(`Docker process failed: ${stderr}`))
+          }
+        } catch (error) {
+          reject(error)
         }
       })
     })

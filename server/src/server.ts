@@ -2,7 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { config } from 'dotenv'
 import { LLMRouter } from './routes/llm'
-import { CodeRouter } from './routes/code'
+import CodeRouter from './routes/code'
 
 config() // Load environment variables
 

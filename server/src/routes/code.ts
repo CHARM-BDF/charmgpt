@@ -1,35 +1,54 @@
-import { Router } from 'express'
+import express, { Router } from 'express'
+import path from 'path'
+import * as fs from 'fs'
+import * as fsPromises from 'fs/promises'  // Promise-based fs for async operations
 import { DockerService } from '../services/docker'
-import * as path from 'path'
-import * as fs from 'fs/promises'
 
-const router = Router()
-const dockerService = new DockerService()
+const router: Router = express.Router()
+const docker = new DockerService()
 
-// Serve static files from temp directory
-router.get('/plots/:filename', (req, res) => {
-  const plotPath = path.join(process.cwd(), 'temp', req.params.filename)
+interface FileParams {
+  filename: string;
+}
+
+// Log all requests to this router
+router.use((req, res, next) => {
+  console.log('Code Router:', {
+    method: req.method,
+    path: req.path,
+    baseUrl: req.baseUrl,
+    originalUrl: req.originalUrl
+  })
+  next()
+})
+
+// Serve plot files
+router.get<FileParams>('/plots/:filename', (req, res) => {
+  const plotPath = path.join(docker.getTempDir(), req.params.filename)
+  console.log('Serving plot:', {
+    requestedFile: req.params.filename,
+    fullPath: plotPath,
+    exists: fs.existsSync(plotPath)
+  })
   res.sendFile(plotPath)
 })
 
-// Serve data files from temp directory
-router.get('/data/:filename', async (req, res) => {
-  try {
-    const dataPath = path.join(process.cwd(), 'temp', req.params.filename)
-    await fs.access(dataPath)
-    res.setHeader('Content-Type', 'text/csv')
-    res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`)
-    res.sendFile(dataPath)
-  } catch {
-    res.status(404).json({ error: 'Data file not found' })
-  }
+// Serve data files
+router.get<FileParams>('/data/:filename', (req, res) => {
+  const dataPath = path.join(docker.getTempDir(), req.params.filename)
+  console.log('Serving data:', {
+    requestedFile: req.params.filename,
+    fullPath: dataPath,
+    exists: fs.existsSync(dataPath)
+  })
+  res.sendFile(dataPath)
 })
 
 // Cleanup endpoint
-router.delete('/plots/:filename', async (req, res) => {
+router.delete<FileParams>('/plots/:filename', async (req, res) => {
   try {
-    const plotPath = path.join(process.cwd(), 'temp', req.params.filename)
-    await fs.unlink(plotPath)
+    const plotPath = path.join(docker.getTempDir(), req.params.filename)
+    await fsPromises.unlink(plotPath)
     res.json({ success: true })
   } catch (error) {
     void error;
@@ -40,7 +59,7 @@ router.delete('/plots/:filename', async (req, res) => {
 router.post('/run-code', async (req, res) => {
   try {
     const { code, timestamp } = req.body
-    const result = await dockerService.runCode(code)
+    const result = await docker.runCode(code)
     res.json({
       ...result,
       timestamp  // Return the timestamp to confirm we're getting fresh results
@@ -51,4 +70,4 @@ router.post('/run-code', async (req, res) => {
   }
 })
 
-export { router as CodeRouter } 
+export default router 
