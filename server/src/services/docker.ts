@@ -8,6 +8,7 @@ interface DockerRunResult {
   output: string
   visualization?: string  // JSON string for visualization data
   plotFile?: string      // Name of the plot file if generated
+  dataFile?: string      // Name of the CSV file if generated
 }
 
 export class DockerService {
@@ -34,6 +35,7 @@ export class DockerService {
     const userCodePath = path.join(this.tempDir, `${runId}_user_code.py`)
     const outputPath = path.join(this.tempDir, `${runId}_output.json`)
     const plotPath = path.join(this.tempDir, `${runId}_plot.png`)
+    const dataPath = path.join(this.tempDir, `${runId}_data.csv`)
 
     try {
       console.log('Running code with ID:', runId)
@@ -53,6 +55,7 @@ export class DockerService {
       // Check for visualization output
       let vizData: string | undefined
       let plotFile: string | undefined
+      let dataFile: string | undefined
       
       try {
         vizData = await fs.readFile(outputPath, 'utf-8')
@@ -83,6 +86,19 @@ export class DockerService {
         }
       }
 
+      // Check if data file exists
+      try {
+        const genericDataPath = path.join(this.tempDir, 'data.csv')
+        await fs.access(genericDataPath)
+        // If found, rename it to include runId
+        await fs.rename(genericDataPath, dataPath)
+        dataFile = `${runId}_data.csv`
+        console.log('Found and renamed data file:', dataFile)
+      } catch (error) {
+        void error;
+        console.log('No data file found')
+      }
+
       // Only cleanup the Python files
       await Promise.all([
         fs.unlink(wrapperPath).catch(() => {}),
@@ -93,7 +109,8 @@ export class DockerService {
         success: true,
         output: result,
         visualization: vizData,
-        plotFile
+        plotFile,
+        dataFile
       }
       console.log('Returning response:', response)
       return response
