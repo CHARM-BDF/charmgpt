@@ -2,7 +2,7 @@ import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Grid } from '@mui/material'
 import ChatInterface from './components/ChatInterface'
 import CodeEditor from './components/CodeEditor'
-import DataVisualizer from './components/DataVisualizer'
+//import DataVisualizer from './components/DataVisualizer'
 import ArtifactList from './components/ArtifactList'
 import ArtifactView from './components/ArtifactView'
 import { useEffect, useCallback } from 'react'
@@ -58,7 +58,7 @@ function AppContent() {
                 boxShadow: 1,
                 overflow: 'hidden'
               }}>
-                <DataVisualizer />
+                <ArtifactView />
               </Box>
             </Grid>
           </Grid>
@@ -90,7 +90,6 @@ function AppContent() {
           </Grid>
         </Grid>
       </Grid>
-      <ArtifactView />
     </Box>
   )
 }

@@ -1,6 +1,5 @@
 import { Box, Paper, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
-import { ViewMode } from '../contexts/ArtifactContext.types'
 import { useState, useEffect } from 'react'
 
 interface DataPreviewProps {
