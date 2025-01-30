@@ -48,9 +48,11 @@ export const ArtifactContent: React.FC<{
   const renderContent = () => {
     if (viewMode === 'source') {
       return (
-        <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto border-2 border-gray-200 dark:border-gray-700 shadow-md">
-          <code>{artifact.content}</code>
-        </pre>
+        <div className="relative w-full min-w-0 overflow-x-auto">
+          <pre className="w-max bg-gray-50 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <code className="whitespace-pre">{artifact.content}</code>
+          </pre>
+        </div>
       );
     }
 

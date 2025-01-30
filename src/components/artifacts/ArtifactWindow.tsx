@@ -11,11 +11,11 @@ export const ArtifactWindow: React.FC = () => {
   const selectedArtifact = artifacts.find(a => a.id === selectedArtifactId);
 
   return (
-    <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col">
-      <div className="flex-1 flex min-h-0 bg-gray-200 dark:bg-gray-900">
-        <div className="flex-1 h-full p-4">
+    <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col min-w-0">
+      <div className="flex-1 flex min-h-0 min-w-0 bg-gray-200 dark:bg-gray-900">
+        <div className="flex-1 h-full p-4 min-w-0">
           {selectedArtifact && (
-            <div className="h-full">
+            <div className="h-full min-w-0">
               <ArtifactContent artifact={selectedArtifact} />
             </div>
           )}
