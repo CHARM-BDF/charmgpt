@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
 import MonacoEditor from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
@@ -14,45 +14,48 @@ export default function Editor() {
     artifacts 
   } = useArtifact()
 
-  const lastAppendedArtifactId = useRef<number | null>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
-  useEffect(() => {
-    if (activeArtifact && mode === 'plan' && lastAppendedArtifactId.current !== activeArtifact.id) {
-      const artifactSummary = `
-## Artifact #${activeArtifact.id} - ${activeArtifact.name}
+  const insertArtifactAtCursor = useCallback((artifact: typeof artifacts[0]) => {
+    const artifactSummary = `
+## Artifact #${artifact.id} - ${artifact.name}
 \`\`\`python
-${activeArtifact.code}
+${artifact.code}
 \`\`\`
 
 Output:
 \`\`\`
-${activeArtifact.output}
+${artifact.output}
 \`\`\`
-${activeArtifact.plotFile ? `\n![Plot](${activeArtifact.plotFile})\n` : ''}
+${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
 ---
 `
-      if (editorRef.current) {
-        const position = editorRef.current.getPosition()
-        const model = editorRef.current.getModel()
-        
-        if (position && model) {
-          editorRef.current.executeEdits('', [{
-            range: new monaco.Range(
-              position.lineNumber,
-              position.column,
-              position.lineNumber,
-              position.column
-            ),
-            text: artifactSummary
-          }])
-        }
+    if (editorRef.current) {
+      const position = editorRef.current.getPosition()
+      const model = editorRef.current.getModel()
+      
+      if (position && model) {
+        editorRef.current.executeEdits('', [{
+          range: new monaco.Range(
+            position.lineNumber,
+            position.column,
+            position.lineNumber,
+            position.column
+          ),
+          text: artifactSummary
+        }])
       }
-      lastAppendedArtifactId.current = activeArtifact.id
+    }
+  }, [])
+
+  // Handle artifact selection
+  useEffect(() => {
+    if (activeArtifact && mode === 'plan') {
+      insertArtifactAtCursor(activeArtifact)
     } else if (activeArtifact && mode === 'code') {
       updateEditorContent(activeArtifact.code)
     }
-  }, [activeArtifact, mode, updateEditorContent])
+  }, [activeArtifact, mode, updateEditorContent, insertArtifactAtCursor])
 
   const handleEditorChange = (value: string | undefined) => {
     if (mode === 'plan') {
@@ -78,35 +81,12 @@ ${activeArtifact.plotFile ? `\n![Plot](${activeArtifact.plotFile})\n` : ''}
       if (artifactMatch) {
         const artifactId = parseInt(artifactMatch[1])
         const artifact = artifacts.find(a => a.id === artifactId)
-        
         if (artifact) {
-          const artifactSummary = `
-## Artifact ${artifact.id} - ${artifact.name}
-\`\`\`python
-${artifact.code}
-\`\`\`
-
-Output:
-\`\`\`
-${artifact.output}
-\`\`\`
-${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
----
-`
-          const range = new monaco.Range(
-            position.lineNumber,
-            line.indexOf('[['),
-            position.lineNumber,
-            line.indexOf(']]') + 2
-          )
-          editor.executeEdits('expand-artifact', [{
-            range,
-            text: artifactSummary,
-          }])
+          insertArtifactAtCursor(artifact)
         }
       }
     })
-  }, [artifacts])
+  }, [artifacts, insertArtifactAtCursor])
 
   return (
     <MonacoEditor
