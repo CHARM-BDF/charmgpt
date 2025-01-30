@@ -1,5 +1,6 @@
 import { Box, Typography, Paper, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
+import { ViewMode } from '../contexts/ArtifactContext.types'
 import { useState, useEffect } from 'react'
 
 export default function ArtifactView() {
@@ -9,7 +10,9 @@ export default function ArtifactView() {
     activeArtifact,
     plotFile: activeArtifact?.plotFile,
     dataFile: activeArtifact?.dataFile,
-    viewMode
+    viewMode,
+    hasPlot: Boolean(activeArtifact?.plotFile),
+    hasData: Boolean(activeArtifact?.dataFile)
   })
 
   if (!activeArtifact) {
@@ -18,6 +21,13 @@ export default function ArtifactView() {
         <Typography color="text.secondary">Select an artifact to view</Typography>
       </Box>
     )
+  }
+
+  const handleViewChange = (_: React.MouseEvent<HTMLElement>, newMode: ViewMode | null) => {
+    console.log('View mode change:', { oldMode: viewMode, newMode })
+    if (newMode) {
+      setViewMode(newMode)
+    }
   }
 
   return (
@@ -35,7 +45,7 @@ export default function ArtifactView() {
         </Typography>
         <ToggleButtonGroup
           value={viewMode}
-          onChange={(_, newMode) => newMode && setViewMode(newMode)}
+          onChange={handleViewChange}
           exclusive
           size="small"
         >
@@ -55,7 +65,7 @@ export default function ArtifactView() {
       </Box>
 
       <Typography variant="caption" display="block" sx={{ mb: 1 }}>
-        Mode: {viewMode}, Plot: {activeArtifact.plotFile ? 'Yes' : 'No'}, Data: {activeArtifact.dataFile ? 'Yes' : 'No'}
+        Current view: {viewMode}, Has Plot: {String(Boolean(activeArtifact.plotFile))}, Has Data: {String(Boolean(activeArtifact.dataFile))}
       </Typography>
 
       {activeArtifact.output && (
