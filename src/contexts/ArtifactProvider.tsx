@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ViewMode } from './ArtifactContext.types'
+import { Artifact, ViewMode, EditorMode } from './ArtifactContext.types'
 
 interface ArtifactProviderProps {
   children: ReactNode
@@ -12,7 +12,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('plot')
   const [editorContent, setEditorContent] = useState('')
   const [planContent, setPlanContent] = useState('')
-  const [mode] = useState('chat')
+  const [mode, setMode] = useState<EditorMode>('code')
 
   const updateEditorContent = (content: string) => {
     setEditorContent(content || '')
@@ -108,6 +108,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         activeArtifact,
         viewMode,
         mode,
+        setMode,
         setViewMode,
         setActiveArtifact,
         runArtifact,

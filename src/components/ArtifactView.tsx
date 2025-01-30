@@ -1,4 +1,4 @@
-import { Box, Typography, Paper, ToggleButtonGroup, ToggleButton } from '@mui/material'
+import { Box, Paper, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { ViewMode } from '../contexts/ArtifactContext.types'
 import { useState, useEffect } from 'react'
@@ -97,15 +97,52 @@ export default function ArtifactView() {
     )
   }
 
+  let content
+  if (viewMode === 'plot' && activeArtifact.plotFile) {
+    content = (
+      <img 
+        src={`/api/plots/${activeArtifact.plotFile}`}
+        alt="Plot" 
+        style={{ width: '100%', height: 'auto' }}
+      />
+    )
+  } else if (viewMode === 'data' && activeArtifact.dataFile) {
+    content = (
+      <Box>
+        <Box sx={{ mb: 2 }}>
+          <a 
+            href={`/api/data/${activeArtifact.dataFile}`}
+            download
+            style={{ textDecoration: 'none' }}
+          >
+            Download CSV
+          </a>
+        </Box>
+        <DataPreview dataFile={activeArtifact.dataFile} />
+      </Box>
+    )
+  }
+
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ 
+      p: 2,
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       {/* Header */}
       <Typography variant="h6" sx={{ mb: 2 }}>
         {activeArtifact.name}
       </Typography>
 
-      {/* Content Area */}
-      <Paper sx={{ p: 2 }}>
+      {/* Main Content Area */}
+      <Paper sx={{ 
+        p: 2,
+        flexGrow: 1,
+        overflow: 'auto',  // Add scroll if content is too large
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         {/* View Controls */}
         <Box sx={{ 
           mb: 2,
@@ -136,29 +173,8 @@ export default function ArtifactView() {
         </Box>
 
         {/* View Content */}
-        <Box sx={{ mt: 2 }}>
-          {viewMode === 'plot' && activeArtifact.plotFile && (
-            <img 
-              src={`/api/plots/${activeArtifact.plotFile}`}
-              alt="Plot" 
-              style={{ width: '100%', height: 'auto' }}
-            />
-          )}
-          
-          {viewMode === 'data' && activeArtifact.dataFile && (
-            <Box>
-              <Box sx={{ mb: 2 }}>
-                <a 
-                  href={`/api/data/${activeArtifact.dataFile}`}
-                  download
-                  style={{ textDecoration: 'none' }}
-                >
-                  Download CSV
-                </a>
-              </Box>
-              <DataPreview dataFile={activeArtifact.dataFile} />
-            </Box>
-          )}
+        <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+          {content}
         </Box>
       </Paper>
     </Box>
