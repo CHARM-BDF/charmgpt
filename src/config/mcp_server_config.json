@@ -21,7 +21,7 @@
       "pubmed": {
         "command": "node",
         "args": [
-          "/Users/andycrouse/Documents/GitHub/MCP/pubmed-mcp/dist/server.js"
+          "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
         ]
       },
       "server-sequential-thinking": {
@@ -45,7 +45,7 @@
       "string-db": {
         "command": "node",
         "args": [
-          "/Users/andycrouse/Documents/GitHub/MCP/string-db-mcp/dist/index.js"
+          "./src/custom-mcp-servers/string-db-mcp/dist/index.js"
         ]
       }
     }
