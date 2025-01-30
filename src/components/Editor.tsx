@@ -11,11 +11,12 @@ export default function Editor() {
     planContent,
     updatePlanContent,
     mode, 
-    artifacts 
+    artifacts,
+    setActiveArtifact
   } = useArtifact()
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
-  const pendingInsertRef = useRef<typeof artifacts[0] | null>(null)
+  const isInitialMount = useRef(true)
 
   const insertArtifactAtCursor = useCallback((artifact: typeof artifacts[0]) => {
     if (!editorRef.current) return
@@ -49,19 +50,19 @@ ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
     
     // Update the plan content after insertion
     updatePlanContent(editor.getValue())
-  }, [updatePlanContent])
+    // Clear active artifact after insertion
+    setActiveArtifact(null)
+  }, [updatePlanContent, setActiveArtifact])
 
   // Handle artifact selection
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+
     if (activeArtifact && mode === 'plan') {
-      pendingInsertRef.current = activeArtifact
-      // Small delay to ensure editor is ready
-      setTimeout(() => {
-        if (pendingInsertRef.current) {
-          insertArtifactAtCursor(pendingInsertRef.current)
-          pendingInsertRef.current = null
-        }
-      }, 50)
+      insertArtifactAtCursor(activeArtifact)
     } else if (activeArtifact && mode === 'code') {
       updateEditorContent(activeArtifact.code)
     }
