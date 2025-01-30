@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useChatStore } from '../../store/chatStore';
+import rehypeRaw from 'rehype-raw';
 
 interface AssistantMarkdownProps {
   content: string;
@@ -34,13 +35,26 @@ class MarkdownErrorBoundary extends Component<{ children: React.ReactNode }, { h
 }
 
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
-  const { selectArtifact } = useChatStore();
+  const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
 
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
     } catch (err) {
       console.error('Failed to copy text:', err);
+    }
+  };
+
+  /**
+   * Handle clicking an artifact link
+   * Uses the internal UUID, not the original XML artifactId
+   */
+  const handleArtifactClick = (uuid: string) => {
+    console.log('AssistantMarkdown: handleArtifactClick called with uuid:', uuid);
+    selectArtifact(uuid);
+    if (!showArtifactWindow) {
+      console.log('AssistantMarkdown: Opening artifact window');
+      toggleArtifactWindow();
     }
   };
 
@@ -144,11 +158,19 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
     ),
     a: ({node, href, children, ...props}: any) => {
       if (href?.startsWith('artifact:')) {
+        const uuid = href.replace('artifact:', '');
+        console.log('AssistantMarkdown: Processing artifact link with uuid:', uuid);
+        const artifact = artifacts.find(a => a.id === uuid);
+        
+        if (!artifact) {
+          console.log('AssistantMarkdown: No artifact found for uuid:', uuid);
+          return null;
+        }
+        
         return (
           <button
-            onClick={() => selectArtifact(href.replace('artifact:', ''))}
-            className="text-blue-500 hover:underline"
-            type="button"
+            onClick={() => selectArtifact(uuid)}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             {children}
           </button>
@@ -205,7 +227,32 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
         <ReactMarkdown 
           children={cleanContent}
           remarkPlugins={[remarkGfm]}
-          components={markdownComponents}
+          rehypePlugins={[rehypeRaw as any]}
+          components={{
+            ...markdownComponents,
+            button: ({node, ...props}: any) => {
+              if (props.className?.includes('artifact-button')) {
+                const uuid = props['data-artifact-id'];
+                if (uuid) {
+                  return (
+                    <button
+                      {...props}
+                      onClick={() => {
+                        console.log('AssistantMarkdown: Button clicked with uuid:', uuid);
+                        selectArtifact(uuid);
+                        if (!showArtifactWindow) {
+                          toggleArtifactWindow();
+                        }
+                      }}
+                    >
+                      {props.children}
+                    </button>
+                  );
+                }
+              }
+              return <button {...props}>{props.children}</button>;
+            }
+          }}
         />
       </div>
     </MarkdownErrorBoundary>

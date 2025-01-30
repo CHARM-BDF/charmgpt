@@ -5,12 +5,18 @@ import { Artifact } from '../types/artifacts';
 // import { useMCPStore } from './mcpStore';
 import { parseXMLResponse } from '../utils/xmlParser';
 
+/**
+ * Core message interface extension
+ * IMPORTANT: artifactId is used to link messages with their associated artifacts
+ * This linking is essential for the artifact reference system
+ */
 interface MessageWithThinking extends Message {
   thinking?: string;
+  artifactId?: string;  // DO NOT REMOVE: Required for artifact linking
 }
 
 interface ChatState {
-  messages: Message[];
+  messages: MessageWithThinking[];
   artifacts: Artifact[];
   selectedArtifactId: string | null;
   showArtifactWindow: boolean;
@@ -18,9 +24,9 @@ interface ChatState {
   isLoading: boolean;
   error: string | null;
   
-  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
+  addMessage: (message: Omit<MessageWithThinking, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, content: string) => void;
-  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => string;
+  addArtifact: (artifact: Omit<Artifact, 'timestamp'>) => string;
   updateArtifact: (id: string, content: string) => void;
   deleteArtifact: (id: string) => void;
   clearArtifacts: () => void;
@@ -58,7 +64,6 @@ export const useChatStore = create<ChatState>()(
           return state;
         }
         
-        // We no longer need to convert code blocks to artifacts
         return {
           messages: [...state.messages, {
             ...message,
@@ -78,18 +83,17 @@ export const useChatStore = create<ChatState>()(
       },
 
       addArtifact: (artifact) => {
-        const id = crypto.randomUUID();
-        console.log(`ChatStore: Adding new artifact ${id} of type ${artifact.type}`);
+        // Use the existing ID from the XML
+        console.log(`ChatStore: Adding artifact ${artifact.id} at position ${artifact.position}`);
         set((state) => ({
           artifacts: [...state.artifacts, {
             ...artifact,
-            id,
             timestamp: new Date(),
-          }],
-          selectedArtifactId: id,
+          }].sort((a, b) => a.position - b.position),
+          selectedArtifactId: artifact.id,
           showArtifactWindow: true,
         }));
-        return id;
+        return artifact.id;
       },
 
       updateArtifact: (id, content) => {
@@ -123,7 +127,10 @@ export const useChatStore = create<ChatState>()(
 
       selectArtifact: (id) => {
         console.log(`ChatStore: Selecting artifact ${id}`);
-        set({ selectedArtifactId: id });
+        set({ 
+          selectedArtifactId: id,
+          showArtifactWindow: true 
+        });
       },
 
       toggleArtifactWindow: () => {
@@ -138,13 +145,23 @@ export const useChatStore = create<ChatState>()(
         set({ showList: show });
       },
 
-      processMessage: async (content) => {
-        // const mcpStore = useMCPStore.getState();
-        // const activeServer = mcpStore.activeServer;
-        
-        // console.log('ChatStore: Processing message, active server:', activeServer);
-
+      /**
+       * CRITICAL: Server Communication Function
+       * This function handles:
+       * 1. Sending messages to the AI server
+       * 2. Processing the XML response
+       * 3. Creating artifacts and linking them to messages
+       * 
+       * DO NOT REMOVE the server communication logic unless explicitly replacing it
+       * with an alternative communication method
+       */
+      processMessage: async (content: string) => {
         try {
+          set({ isLoading: true, error: null });
+
+          // REQUIRED: Server communication
+          // This section must be preserved to maintain AI interaction
+          console.log('ChatStore: Sending request to server...');
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
             method: 'POST',
             headers: {
@@ -167,47 +184,70 @@ export const useChatStore = create<ChatState>()(
 
           const data = await response.json();
           
-          console.log('\n=== Chat Store: Server Response ===');
+          console.log('\n=== Chat Store: Received Server Response ===');
           console.log('Raw response:', {
             length: data.response.length,
             preview: data.response.slice(0, 200) + '...'
           });
 
           try {
-            // Try to parse as XML response
-            const xmlResponse = parseXMLResponse(data.response);
+            console.log('ChatStore: Parsing XML response...');
+            // XML Response Processing
+            // This section handles both artifacts and messages
+            // Both parts are required for proper functionality
+            const xmlResponse = await parseXMLResponse(data.response);
+            console.log('ChatStore: XML parsed successfully:', {
+              hasThinking: !!xmlResponse.thinking,
+              conversationLength: xmlResponse.conversation.length,
+              artifactsCount: xmlResponse.artifacts.length
+            });
             
-            // Process artifacts first
+            // Process artifacts first - Required for proper linking
             const artifactIds = xmlResponse.artifacts.map(artifact => {
+              console.log('ChatStore: Adding artifact:', {
+                type: artifact.type,
+                title: artifact.title,
+                position: artifact.position
+              });
               return get().addArtifact({
+                id: artifact.id,  // Include the ID from XML
+                artifactId: artifact.artifactId,  // Add the original XML ID
                 type: artifact.type,
                 title: artifact.title,
                 content: artifact.content,
-                messageId: crypto.randomUUID()
+                position: artifact.position,
+                language: artifact.language
               });
             });
 
-            // Extract references from conversation (for tracking purposes)
-            // const refs = extractReferences(xmlResponse.conversation);
-            
-            // Add assistant message with first artifact (if any)
+            // Add assistant message with artifact linking
+            // The artifactId link is essential for the reference system
+            console.log('ChatStore: Adding assistant message with artifact link:', {
+              artifactId: artifactIds[0] || null
+            });
             get().addMessage({
               role: 'assistant',
               content: xmlResponse.conversation,
               thinking: xmlResponse.thinking,
-              artifactId: artifactIds[0] // Link to first artifact if any
-            } as MessageWithThinking);
+              artifactId: artifactIds[0] // DO NOT REMOVE: Links message to first artifact
+            });
 
           } catch (parseError) {
-            console.warn('ChatStore: Failed to parse XML response, falling back to plain text', parseError);
+            console.error('ChatStore: XML parsing error:', parseError);
+            console.warn('ChatStore: Failed to parse XML response, falling back to plain text');
             get().addMessage({
               role: 'assistant',
               content: data.response
             });
           }
-
+          
+          set({ isLoading: false });
         } catch (error) {
           console.error('ChatStore: Error processing message:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            isLoading: false 
+          });
           get().addMessage({
             role: 'assistant',
             content: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`

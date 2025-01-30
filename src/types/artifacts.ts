@@ -10,11 +10,12 @@ export type ArtifactType =
   | 'application/vnd.react';
 
 export interface Artifact {
-  id: string;
+  id: string;           // Unique UUID for internal use
+  artifactId: string;   // Original ID from XML
   type: ArtifactType;
   title: string;
   content: string;
   timestamp: Date;
-  messageId: string;
+  position: number;
   language?: string;
 }

@@ -103,6 +103,9 @@ export const ArtifactDrawer: React.FC = () => {
     }
   };
 
+  // Sort artifacts by position
+  const sortedArtifacts = [...artifacts].sort((a, b) => a.position - b.position);
+
   return (
     <div 
       className={`
@@ -134,7 +137,7 @@ export const ArtifactDrawer: React.FC = () => {
       
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-2">
-          {artifacts.map((artifact) => (
+          {sortedArtifacts.map((artifact) => (
             <ArtifactChip
               key={artifact.id}
               title={artifact.title}

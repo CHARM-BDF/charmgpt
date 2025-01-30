@@ -128,3 +128,79 @@ code: ({node, inline, className, children, ...props}) => {
 3. Handle inline code separately from code blocks
 4. Test with various markdown elements (lists, blockquotes, etc.)
 5. Preserve markdown syntax while cleaning spaces 
+
+# Continual Improvement Log
+
+## Code Modification Guidelines
+
+### Strategic Code Comments
+- Use clear warning comments for critical functionality that should not be removed
+- Document dependencies between different parts of the system
+- Explain the purpose and importance of specific fields and functions
+- Use standardized markers like "CRITICAL" or "DO NOT REMOVE" for important elements
+
+Example comment structure:
+```typescript
+/**
+ * CRITICAL: Core Function Name
+ * This function handles:
+ * 1. Primary responsibility
+ * 2. Secondary responsibility
+ * 3. Important dependencies
+ * 
+ * DO NOT REMOVE unless explicitly replacing with alternative implementation
+ */
+```
+
+### Preserving Essential Functionality
+- Before removing any code, verify its purpose and dependencies
+- Server communication code should never be removed unless explicitly replacing with new communication logic
+- When adding new features, preserve existing functionality unless there's a specific reason to change it
+- Document any major changes to core functionality in comments and commit messages
+
+### Common Issues and Solutions
+
+1. **Server Communication**
+   - Issue: Accidentally removing server communication code when modifying message processing
+   - Solution: Always preserve server communication logic unless explicitly replacing it
+   - Prevention: Review the full data flow before making changes to communication-related code 
+
+## ReactMarkdown HTML Button Handling
+
+When using ReactMarkdown to render HTML buttons (especially for artifact links), ensure:
+
+1. Enable HTML parsing by adding the rehypeRaw plugin:
+```typescript
+<ReactMarkdown 
+  rehypePlugins={[rehypeRaw as any]}
+  // ... other props
+/>
+```
+
+2. Properly handle button components with children:
+```typescript
+button: ({node, ...props}: any) => {
+  if (props.className?.includes('artifact-button')) {
+    const uuid = props['data-artifact-id'];
+    if (uuid) {
+      return (
+        <button
+          {...props}
+          onClick={() => {
+            // ... click handling
+          }}
+        >
+          {props.children}  // Important: Include children to render button content
+        </button>
+      );
+    }
+  }
+  return <button {...props}>{props.children}</button>;
+}
+```
+
+Common issues to avoid:
+- Don't use self-closing button tags (`<button />`) when content needs to be rendered
+- Use `className?.includes()` instead of strict equality for class checking
+- Remember to spread props to maintain other attributes and styles
+- Always include the fallback case for non-artifact buttons 

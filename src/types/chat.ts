@@ -5,7 +5,12 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  artifactId?: string;
+  thinking?: string;
+}
+
+export interface MessageWithThinking extends Message {
+  thinking?: string;
+  artifactId?: string;  // DO NOT REMOVE: Required for artifact linking
 }
 
 // New types for XML response parsing
@@ -17,9 +22,11 @@ export interface XMLResponse {
 
 export interface XMLArtifact {
   type: ArtifactType;
-  id: string;
+  id: string;           // Unique UUID for internal use
+  artifactId: string;   // Original ID from XML
   title: string;
   content: string;
+  position: number;
   language?: string;
 }
 

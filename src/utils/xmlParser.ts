@@ -1,7 +1,11 @@
 import { XMLResponse, XMLArtifact, XMLRef } from '../types/chat';
 import { ArtifactType } from '../types/artifacts';
 
-function validateArtifactType(type: string | null): ArtifactType {
+/**
+ * Validates and converts a string to ArtifactType
+ * DO NOT REMOVE: Required for type safety
+ */
+function validateArtifactType(type: string): ArtifactType {
     const validTypes: ArtifactType[] = [
         'code',
         'html',
@@ -34,7 +38,7 @@ function validateArtifactType(type: string | null): ArtifactType {
     return 'text/markdown';
 }
 
-// Add helper function to extract content from elements
+// Helper function to extract content from elements
 function extractContent(elem: Element, useInnerHTML: boolean = false): string {
     let content = '';
     
@@ -61,85 +65,67 @@ function extractContent(elem: Element, useInnerHTML: boolean = false): string {
         .replace(/\[BACKTICK\]/g, '`');
 }
 
-// Add helper function to clean backtick placeholders
+// Helper function to clean backticks
 function cleanBackticks(content: string): string {
-    // First replace the backtick placeholders
-    content = content
+    return content
         .replace(/\[TRIPLE_BACKTICK\]/g, '```')
-        .replace(/\\`\\`\\`/g, '```')  // Handle escaped backticks
+        .replace(/\\`\\`\\`/g, '```')
         .replace(/\[BACKTICK\]/g, '`');
-    
-    // Then fix code block formatting - only remove spaces before fences
-    return content.replace(
-        /^\s*(```\w*)\n([\s\S]*?)\n\s*(```)/gm,
-        (match, openFence, codeContent, closeFence) => {
-            // Keep the code content exactly as is, just move the fences to the left margin
-            return `${openFence}\n${codeContent}\n${closeFence}`;
-        }
-    );
 }
 
-export function parseXMLResponse(xmlString: string): XMLResponse {
+/**
+ * CRITICAL: XML Response Parser
+ * This function parses the AI's XML response into structured data
+ * It extracts:
+ * 1. Thinking process
+ * 2. Conversation content
+ * 3. Artifacts with their metadata
+ */
+export async function parseXMLResponse(xmlString: string) {
     console.log('\n=== XML Parser: Input ===');
     console.log(xmlString);
 
-    // Create a DOM parser
-    const parser = new DOMParser();
-    
-    // Pre-process CDATA sections for code content
-    const processedXML = xmlString.replace(
-        /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
-        (_match, openTag, _tagName, content, closeTag) => {
-            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
-        }
-    );
-    
-    const xmlDoc = parser.parseFromString(processedXML, 'text/xml');
-
-    // Extract thinking content if present
-    const thinkingElement = xmlDoc.querySelector('thinking');
-    const thinking = thinkingElement ? cleanBackticks(extractContent(thinkingElement)) : undefined;
+    // Extract thinking content
+    const thinkingMatch = xmlString.match(/<thinking>([\s\S]*?)<\/thinking>/);
+    const thinking = thinkingMatch ? thinkingMatch[1].trim() : '';
 
     // Extract conversation content
-    const conversationElement = xmlDoc.querySelector('conversation');
-    if (!conversationElement) {
-        throw new Error('Response must contain a conversation element');
-    }
+    const conversationMatch = xmlString.match(/<conversation>([\s\S]*?)<\/conversation>/);
+    let conversation = conversationMatch ? conversationMatch[1].trim() : '';
 
-    // Get raw conversation content without thinking content
-    const conversationContent = cleanBackticks(extractContent(conversationElement));
-
-    // Initialize artifacts array
+    // Extract artifacts
     const artifacts: XMLArtifact[] = [];
-
-    // Extract artifacts from the response
-    const responseElement = xmlDoc.querySelector('response');
-    if (responseElement) {
-        const artifactElements = responseElement.getElementsByTagName('artifact');
-        Array.from(artifactElements).forEach((elem) => {
-            const artifactType = elem.getAttribute('type');
-            const content = artifactType === 'image/svg+xml' 
-                ? extractContent(elem, true)  // use innerHTML for SVG
-                : cleanBackticks(extractContent(elem));       // handle CDATA for other types
-
-            artifacts.push({
-                type: validateArtifactType(artifactType),
-                id: elem.getAttribute('id') || crypto.randomUUID(),
-                title: elem.getAttribute('title') || 'Untitled',
-                content: content.trim(),
-                language: elem.getAttribute('language') || undefined
-            });
+    const artifactRegex = /<artifact\s+type="([^"]+)"\s+id="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/artifact>/g;
+    
+    let artifactMatch;
+    let position = 0;
+    while ((artifactMatch = artifactRegex.exec(xmlString)) !== null) {
+        const [fullMatch, type, originalId, title, content] = artifactMatch;
+        const uniqueId = crypto.randomUUID();
+        artifacts.push({
+            type: validateArtifactType(type),
+            id: uniqueId,           // Unique ID for internal use
+            artifactId: originalId, // Original ID from XML
+            title,
+            content: content.trim(),
+            position: position,
+            language: type.split('/')[1] || undefined
         });
-    }
 
-    // Log the content parts for debugging
-    console.log('\n=== Content Parts ===');
-    console.log('Thinking:', thinking);
-    console.log('Raw Conversation:', conversationContent);
+        // Replace artifact XML with a button that includes data attributes and inline styles
+        const buttonHtml = `<button 
+          class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          data-artifact-id="${uniqueId}" 
+          data-artifact-type="${type}"
+          style="cursor: pointer; background: none; border: none; padding: 0;"
+        >📎 ${title}</button>`;
+        conversation = conversation.replace(fullMatch, buttonHtml);
+        position++;
+    }
 
     const result = {
         thinking,
-        conversation: conversationContent,
+        conversation,
         artifacts
     };
 
@@ -147,61 +133,6 @@ export function parseXMLResponse(xmlString: string): XMLResponse {
     console.log(JSON.stringify(result, null, 2));
 
     return result;
-}
-
-function processConversationContent(element: Element): string {
-    let content = '';
-    
-    function processNode(node: Node): string {
-        if (node.nodeType === Node.TEXT_NODE) {
-            const text = node.textContent || '';
-            // Only return text if it's not just whitespace
-            return text.trim() ? text : '';
-        }
-        
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            const elem = node as Element;
-            const tagName = elem.tagName.toLowerCase();
-            
-            switch (tagName) {
-                case 'ref': {
-                    const artifactId = elem.getAttribute('artifact');
-                    const label = elem.getAttribute('label') || elem.textContent;
-                    return `\n[${label}](artifact:${artifactId})\n`;
-                }
-                case 'code':
-                case 'codesnip': {
-                    const codeContent = elem.textContent?.trim() || '';
-                    const language = elem.getAttribute('language') || '';
-                    return `\n\`\`\`${language}\n${codeContent}\n\`\`\`\n`;
-                }
-                case 'thinking': {
-                    // Skip thinking content when processing conversation
-                    return '';
-                }
-                default: {
-                    // Process all child nodes and combine their content
-                    const childContent = Array.from(elem.childNodes)
-                        .map(child => processNode(child))
-                        .join('');
-                    return childContent.trim() ? childContent : '';
-                }
-            }
-        }
-        
-        return '';
-    }
-    
-    // Process all child nodes and combine their content
-    content = Array.from(element.childNodes)
-        .map(node => processNode(node))
-        .filter(text => text.trim()) // Remove empty strings
-        .join('\n');
-
-    // Clean up multiple consecutive newlines but preserve intentional spacing
-    return content
-        .replace(/\n{3,}/g, '\n\n')  // Replace 3+ newlines with 2
-        .trim();                      // Remove leading/trailing whitespace
 }
 
 export function extractReferences(content: string): XMLRef[] {
@@ -223,7 +154,6 @@ export function cleanConversationContent(content: string): string {
     return content;
 }
 
-// Add function to extract language from codesnip tags
 export function extractCodeLanguage(type: string): string | undefined {
     if (type?.startsWith('code/')) {
         return type.split('/')[1];

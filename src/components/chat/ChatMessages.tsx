@@ -1,16 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Message } from '../../types/chat';
+import { MessageWithThinking } from '../../types/chat';
 import { useChatStore } from '../../store/chatStore';
 import { AssistantMarkdown } from './AssistantMarkdown';
 
 // Remove or set to a past date to enable copy buttons for all messages
 // const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
-interface MessageWithThinking extends Message {
-  thinking?: string;
-}
-
-export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) => {
+export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ messages }) => {
   const { selectArtifact } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,15 +56,19 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
     lastMessageRef.current = lastMessage.id;
   }, [messages]);
 
+  /**
+   * CRITICAL: Copy Functionality
+   * This function provides essential clipboard functionality for messages
+   * DO NOT REMOVE: Required for user experience and accessibility
+   */
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here if you want
+      console.log('Successfully copied to clipboard');
     } catch (err) {
       console.error('Failed to copy text:', err);
     }
   };
-
 
   return (
     <div ref={containerRef} className="w-full space-y-6">
@@ -108,17 +108,47 @@ export const ChatMessages: React.FC<{ messages: Message[] }> = ({ messages }) =>
                     </div>
                   )}
                   <AssistantMarkdown content={message.content} />
-                  {message.artifactId && (
+                  <div className="mt-2 flex gap-2">
                     <button
-                      onClick={() => selectArtifact(message.artifactId ?? null)}
-                      className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      onClick={() => console.log('Message Debug Data:', {
+                        message,
+                        content: message.content,
+                        thinking: messageWithThinking.thinking,
+                        artifactId: message.artifactId
+                      })}
+                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     >
-                      View Artifact
+                      Debug Info
                     </button>
-                  )}
+                    {message.artifactId && (
+                      <button
+                        onClick={() => {
+                          console.log('ChatMessages: View Artifact clicked with artifactId:', message.artifactId);
+                          selectArtifact(message.artifactId ?? null);
+                        }}
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        View Artifact
+                      </button>
+                    )}
+                  </div>
                 </>
               ) : (
-                <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                <div className="flex items-start justify-between">
+                  <div className="flex-grow">
+                    <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(message.content)}
+                    className="ml-2 p-1 text-gray-500 hover:text-gray-700"
+                    title="Copy message"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                    </svg>
+                  </button>
+                </div>
               )}
             </div>
           </div>

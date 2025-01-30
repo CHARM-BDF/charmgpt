@@ -110,46 +110,59 @@ app.use(express.json());
 
 // Add XML validation helper
 export function isValidXMLResponse(text: string): Promise<boolean> {
-    // Wrap content inside main container tags in CDATA
-    console.log("Validating XML response...");
-    const wrappedText = text.replace(
-        /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
-        (_match, openTag, _tagName, content, closeTag) => {
-            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
-        }
-    );
+    return new Promise((resolve) => {
+        // Add timeout to prevent hanging
+        const timeout = setTimeout(() => {
+            console.log("XML validation timed out after 5 seconds");
+            resolve(false);
+        }, 5000);
 
-    // console.log("Server: Wrapped text for validation:\n", wrappedText);
-
-    // Basic check for XML structure
-    const hasXMLStructure = wrappedText.trim().startsWith('<response>') &&
-        wrappedText.trim().endsWith('</response>') &&
-        wrappedText.includes('<conversation>');
-
-    if (!hasXMLStructure) {
-        console.log('Server: Invalid XML structure detected');
-        return Promise.resolve(false);
-    }
-
-    return parseXML(wrappedText)
-        .then((result: unknown) => {
-            const xmlResult = result as XMLResponse;
-            // Check if we have the required structure
-            const hasValidStructure =
-                xmlResult?.response &&
-                (xmlResult.response.conversation || []).length > 0;
-
-            if (!hasValidStructure) {
-                console.log('Server: Missing required XML elements');
-                return false;
+        // Wrap content inside main container tags in CDATA
+        console.log("Starting XML validation...");
+        const wrappedText = text.replace(
+            /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
+            (_match, openTag, _tagName, content, closeTag) => {
+                return `${openTag}<![CDATA[${content}]]>${closeTag}`;
             }
+        );
 
-            return true;
-        })
-        .catch(error => {
-            console.log('Server: XML validation error:', error);
-            return false;
-        });
+        // Basic check for XML structure
+        const hasXMLStructure = wrappedText.trim().startsWith('<response>') &&
+            wrappedText.trim().endsWith('</response>') &&
+            wrappedText.includes('<conversation>');
+
+        if (!hasXMLStructure) {
+            console.log('Server: Invalid XML structure detected');
+            clearTimeout(timeout);
+            resolve(false);
+            return;
+        }
+
+        parseXML(wrappedText)
+            .then((result: unknown) => {
+                const xmlResult = result as XMLResponse;
+                // Check if we have the required structure
+                const hasValidStructure =
+                    xmlResult?.response &&
+                    (xmlResult.response.conversation || []).length > 0;
+
+                if (!hasValidStructure) {
+                    console.log('Server: Missing required XML elements');
+                    resolve(false);
+                    return;
+                }
+
+                console.log('XML validation successful');
+                resolve(true);
+            })
+            .catch(error => {
+                console.log('Server: XML validation error:', error);
+                resolve(false);
+            })
+            .finally(() => {
+                clearTimeout(timeout);
+            });
+    });
 }
 
 // Add function to get all available tools
@@ -216,6 +229,7 @@ app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) =
         console.log('Processing chat request...');
 
         // Get available tools to include in the system prompt
+        console.log('Fetching available tools...');
         const availableTools = await getAllAvailableTools();
 
         const toolsDescription = Object.entries(availableTools)
@@ -263,9 +277,13 @@ The tool result will be provided back to you to include in your response.`;
 
         let repairAttempts = 0;
         let responseText = response.content[0].text;
+        console.log('Received response from Claude, validating XML...');
         const isValid = await isValidXMLResponse(responseText);
 
+        console.log('Validation complete, isValid:', isValid);
+
         // Log initial validation result
+        console.log('Logging validation result...');
         await logValidationResult(responseText, isValid);
 
         if (!isValid) {
@@ -274,6 +292,7 @@ The tool result will be provided back to you to include in your response.`;
             // Try repair strategies
             for (const repair of repairStrategies) {
                 repairAttempts++;
+                console.log(`Attempting repair strategy ${repairAttempts}...`);
                 try {
                     const repairedText = repair(responseText);
                     const isRepairedValid = await isValidXMLResponse(repairedText);
@@ -281,11 +300,12 @@ The tool result will be provided back to you to include in your response.`;
                         console.log('XML repair successful');
                         // Log successful repair
                         await logValidationResult(repairedText, true, repairAttempts);
+                        console.log('Sending repaired response...');
                         res.json({ response: repairedText });
                         return;
                     }
                 } catch (error) {
-                    // Silent catch - continue to next strategy
+                    console.log(`Repair strategy ${repairAttempts} failed:`, error);
                 }
             }
 
@@ -310,17 +330,19 @@ The tool result will be provided back to you to include in your response.`;
             }
 
             const reformattedText = reformatResponse.content[0].text;
+            console.log('Validating reformatted response...');
             const isReformattedValid = await isValidXMLResponse(reformattedText);
             
             // Log reformatting result
             await logValidationResult(reformattedText, isReformattedValid, repairAttempts);
 
             if (isReformattedValid) {
-                console.log('LLM reformatting successful');
+                console.log('LLM reformatting successful, sending response...');
                 res.json({ response: reformattedText });
                 return;
             }
 
+            console.log('All repair attempts failed, sending wrapped error response...');
             // If all attempts fail, wrap in error response
             const wrappedResponse = `<response>
           <conversation>
@@ -339,6 +361,7 @@ The tool result will be provided back to you to include in your response.`;
             return;
         }
 
+        console.log('Sending successful response...');
         res.json({ response: responseText });
 
     } catch (error) {
