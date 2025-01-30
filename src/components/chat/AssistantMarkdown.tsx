@@ -384,6 +384,26 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
     td: ({node, isHeader, ...props}: any) => (
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" {...props} />
     ),
+    contactform: ({node, ...props}: any) => {
+      // Create a proper submit handler function
+      const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const formData = new FormData(e.target as HTMLFormElement);
+        console.log('Form submitted:', Object.fromEntries(formData));
+        // Add your form submission logic here
+      };
+
+      // Return a form element instead of a div
+      return (
+        <form 
+          className="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md"
+          onSubmit={handleSubmit}
+          {...Object.fromEntries(Object.entries(props).filter(([key]) => key !== 'onSubmit'))}
+        >
+          {props.children}
+        </form>
+      );
+    },
   };
 
   return (
