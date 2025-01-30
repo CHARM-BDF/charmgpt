@@ -3,10 +3,17 @@ import { ArtifactContext } from './createArtifactContext'
 import { Artifact, ArtifactType } from './ArtifactContext.types'
 import { API_BASE_URL } from '../config'
 
+const DEFAULT_CODE = `# Start coding here
+import pandas as pd
+import numpy as np
+
+# Your data science code goes here
+print("Hello, world!")`
+
 export function ArtifactProvider({ children }: { children: ReactNode }) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null)
-  const [editorContent, setEditorContent] = useState<string>('')
+  const [editorContent, setEditorContent] = useState<string>(DEFAULT_CODE)
   const nextIdRef = useRef(1)
 
   const generateId = useCallback(() => {

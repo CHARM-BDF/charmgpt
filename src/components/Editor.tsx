@@ -2,8 +2,15 @@ import React, { useEffect } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
 import MonacoEditor from '@monaco-editor/react'
 
+const DEFAULT_CODE = `# Start coding here
+import pandas as pd
+import numpy as np
+
+# Your data science code goes here
+print("Hello, world!")`
+
 export default function Editor() {
-  const { activeArtifact, updateEditorContent } = useArtifact()
+  const { activeArtifact, updateEditorContent, editorContent } = useArtifact()
 
   useEffect(() => {
     if (activeArtifact) {
@@ -13,9 +20,15 @@ export default function Editor() {
 
   return (
     <MonacoEditor
-      value={activeArtifact?.code || ''}
+      value={editorContent || activeArtifact?.code || DEFAULT_CODE}
       onChange={value => updateEditorContent(value || '')}
-      // ... other props
+      height="100%"
+      language="python"
+      theme="vs-dark"
+      options={{
+        minimap: { enabled: false },
+        fontSize: 14,
+      }}
     />
   )
 } 
