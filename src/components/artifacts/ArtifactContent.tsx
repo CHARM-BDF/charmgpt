@@ -100,10 +100,14 @@ export const ArtifactContent: React.FC<{
         return <div className="mermaid">{artifact.content}</div>;
       
       case 'text/markdown':
+        const trimmedContent = artifact.content
+          .split('\n')
+          .map(line => line.trimStart())
+          .join('\n');
         return (
           <div className="prose max-w-none dark:prose-invert">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {artifact.content.split('\n').map(line => line.trimStart()).join('\n')}
+              {trimmedContent}
             </ReactMarkdown>
           </div>
         );
