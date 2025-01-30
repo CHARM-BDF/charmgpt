@@ -85,7 +85,8 @@ export default function ArtifactView() {
   console.log('ArtifactView render:', { 
     viewMode, 
     hasPlot: activeArtifact?.plotFile,
-    hasData: activeArtifact?.dataFile 
+    hasData: activeArtifact?.dataFile,
+    hasOutput: activeArtifact?.output
   })
 
   if (!activeArtifact) {
@@ -134,6 +135,13 @@ export default function ArtifactView() {
           >
             Data
           </ToggleButton>
+          <ToggleButton 
+            value="output" 
+            aria-label="output view"
+            disabled={!activeArtifact.output}
+          >
+            Output
+          </ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
@@ -168,6 +176,16 @@ export default function ArtifactView() {
                 </a>
               </Box>
               <DataPreview dataFile={activeArtifact.dataFile} />
+            </Box>
+          )}
+
+          {viewMode === 'output' && activeArtifact.output && (
+            <Box sx={{ 
+              fontFamily: 'monospace',
+              whiteSpace: 'pre-wrap',
+              overflow: 'auto'
+            }}>
+              {activeArtifact.output}
             </Box>
           )}
         </Box>

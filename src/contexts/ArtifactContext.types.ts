@@ -1,7 +1,7 @@
 import { createContext } from 'react'
 
 export type EditorMode = 'code' | 'plan'
-export type ViewMode = 'plot' | 'data'
+export type ViewMode = 'plot' | 'data' | 'output'
 
 export type ArtifactType = 'chat' | 'code' | 'visualization'
 
