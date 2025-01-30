@@ -103,12 +103,12 @@ export default function ArtifactView() {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* Header with title and toggle on same line */}
+      {/* Header with reduced bottom margin */}
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center',
         gap: 2,
-        mb: 2 
+        mb: 1  // Reduced from mb: 2 to mb: 1
       }}>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
           {activeArtifact.name}
@@ -137,15 +137,16 @@ export default function ArtifactView() {
         </ToggleButtonGroup>
       </Box>
 
-      {/* Content Area */}
+      {/* Content Area with reduced top padding */}
       <Paper sx={{ 
-        p: 2,
+        pt: 1,  // Reduced from p: 2 to pt: 1 for top padding
+        px: 2,  // Keep horizontal padding
+        pb: 2,  // Keep bottom padding
         flexGrow: 1,
         overflow: 'auto',
         display: 'flex',
         flexDirection: 'column'
       }}>
-        {/* View Content */}
         <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
           {viewMode === 'plot' && activeArtifact.plotFile && (
             <img 
