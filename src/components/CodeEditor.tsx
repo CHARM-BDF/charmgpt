@@ -6,7 +6,7 @@ import { useArtifact } from '../contexts/useArtifact'
 import { EditorMode } from '../contexts/ArtifactContext.types'
 
 export default function CodeEditor() {
-  const { mode, setMode, runArtifact, editorContent } = useArtifact()
+  const { mode, setMode, runArtifact, editorContent, planContent } = useArtifact()
 
   const handleModeChange = (_: React.MouseEvent<HTMLElement>, newMode: EditorMode) => {
     if (newMode !== null) {
@@ -15,12 +15,29 @@ export default function CodeEditor() {
   }
 
   const handleRun = () => {
-    runArtifact(editorContent)
+    if (mode === 'code') {
+      runArtifact(editorContent)
+    }
   }
 
   const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Save clicked')
+    if (mode === 'plan') {
+      // Create a blob with the plan content
+      const blob = new Blob([planContent], { type: 'text/markdown' })
+      
+      // Create a temporary link element
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'plan.md'
+      
+      // Append link to body, click it, and remove it
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Clean up the URL object
+      URL.revokeObjectURL(link.href)
+    }
   }
 
   return (
@@ -48,6 +65,7 @@ export default function CodeEditor() {
           size="small"
           startIcon={<PlayArrowIcon />}
           onClick={handleRun}
+          disabled={mode === 'plan'}
         >
           Run
         </Button>
@@ -56,6 +74,7 @@ export default function CodeEditor() {
           size="small"
           startIcon={<SaveIcon />}
           onClick={handleSave}
+          disabled={mode === 'code'} // Enable save only in plan mode
         >
           Save
         </Button>
