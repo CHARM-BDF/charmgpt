@@ -26,7 +26,7 @@ export default function ArtifactList() {
     e.stopPropagation()
     if (artifact.dataFile) {
       const link = document.createElement('a')
-      link.href = `/api/artifacts/data/${artifact.dataFile}`
+      link.href = `/api/code/data/${artifact.dataFile}`
       link.download = artifact.dataFile
       document.body.appendChild(link)
       link.click()

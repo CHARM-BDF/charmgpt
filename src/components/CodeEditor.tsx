@@ -5,14 +5,19 @@ import BarChartIcon from '@mui/icons-material/BarChart'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import Editor from './Editor'
 import { useArtifact } from '../contexts/useArtifact'
-import { EditorMode } from '../contexts/ArtifactContext.types'
-import { useState } from 'react'
-
-type ViewMode = 'plot' | 'data'
+import { EditorMode, ViewMode } from '../contexts/ArtifactContext.types'
 
 export default function CodeEditor() {
-  const { mode, setMode, runArtifact, editorContent, planContent, activeArtifact } = useArtifact()
-  const [viewMode, setViewMode] = useState<ViewMode>('plot')
+  const { 
+    mode, 
+    setMode, 
+    runArtifact, 
+    editorContent, 
+    planContent, 
+    activeArtifact,
+    viewMode,
+    setViewMode
+  } = useArtifact()
 
   // Add debug logging
   console.log('CodeEditor render:', {

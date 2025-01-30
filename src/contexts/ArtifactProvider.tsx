@@ -1,6 +1,6 @@
 import { useCallback, useState, ReactNode } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, EditorMode } from './ArtifactContext.types'
+import { Artifact, EditorMode, ViewMode } from './ArtifactContext.types'
 import { API_BASE_URL } from '../config'
 
 const DEFAULT_CODE = `# Start coding here
@@ -38,6 +38,7 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
   const [editorContent, setEditorContent] = useState<string>(DEFAULT_CODE)
   const [planContent, setPlanContent] = useState<string>(DEFAULT_PLAN)
   const [mode, setMode] = useState<EditorMode>('code')
+  const [viewMode, setViewMode] = useState<ViewMode>('plot')
 
   const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact: Artifact = {
@@ -137,13 +138,17 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
         activeArtifact,
         setActiveArtifact,
         runArtifact,
-        updateEditorContent,
         editorContent,
+        setEditorContent,
         planContent,
+        setPlanContent,
+        updateEditorContent,
         updatePlanContent,
         addArtifact,
         mode,
         setMode,
+        viewMode,
+        setViewMode,
       }}
     >
       {children}
