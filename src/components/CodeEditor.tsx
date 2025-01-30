@@ -39,9 +39,16 @@ export default function CodeEditor() {
     }
   }
 
-  const handleRun = () => {
-    if (mode === 'code') {
-      runArtifact(editorContent)
+  const handleRun = async () => {
+    console.log('Run button clicked, content:', editorContent)
+    if (!editorContent) {
+      console.warn('No editor content to run')
+      return
+    }
+    try {
+      await runArtifact(editorContent)
+    } catch (error) {
+      console.error('Error in handleRun:', error)
     }
   }
 
@@ -129,7 +136,7 @@ export default function CodeEditor() {
             size="small"
             startIcon={<PlayArrowIcon />}
             onClick={handleRun}
-            disabled={mode === 'plan'}
+            disabled={mode === 'plan' || !editorContent}
           >
             Run
           </Button>

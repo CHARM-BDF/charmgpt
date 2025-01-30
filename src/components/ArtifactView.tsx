@@ -3,16 +3,90 @@ import { useArtifact } from '../contexts/useArtifact'
 import { ViewMode } from '../contexts/ArtifactContext.types'
 import { useState, useEffect } from 'react'
 
+interface DataPreviewProps {
+  dataFile: string
+}
+
+function DataPreview({ dataFile }: DataPreviewProps) {
+  const [data, setData] = useState<string[][]>([])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('Fetching data from:', dataFile)
+        const response = await fetch(`/api/data/${dataFile}`)
+        const text = await response.text()
+        console.log('Received data:', text.slice(0, 100) + '...') // Log first 100 chars
+        
+        // Parse CSV
+        const rows = text.split('\n').map(line => line.split(','))
+        setData(rows)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+      }
+    }
+
+    if (dataFile) {
+      fetchData()
+    }
+  }, [dataFile])
+
+  if (!data.length) {
+    return <div>Loading data...</div>
+  }
+
+  // Display as a table with headers
+  const [headers, ...rows] = data
+
+  return (
+    <Box sx={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            {headers.map((header, i) => (
+              <th key={i} style={{ 
+                padding: '8px', 
+                borderBottom: '2px solid #ddd',
+                textAlign: 'left',
+                backgroundColor: '#f5f5f5'
+              }}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, 100).map((row, i) => (  // Show first 100 rows
+            <tr key={i}>
+              {row.map((cell, j) => (
+                <td key={j} style={{ 
+                  padding: '8px', 
+                  borderBottom: '1px solid #eee',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > 100 && (
+        <Typography variant="caption" sx={{ mt: 2, display: 'block' }}>
+          Showing first 100 rows of {rows.length} total rows
+        </Typography>
+      )}
+    </Box>
+  )
+}
+
 export default function ArtifactView() {
   const { activeArtifact, viewMode, setViewMode } = useArtifact()
 
-  console.log('ArtifactView render:', {
-    activeArtifact,
-    plotFile: activeArtifact?.plotFile,
-    dataFile: activeArtifact?.dataFile,
-    viewMode,
-    hasPlot: Boolean(activeArtifact?.plotFile),
-    hasData: Boolean(activeArtifact?.dataFile)
+  console.log('ArtifactView render:', { 
+    viewMode, 
+    hasPlot: activeArtifact?.plotFile,
+    hasData: activeArtifact?.dataFile 
   })
 
   if (!activeArtifact) {
@@ -24,14 +98,45 @@ export default function ArtifactView() {
   }
 
   const handleViewChange = (_: React.MouseEvent<HTMLElement>, newMode: ViewMode | null) => {
-    console.log('View mode change:', { oldMode: viewMode, newMode })
+    console.log('Toggle clicked:', { currentMode: viewMode, newMode })
     if (newMode) {
       setViewMode(newMode)
     }
   }
 
+  // Determine which content to show
+  const content = viewMode === 'plot' ? (
+    // Plot View
+    activeArtifact.plotFile && (
+      <Paper sx={{ p: 2 }}>
+        <img 
+          src={`/api/plots/${activeArtifact.plotFile}`}
+          alt="Plot" 
+          style={{ width: '100%', height: 'auto' }}
+        />
+      </Paper>
+    )
+  ) : (
+    // Data View
+    activeArtifact.dataFile && (
+      <Paper sx={{ p: 2 }}>
+        <Box sx={{ mb: 2 }}>
+          <a 
+            href={`/api/data/${activeArtifact.dataFile}`}
+            download
+            style={{ textDecoration: 'none' }}
+          >
+            Download CSV
+          </a>
+        </Box>
+        <DataPreview dataFile={activeArtifact.dataFile} />
+      </Paper>
+    )
+  )
+
   return (
     <Box sx={{ p: 2 }}>
+      {/* Controls */}
       <Box sx={{ 
         mb: 2, 
         display: 'flex', 
@@ -47,16 +152,18 @@ export default function ArtifactView() {
           value={viewMode}
           onChange={handleViewChange}
           exclusive
-          size="small"
+          aria-label="view mode"
         >
           <ToggleButton 
             value="plot" 
+            aria-label="plot view"
             disabled={!activeArtifact.plotFile}
           >
             Plot
           </ToggleButton>
           <ToggleButton 
             value="data" 
+            aria-label="data view"
             disabled={!activeArtifact.dataFile}
           >
             Data
@@ -64,91 +171,17 @@ export default function ArtifactView() {
         </ToggleButtonGroup>
       </Box>
 
-      <Typography variant="caption" display="block" sx={{ mb: 1 }}>
-        Current view: {viewMode}, Has Plot: {String(Boolean(activeArtifact.plotFile))}, Has Data: {String(Boolean(activeArtifact.dataFile))}
-      </Typography>
+      {/* Debug info */}
+      <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100' }}>
+        <Typography variant="caption">
+          Current view: {viewMode}<br />
+          Has plot: {String(Boolean(activeArtifact.plotFile))}<br />
+          Has data: {String(Boolean(activeArtifact.dataFile))}
+        </Typography>
+      </Box>
 
-      {activeArtifact.output && (
-        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.100' }}>
-          <Typography component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
-            {activeArtifact.output}
-          </Typography>
-        </Paper>
-      )}
-
-      {viewMode === 'plot' && activeArtifact.plotFile && (
-        <Paper sx={{ p: 2 }}>
-          <img 
-            src={`/api/plots/${activeArtifact.plotFile}`}
-            alt="Plot" 
-            style={{ width: '100%', height: 'auto' }}
-          />
-        </Paper>
-      )}
-
-      {viewMode === 'data' && activeArtifact.dataFile && (
-        <Paper sx={{ p: 2 }}>
-          <Box sx={{ mb: 2 }}>
-            <a 
-              href={`/api/data/${activeArtifact.dataFile}`}
-              download
-              style={{ textDecoration: 'none' }}
-            >
-              Download CSV
-            </a>
-          </Box>
-          <DataPreview dataFile={activeArtifact.dataFile} />
-        </Paper>
-      )}
-    </Box>
-  )
-}
-
-// Simple data preview component - we can enhance this later
-function DataPreview({ dataFile }: { dataFile: string }) {
-  const [data, setData] = useState<string[][]>([])
-
-  useEffect(() => {
-    fetch(`/api/data/${dataFile}`)
-      .then(res => res.text())
-      .then(text => {
-        const rows = text.split('\n').map(row => row.split(','))
-        setData(rows.slice(0, 10)) // Show first 10 rows
-      })
-      .catch(console.error)
-  }, [dataFile])
-
-  if (data.length === 0) {
-    return <Typography>Loading data...</Typography>
-  }
-
-  return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            {data[0].map((header, i) => (
-              <th key={i} style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.slice(1).map((row, i) => (
-            <tr key={i}>
-              {row.map((cell, j) => (
-                <td key={j} style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
-        Showing first {data.length - 1} rows of data
-      </Typography>
+      {/* Content area */}
+      {content}
     </Box>
   )
 }

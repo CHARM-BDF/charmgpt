@@ -1,61 +1,37 @@
-import { useCallback, useState, ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, EditorMode, ViewMode } from './ArtifactContext.types'
-import { API_BASE_URL } from '../config'
+import { Artifact, ViewMode } from './ArtifactContext.types'
 
-const DEFAULT_CODE = `# Start coding here
-import pandas as pd
-import numpy as np
+interface ArtifactProviderProps {
+  children: ReactNode
+}
 
-# Your data science code goes here
-print("Hello, world!")`
-
-const DEFAULT_PLAN = `# Analysis Plan
-
-## Objective
-- What questions are we trying to answer?
-- What insights are we looking for?
-
-## Analysis History
-Click on an artifact from the history panel to insert it here.
-Use [[artifact-id]] syntax to reference artifacts.
-
-## Next Steps
-1. 
-2. 
-3. 
-
-## Notes & Questions
-- 
-
-## References
-- 
-`
-
-export function ArtifactProvider({ children }: { children: ReactNode }) {
+export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null)
-  const [editorContent, setEditorContent] = useState<string>(DEFAULT_CODE)
-  const [planContent, setPlanContent] = useState<string>(DEFAULT_PLAN)
-  const [mode, setMode] = useState<EditorMode>('code')
   const [viewMode, setViewMode] = useState<ViewMode>('plot')
+  const [editorContent, setEditorContent] = useState('')
+  const [planContent, setPlanContent] = useState('')
+  const [mode] = useState('chat')
 
-  const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
-    const newArtifact: Artifact = {
+  const updateEditorContent = (content: string) => {
+    setEditorContent(content || '')
+  }
+
+  const addArtifact = (artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
+    const newArtifact = {
       ...artifact,
       id: Date.now(),
-      timestamp: Date.now(),
+      timestamp: Date.now()
     }
     setArtifacts(prev => [...prev, newArtifact])
-    setActiveArtifact(newArtifact)
-    if (artifact.type === 'code') {
-      setEditorContent(artifact.code)
-    }
-  }, [])
+  }
 
-  const runArtifact = useCallback(async (code: string) => {
+  const runArtifact = async (code: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/run-code`, {
+      console.log('Starting runArtifact with code:', code)
+      
+      const response = await fetch('/api/run-code', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,92 +39,84 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ code }),
       })
 
+      console.log('API Response status:', response.status)
+      const responseText = await response.text()
+      console.log('API Response text:', responseText)
+
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+        throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`)
       }
 
-      const result = await response.json()
-     
-      if (result.success) {
-        const isSameCode = code === activeArtifact?.code
-     
-        if (activeArtifact && isSameCode) {
-          const updatedArtifact: Artifact = {
-            ...activeArtifact,
-            output: result.output || '',
-            plotFile: result.plotFile || undefined,
-            dataFile: result.dataFile || undefined,
-            type: result.plotFile ? 'visualization' : 'code',
-            timestamp: Date.now(),
-          }
-          setArtifacts(prev => prev.map(a => 
-            a.id === activeArtifact.id ? updatedArtifact : a
-          ))
-          setActiveArtifact(updatedArtifact)
-        } else {
-          const newArtifact: Artifact = {
-            id: Date.now(),
-            type: result.plotFile ? 'visualization' : 'code',
-            name: `Run ${new Date().toLocaleTimeString()}`,
-            code,
-            output: result.output || '',
-            plotFile: result.plotFile || undefined,
-            dataFile: result.dataFile || undefined,
-            timestamp: Date.now(),
-            source: 'user'
-          }
-          setArtifacts(prev => [...prev, newArtifact])
-          setActiveArtifact(newArtifact)
-          setEditorContent(code)
+      let result
+      try {
+        result = JSON.parse(responseText)
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', e)
+        throw new Error('Invalid response format from server')
+      }
+
+      console.log('Parsed result:', result)
+
+      const timestamp = new Date().toLocaleTimeString()
+      const name = `Run Result (${timestamp})`
+
+      console.log('Creating new artifact with name:', name)
+
+      const newArtifact = {
+        name,
+        output: result.output || '',
+        plotFile: result.plotFile,
+        dataFile: result.dataFile,
+        type: 'visualization' as const,
+        code
+      }
+
+      console.log('New artifact:', newArtifact)
+
+      // Add the new artifact
+      addArtifact(newArtifact)
+
+      // Set it as active after adding it
+      setArtifacts(prevArtifacts => {
+        console.log('Previous artifacts:', prevArtifacts)
+        const latest = prevArtifacts[prevArtifacts.length - 1]
+        if (latest) {
+          console.log('Setting active artifact:', latest)
+          setActiveArtifact(latest)
         }
-      } else {
-        throw new Error(result.error || 'Unknown error occurred')
-      }
+        return prevArtifacts
+      })
+
     } catch (error) {
-      console.error('Error running code:', error)
-      const errorArtifact: Artifact = {
-        id: Date.now(),
-        type: 'code',
-        name: `Error ${new Date().toLocaleTimeString()}`,
-        code,
-        output: `Error executing code: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        plotFile: undefined,
-        dataFile: undefined,
-        timestamp: Date.now(),
-        source: 'user'
+      console.error('Error in runArtifact:', error)
+      const timestamp = new Date().toLocaleTimeString()
+      const errorArtifact = {
+        name: `Error (${timestamp})`,
+        output: error instanceof Error ? error.message : 'Unknown error',
+        type: 'visualization' as const,
+        code
       }
-      setArtifacts(prev => [...prev, errorArtifact])
-      setActiveArtifact(errorArtifact)
+      console.log('Adding error artifact:', errorArtifact)
+      addArtifact(errorArtifact)
     }
-  }, [activeArtifact])
-
-  const updateEditorContent = useCallback((content: string) => {
-    setEditorContent(content)
-  }, [])
-
-  const updatePlanContent = useCallback((content: string) => {
-    setPlanContent(content)
-  }, [])
+  }
 
   return (
     <ArtifactContext.Provider
       value={{
         artifacts,
         activeArtifact,
+        viewMode,
+        mode,
+        setViewMode,
         setActiveArtifact,
         runArtifact,
-        editorContent,
-        setEditorContent,
-        planContent,
-        setPlanContent,
         updateEditorContent,
-        updatePlanContent,
+        editorContent,
         addArtifact,
-        mode,
-        setMode,
-        viewMode,
-        setViewMode,
+        setEditorContent: updateEditorContent,
+        planContent,
+        setPlanContent: (content: string) => setPlanContent(content)
       }}
     >
       {children}
