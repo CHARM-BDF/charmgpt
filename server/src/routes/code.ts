@@ -12,6 +12,19 @@ router.get('/plots/:filename', (req, res) => {
   res.sendFile(plotPath)
 })
 
+// Serve data files from temp directory
+router.get('/data/:filename', async (req, res) => {
+  try {
+    const dataPath = path.join(process.cwd(), 'temp', req.params.filename)
+    await fs.access(dataPath)
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`)
+    res.sendFile(dataPath)
+  } catch {
+    res.status(404).json({ error: 'Data file not found' })
+  }
+})
+
 // Cleanup endpoint
 router.delete('/plots/:filename', async (req, res) => {
   try {

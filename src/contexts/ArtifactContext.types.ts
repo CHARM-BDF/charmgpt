@@ -6,13 +6,14 @@ export type EditorMode = 'code' | 'plan'
 
 export interface Artifact {
   id: number
-  type: ArtifactType
   name: string
   code: string
   output: string
-  plotFile: string | null
-  source: ArtifactSource
-  timestamp: Date
+  plotFile?: string
+  dataFile?: string
+  timestamp: number
+  type: 'code' | 'visualization'
+  source: 'user' | 'assistant'
 }
 
 export interface ArtifactContextType {

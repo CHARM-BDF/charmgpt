@@ -29,7 +29,8 @@ export default function ChatInterface() {
           name: inputShort,
           code,
           output: '',
-          plotFile: null,
+          plotFile: undefined,
+          dataFile: undefined,
           source: 'assistant'
         })
       }

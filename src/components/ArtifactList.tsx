@@ -1,9 +1,11 @@
-import { Box, List, ListItem, ListItemButton, ListItemText, Typography } from '@mui/material'
+import { Box, List, ListItem, ListItemButton, ListItemText, Typography, IconButton, Tooltip } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { formatDistanceToNow } from 'date-fns'
+import AddIcon from '@mui/icons-material/Add'
+import DownloadIcon from '@mui/icons-material/Download'
 
 export default function ArtifactList() {
-  const { artifacts, activeArtifact, setActiveArtifact } = useArtifact()
+  const { artifacts, activeArtifact, setActiveArtifact, mode } = useArtifact()
 
   const getArtifactDescription = (artifact: typeof artifacts[0]) => {
     if (artifact.type === 'visualization') {
@@ -12,6 +14,24 @@ export default function ArtifactList() {
     // Get the first line of output, or first 50 chars if no newline
     const firstLine = artifact.output.split('\n')[0]
     return firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine
+  }
+
+  const handleAddToPlan = (artifact: typeof artifacts[0], e: React.MouseEvent) => {
+    e.stopPropagation()
+    window.dispatchEvent(new CustomEvent('shouldInsertArtifact'))
+    setActiveArtifact(artifact)
+  }
+
+  const handleDownloadData = (artifact: typeof artifacts[0], e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (artifact.dataFile) {
+      const link = document.createElement('a')
+      link.href = `/api/artifacts/data/${artifact.dataFile}`
+      link.download = artifact.dataFile
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
   }
 
   return (
@@ -42,6 +62,32 @@ export default function ArtifactList() {
                 bgcolor: 'action.hover',
               },
             }}
+            secondaryAction={
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {mode === 'plan' && (
+                  <Tooltip title="Add to plan">
+                    <IconButton
+                      edge="end"
+                      aria-label="add to plan"
+                      onClick={(e) => handleAddToPlan(artifact, e)}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {artifact.dataFile && (
+                  <Tooltip title="Download data">
+                    <IconButton
+                      edge="end"
+                      aria-label="download data"
+                      onClick={(e) => handleDownloadData(artifact, e)}
+                    >
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            }
           >
             <ListItemButton
               onClick={() => setActiveArtifact(artifact)}
