@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
 import MonacoEditor from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
@@ -14,11 +14,45 @@ export default function Editor() {
     artifacts 
   } = useArtifact()
 
+  const lastAppendedArtifactId = useRef<number | null>(null)
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+
   useEffect(() => {
-    if (activeArtifact && mode === 'code') {
+    if (activeArtifact && mode === 'plan' && lastAppendedArtifactId.current !== activeArtifact.id) {
+      const artifactSummary = `
+## Artifact #${activeArtifact.id} - ${activeArtifact.name}
+\`\`\`python
+${activeArtifact.code}
+\`\`\`
+
+Output:
+\`\`\`
+${activeArtifact.output}
+\`\`\`
+${activeArtifact.plotFile ? `\n![Plot](${activeArtifact.plotFile})\n` : ''}
+---
+`
+      if (editorRef.current) {
+        const position = editorRef.current.getPosition()
+        const model = editorRef.current.getModel()
+        
+        if (position && model) {
+          editorRef.current.executeEdits('', [{
+            range: new monaco.Range(
+              position.lineNumber,
+              position.column,
+              position.lineNumber,
+              position.column
+            ),
+            text: artifactSummary
+          }])
+        }
+      }
+      lastAppendedArtifactId.current = activeArtifact.id
+    } else if (activeArtifact && mode === 'code') {
       updateEditorContent(activeArtifact.code)
     }
-  }, [activeArtifact, updateEditorContent, mode])
+  }, [activeArtifact, mode, updateEditorContent])
 
   const handleEditorChange = (value: string | undefined) => {
     if (mode === 'plan') {
@@ -29,7 +63,8 @@ export default function Editor() {
   }
 
   const handleEditorDidMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
-    // Add command to expand artifact references
+    editorRef.current = editor
+    
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
       const position = editor.getPosition()
       if (!position) return
@@ -58,7 +93,6 @@ ${artifact.output}
 ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
 ---
 `
-          // Replace the [[id]] with the expanded content
           const range = new monaco.Range(
             position.lineNumber,
             line.indexOf('[['),
