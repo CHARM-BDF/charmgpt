@@ -101,7 +101,7 @@ export const ArtifactContent: React.FC<{
         return (
           <div className="prose max-w-none dark:prose-invert">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {artifact.content}
+              {artifact.content.split('\n').map(line => line.trimStart()).join('\n')}
             </ReactMarkdown>
           </div>
         );

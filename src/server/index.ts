@@ -221,6 +221,35 @@ ${responseText}
     }
 }
 
+// Add logging function for tool usage
+async function logToolUsage(serverName: string, toolName: string, args: Record<string, unknown>, result: any, userMessage: string, error?: Error) {
+    const timestamp = new Date().toISOString();
+    const logDir = path.join(path.dirname(__dirname), '../logs/production');
+    const toolLogFile = path.join(logDir, 'tool_usage.txt');
+    
+    try {
+        // Ensure log directory exists
+        await fs.mkdir(logDir, { recursive: true });
+
+        // Create log entry
+        const logEntry = `
+=== Tool Usage ${timestamp} ===
+User Message: ${userMessage}
+Server: ${serverName}
+Tool: ${toolName}
+Arguments: ${JSON.stringify(args, null, 2)}
+${error ? `Error: ${error.message}` : `Result: ${JSON.stringify(result, null, 2)}`}
+=== End Tool Usage ===
+
+`;
+
+        // Append to log file
+        await fs.appendFile(toolLogFile, logEntry);
+    } catch (error) {
+        console.error('Failed to write tool usage log:', error);
+    }
+}
+
 app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) => {
     try {
         const { message, history, useTestPrompt } = req.body;
@@ -231,6 +260,11 @@ app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) =
         // Get available tools to include in the system prompt
         console.log('Fetching available tools...');
         const availableTools = await getAllAvailableTools();
+
+        // Add logging for available tools
+        Object.entries(availableTools).forEach(([serverName, tools]) => {
+            console.log(`Server ${serverName} has ${tools.length} tools available`);
+        });
 
         const toolsDescription = Object.entries(availableTools)
             .map(([serverName, tools]) => `
@@ -277,6 +311,41 @@ The tool result will be provided back to you to include in your response.`;
 
         let repairAttempts = 0;
         let responseText = response.content[0].text;
+
+        // Extract and log tool usage from the response
+        const toolCallMatches = responseText.match(/<tool_call[^>]*>[\s\S]*?<\/tool_call>/g);
+        if (toolCallMatches) {
+            for (const toolCallMatch of toolCallMatches) {
+                try {
+                    // Extract server and tool information
+                    const serverMatch = toolCallMatch.match(/server="([^"]+)"/);
+                    const toolMatch = toolCallMatch.match(/tool="([^"]+)"/);
+                    const argsMatch = toolCallMatch.match(/{[\s\S]*?}/);
+                    
+                    if (serverMatch && toolMatch && argsMatch) {
+                        const serverName = serverMatch[1];
+                        const toolName = toolMatch[1];
+                        const args = JSON.parse(argsMatch[0]);
+                        
+                        // Log the tool usage with user message context
+                        await logToolUsage(serverName, toolName, args, null, message);
+                        
+                        // Execute the tool and log the result
+                        try {
+                            const result = await mcpManager.callTool(serverName, toolName, args);
+                            await logToolUsage(serverName, toolName, args, result, message);
+                        } catch (error) {
+                            if (error instanceof Error) {
+                                await logToolUsage(serverName, toolName, args, null, message, error);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error processing tool call:', error);
+                }
+            }
+        }
+
         console.log('Received response from Claude, validating XML...');
         const isValid = await isValidXMLResponse(responseText);
 
