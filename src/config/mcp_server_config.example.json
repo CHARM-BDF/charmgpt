@@ -1,0 +1,52 @@
+{
+    "mcpServers": {
+      "filesystem": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+          "/Users/JohnDoe/Desktop",
+          "/Users/JohnDoe/Downloads",
+          "/Users/JohnDoe/Projects/mcp-servers"
+        ]
+      },
+      "brave-search": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-brave-search/dist/index.js"
+        ],
+        "env": {
+          "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE"
+        }
+      },
+      "pubmed": {
+        "command": "node",
+        "args": [
+          "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
+        ]
+      },
+      "server-sequential-thinking": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"
+        ]
+      },
+      "memory": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-memory/dist/index.js"
+        ]
+      },
+      "puppeteer": {
+        "command": "node",
+        "args": [
+          "./node_modules/@modelcontextprotocol/server-puppeteer/dist/index.js"
+        ]
+      },
+      "string-db": {
+        "command": "node",
+        "args": [
+          "./src/custom-mcp-servers/string-db-mcp/dist/index.js"
+        ]
+      }
+    }
+} 

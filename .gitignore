@@ -34,3 +34,6 @@ nodeForReview
 
 # docs for process - hiding so they don't distract
 ./docs/
+
+# Configuration files with sensitive data
+src/config/mcp_server_config.json
