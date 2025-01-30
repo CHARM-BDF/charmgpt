@@ -1,10 +1,10 @@
 import { createContext } from 'react'
 
-export type ArtifactType = 'code' | 'visualization' | 'chat'
-export type ArtifactSource = 'user' | 'assistant'
 export type EditorMode = 'code' | 'plan'
 
-export interface Artifact {
+export type ArtifactType = 'code' | 'visualization'
+
+export type Artifact = {
   id: number
   name: string
   code: string
@@ -12,7 +12,7 @@ export interface Artifact {
   plotFile?: string
   dataFile?: string
   timestamp: number
-  type: 'code' | 'visualization'
+  type: ArtifactType
   source: 'user' | 'assistant'
 }
 

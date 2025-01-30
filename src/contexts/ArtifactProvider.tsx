@@ -1,6 +1,6 @@
-import { useCallback, useState, ReactNode, useRef } from 'react'
+import { useCallback, useState, ReactNode } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ArtifactType, EditorMode } from './ArtifactContext.types'
+import { Artifact, EditorMode } from './ArtifactContext.types'
 import { API_BASE_URL } from '../config'
 
 const DEFAULT_CODE = `# Start coding here
@@ -38,19 +38,12 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
   const [editorContent, setEditorContent] = useState<string>(DEFAULT_CODE)
   const [planContent, setPlanContent] = useState<string>(DEFAULT_PLAN)
   const [mode, setMode] = useState<EditorMode>('code')
-  const nextIdRef = useRef(1)
-
-  const generateId = useCallback(() => {
-    const id = nextIdRef.current
-    nextIdRef.current += 1
-    return id
-  }, [])
 
   const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact: Artifact = {
       ...artifact,
       id: Date.now(),
-      timestamp: new Date(),
+      timestamp: Date.now(),
     }
     setArtifacts(prev => [...prev, newArtifact])
     setActiveArtifact(newArtifact)
@@ -77,16 +70,16 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
       const result = await response.json()
      
       if (result.success) {
-        // Compare with the last successful run's code
         const isSameCode = code === activeArtifact?.code
      
         if (activeArtifact && isSameCode) {
           const updatedArtifact: Artifact = {
             ...activeArtifact,
             output: result.output || '',
-            plotFile: result.plotFile || null,
-            type: (result.plotFile ? 'visualization' : 'code') as ArtifactType,
-            timestamp: new Date(),
+            plotFile: result.plotFile || undefined,
+            dataFile: result.dataFile || undefined,
+            type: result.plotFile ? 'visualization' : 'code',
+            timestamp: Date.now(),
           }
           setArtifacts(prev => prev.map(a => 
             a.id === activeArtifact.id ? updatedArtifact : a
@@ -94,14 +87,15 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
           setActiveArtifact(updatedArtifact)
         } else {
           const newArtifact: Artifact = {
-            id: generateId(),
-            type: (result.plotFile ? 'visualization' : 'code') as ArtifactType,
+            id: Date.now(),
+            type: result.plotFile ? 'visualization' : 'code',
             name: `Run ${new Date().toLocaleTimeString()}`,
             code,
             output: result.output || '',
-            plotFile: result.plotFile || null,
-            source: 'user',
-            timestamp: new Date(),
+            plotFile: result.plotFile || undefined,
+            dataFile: result.dataFile || undefined,
+            timestamp: Date.now(),
+            source: 'user'
           }
           setArtifacts(prev => [...prev, newArtifact])
           setActiveArtifact(newArtifact)
@@ -113,19 +107,20 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error running code:', error)
       const errorArtifact: Artifact = {
-        id: generateId(),
-        type: 'code' as ArtifactType,
+        id: Date.now(),
+        type: 'code',
         name: `Error ${new Date().toLocaleTimeString()}`,
         code,
         output: `Error executing code: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        plotFile: null,
-        source: 'user',
-        timestamp: new Date(),
+        plotFile: undefined,
+        dataFile: undefined,
+        timestamp: Date.now(),
+        source: 'user'
       }
       setArtifacts(prev => [...prev, errorArtifact])
       setActiveArtifact(errorArtifact)
     }
-  }, [activeArtifact, generateId])
+  }, [activeArtifact])
 
   const updateEditorContent = useCallback((content: string) => {
     setEditorContent(content)

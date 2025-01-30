@@ -4,6 +4,7 @@ import ChatInterface from './components/ChatInterface'
 import CodeEditor from './components/CodeEditor'
 import DataVisualizer from './components/DataVisualizer'
 import ArtifactList from './components/ArtifactList'
+import ArtifactView from './components/ArtifactView'
 import { useEffect, useCallback } from 'react'
 import { ArtifactProvider } from './contexts/ArtifactContext'
 import { useArtifact } from './contexts/useArtifact'
@@ -89,6 +90,7 @@ function AppContent() {
           </Grid>
         </Grid>
       </Grid>
+      <ArtifactView />
     </Box>
   )
 }
