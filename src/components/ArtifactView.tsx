@@ -96,32 +96,6 @@ export default function ArtifactView() {
     )
   }
 
-  let content
-  if (viewMode === 'plot' && activeArtifact.plotFile) {
-    content = (
-      <img 
-        src={`/api/plots/${activeArtifact.plotFile}`}
-        alt="Plot" 
-        style={{ width: '100%', height: 'auto' }}
-      />
-    )
-  } else if (viewMode === 'data' && activeArtifact.dataFile) {
-    content = (
-      <Box>
-        <Box sx={{ mb: 2 }}>
-          <a 
-            href={`/api/data/${activeArtifact.dataFile}`}
-            download
-            style={{ textDecoration: 'none' }}
-          >
-            Download CSV
-          </a>
-        </Box>
-        <DataPreview dataFile={activeArtifact.dataFile} />
-      </Box>
-    )
-  }
-
   return (
     <Box sx={{ 
       p: 2,
@@ -129,51 +103,72 @@ export default function ArtifactView() {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* Header */}
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {activeArtifact.name}
-      </Typography>
+      {/* Header with title and toggle on same line */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center',
+        gap: 2,
+        mb: 2 
+      }}>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          {activeArtifact.name}
+        </Typography>
+        
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(_, newMode) => newMode && setViewMode(newMode)}
+          size="small"
+        >
+          <ToggleButton 
+            value="plot" 
+            aria-label="plot view"
+            disabled={!activeArtifact.plotFile}
+          >
+            Plot
+          </ToggleButton>
+          <ToggleButton 
+            value="data" 
+            aria-label="data view"
+            disabled={!activeArtifact.dataFile}
+          >
+            Data
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
 
-      {/* Main Content Area */}
+      {/* Content Area */}
       <Paper sx={{ 
         p: 2,
         flexGrow: 1,
-        overflow: 'auto',  // Add scroll if content is too large
+        overflow: 'auto',
         display: 'flex',
         flexDirection: 'column'
       }}>
-        {/* View Controls */}
-        <Box sx={{ 
-          mb: 2,
-          display: 'flex',
-          justifyContent: 'flex-end'
-        }}>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(_, newMode) => newMode && setViewMode(newMode)}
-            size="small"
-          >
-            <ToggleButton 
-              value="plot" 
-              aria-label="plot view"
-              disabled={!activeArtifact.plotFile}
-            >
-              Plot
-            </ToggleButton>
-            <ToggleButton 
-              value="data" 
-              aria-label="data view"
-              disabled={!activeArtifact.dataFile}
-            >
-              Data
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-
         {/* View Content */}
         <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-          {content}
+          {viewMode === 'plot' && activeArtifact.plotFile && (
+            <img 
+              src={`/api/plots/${activeArtifact.plotFile}`}
+              alt="Plot" 
+              style={{ width: '100%', height: 'auto' }}
+            />
+          )}
+          
+          {viewMode === 'data' && activeArtifact.dataFile && (
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <a 
+                  href={`/api/data/${activeArtifact.dataFile}`}
+                  download
+                  style={{ textDecoration: 'none' }}
+                >
+                  Download CSV
+                </a>
+              </Box>
+              <DataPreview dataFile={activeArtifact.dataFile} />
+            </Box>
+          )}
         </Box>
       </Paper>
     </Box>
