@@ -14,10 +14,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [planContent, setPlanContent] = useState('')
   const [mode, setMode] = useState<EditorMode>('code')
 
-  const updateEditorContent = (content: string) => {
-    setEditorContent(content || '')
-  }
-
   const addArtifact = (artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact = {
       ...artifact,
@@ -112,12 +108,11 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         setViewMode,
         setActiveArtifact,
         runArtifact,
-        updateEditorContent,
         editorContent,
+        setEditorContent,
         addArtifact,
-        setEditorContent: updateEditorContent,
         planContent,
-        setPlanContent: (content: string) => setPlanContent(content)
+        setPlanContent,
       }}
     >
       {children}

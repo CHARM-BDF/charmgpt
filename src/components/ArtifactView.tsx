@@ -1,6 +1,7 @@
 import { Box, Paper, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { useState, useEffect } from 'react'
+import { ViewMode } from '../contexts/ArtifactContext.types'
 
 interface DataPreviewProps {
   dataFile: string
@@ -79,8 +80,28 @@ function DataPreview({ dataFile }: DataPreviewProps) {
   )
 }
 
+// Helper function to determine the first available view mode
+function getInitialViewMode(artifact: {
+  plotFile?: string,
+  dataFile?: string,
+  output?: string
+}): ViewMode {
+  if (artifact.plotFile) return 'plot'
+  if (artifact.dataFile) return 'data'
+  if (artifact.output) return 'output'
+  return 'plot' // fallback
+}
+
 export default function ArtifactView() {
   const { activeArtifact, viewMode, setViewMode } = useArtifact()
+
+  // Set initial view mode when artifact changes
+  useEffect(() => {
+    if (activeArtifact) {
+      const initialMode = getInitialViewMode(activeArtifact)
+      setViewMode(initialMode)
+    }
+  }, [activeArtifact, setViewMode]) // Added missing dependencies
 
   console.log('ArtifactView render:', { 
     viewMode, 

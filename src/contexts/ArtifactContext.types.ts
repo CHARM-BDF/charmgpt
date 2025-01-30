@@ -26,12 +26,11 @@ export interface ArtifactContextType {
   setViewMode: (mode: ViewMode) => void
   setActiveArtifact: (artifact: Artifact | null) => void
   runArtifact: (code: string) => Promise<void>
-  updateEditorContent: (content: string) => void
   editorContent: string
-  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
   setEditorContent: (content: string) => void
   planContent: string
   setPlanContent: (content: string) => void
+  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 

@@ -1,18 +1,21 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
-import MonacoEditor from '@monaco-editor/react'
+import { Box } from '@mui/material'
+import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 
 export default function Editor() {
   const { 
     activeArtifact, 
-    updateEditorContent, 
+    setEditorContent,
     editorContent, 
     planContent,
-    updatePlanContent,
+    setPlanContent,
     mode, 
     artifacts,
-    setActiveArtifact
+    setActiveArtifact,
+    setEditorContent: setEditorContentContext,
+    setPlanContent: setPlanContentContext
   } = useArtifact()
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -49,10 +52,10 @@ ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
     }])
     
     // Update the plan content after insertion
-    updatePlanContent(editor.getValue())
+    setPlanContentContext(editor.getValue())
     // Clear active artifact after insertion
     setActiveArtifact(null)
-  }, [updatePlanContent, setActiveArtifact])
+  }, [setPlanContentContext, setActiveArtifact])
 
   // Handle artifact selection
   useEffect(() => {
@@ -63,16 +66,20 @@ ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
 
     if (activeArtifact && mode === 'plan') {
       insertArtifactAtCursor(activeArtifact)
-    } else if (activeArtifact && mode === 'code') {
-      updateEditorContent(activeArtifact.code)
+    } else if (activeArtifact && mode === 'code' && activeArtifact.code) {
+      setEditorContentContext(activeArtifact.code)
     }
-  }, [activeArtifact, mode, updateEditorContent, insertArtifactAtCursor])
+  }, [activeArtifact, mode, setEditorContentContext, insertArtifactAtCursor])
 
-  const handleEditorChange = (value: string | undefined) => {
-    if (mode === 'plan') {
-      updatePlanContent(value || '')
+  const handleChange: OnChange = (value) => {
+    if (value === undefined) return
+    
+    console.log('Editor change:', { mode, value })
+    
+    if (mode === 'code') {
+      setEditorContent(value)
     } else {
-      updateEditorContent(value || '')
+      setPlanContent(value)
     }
   }
 
@@ -99,20 +106,23 @@ ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
     })
   }, [artifacts, insertArtifactAtCursor])
 
+  const currentValue = mode === 'code' ? editorContent : planContent
+
   return (
-    <MonacoEditor
-      value={mode === 'code' ? editorContent : planContent}
-      onChange={handleEditorChange}
-      onMount={handleEditorDidMount}
-      height="100%"
-      language={mode === 'code' ? 'python' : 'markdown'}
-      theme="light"
-      options={{
-        minimap: { enabled: false },
-        fontSize: 14,
-        wordWrap: mode === 'plan' ? 'on' : 'off',
-        lineNumbers: mode === 'code' ? 'on' : 'off',
-      }}
-    />
+    <Box sx={{ height: '100%' }}>
+      <MonacoEditor
+        height="100%"
+        defaultLanguage={mode === 'code' ? 'python' : 'markdown'}
+        value={currentValue}
+        onChange={handleChange}
+        onMount={handleEditorDidMount}
+        options={{
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          fontSize: 14,
+          wordWrap: 'on'
+        }}
+      />
+    </Box>
   )
 } 
