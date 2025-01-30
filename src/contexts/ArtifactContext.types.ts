@@ -2,6 +2,7 @@ import { createContext } from 'react'
 
 export type ArtifactType = 'code' | 'visualization' | 'chat'
 export type ArtifactSource = 'user' | 'assistant'
+export type EditorMode = 'code' | 'plan'
 
 export interface Artifact {
   id: number
@@ -22,6 +23,8 @@ export interface ArtifactContextType {
   updateEditorContent: (content: string) => void
   editorContent: string
   addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
+  mode: EditorMode
+  setMode: (mode: EditorMode) => void
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 

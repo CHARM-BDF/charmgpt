@@ -24,7 +24,7 @@ export default function Editor() {
       onChange={value => updateEditorContent(value || '')}
       height="100%"
       language="python"
-      theme="vs-dark"
+      theme="light"
       options={{
         minimap: { enabled: false },
         fontSize: 14,

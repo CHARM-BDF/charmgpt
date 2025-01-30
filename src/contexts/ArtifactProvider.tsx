@@ -1,6 +1,6 @@
 import { useCallback, useState, ReactNode, useRef } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ArtifactType } from './ArtifactContext.types'
+import { Artifact, ArtifactType, EditorMode } from './ArtifactContext.types'
 import { API_BASE_URL } from '../config'
 
 const DEFAULT_CODE = `# Start coding here
@@ -14,6 +14,7 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null)
   const [editorContent, setEditorContent] = useState<string>(DEFAULT_CODE)
+  const [mode, setMode] = useState<EditorMode>('code')
   const nextIdRef = useRef(1)
 
   const generateId = useCallback(() => {
@@ -25,21 +26,12 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
   const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact: Artifact = {
       ...artifact,
-      id: generateId(),
+      id: Date.now(),
       timestamp: new Date(),
     }
     setArtifacts(prev => [...prev, newArtifact])
     setActiveArtifact(newArtifact)
-    
-    // Update editor content when adding a code artifact
     if (artifact.type === 'code') {
-      setEditorContent(artifact.code)
-    }
-  }, [generateId])
-
-  const setActiveArtifactWithContent = useCallback((artifact: Artifact | null) => {
-    setActiveArtifact(artifact)
-    if (artifact?.type === 'code') {
       setEditorContent(artifact.code)
     }
   }, [])
@@ -121,11 +113,13 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
       value={{
         artifacts,
         activeArtifact,
-        setActiveArtifact: setActiveArtifactWithContent,
+        setActiveArtifact,
         runArtifact,
         updateEditorContent,
         editorContent,
         addArtifact,
+        mode,
+        setMode,
       }}
     >
       {children}
