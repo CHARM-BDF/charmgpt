@@ -97,91 +97,70 @@ export default function ArtifactView() {
     )
   }
 
-  const handleViewChange = (_: React.MouseEvent<HTMLElement>, newMode: ViewMode | null) => {
-    console.log('Toggle clicked:', { currentMode: viewMode, newMode })
-    if (newMode) {
-      setViewMode(newMode)
-    }
-  }
-
-  // Determine which content to show
-  const content = viewMode === 'plot' ? (
-    // Plot View
-    activeArtifact.plotFile && (
-      <Paper sx={{ p: 2 }}>
-        <img 
-          src={`/api/plots/${activeArtifact.plotFile}`}
-          alt="Plot" 
-          style={{ width: '100%', height: 'auto' }}
-        />
-      </Paper>
-    )
-  ) : (
-    // Data View
-    activeArtifact.dataFile && (
-      <Paper sx={{ p: 2 }}>
-        <Box sx={{ mb: 2 }}>
-          <a 
-            href={`/api/data/${activeArtifact.dataFile}`}
-            download
-            style={{ textDecoration: 'none' }}
-          >
-            Download CSV
-          </a>
-        </Box>
-        <DataPreview dataFile={activeArtifact.dataFile} />
-      </Paper>
-    )
-  )
-
   return (
     <Box sx={{ p: 2 }}>
-      {/* Controls */}
-      <Box sx={{ 
-        mb: 2, 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 2,
-        backgroundColor: 'background.paper',
-        zIndex: 1,
-      }}>
-        <Typography variant="h6">
-          {activeArtifact.name}
-        </Typography>
-        <ToggleButtonGroup
-          value={viewMode}
-          onChange={handleViewChange}
-          exclusive
-          aria-label="view mode"
-        >
-          <ToggleButton 
-            value="plot" 
-            aria-label="plot view"
-            disabled={!activeArtifact.plotFile}
-          >
-            Plot
-          </ToggleButton>
-          <ToggleButton 
-            value="data" 
-            aria-label="data view"
-            disabled={!activeArtifact.dataFile}
-          >
-            Data
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+      {/* Header */}
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        {activeArtifact.name}
+      </Typography>
 
-      {/* Debug info */}
-      <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100' }}>
-        <Typography variant="caption">
-          Current view: {viewMode}<br />
-          Has plot: {String(Boolean(activeArtifact.plotFile))}<br />
-          Has data: {String(Boolean(activeArtifact.dataFile))}
-        </Typography>
-      </Box>
+      {/* Content Area */}
+      <Paper sx={{ p: 2 }}>
+        {/* View Controls */}
+        <Box sx={{ 
+          mb: 2,
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+          >
+            <ToggleButton 
+              value="plot" 
+              aria-label="plot view"
+              disabled={!activeArtifact.plotFile}
+            >
+              Plot
+            </ToggleButton>
+            <ToggleButton 
+              value="data" 
+              aria-label="data view"
+              disabled={!activeArtifact.dataFile}
+            >
+              Data
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
 
-      {/* Content area */}
-      {content}
+        {/* View Content */}
+        <Box sx={{ mt: 2 }}>
+          {viewMode === 'plot' && activeArtifact.plotFile && (
+            <img 
+              src={`/api/plots/${activeArtifact.plotFile}`}
+              alt="Plot" 
+              style={{ width: '100%', height: 'auto' }}
+            />
+          )}
+          
+          {viewMode === 'data' && activeArtifact.dataFile && (
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <a 
+                  href={`/api/data/${activeArtifact.dataFile}`}
+                  download
+                  style={{ textDecoration: 'none' }}
+                >
+                  Download CSV
+                </a>
+              </Box>
+              <DataPreview dataFile={activeArtifact.dataFile} />
+            </Box>
+          )}
+        </Box>
+      </Paper>
     </Box>
   )
 }
