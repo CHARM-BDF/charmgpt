@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { oneLight, oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useChatStore } from '../../store/chatStore';
 import rehypeRaw from 'rehype-raw';
 
@@ -198,14 +198,13 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
     ),
     pre: ({node, children, ...props}: any) => {
-      // Check if this is a code block
-      const codeChild = children?.[0];
-      if (codeChild?.type === 'code') {
-        // Let the code component handle it
+      // If this is a code block, just return it directly
+      if (children?.[0]?.type === 'code') {
         return children;
       }
+      // For regular pre blocks (not code)
       return (
-        <pre className="bg-white dark:bg-gray-900" {...props}>
+        <pre className="bg-white dark:bg-gray-800 p-4 rounded-md" {...props}>
           {children}
         </pre>
       );
@@ -216,7 +215,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       
       if (inline) {
         return (
-          <code className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm" {...props}>
+          <code className="bg-gray-100 dark:bg-[#1F2937] rounded px-1 py-0.5 text-sm" {...props}>
             {children}
           </code>
         );
@@ -224,7 +223,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
 
       return (
         <div className="mb-4 overflow-hidden rounded-md border-2 border-gray-200 dark:border-gray-700 shadow-md">
-          <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
+          <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
             <span className="uppercase font-semibold">{language || 'Text'}</span>
             <button 
               onClick={() => copyToClipboard(String(children))} 
@@ -237,20 +236,78 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
               </svg>
             </button>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-900">
+          <div className="bg-gray-50 dark:bg-[#1F2937]">
             <SyntaxHighlighter
-              style={oneLight as any}
+              style={typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? {
+                ...oneDark,
+                'punctuation': {
+                  color: '#d1d5db'
+                },
+                'operator': {
+                  color: '#d1d5db'
+                },
+                'token': {
+                  color: '#d1d5db'
+                },
+                'token.punctuation': {
+                  color: '#d1d5db'
+                },
+                'token.operator': {
+                  color: '#d1d5db'
+                },
+                'token.keyword': {
+                  color: '#d1d5db'
+                },
+                'token.string': {
+                  color: '#d1d5db'
+                },
+                'token.comment': {
+                  color: '#9ca3af'
+                }
+              } : {
+                ...oneLight,
+                'maybe-class-name': {
+                  color: '#2563eb'  // blue-600
+                },
+                'parameter': {
+                  color: '#2563eb'  // blue-600
+                },
+                'plain-text': {
+                  color: '#1f2937'  // gray-800
+                },
+                'imports': {
+                  color: '#2563eb'  // blue-600
+                },
+                'variable': {
+                  color: '#2563eb'  // blue-600
+                },
+                'function-variable': {
+                  color: '#2563eb'  // blue-600
+                },
+                'property-access': {
+                  color: '#2563eb'  // blue-600
+                },
+                'span': {
+                  color: '#2563eb'  // blue-600
+                }
+              }}
               language={language}
               PreTag="div"
               customStyle={{
                 margin: 0,
                 borderRadius: 0,
-                background: 'transparent',
+                background: 'inherit',
                 padding: '1rem'
               }}
+              codeTagProps={{
+                style: {
+                  background: 'transparent !important'
+                }
+              }}
+              className="syntax-highlighter"
               wrapLines={true}
               wrapLongLines={true}
-              className="bg-gray-50 dark:bg-gray-900"
+              useInlineStyles={true}
             >
               {String(children).replace(/\n$/, '')}
             </SyntaxHighlighter>
@@ -331,7 +388,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
 
   return (
     <MarkdownErrorBoundary>
-      <div className="prose max-w-none dark:prose-invert">
+      <div className="prose max-w-none dark:prose-invert !text-gray-900 dark:!text-gray-100">
         <ReactMarkdown 
           children={cleanContent}
           remarkPlugins={[remarkGfm]}
