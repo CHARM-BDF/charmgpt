@@ -34,6 +34,84 @@ class MarkdownErrorBoundary extends Component<{ children: React.ReactNode }, { h
   }
 }
 
+const ArtifactButton: React.FC<{
+  id: string;
+  type: string;
+  title: string;
+}> = ({ id, type, title }) => {
+  const { selectArtifact } = useChatStore();
+
+  const handleClick = () => {
+    console.log('ArtifactButton: clicked with id:', id);
+    selectArtifact(id);  // This will also set showArtifactWindow to true
+  };
+
+  const getIcon = () => {
+    switch (type) {
+      case 'text/markdown':
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        );
+      case 'application/vnd.ant.code':
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+        );
+      case 'image/svg+xml':
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h16a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        );
+      case 'application/vnd.mermaid':
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 3-3M4 6h16M4 18h16" />
+          </svg>
+        );
+      case 'text/html':
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        );
+      case 'application/vnd.react':
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        );
+    }
+  };
+
+  return (
+    <button
+      className="inline-flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700 min-w-[50%] max-w-full"
+      onClick={handleClick}
+      data-artifact-id={id}
+      data-artifact-type={type}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="flex-shrink-0 p-2 border-r border-gray-200 dark:border-gray-700">
+        {getIcon()}
+      </div>
+      <div className="flex flex-col items-start min-w-0">
+        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate w-full">{title}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">Click to open</span>
+      </div>
+    </button>
+  );
+};
+
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
   const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
 
@@ -62,17 +140,41 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
   const cleanContent = content
     // First, replace [BACKTICK] tags with actual backticks
     .replace(/\[BACKTICK\]/g, '`')
-    // Then handle the spacing
+    // Handle code blocks and spacing
     .split('\n')
-    .map(line => {
-      // Preserve markdown syntax while cleaning spaces
-      if (line.startsWith('    ') && !line.trim().startsWith('```')) {
-        // Remove exactly 4 spaces from the start if it's not a code block
+    .map((line: string) => {
+      // If we're in a code block, preserve all spacing
+      if (line.trim().startsWith('```')) {
+        return line.trimStart(); // Only trim the start of code block markers
+      }
+      // For all other lines, clean up excessive indentation
+      if (line.startsWith('    ')) {
         return line.slice(4);
       }
       return line;
     })
-    .join('\n');
+    .join('\n')
+    // Ensure code blocks are properly formatted
+    .replace(/```(\w+)\s*([\s\S]*?)```/g, (match, lang, code) => {
+      // Find the minimum indentation level (excluding empty lines)
+      const nonEmptyLines = code.split('\n').filter((line: string) => line.trim().length > 0);
+      const minIndent = Math.min(...nonEmptyLines.map((line: string) => {
+        const match = line.match(/^\s*/);
+        return match ? match[0].length : 0;
+      }));
+      
+      // Remove only the common indentation from each line
+      const normalizedCode = code
+        .split('\n')
+        .map((line: string) => {
+          if (line.trim().length === 0) return '';
+          return line.slice(minIndent);
+        })
+        .join('\n')
+        .trim();
+      
+      return `\`\`\`${lang}\n${normalizedCode}\n\`\`\``;
+    });
 
   const markdownComponents = {
     h1: ({node, ...props}: any) => <h1 className="text-4xl font-bold mb-6 mt-8 text-gray-900 dark:text-gray-100" {...props} />,
@@ -95,13 +197,22 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
     blockquote: ({node, ...props}: any) => (
       <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
     ),
-    pre: ({node, ...props}: any) => (
-      <pre className="bg-white dark:bg-gray-900" {...props} />
-    ),
+    pre: ({node, children, ...props}: any) => {
+      // Check if this is a code block
+      const codeChild = children?.[0];
+      if (codeChild?.type === 'code') {
+        // Let the code component handle it
+        return children;
+      }
+      return (
+        <pre className="bg-white dark:bg-gray-900" {...props}>
+          {children}
+        </pre>
+      );
+    },
     code: ({node, inline, className, children, ...props}: any) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
-      const isFenced = className?.includes('language-');
       
       if (inline) {
         return (
@@ -110,45 +221,42 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
           </code>
         );
       }
-      
-      if (isFenced) {
-        return (
-          <div className="mb-4 overflow-hidden rounded-md border-2 border-gray-200 dark:border-gray-700 shadow-md">
-            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
-              <span className="uppercase font-semibold">{language || 'Text'}</span>
-              <button 
-                onClick={() => copyToClipboard(String(children))} 
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                title="Copy code"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                  <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                </svg>
-              </button>
-            </div>
-            <div className="bg-white dark:bg-gray-900">
-              <SyntaxHighlighter
-                style={oneLight as any}
-                language={language}
-                PreTag="div"
-                customStyle={{
-                  margin: 0,
-                  borderRadius: 0,
-                  background: 'transparent',
-                  padding: '1rem'
-                }}
-                wrapLines={true}
-                wrapLongLines={true}
-              >
-                {String(children).replace(/\n$/, '')}
-              </SyntaxHighlighter>
-            </div>
+
+      return (
+        <div className="mb-4 overflow-hidden rounded-md border-2 border-gray-200 dark:border-gray-700 shadow-md">
+          <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
+            <span className="uppercase font-semibold">{language || 'Text'}</span>
+            <button 
+              onClick={() => copyToClipboard(String(children))} 
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Copy code"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+              </svg>
+            </button>
           </div>
-        );
-      }
-      
-      return String(children);
+          <div className="bg-gray-50 dark:bg-gray-900">
+            <SyntaxHighlighter
+              style={oneLight as any}
+              language={language}
+              PreTag="div"
+              customStyle={{
+                margin: 0,
+                borderRadius: 0,
+                background: 'transparent',
+                padding: '1rem'
+              }}
+              wrapLines={true}
+              wrapLongLines={true}
+              className="bg-gray-50 dark:bg-gray-900"
+            >
+              {String(children).replace(/\n$/, '')}
+            </SyntaxHighlighter>
+          </div>
+        </div>
+      );
     },
     img: ({node, ...props}: any) => (
       <img className="max-w-full h-auto rounded-lg shadow-md my-4" {...props} />
@@ -232,21 +340,17 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
             ...markdownComponents,
             button: ({node, ...props}: any) => {
               if (props.className?.includes('artifact-button')) {
-                const uuid = props['data-artifact-id'];
-                if (uuid) {
+                const id = props['data-artifact-id'];
+                const type = props['data-artifact-type'];
+                const title = props.children[0]?.toString().replace('📎 ', '');
+                
+                if (id && type && title) {
                   return (
-                    <button
-                      {...props}
-                      onClick={() => {
-                        console.log('AssistantMarkdown: Button clicked with uuid:', uuid);
-                        selectArtifact(uuid);
-                        if (!showArtifactWindow) {
-                          toggleArtifactWindow();
-                        }
-                      }}
-                    >
-                      {props.children}
-                    </button>
+                    <ArtifactButton
+                      id={id}
+                      type={type}
+                      title={title}
+                    />
                   );
                 }
               }
