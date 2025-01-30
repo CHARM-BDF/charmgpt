@@ -22,6 +22,8 @@ export interface ArtifactContextType {
   runArtifact: (code: string) => Promise<void>
   updateEditorContent: (content: string) => void
   editorContent: string
+  planContent: string
+  updatePlanContent: (content: string) => void
   addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
   mode: EditorMode
   setMode: (mode: EditorMode) => void

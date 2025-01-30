@@ -10,10 +10,33 @@ import numpy as np
 # Your data science code goes here
 print("Hello, world!")`
 
+const DEFAULT_PLAN = `# Analysis Plan
+
+## Objective
+- What questions are we trying to answer?
+- What insights are we looking for?
+
+## Analysis History
+Click on an artifact from the history panel to insert it here.
+Use [[artifact-id]] syntax to reference artifacts.
+
+## Next Steps
+1. 
+2. 
+3. 
+
+## Notes & Questions
+- 
+
+## References
+- 
+`
+
 export function ArtifactProvider({ children }: { children: ReactNode }) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null)
   const [editorContent, setEditorContent] = useState<string>(DEFAULT_CODE)
+  const [planContent, setPlanContent] = useState<string>(DEFAULT_PLAN)
   const [mode, setMode] = useState<EditorMode>('code')
   const nextIdRef = useRef(1)
 
@@ -108,6 +131,10 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
     setEditorContent(content)
   }, [])
 
+  const updatePlanContent = useCallback((content: string) => {
+    setPlanContent(content)
+  }, [])
+
   return (
     <ArtifactContext.Provider
       value={{
@@ -117,6 +144,8 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
         runArtifact,
         updateEditorContent,
         editorContent,
+        planContent,
+        updatePlanContent,
         addArtifact,
         mode,
         setMode,
