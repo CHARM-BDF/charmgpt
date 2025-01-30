@@ -39,6 +39,7 @@ export class DockerService {
 
     try {
       console.log('Running code with ID:', runId)
+      console.log('Temp directory:', this.tempDir)
       
       // Save both files
       const wrappedCode = this.wrapCode(runId)
@@ -86,17 +87,26 @@ export class DockerService {
         }
       }
 
-      // Check if data file exists
+      // Check for data file first
       try {
-        const genericDataPath = path.join(this.tempDir, 'data.csv')
-        await fs.access(genericDataPath)
-        // If found, rename it to include runId
-        await fs.rename(genericDataPath, dataPath)
+        console.log('Looking for data file at:', dataPath)
+        await fs.access(dataPath)
         dataFile = `${runId}_data.csv`
-        console.log('Found and renamed data file:', dataFile)
-      } catch (error) {
-        void error;
-        console.log('No data file found')
+        console.log('Found data file:', dataFile)
+      } catch {
+        console.log('No data file found at:', dataPath)
+        // Try checking for generic data file
+        try {
+          const genericDataPath = path.join(this.tempDir, 'data.csv')
+          console.log('Looking for generic data file at:', genericDataPath)
+          await fs.access(genericDataPath)
+          // If found, rename it to include runId
+          await fs.rename(genericDataPath, dataPath)
+          dataFile = `${runId}_data.csv`
+          console.log('Found and renamed generic data file:', dataFile)
+        } catch {
+          console.log('No generic data file found either')
+        }
       }
 
       // Only cleanup the Python files
@@ -112,7 +122,7 @@ export class DockerService {
         plotFile,
         dataFile
       }
-      console.log('Returning response:', response)
+      console.log('Full response:', response)
       return response
 
     } catch (error) {
@@ -142,6 +152,7 @@ sys.stdout = output_buffer
 
 # Execute user code
 try:
+    # Execute user code
     import user_code
     
     # Check if there's a plot to save
@@ -161,13 +172,22 @@ try:
                 y_data = line.get_ydata().tolist()
                 data.extend([{"name": str(x), "value": y} for x, y in zip(x_data, y_data)])
         
-        with open('/app/output/output.json', 'w') as f:
+        with open(f'/app/output/{runId}_output.json', 'w') as f:
             json.dump(data, f)
             print("Saved visualization data")
     else:
         print("No plots found")
         
     plt.close('all')
+
+    # Check for any CSV files in the current directory
+    import glob
+    csv_files = glob.glob('*.csv')
+    if csv_files:
+        print(f"Found CSV file: {csv_files[0]}")
+        import shutil
+        shutil.move(csv_files[0], f'/app/output/{runId}_data.csv')
+        print(f"Moved CSV file to /app/output/{runId}_data.csv")
     
 except Exception as e:
     print(f"Error: {str(e)}")
