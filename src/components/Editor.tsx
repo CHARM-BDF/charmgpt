@@ -15,8 +15,15 @@ export default function Editor() {
   } = useArtifact()
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const pendingInsertRef = useRef<typeof artifacts[0] | null>(null)
 
   const insertArtifactAtCursor = useCallback((artifact: typeof artifacts[0]) => {
+    if (!editorRef.current) return
+
+    const editor = editorRef.current
+    const position = editor.getPosition()
+    if (!position) return
+
     const artifactSummary = `
 ## Artifact #${artifact.id} - ${artifact.name}
 \`\`\`python
@@ -30,28 +37,31 @@ ${artifact.output}
 ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
 ---
 `
-    if (editorRef.current) {
-      const position = editorRef.current.getPosition()
-      const model = editorRef.current.getModel()
-      
-      if (position && model) {
-        editorRef.current.executeEdits('', [{
-          range: new monaco.Range(
-            position.lineNumber,
-            position.column,
-            position.lineNumber,
-            position.column
-          ),
-          text: artifactSummary
-        }])
-      }
-    }
-  }, [])
+    editor.executeEdits('', [{
+      range: new monaco.Range(
+        position.lineNumber,
+        position.column,
+        position.lineNumber,
+        position.column
+      ),
+      text: artifactSummary
+    }])
+    
+    // Update the plan content after insertion
+    updatePlanContent(editor.getValue())
+  }, [updatePlanContent])
 
   // Handle artifact selection
   useEffect(() => {
     if (activeArtifact && mode === 'plan') {
-      insertArtifactAtCursor(activeArtifact)
+      pendingInsertRef.current = activeArtifact
+      // Small delay to ensure editor is ready
+      setTimeout(() => {
+        if (pendingInsertRef.current) {
+          insertArtifactAtCursor(pendingInsertRef.current)
+          pendingInsertRef.current = null
+        }
+      }, 50)
     } else if (activeArtifact && mode === 'code') {
       updateEditorContent(activeArtifact.code)
     }
