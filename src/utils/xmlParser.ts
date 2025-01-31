@@ -113,12 +113,7 @@ export async function parseXMLResponse(xmlString: string) {
         });
 
         // Replace artifact XML with a button that includes data attributes and inline styles
-        const buttonHtml = `<button 
-          class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          data-artifact-id="${uniqueId}" 
-          data-artifact-type="${type}"
-          style="cursor: pointer; background: none; border: none; padding: 0;"
-        >📎 ${title}</button>`;
+        const buttonHtml = `<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${uniqueId}" data-artifact-type="${type}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 ${title}</button>`;
         conversation = conversation.replace(fullMatch, buttonHtml);
         position++;
     }

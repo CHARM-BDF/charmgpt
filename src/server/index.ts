@@ -17,40 +17,6 @@ const parseXML = promisify(parseString);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Define repair strategies
-const repairStrategies = [
-    // Strategy 1: Original CDATA wrapping
-    (input: string) => input.replace(
-        /(<(thinking|conversation|artifact)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
-        (_match, openTag, _tagName, content, closeTag) => {
-            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
-        }
-    ),
-    // Strategy 2: More aggressive CDATA wrapping including codesnip
-    (input: string) => input.replace(
-        /(<(thinking|conversation|artifact|codesnip)(?:\s+[^>]*)?>)([\s\S]*?)(<\/\2>)/g,
-        (_match, openTag, _tagName, content, closeTag) => {
-            return `${openTag}<![CDATA[${content}]]>${closeTag}`;
-        }
-    ),
-    // Strategy 3: Fix potential XML special characters in attributes
-    (input: string) => input.replace(
-        /(<[^>]+)(["'])(.*?)\2([^>]*>)/g,
-        (_match, start, quote, content, end) => {
-            const escaped = content.replace(/[<>&'"]/g, (char: string) => {
-                switch (char) {
-                    case '<': return '&lt;';
-                    case '>': return '&gt;';
-                    case '&': return '&amp;';
-                    case "'": return '&apos;';
-                    case '"': return '&quot;';
-                    default: return char;
-                }
-            });
-            return `${start}${quote}${escaped}${quote}${end}`;
-        }
-    )
-];
 
 // Define types for XML structure
 interface XMLResponse {
@@ -83,6 +49,22 @@ interface ServerStatus {
     name: string;
     isRunning: boolean;
     tools: ServerTool[];
+}
+
+// Add interface for tool response
+interface FormatterInput {
+    thinking?: string;
+    conversation: Array<{
+        type: 'text' | 'artifact';
+        content?: string;
+        artifact?: {
+            type: string;
+            id: string;
+            title: string;
+            content: string;
+            language?: string;
+        };
+    }>;
 }
 
 dotenv.config();
@@ -245,10 +227,20 @@ async function logDetailedStep(step: string, data: any) {
             currentLogFile = path.join(logDir, fileName);
         }
 
-        // Format the log entry
+        // Format the log entry with type information
         const logEntry = `
 === ${step} at ${timestamp} ===
+Data Type: ${typeof data}
+Is String: ${typeof data === 'string'}
+Raw Length: ${typeof data === 'string' ? data.length : JSON.stringify(data).length}
+
+Content:
 ${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+
+Parsed Content (if string containing JSON):
+${typeof data === 'string' && data.trim().startsWith('{') ? 
+    JSON.stringify(JSON.parse(data), null, 2) : 
+    'Not a JSON string'}
 === End ${step} ===
 
 `;
@@ -258,6 +250,11 @@ ${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
     } catch (error) {
         console.error('Failed to write detailed log:', error);
     }
+}
+
+// Add function to strip CDATA tags from XML
+function stripCDATATags(xml: string): string {
+    return xml.replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1');
 }
 
 app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) => {
@@ -271,31 +268,7 @@ app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) =
             useTestPrompt: req.body.useTestPrompt
         });
 
-        console.log('[SERVER] Processing chat request...');
-        
-        // Log the incoming request body length
-        console.log('[SERVER] Request body length:', JSON.stringify(req.body).length);
-
         const { message, history, useTestPrompt } = req.body;
-        // insert line return
-        console.log('\n ------------------------------');
-        console.log('Processing chat request...');
-
-        // Get available tools to include in the system prompt
-        console.log('Fetching available tools...');
-        const availableTools = await getAllAvailableTools();
-
-        // Add logging for available tools
-        Object.entries(availableTools).forEach(([serverName, tools]) => {
-            console.log(`Server ${serverName} has ${tools.length} tools available`);
-        });
-
-        const toolsDescription = Object.entries(availableTools)
-            .map(([serverName, tools]) => `
-                Server: ${serverName}
-                Available Tools:
-                ${tools.map(tool => `- ${tool.name}: ${tool.description || 'No description'}`).join('\n')}
-            `).join('\n');
 
         // Create messages array with history and current message
         const messages = [
@@ -303,209 +276,125 @@ app.post('/api/chat', async (req: Request<{}, {}, ChatRequest>, res: Response) =
             { role: 'user' as const, content: message }
         ];
 
-        // Enhance system prompt with tools information
-        const enhancedSystemPrompt = `${useTestPrompt ? testSystemPrompt : systemPrompt}
-
-Available MCP Tools:
-${toolsDescription}
-
-To use a tool, format your response like this:
-<tool_call server="server_name" tool="tool_name">
-{
-    "param1": "value1",
-    "param2": "value2"
-}
-</tool_call>
-
-The tool result will be provided back to you to include in your response.`;
-
-        // Before sending to Claude
-        await logDetailedStep('Request to Claude', {
-            messages,
-            systemPrompt: enhancedSystemPrompt
+        // Log the request to Claude
+        console.log('[SERVER] Sending request to Claude:', {
+            model: 'claude-3-5-sonnet-20241022',
+            messages: messages,
+            systemPrompt: useTestPrompt ? 'test prompt' : 'main prompt',
+            tool_choice: { type: "tool", name: "response_formatter" }
         });
 
         const response = await anthropic.messages.create({
             model: 'claude-3-5-sonnet-20241022',
             max_tokens: 4000,
             messages: messages,
-            system: enhancedSystemPrompt,
+            system: useTestPrompt ? testSystemPrompt : systemPrompt,
             temperature: 0.7,
-        });
-
-        if (response.content[0].type !== 'text') {
-            throw new Error('Expected text response from Claude');
-        }
-
-        await logDetailedStep('Response from Claude', response.content[0].text);
-
-        let responseText = response.content[0].text;
-
-        // Extract and log tool usage from the response
-        const toolCallMatches = responseText.match(/<tool_call[^>]*>[\s\S]*?<\/tool_call>/g);
-        if (toolCallMatches) {
-            await logDetailedStep('Tool Calls Found', toolCallMatches);
-            
-            for (const toolCallMatch of toolCallMatches) {
-                try {
-                    const serverMatch = toolCallMatch.match(/server="([^"]+)"/);
-                    const toolMatch = toolCallMatch.match(/tool="([^"]+)"/);
-                    const argsMatch = toolCallMatch.match(/\{[\s\S]*?\}(?=\s*<\/tool_call>)/);
-                    
-                    if (serverMatch && toolMatch && argsMatch) {
-                        const serverName = serverMatch[1];
-                        const toolName = toolMatch[1];
-                        
-                        await logDetailedStep('Tool Call Details', {
-                            server: serverName,
-                            tool: toolName,
-                            args: argsMatch[0]
-                        });
-
-                        try {
-                            const args = JSON.parse(argsMatch[0]);
-                            const result = await mcpManager.callTool(serverName, toolName, args);
-                            await logDetailedStep('Tool Call Result', {
-                                server: serverName,
-                                tool: toolName,
-                                result: result
-                            });
-                        } catch (error) {
-                            await logDetailedStep('Tool Call Error', {
-                                server: serverName,
-                                tool: toolName,
-                                error: error instanceof Error ? error.message : 'Unknown error'
-                            });
-                        }
-                    }
-                } catch (error) {
-                    await logDetailedStep('Tool Call Processing Error', error);
-                }
-            }
-        }
-
-        // Log before XML validation
-        await logDetailedStep('Pre-XML Validation', responseText);
-
-        const isValid = await isValidXMLResponse(responseText);
-        await logDetailedStep('XML Validation Result', {
-            isValid,
-            responseLength: responseText.length
-        });
-
-        if (!isValid) {
-            await logDetailedStep('Starting Repair Attempts', 'XML validation failed, attempting repairs');
-            console.log('XML validation failed, attempting repairs...');
-
-            // Try repair strategies
-            let repairAttempts = 0;
-            for (const repair of repairStrategies) {
-                repairAttempts++;
-                console.log(`Attempting repair strategy ${repairAttempts}...`);
-                try {
-                    const repairedText = repair(responseText);
-                    const isRepairedValid = await isValidXMLResponse(repairedText);
-                    if (isRepairedValid) {
-                        console.log('XML repair successful');
-                        // Log successful repair
-                        await logValidationResult(repairedText, true, repairAttempts);
-                        console.log('Sending repaired response...');
-                        res.json({ response: repairedText });
-                        return;
-                    }
-                } catch (error) {
-                    console.log(`Repair strategy ${repairAttempts} failed:`, error);
-                }
-            }
-
-            // If repairs fail, try LLM reformatting
-            console.log('Attempting LLM reformatting...');
-            repairAttempts++;
-
-            const reformatResponse = await anthropic.messages.create({
-                model: 'claude-3-5-sonnet-20241022',
-                max_tokens: 4000,
-                messages: [
-                    ...history,
-                    { role: 'assistant', content: responseText },
-                    { role: 'user', content: 'Please reformat your last response as valid XML following the required structure with <response>, <thinking>, <conversation>, and optional <artifact> tags. Use markdown formatting for all text content.' }
-                ],
-                system: systemPrompt,
-                temperature: 0.7,
-            });
-
-            if (reformatResponse.content[0].type !== 'text') {
-                throw new Error('Expected text response from Claude');
-            }
-
-            const reformattedText = reformatResponse.content[0].text;
-            console.log('Validating reformatted response...');
-            const isReformattedValid = await isValidXMLResponse(reformattedText);
-            
-            // Log reformatting result
-            await logValidationResult(reformattedText, isReformattedValid, repairAttempts);
-
-            if (isReformattedValid) {
-                console.log('LLM reformatting successful, sending response...');
-                res.json({ response: reformattedText });
-                return;
-            }
-
-            console.log('All repair attempts failed, sending wrapped error response...');
-            // If all attempts fail, wrap in error response
-            const wrappedResponse = `<response>
-          <conversation>
-          # Error: Response Formatting Issue
-          
-          I apologize, but I had trouble formatting the response properly. Here is the raw response:
-
-          ---
-          ${responseText}
-          </conversation>
-        </response>`;
-            
-            // Log final fallback
-            await logValidationResult(wrappedResponse, true, repairAttempts);
-            res.json({ response: wrappedResponse });
-            return;
-        } else {
-            // Check for bibliography in tool results
-            const toolCallMatches = responseText.match(/<tool_call[^>]*>[\s\S]*?<\/tool_call>/g);
-            if (toolCallMatches) {
-                console.log('Found tool calls:', toolCallMatches.length);
-                for (const toolCallMatch of toolCallMatches) {
-                    try {
-                        const argsMatch = toolCallMatch.match(/{[\s\S]*?}/);
-                        if (argsMatch) {
-                            console.log('Processing tool call args:', argsMatch[0]);
-                            const result = JSON.parse(argsMatch[0]);
-                            if (result.bibliography) {
-                                console.log('Found bibliography, length:', result.bibliography.length);
-                                // Add bibliography artifact to the conversation
-                                const originalLength = responseText.length;
-                                responseText = responseText.replace(
-                                    '</conversation>',
-                                    `<artifact type="bibliography" id="bibliography" title="Bibliography">\n${result.bibliography}\n</artifact>\n</conversation>`
-                                );
-                                console.log('Added bibliography artifact. Response length change:', responseText.length - originalLength);
-                            } else {
-                                console.log('No bibliography found in tool result');
+            tools: [{
+                name: "response_formatter",
+                description: "Format all responses in a consistent JSON structure",
+                input_schema: {
+                    type: "object",
+                    properties: {
+                        thinking: {
+                            type: "string",
+                            description: "Optional internal reasoning process, formatted in markdown"
+                        },
+                        conversation: {
+                            type: "array",
+                            description: "Array of conversation segments and artifacts in order of appearance",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    type: {
+                                        type: "string",
+                                        enum: ["text", "artifact"],
+                                        description: "Type of conversation segment"
+                                    },
+                                    content: {
+                                        type: "string",
+                                        description: "For type 'text': markdown formatted text content"
+                                    },
+                                    artifact: {
+                                        type: "object",
+                                        description: "For type 'artifact': artifact details",
+                                        properties: {
+                                            type: {
+                                                type: "string",
+                                                enum: [
+                                                    "text/markdown",
+                                                    "application/vnd.ant.code",
+                                                    "image/svg+xml",
+                                                    "application/vnd.mermaid",
+                                                    "text/html",
+                                                    "application/vnd.react"
+                                                ]
+                                            },
+                                            id: { type: "string" },
+                                            title: { type: "string" },
+                                            content: { type: "string" },
+                                            language: { type: "string" }
+                                        },
+                                        required: ["type", "id", "title", "content"]
+                                    }
+                                },
+                                required: ["type"]
                             }
                         }
-                    } catch (error) {
-                        console.error('Error processing tool call:', error);
-                    }
+                    },
+                    required: ["conversation"]
                 }
-            } else {
-                console.log('No tool calls found in response');
-            }
+            }],
+            tool_choice: { type: "tool", name: "response_formatter" }
+        });
 
-            console.log('Sending final response, length:', responseText.length);
-            res.json({ response: responseText });
+        // Log the raw response from Claude
+        console.log('[SERVER] Raw response from Claude:', {
+            type: response.content[0].type,
+            content: response.content[0]
+        });
+
+        if (response.content[0].type !== 'tool_use') {
+            console.log('[SERVER] Unexpected response type:', response.content[0].type);
+            throw new Error('Expected tool_use response from Claude');
         }
 
-        // Log final response
-        await logDetailedStep('Final Response', responseText);
+        const toolResponse = response.content[0];
+        if (toolResponse.type !== 'tool_use' || toolResponse.name !== 'response_formatter') {
+            throw new Error('Expected response_formatter tool response');
+        }
+
+        // Log the tool response
+        console.log('[SERVER] Tool response input:', JSON.stringify(toolResponse.input, null, 2));
+
+        // Use the tool response input as our JSON response
+        const jsonResponse = toolResponse.input as FormatterInput;
+        
+        // Log the parsed response
+        console.log('[SERVER] Parsed JSON response:', JSON.stringify(jsonResponse, null, 2));
+
+        // Convert the JSON response to XML format for backward compatibility
+        const xmlResponseWithCDATA = convertJsonToXml(jsonResponse);
+        
+        // Log the XML before validation
+        console.log('[SERVER] Generated XML before validation:', xmlResponseWithCDATA);
+        
+        // Validate the XML response (with CDATA)
+        const isValid = await isValidXMLResponse(xmlResponseWithCDATA);
+        console.log('[SERVER] XML validation result:', isValid);
+        
+        if (!isValid) {
+            throw new Error('Generated XML response is invalid');
+        }
+
+        // Strip CDATA tags before sending to client
+        const xmlResponse = stripCDATATags(xmlResponseWithCDATA);
+        
+        // Log the final XML being sent
+        console.log('[SERVER] Final XML being sent to client:', xmlResponse);
+
+        // Send the XML response
+        res.json({ response: xmlResponse });
 
     } catch (error) {
         await logDetailedStep('Request Error', error instanceof Error ? error.message : 'Unknown error');
@@ -516,6 +405,40 @@ The tool result will be provided back to you to include in your response.`;
         });
     }
 });
+
+// Add function to convert JSON response to XML format
+function convertJsonToXml(jsonResponse: FormatterInput): string {
+    let xml = '<response>\n';
+    
+    // Add thinking section if present
+    if (jsonResponse.thinking) {
+        xml += '    <thinking>\n';
+        xml += `        <![CDATA[${jsonResponse.thinking}]]>\n`;
+        xml += '    </thinking>\n';
+    }
+    
+    // Add conversation section
+    xml += '    <conversation>\n';
+    
+    // Process each conversation segment
+    for (const segment of jsonResponse.conversation) {
+        if (segment.type === 'text' && segment.content) {
+            xml += `        <![CDATA[${segment.content}]]>\n`;
+        } else if (segment.type === 'artifact' && segment.artifact) {
+            const artifact = segment.artifact;
+            xml += '\n';  // Add line break before artifact
+            xml += `        <artifact type="${artifact.type}" id="${artifact.id}" title="${artifact.title}"${artifact.language ? ` language="${artifact.language}"` : ''}>\n`;
+            xml += `            <![CDATA[${artifact.content}]]>\n`;
+            xml += '        </artifact>\n';
+            xml += '\n';  // Add line break after artifact
+        }
+    }
+    
+    xml += '    </conversation>\n';
+    xml += '</response>';
+    
+    return xml;
+}
 
 // Add new endpoint for server status
 app.get('/api/server-status', async (_req: Request, res: Response) => {
