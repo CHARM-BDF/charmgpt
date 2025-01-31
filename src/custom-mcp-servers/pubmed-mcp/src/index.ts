@@ -10,11 +10,17 @@ import { DOMParser } from 'xmldom';
 // Constants for the NCBI E-utilities API
 const NCBI_API_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const TOOL_NAME = "pubmed-search-mcp";
-const EMAIL = "acrouse.uab@gmail.com"; // Replace with your email
+
+// Get environment variables
+const NCBI_API_KEY = process.env.NCBI_API_KEY;
+const NCBI_TOOL_EMAIL = process.env.NCBI_TOOL_EMAIL || 'anonymous@example.com';
 
 // Define schemas for validation
 const SearchArgumentsSchema = z.object({
-  query: z.string(),
+  terms: z.array(z.object({
+    term: z.string(),
+    operator: z.enum(['AND', 'OR', 'NOT']).optional().default('AND')
+  })),
   max_results: z.number().min(1).max(100).optional().default(10),
 });
 
@@ -38,7 +44,15 @@ const server = new Server(
 // Helper function for making API requests
 async function makeNCBIRequest(url: string): Promise<any> {
   try {
-    const response = await fetch(url);
+    // Add API key and email to URL
+    const finalUrl = new URL(url);
+    if (NCBI_API_KEY) {
+      finalUrl.searchParams.append('api_key', NCBI_API_KEY);
+    }
+    finalUrl.searchParams.append('email', NCBI_TOOL_EMAIL);
+    finalUrl.searchParams.append('tool', TOOL_NAME);
+
+    const response = await fetch(finalUrl.toString());
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -53,45 +67,62 @@ async function makeNCBIRequest(url: string): Promise<any> {
   }
 }
 
-// Function to format article data
-function formatArticle(article: Element): string {
+// Function to format article data for Claude (concise version)
+function formatArticleForModel(article: Element): string {
   const titleElements = article.getElementsByTagName("ArticleTitle");
   const title = titleElements.length > 0 ? titleElements.item(0)?.textContent || "No title" : "No title";
-  
-  const authorElements = article.getElementsByTagName("Author");
-  const authors = Array.from({ length: authorElements.length }, (_, i) => {
-    const author = authorElements.item(i);
-    const lastNameElements = author?.getElementsByTagName("LastName");
-    const initialsElements = author?.getElementsByTagName("Initials");
-    const lastName = lastNameElements?.item(0)?.textContent || "";
-    const initials = initialsElements?.item(0)?.textContent || "";
-    return `${lastName} ${initials}`;
-  }).join(", ");
-
-  const abstractElements = article.getElementsByTagName("Abstract");
-  const abstract = abstractElements.length > 0 ? abstractElements.item(0)?.textContent || "No abstract available" : "No abstract available";
-  
-  const pmidElements = article.getElementsByTagName("PMID");
-  const pmid = pmidElements.length > 0 ? pmidElements.item(0)?.textContent || "No PMID" : "No PMID";
-  
-  const journalElements = article.getElementsByTagName("Journal");
-  const journal = journalElements.length > 0 ? 
-    journalElements.item(0)?.getElementsByTagName("Title")?.item(0)?.textContent || "No journal" : 
-    "No journal";
   
   const yearElements = article.getElementsByTagName("PubDate");
   const year = yearElements.length > 0 ? 
     yearElements.item(0)?.getElementsByTagName("Year")?.item(0)?.textContent || "No year" : 
     "No year";
+  
+  const pmidElements = article.getElementsByTagName("PMID");
+  const pmid = pmidElements.length > 0 ? pmidElements.item(0)?.textContent || "No PMID" : "No PMID";
+  
+  const abstractElements = article.getElementsByTagName("Abstract");
+  const abstract = abstractElements.length > 0 ? abstractElements.item(0)?.textContent || "No abstract available" : "No abstract available";
 
   return [
     `Title: ${title}`,
-    `Authors: ${authors}`,
-    `Journal: ${journal} (${year})`,
+    `Year: ${year}`,
     `PMID: ${pmid}`,
     `Abstract: ${abstract}`,
     "---"
   ].join("\n");
+}
+
+// Function to format bibliography
+function formatBibliography(articles: Element[]): string {
+  return articles.map((article, index) => {
+    const titleElements = article.getElementsByTagName("ArticleTitle");
+    const title = titleElements.length > 0 ? titleElements.item(0)?.textContent || "No title" : "No title";
+    
+    const authorElements = article.getElementsByTagName("Author");
+    const authors = Array.from({ length: authorElements.length }, (_, i) => {
+      const author = authorElements.item(i);
+      const lastNameElements = author?.getElementsByTagName("LastName");
+      const initialsElements = author?.getElementsByTagName("Initials");
+      const lastName = lastNameElements?.item(0)?.textContent || "";
+      const initials = initialsElements?.item(0)?.textContent || "";
+      return `${lastName} ${initials}`;
+    }).join(", ");
+
+    const journalElements = article.getElementsByTagName("Journal");
+    const journal = journalElements.length > 0 ? 
+      journalElements.item(0)?.getElementsByTagName("Title")?.item(0)?.textContent || "No journal" : 
+      "No journal";
+    
+    const yearElements = article.getElementsByTagName("PubDate");
+    const year = yearElements.length > 0 ? 
+      yearElements.item(0)?.getElementsByTagName("Year")?.item(0)?.textContent || "No year" : 
+      "No year";
+
+    const pmidElements = article.getElementsByTagName("PMID");
+    const pmid = pmidElements.length > 0 ? pmidElements.item(0)?.textContent || "No PMID" : "No PMID";
+
+    return `${index + 1}. ${authors}. (${year}). ${title}. *${journal}*. PMID: ${pmid}`;
+  }).join("\n\n");
 }
 
 // List available tools
@@ -100,20 +131,39 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "search",
-        description: "Search PubMed for articles",
+        description: "Search PubMed for articles. Extract search terms and boolean operators from the query. For example:\n" +
+          '- Query: "find papers about BRCA1 and breast cancer" → terms: [{"term": "BRCA1"}, {"term": "breast cancer", "operator": "AND"}]\n' +
+          '- Query: "papers with TP53 or apoptosis" → terms: [{"term": "TP53"}, {"term": "apoptosis", "operator": "OR"}]\n' +
+          '- Query: "PTEN but not breast cancer" → terms: [{"term": "PTEN"}, {"term": "breast cancer", "operator": "NOT"}]\n' +
+          "Uppercase terms are treated as gene symbols. Multi-word terms are treated as phrases.",
         inputSchema: {
           type: "object",
           properties: {
-            query: {
-              type: "string",
-              description: "Search query for PubMed",
+            terms: {
+              type: "array",
+              description: "Array of search terms and their boolean operators. First term's operator is ignored.",
+              items: {
+                type: "object",
+                properties: {
+                  term: {
+                    type: "string",
+                    description: "The search term"
+                  },
+                  operator: {
+                    type: "string",
+                    enum: ["AND", "OR", "NOT"],
+                    description: "Boolean operator to connect with previous term. Ignored for first term."
+                  }
+                },
+                required: ["term"]
+              }
             },
             max_results: {
               type: "number",
               description: "Maximum number of results to return (1-100)",
             },
           },
-          required: ["query"],
+          required: ["terms"],
         },
       },
       {
@@ -134,16 +184,41 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
+function formatPubMedQuery(terms: Array<{ term: string; operator?: string }>): string {
+  // Format each term with appropriate field tags and operators
+  return terms.map((item, index) => {
+    const { term, operator = 'AND' } = item;
+    let formattedTerm;
+
+    // Format the term
+    if (/^[A-Z0-9]+$/.test(term)) {
+      formattedTerm = `${term}[gene]`;
+    } else if (term.includes(' ')) {
+      formattedTerm = `"${term}"[All Fields]`;
+    } else {
+      formattedTerm = `${term}[All Fields]`;
+    }
+
+    // Add operator except for first term
+    return index === 0 ? formattedTerm : `${operator} ${formattedTerm}`;
+  }).join(' ');
+}
+
 // Handle tool execution
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
     if (name === "search") {
-      const { query, max_results } = SearchArgumentsSchema.parse(args);
+      const { terms, max_results } = SearchArgumentsSchema.parse(args);
+      
+      // Format the query from terms
+      const formattedQuery = formatPubMedQuery(terms);
+      console.error(`Search terms: ${JSON.stringify(terms)}`);
+      console.error(`Formatted query: ${formattedQuery}`);
       
       // Perform PubMed search
-      const searchUrl = `${NCBI_API_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&retmax=${max_results}&tool=${TOOL_NAME}&email=${EMAIL}`;
+      const searchUrl = `${NCBI_API_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(formattedQuery)}&retmax=${max_results}`;
       const searchData = await makeNCBIRequest(searchUrl);
       
       if (!searchData) {
@@ -173,7 +248,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // Fetch details for found PMIDs
-      const fetchUrl = `${NCBI_API_BASE}/efetch.fcgi?db=pubmed&id=${pmids.join(",")}&retmode=xml&tool=${TOOL_NAME}&email=${EMAIL}`;
+      const fetchUrl = `${NCBI_API_BASE}/efetch.fcgi?db=pubmed&id=${pmids.join(",")}&retmode=xml`;
       const articlesData = await makeNCBIRequest(fetchUrl);
 
       if (!articlesData) {
@@ -190,22 +265,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const articleElements = articlesData.getElementsByTagName("PubmedArticle");
       const articles = Array.from({ length: articleElements.length }, (_, i) => 
         articleElements.item(i) as Element);
-      const formattedArticles = articles.map(formatArticle);
+      const formattedArticlesForModel = articles.map(formatArticleForModel);
+      const bibliography = formatBibliography(articles);
 
       return {
         content: [
           {
             type: "text",
-            text: `Search results for "${query}":\n\n${formattedArticles.join("\n")}`,
-          },
+            text: `Search results for "${formattedQuery}":\n\n${formattedArticlesForModel.join("\n")}`,
+            forModel: true
+          }
         ],
+        bibliography: bibliography
       };
 
     } else if (name === "get-details") {
       const { pmid } = GetDetailsArgumentsSchema.parse(args);
       
       // Fetch article details
-      const fetchUrl = `${NCBI_API_BASE}/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml&tool=${TOOL_NAME}&email=${EMAIL}`;
+      const fetchUrl = `${NCBI_API_BASE}/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml`;
       const articleData = await makeNCBIRequest(fetchUrl);
 
       if (!articleData) {
@@ -233,7 +311,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      const formattedArticle = formatArticle(article);
+      const formattedArticle = formatArticleForModel(article);
 
       return {
         content: [
@@ -260,12 +338,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start the server
 async function main() {
+  // Log configuration status
+  if (NCBI_API_KEY) {
+    console.log("[pubmed] NCBI API Key found, using authenticated requests");
+  } else {
+    console.log("[pubmed] No NCBI API Key found, using unauthenticated requests");
+  }
+  console.log(`[pubmed] Using email: ${NCBI_TOOL_EMAIL}`);
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("PubMed Search MCP Server running on stdio");
+  console.log("[pubmed] PubMed Search MCP Server running on stdio");
 }
 
 main().catch((error) => {
-  console.error("Fatal error in main():", error);
+  console.error("[pubmed] Fatal error in main():", error);
   process.exit(1);
 });

@@ -93,9 +93,19 @@ class MCPServerManager {
 
         serverProcess.stderr?.on('data', (data) => {
           const message = data.toString().trim();
-          // Only log actual errors, not status messages
-          if (!message.includes('running on stdio') && !message.includes('Allowed directories')) {
+          // Skip common informational messages
+          if (message.includes('running on stdio') || 
+              message.includes('Allowed directories') ||
+              message.includes('API Key found') ||
+              message.includes('Using email')) {
+            console.log(`[${serverName}] ${message}`);
+          } else if (message.toLowerCase().includes('error') || 
+                     message.toLowerCase().includes('failed') ||
+                     message.toLowerCase().includes('exception')) {
             console.error(`[${serverName}] Error: ${message}`);
+          } else {
+            // Log other messages as info
+            console.log(`[${serverName}] ${message}`);
           }
         });
 

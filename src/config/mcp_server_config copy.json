@@ -4,9 +4,9 @@
         "command": "node",
         "args": [
           "./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
-          "/Users/JohnDoe/Desktop",
-          "/Users/JohnDoe/Downloads",
-          "/Users/JohnDoe/Projects/mcp-servers"
+          "/Users/andycrouse/Desktop",
+          "/Users/andycrouse/Downloads",
+          "/Users/andycrouse/Documents/GitHub/MCP/pubmed-mcp"
         ]
       },
       "brave-search": {
@@ -15,7 +15,7 @@
           "./node_modules/@modelcontextprotocol/server-brave-search/dist/index.js"
         ],
         "env": {
-          "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE"
+          "BRAVE_API_KEY": "BSArGWRNVAC-LCtTM-rxk9v799h3Abd"
         }
       },
       "pubmed": {
@@ -24,8 +24,8 @@
           "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
         ],
         "env": {
-          "NCBI_API_KEY": "YOUR_NCBI_API_KEY_HERE",
-          "NCBI_TOOL_EMAIL": "your.email@example.com"
+          "NCBI_API_KEY": "3164038b9b88adef161172a783ea32602708",
+          "NCBI_TOOL_EMAIL": "acrouse.uab@gmail.com"
         }
       },
       "server-sequential-thinking": {
@@ -53,4 +53,4 @@
         ]
       }
     }
-} 
+}

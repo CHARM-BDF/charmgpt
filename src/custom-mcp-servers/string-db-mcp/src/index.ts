@@ -69,6 +69,7 @@ const server = new Server(
     {
         capabilities: {
             tools: {},
+            logging: {}  // Add logging capability
         },
     }
 );
@@ -158,97 +159,115 @@ async function getProteinInteractions(params: {
     required_score?: number,
     limit?: number
 }): Promise<InteractionResponseWithEvidence[] | null> {
-    server.sendLoggingMessage({
-        level: "info",
-        data: {
-            message: "Starting getProteinInteractions",
-            params: params
-        },
-    });
-    
-    // First get STRING ID
-    const stringId = await getStringId(params.protein, params.species);
-    
-    if (!stringId) {
+    try {
         server.sendLoggingMessage({
-            level: "error",
-            data: `Failed to get STRING ID for protein: ${params.protein}`,
+            level: "info",
+            data: {
+                message: "Starting getProteinInteractions",
+                params: params
+            },
         });
-        throw new Error(`Could not find STRING ID for protein: ${params.protein}`);
-    }
+        
+        // First get STRING ID
+        const stringId = await getStringId(params.protein, params.species);
+        
+        if (!stringId) {
+            server.sendLoggingMessage({
+                level: "error",
+                data: `Failed to get STRING ID for protein: ${params.protein}`,
+            });
+            return null;
+        }
 
-    // Then get interactions
-    server.sendLoggingMessage({
-        level: "info",
-        data: `Fetching interactions for STRING ID: ${stringId}`,
-    });
-
-    const interactions = await makeStringDBRequest<InteractionResponse[]>('interaction_partners', {
-        identifier: stringId,
-        required_score: params.required_score || 400,
-        limit: params.limit || 50
-    });
-
-    if (!interactions) {
-        server.sendLoggingMessage({
-            level: "warning",
-            data: `No interactions found for STRING ID: ${stringId}`,
-        });
-        return null;
-    }
-
-    server.sendLoggingMessage({
-        level: "info",
-        data: {
-            message: `Found ${interactions.length} interactions`,
-            firstInteraction: interactions[0]
-        },
-    });
-
-    // For each interaction, get detailed evidence including PubMed IDs
-    server.sendLoggingMessage({
-        level: "info",
-        data: "Starting to fetch detailed evidence for each interaction",
-    });
-
-    const interactionsWithEvidence = await Promise.all(
-        interactions.map(async (interaction) => {
+        // Then get interactions
+        try {
             server.sendLoggingMessage({
                 level: "info",
-                data: `Fetching evidence for interaction between ${interaction.preferredName_A} and ${interaction.preferredName_B}`,
+                data: `Fetching interactions for STRING ID: ${stringId}`,
             });
 
-            const evidence = await makeStringDBRequest<DetailedEvidence>('interaction_information', {
-                string_ids: `${interaction.stringId_A},${interaction.stringId_B}`,
+            const interactions = await makeStringDBRequest<InteractionResponse[]>('interaction_partners', {
+                identifier: stringId,
                 required_score: params.required_score || 400,
+                limit: params.limit || 50
             });
-            
+
+            if (!interactions) {
+                server.sendLoggingMessage({
+                    level: "warning",
+                    data: `No interactions found for STRING ID: ${stringId}`,
+                });
+                return null;
+            }
+
             server.sendLoggingMessage({
                 level: "info",
                 data: {
-                    message: `Got evidence for interaction`,
-                    proteins: `${interaction.preferredName_A}-${interaction.preferredName_B}`,
-                    evidence: evidence
+                    message: `Found ${interactions.length} interactions`,
+                    firstInteraction: interactions[0]
                 },
             });
 
-            return {
-                ...interaction,
-                detailedEvidence: evidence
-            } as InteractionResponseWithEvidence;
-        })
-    );
+            // For each interaction, get detailed evidence including PubMed IDs
+            server.sendLoggingMessage({
+                level: "info",
+                data: "Starting to fetch detailed evidence for each interaction",
+            });
 
-    server.sendLoggingMessage({
-        level: "info",
-        data: {
-            message: `Completed fetching all interaction evidence`,
-            totalInteractions: interactionsWithEvidence.length,
-            sampleEvidence: interactionsWithEvidence[0]?.detailedEvidence
-        },
-    });
+            const interactionsWithEvidence = await Promise.all(
+                interactions.map(async (interaction) => {
+                    try {
+                        server.sendLoggingMessage({
+                            level: "info",
+                            data: `Fetching evidence for interaction between ${interaction.preferredName_A} and ${interaction.preferredName_B}`,
+                        });
 
-    return interactionsWithEvidence;
+                        const evidence = await makeStringDBRequest<DetailedEvidence>('interaction_information', {
+                            string_ids: `${interaction.stringId_A},${interaction.stringId_B}`,
+                            required_score: params.required_score || 400,
+                        });
+                        
+                        server.sendLoggingMessage({
+                            level: "info",
+                            data: {
+                                message: `Got evidence for interaction`,
+                                proteins: `${interaction.preferredName_A}-${interaction.preferredName_B}`,
+                                evidence: evidence
+                            },
+                        });
+
+                        return {
+                            ...interaction,
+                            detailedEvidence: evidence
+                        } as InteractionResponseWithEvidence;
+                    } catch (error) {
+                        console.error(`Error fetching evidence for interaction: ${error}`);
+                        return {
+                            ...interaction,
+                            detailedEvidence: null
+                        } as InteractionResponseWithEvidence;
+                    }
+                })
+            );
+
+            server.sendLoggingMessage({
+                level: "info",
+                data: {
+                    message: `Completed fetching all interaction evidence`,
+                    totalInteractions: interactionsWithEvidence.length,
+                    sampleEvidence: interactionsWithEvidence[0]?.detailedEvidence
+                },
+            });
+
+            return interactionsWithEvidence;
+        } catch (error) {
+            console.error(`Error in getProteinInteractions: ${error}`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`Error in getProteinInteractions outer block: ${error}`);
+        return null;
+    }
 }
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
