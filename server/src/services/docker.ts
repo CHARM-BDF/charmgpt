@@ -81,9 +81,28 @@ export class DockerService {
     }
   }
 
-  private async copyFromContainer(runId: string, filename: string): Promise<void> {
+  private async copyFromContainer(runId: string, filename: string): Promise<boolean> {
     try {
-      const containerPath = `/app/output/${filename}`
+       const containerPath = `/app/output/${filename}`
+       const checkResult = await new Promise<boolean>((resolve) => {
+       const check = spawn('docker', [
+          'exec',
+          runId,
+          'test',
+          '-f',
+          containerPath
+        ])
+        
+        check.on('close', (code) => {
+          resolve(code === 0)
+        })
+      })
+
+      if (!checkResult) {
+        console.log(`File ${filename} not found in container`)
+        return false
+      }
+
       const hostPath = path.join(this.getTempDir(), filename)
       
       await new Promise<void>((resolve, reject) => {
@@ -104,8 +123,10 @@ export class DockerService {
         
         cp.on('error', reject)
       })
+      return true
     } catch (error) {
       console.error(`Error copying ${filename} from container:`, error)
+      return false
     }
   }
 
@@ -186,8 +207,10 @@ print(output_buffer.getvalue())
         try {
           // Copy files from container before removing it
           if (code === 0) {
-            await this.copyFromContainer(runId, `${runId}_plot.png`)
-            await this.copyFromContainer(runId, `${runId}_data.csv`)
+            // Only copy if the file exists
+            const plotExists = await this.copyFromContainer(runId, `${runId}_plot.png`)
+            const dataExists = await this.copyFromContainer(runId, `${runId}_data.csv`)
+            console.log('File copy status:', { plotExists, dataExists })
           }
           
           // Remove the container
