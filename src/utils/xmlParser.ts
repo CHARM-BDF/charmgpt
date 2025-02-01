@@ -15,7 +15,8 @@ function validateArtifactType(type: string): ArtifactType {
         'text/markdown',
         'application/python',
         'application/javascript',
-        'application/vnd.react'
+        'application/vnd.react',
+        'application/vnd.bibliography'
     ];
 
     // Handle code snippets with language attribute

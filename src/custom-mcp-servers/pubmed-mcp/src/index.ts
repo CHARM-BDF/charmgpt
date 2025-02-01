@@ -92,9 +92,15 @@ function formatArticleForModel(article: Element): string {
   ].join("\n");
 }
 
-// Function to format bibliography
-function formatBibliography(articles: Element[]): string {
-  return articles.map((article, index) => {
+// Function to format bibliography as structured data
+function formatBibliography(articles: Element[]): Array<{
+  authors: string[];
+  year: string;
+  title: string;
+  journal: string;
+  pmid: string;
+}> {
+  return articles.map(article => {
     const titleElements = article.getElementsByTagName("ArticleTitle");
     const title = titleElements.length > 0 ? titleElements.item(0)?.textContent || "No title" : "No title";
     
@@ -106,7 +112,7 @@ function formatBibliography(articles: Element[]): string {
       const lastName = lastNameElements?.item(0)?.textContent || "";
       const initials = initialsElements?.item(0)?.textContent || "";
       return `${lastName} ${initials}`;
-    }).join(", ");
+    });
 
     const journalElements = article.getElementsByTagName("Journal");
     const journal = journalElements.length > 0 ? 
@@ -121,8 +127,14 @@ function formatBibliography(articles: Element[]): string {
     const pmidElements = article.getElementsByTagName("PMID");
     const pmid = pmidElements.length > 0 ? pmidElements.item(0)?.textContent || "No PMID" : "No PMID";
 
-    return `${index + 1}. ${authors}. (${year}). ${title}. *${journal}*. PMID: ${pmid}`;
-  }).join("\n\n");
+    return {
+      authors,
+      year,
+      title,
+      journal,
+      pmid
+    };
+  });
 }
 
 // List available tools
@@ -303,8 +315,44 @@ ${abstract}
 
       console.log('\n[DEBUG] First markdown article:', markdownArticles[0]);
       
-      const bibliography = formatBibliography(articles);
-      console.log('\n[DEBUG] Bibliography format:', bibliography.split('\n\n')[0]);
+      // Create structured bibliography data
+      const bibliographyData = articles.map(article => {
+        const titleElements = article.getElementsByTagName("ArticleTitle");
+        const title = titleElements.length > 0 ? titleElements.item(0)?.textContent || "No title" : "No title";
+        
+        const authorElements = article.getElementsByTagName("Author");
+        const authors = Array.from({ length: authorElements.length }, (_, i) => {
+          const author = authorElements.item(i);
+          const lastNameElements = author?.getElementsByTagName("LastName");
+          const initialsElements = author?.getElementsByTagName("Initials");
+          const lastName = lastNameElements?.item(0)?.textContent || "";
+          const initials = initialsElements?.item(0)?.textContent || "";
+          return `${lastName} ${initials}`;
+        });
+
+        const journalElements = article.getElementsByTagName("Journal");
+        const journal = journalElements.length > 0 ? 
+          journalElements.item(0)?.getElementsByTagName("Title")?.item(0)?.textContent || "No journal" : 
+          "No journal";
+        
+        const yearElements = article.getElementsByTagName("PubDate");
+        const year = yearElements.length > 0 ? 
+          yearElements.item(0)?.getElementsByTagName("Year")?.item(0)?.textContent || "No year" : 
+          "No year";
+
+        const pmidElements = article.getElementsByTagName("PMID");
+        const pmid = pmidElements.length > 0 ? pmidElements.item(0)?.textContent || "No PMID" : "No PMID";
+
+        return {
+          authors,
+          year,
+          title,
+          journal,
+          pmid
+        };
+      });
+
+      console.log('\n[DEBUG] First bibliography entry:', JSON.stringify(bibliographyData[0], null, 2));
 
       return {
         content: [
@@ -314,7 +362,7 @@ ${abstract}
             forModel: true
           }
         ],
-        bibliography: bibliography
+        bibliography: bibliographyData
       };
 
     } else if (name === "get-details") {

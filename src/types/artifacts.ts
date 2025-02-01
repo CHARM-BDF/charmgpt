@@ -7,7 +7,8 @@ export type ArtifactType =
   | 'text/markdown'
   | 'application/python'
   | 'application/javascript'
-  | 'application/vnd.react';
+  | 'application/vnd.react'
+  | 'application/vnd.bibliography';
 
 export interface Artifact {
   id: string;           // Unique UUID for internal use

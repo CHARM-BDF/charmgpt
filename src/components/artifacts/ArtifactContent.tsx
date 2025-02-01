@@ -115,6 +115,55 @@ export const ArtifactContent: React.FC<{
       case 'text':
         return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
 
+      case 'application/vnd.bibliography':
+        try {
+          const bibliography = JSON.parse(artifact.content);
+          return (
+            <div className="prose max-w-none dark:prose-invert">
+              <h2>Bibliography</h2>
+              {bibliography.map((entry: any, index: number) => {
+                const displayAuthors = entry.authors.length > 5 
+                  ? entry.authors.slice(0, 5)
+                  : entry.authors;
+                
+                const hasMoreAuthors = entry.authors.length > 5;
+                const allAuthors = entry.authors.join(', ');
+
+                return (
+                  <div key={entry.pmid} className="mb-4">
+                    <p className="[text-indent:-1em] [padding-left:1em]">
+                      {index + 1}. {displayAuthors.join(', ')}
+                      {hasMoreAuthors && (
+                        <span 
+                          title={allAuthors}
+                          className="cursor-help"
+                        >, et al.</span>
+                      )} ({entry.year}). {entry.title}. <em>{entry.journal}</em>.{' '}
+                      <a
+                        href={`https://pubmed.ncbi.nlm.nih.gov/${entry.pmid}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative inline-block ml-2 text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded no-underline"
+                        style={{ 
+                          padding: '2px 8px',
+                          textIndent: 0,
+                          lineHeight: 'normal',
+                          verticalAlign: 'middle'
+                        }}
+                      >
+                        Link to paper
+                      </a>
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        } catch (error) {
+          console.error('Failed to parse bibliography:', error);
+          return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
+        }
+
       default:
         // Try to render as markdown first, fallback to pre-wrapped text
         try {

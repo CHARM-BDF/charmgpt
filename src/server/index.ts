@@ -302,7 +302,12 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
           arguments: (content.input ? content.input as Record<string, unknown> : {})
         });
         
-        console.log('\n[DEBUG] MCP tool result:', JSON.stringify(toolResult, null, 2));
+        // console.log('\n[DEBUG] MCP tool result:', JSON.stringify(toolResult, null, 2));
+        
+        // Add debug log for bibliography
+        if ('bibliography' in toolResult) {
+          console.log('\n[DEBUG] Raw bibliography data:', JSON.stringify(toolResult.bibliography, null, 2));
+        }
 
         // Append the tool-use block and its result to the conversation.
         messages.push({
@@ -313,11 +318,18 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
         // If the tool result has content array with markdown text, use it directly
         if (toolResult && 'content' in toolResult && Array.isArray(toolResult.content)) {
           const textContent = toolResult.content.find(item => item.type === 'text')?.text;
+          // Store bibliography separately if it exists
+          const bibliography = 'bibliography' in toolResult ? toolResult.bibliography : null;
+          
           if (textContent) {
             messages.push({
               role: 'user',
               content: [{ type: 'text', text: typeof textContent === 'string' ? textContent : JSON.stringify(textContent) }]
             });
+            // Store bibliography in a way that persists through the conversation
+            if (bibliography) {
+              (messages as any).bibliography = bibliography;
+            }
           }
         } else {
           messages.push({
@@ -382,7 +394,8 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
                           "image/svg+xml",
                           "application/vnd.mermaid",
                           "text/html",
-                          "application/vnd.react"
+                          "application/vnd.react",
+                          "application/vnd.bibliography"
                         ]
                       },
                       id: { type: "string" },
@@ -420,6 +433,20 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
 
     console.log('[SERVER] Tool response input:', JSON.stringify(toolResponse.input, null, 2));
     const jsonResponse = toolResponse.input as FormatterInput;
+
+    // Add bibliography as an artifact if it exists
+    if ((messages as any).bibliography) {
+      jsonResponse.conversation.push({
+        type: "artifact",
+        artifact: {
+          type: "application/vnd.bibliography",
+          id: "bibliography",
+          title: "Article References",
+          content: JSON.stringify((messages as any).bibliography)
+        }
+      });
+    }
+
     console.log('[SERVER] Parsed JSON response:', JSON.stringify(jsonResponse, null, 2));
 
     // Convert JSON response to XML for backward compatibility.
