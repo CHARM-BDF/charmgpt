@@ -1,15 +1,15 @@
 {
-    "mcpServers": {
+  "mcpServers": {
 
-      "pubmed": {
-        "command": "node",
-        "args": [
-          "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
-        ],
-        "env": {
-          "NCBI_API_KEY": "3164038b9b88adef161172a783ea32602708",
-          "NCBI_TOOL_EMAIL": "acrouse.uab@gmail.com"
-        }
+    "pubmed": {
+      "command": "node",
+      "args": [
+        "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
+      ],
+      "env": {
+        "NCBI_API_KEY": "3164038b9b88adef161172a783ea32602708",
+        "NCBI_TOOL_EMAIL": "acrouse.uab@gmail.com"
       }
     }
+  }
 }
