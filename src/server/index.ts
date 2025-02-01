@@ -198,8 +198,8 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
   // Get tools from MCP client
   const rawTools = await mcpClient.listTools();
   
-  console.log('\n[DEBUG] RAW TOOLS TYPE:', typeof rawTools, Array.isArray(rawTools));
-  console.log('\n[DEBUG] RAW TOOLS STRUCTURE:', JSON.stringify(rawTools, null, 2));
+  // console.log('\n[DEBUG] RAW TOOLS TYPE:', typeof rawTools, Array.isArray(rawTools));
+  // console.log('\n[DEBUG] RAW TOOLS STRUCTURE:', JSON.stringify(rawTools, null, 2));
   
   // Handle the tools response structure
   let mcpTools: ServerTool[] = [];
@@ -221,11 +221,13 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
     return [];
   }
   
-  console.log('\n[DEBUG] PROCESSED MCP TOOLS:', JSON.stringify(mcpTools, null, 2));
+  // console.log('\n[DEBUG] PROCESSED MCP TOOLS:', JSON.stringify(mcpTools, null, 2));
+  // just console a list of the tool names
+  console.log('\n[DEBUG] MCP TOOL NAMES:', mcpTools.map((tool: ServerTool) => tool.name));
   
   // Format tools for Anthropic API
   const formattedTools = mcpTools.map((tool: ServerTool) => {
-    console.log('\n[DEBUG] PROCESSING TOOL:', tool.name);
+    // console.log('\n[DEBUG] PROCESSING TOOL:', tool.name);
     
     // Ensure we have all required fields
     if (!tool.name || !tool.inputSchema) {
@@ -243,11 +245,11 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
       }
     };
     
-    console.log('\n[DEBUG] SINGLE FORMATTED TOOL:', JSON.stringify(formattedTool, null, 2));
+    // console.log('\n[DEBUG] SINGLE FORMATTED TOOL:', JSON.stringify(formattedTool, null, 2));
     return formattedTool;
   }).filter((tool): tool is AnthropicTool => tool !== null);
   
-  console.log('\n[DEBUG] FORMATTED TOOLS FOR ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
+  // console.log('\n[DEBUG] FORMATTED TOOLS FOR ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
   
   if (!formattedTools.length) {
     console.log('\n[DEBUG] WARNING: No tools were formatted!');
@@ -267,7 +269,7 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
 
     // Get available tools from MCP, formatted for Anthropic.
     const formattedTools = await getAllAvailableTools();
-    console.log('\n[DEBUG] TOOLS BEING SENT TO ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
+    // console.log('\n[DEBUG] TOOLS BEING SENT TO ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
 
     // Create conversation array from history and the new message.
     const messages: ChatMessage[] = [
@@ -291,20 +293,38 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
         // If the tool name is formatted as "serverName:toolName", extract toolName.
         const toolName = content.name.includes(':') ? content.name.split(':')[1] : content.name;
         // Call the tool via the MCP client. The callTool method expects a single object parameter.
+        console.log('\n[DEBUG] Calling MCP tool:', {
+          toolName,
+          arguments: content.input
+        });
         const toolResult = await mcpClient.callTool({
           name: toolName,
           arguments: (content.input ? content.input as Record<string, unknown> : {})
         });
+        
+        console.log('\n[DEBUG] MCP tool result:', JSON.stringify(toolResult, null, 2));
 
         // Append the tool-use block and its result to the conversation.
         messages.push({
           role: 'assistant',
-          content: [{ type: 'text', text: JSON.stringify({ tool_use: content.name, input: content.input }) }]
+          content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
         });
-        messages.push({
-          role: 'user',
-          content: [{ type: 'text', text: JSON.stringify(toolResult) }]
-        });
+        
+        // If the tool result has content array with markdown text, use it directly
+        if (toolResult && 'content' in toolResult && Array.isArray(toolResult.content)) {
+          const textContent = toolResult.content.find(item => item.type === 'text')?.text;
+          if (textContent) {
+            messages.push({
+              role: 'user',
+              content: [{ type: 'text', text: typeof textContent === 'string' ? textContent : JSON.stringify(textContent) }]
+            });
+          }
+        } else {
+          messages.push({
+            role: 'user',
+            content: [{ type: 'text', text: JSON.stringify(toolResult) }]
+          });
+        }
       }
     }
 
@@ -317,6 +337,8 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
     });
 
     // Call Anthropic API again with the updated conversation and a response_formatter tool.
+    console.log('\n[DEBUG] Sending conversation to Claude with tool results:', JSON.stringify(messages, null, 2));
+    
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,

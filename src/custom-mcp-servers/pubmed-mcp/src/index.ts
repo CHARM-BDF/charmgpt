@@ -219,6 +219,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       
       // Perform PubMed search
       const searchUrl = `${NCBI_API_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(formattedQuery)}&retmax=${max_results}`;
+      console.log('\n[DEBUG] PubMed search URL:', searchUrl);
       const searchData = await makeNCBIRequest(searchUrl);
       
       if (!searchData) {
@@ -265,14 +266,51 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const articleElements = articlesData.getElementsByTagName("PubmedArticle");
       const articles = Array.from({ length: articleElements.length }, (_, i) => 
         articleElements.item(i) as Element);
-      const formattedArticlesForModel = articles.map(formatArticleForModel);
+      
+      console.log('\n[DEBUG] Found articles:', articles.length);
+      
+      // Transform articles into markdown formatted text
+      const markdownArticles = articles.map(article => {
+        const titleElements = article.getElementsByTagName("ArticleTitle");
+        const title = titleElements.length > 0 ? titleElements.item(0)?.textContent || "No title" : "No title";
+        
+        const yearElements = article.getElementsByTagName("PubDate");
+        const year = yearElements.length > 0 ? 
+          yearElements.item(0)?.getElementsByTagName("Year")?.item(0)?.textContent || "No year" : 
+          "No year";
+        
+        const pmidElements = article.getElementsByTagName("PMID");
+        const pmid = pmidElements.length > 0 ? pmidElements.item(0)?.textContent || "No PMID" : "No PMID";
+        
+        const abstractElements = article.getElementsByTagName("Abstract");
+        const abstract = abstractElements.length > 0 ? abstractElements.item(0)?.textContent || "No abstract available" : "No abstract available";
+
+        return `## Article
+### Title
+${title}
+
+### Year
+${year}
+
+### PMID
+${pmid}
+
+### Abstract
+${abstract}
+
+---`;
+      });
+
+      console.log('\n[DEBUG] First markdown article:', markdownArticles[0]);
+      
       const bibliography = formatBibliography(articles);
+      console.log('\n[DEBUG] Bibliography format:', bibliography.split('\n\n')[0]);
 
       return {
         content: [
           {
             type: "text",
-            text: `Search results for "${formattedQuery}":\n\n${formattedArticlesForModel.join("\n")}`,
+            text: `# Search Results for: ${formattedQuery}\n\n${markdownArticles.join("\n\n")}`,
             forModel: true
           }
         ],
