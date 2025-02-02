@@ -15,17 +15,11 @@ import { systemPrompt } from './systemPrompt';
 import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-// Update type imports from SDK
+// Update type imports from SDK - only keep what we use
 import { 
-  ListToolsResultSchema,
-  CallToolResultSchema,
-  ToolSchema,
-  ResultSchema,
-  TextContentSchema,
-  ImageContentSchema,
-  EmbeddedResourceSchema
+  TextContentSchema
 } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';  // Add Zod import
+import { z } from 'zod';  // Keep Zod import as it's used for type inference
 
 const parseXML = promisify(parseString);
 
@@ -112,44 +106,6 @@ interface MCPServersConfig {
   mcpServers: Record<string, MCPServerConfig>;
 }
 
-// Add type definition for tool list response
-interface ToolListResponse {
-  tools: Array<{
-    name: string;
-    description?: string;
-    inputSchema: {
-      type: string;
-      properties?: Record<string, unknown>;
-      required?: string[];
-    };
-  }>;
-}
-
-interface ToolCallResponse {
-  result: any;
-  content?: Array<{type: string; text?: string}>;
-  bibliography?: any;
-}
-
-// Add type for tool content
-type ToolContent = {
-  type: 'text';
-  text: string;
-} | {
-  type: 'image';
-  data: string;
-  mimeType: string;
-} | {
-  type: 'resource';
-  resource: any;  // We can make this more specific if needed
-};
-
-// Add type definition for text content
-type TextContent = {
-  type: 'text';
-  text: string;
-};
-
 dotenv.config();
 
 const app = express();
@@ -172,7 +128,7 @@ const toolNameMapping = new Map<string, string>();
 // Store original console methods before any overrides
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
-const originalConsoleDebug = console.debug;
+// const originalConsoleDebug = console.debug;
 
 // Add logging utility
 function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
@@ -241,14 +197,14 @@ try {
   const configContent = fs.readFileSync(mcpConfigPath, 'utf-8');
   const config = JSON.parse(configContent) as MCPServersConfig;
   
-  console.log('\nFound MCP servers in config:', Object.keys(config.mcpServers));
+  // console.log('\nFound MCP servers in config:', Object.keys(config.mcpServers));
   
   // Track server statuses
   const serverStatuses: Record<string, boolean> = {};
   
   // Start each MCP server
   for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
-    console.log(`\n[${serverName}] Starting server...`);
+    // console.log(`\n[${serverName}] Starting server...`);
     const { command, args = [], env = {} } = serverConfig;
     
     try {
@@ -266,8 +222,8 @@ try {
         return arg;
       });
 
-      console.log(`[${serverName}] Connecting with command:`, command);
-      console.log(`[${serverName}] Using args:`, modifiedArgs);
+      // console.log(`[${serverName}] Connecting with command:`, command);
+      // console.log(`[${serverName}] Using args:`, modifiedArgs);
 
       // Connect the client for this server
       await client.connect(new StdioClientTransport({ 
@@ -301,10 +257,10 @@ try {
         .map((tool: unknown) => (tool as { name: string }).name);
 
       if (serverTools.length > 0) {
-        console.log(`[${serverName}] ✅ Server started successfully with ${serverTools.length} tools:`, serverTools);
+        // console.log(`[${serverName}] ✅ Server started successfully with ${serverTools.length} tools:`, serverTools);
         serverStatuses[serverName] = true;
       } else {
-        console.log(`[${serverName}] ⚠️ Server started but no tools found`);
+        // console.log(`[${serverName}] ⚠️ Server started but no tools found`);
         serverStatuses[serverName] = false;
       }
     } catch (error) {
@@ -350,24 +306,19 @@ function convertChatMessages(messages: ChatMessage[]): { role: string; content: 
 async function getAllAvailableTools(): Promise<AnthropicTool[]> {
   let mcpTools: AnthropicTool[] = [];
   
-  // Clear previous mappings
   toolNameMapping.clear();
   
-  // Collect tools from all servers
   for (const [serverName, client] of mcpClients.entries()) {
     try {
       const toolsResult = await client.listTools();
       
       if (toolsResult.tools) {
         const toolsWithPrefix = toolsResult.tools.map(tool => {
-          // Original MCP name with server:tool format
           const originalName = `${serverName}:${tool.name}`;
-          // Create Anthropic-compatible name
           const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
           
-          // Store the mapping
           toolNameMapping.set(anthropicName, originalName);
-          console.log(`[DEBUG] Tool name mapping: "${anthropicName}" -> "${originalName}"`);
+          // console.log(`[DEBUG] Tool name mapping: "${anthropicName}" -> "${originalName}"`);
           
           const formattedTool: AnthropicTool = {
             name: anthropicName,
@@ -388,15 +339,15 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
   }
   
   if (!mcpTools.length) {
-    console.log('\n[DEBUG] WARNING: No tools were formatted!');
+    // console.log('\n[DEBUG] WARNING: No tools were formatted!');
   } else {
-    console.log('\n[DEBUG] === FORMATTED TOOLS FOR CLAUDE ===');
-    mcpTools.forEach(tool => {
-      console.log(`\n[TOOL] ${tool.name}`);
-      console.log(`Description: ${tool.description}`);
-      console.log('Input Schema:', JSON.stringify(tool.input_schema, null, 2));
-    });
-    console.log('\n[DEBUG] === END FORMATTED TOOLS ===\n');
+    // console.log('\n[DEBUG] === FORMATTED TOOLS FOR CLAUDE ===');
+    // mcpTools.forEach(tool => {
+    //   console.log(`\n[TOOL] ${tool.name}`);
+    //   console.log(`Description: ${tool.description}`);
+    //   console.log('Input Schema:', JSON.stringify(tool.input_schema, null, 2));
+    // });
+    // console.log('\n[DEBUG] === END FORMATTED TOOLS ===\n');
   }
   
   return mcpTools;
@@ -411,18 +362,15 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
   try {
     const { message, history } = req.body;
 
-    // Get available tools from MCP, formatted for Anthropic.
     const formattedTools = await getAllAvailableTools();
-    console.log('\n[DEBUG] TOOLS BEING SENT TO ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
+    // console.log('\n[DEBUG] TOOLS BEING SENT TO ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
 
-    // Create conversation array from history and the new message.
     const messages: ChatMessage[] = [
       ...history,
       { role: 'user', content: message }
     ];
     const anthMessages = convertChatMessages(messages);
 
-    // First call to Anthropic including tool definitions.
     const toolSelectionResponse = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
@@ -431,25 +379,22 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       tools: formattedTools,
     });
 
-    // Check for tool-use blocks in Claude's response.
     for (const content of toolSelectionResponse.content) {
       if (content.type === 'tool_use') {
-        // Look up the original MCP tool name
         const originalToolName = toolNameMapping.get(content.name);
         if (!originalToolName) {
           console.error(`No mapping found for tool name: ${content.name}`);
           continue;
         }
 
-        // Split the original name to get server and tool
         const [serverName, toolName] = originalToolName.split(':');
-        console.log('\n[DEBUG] Calling MCP tool:', {
-          anthropicName: content.name,
-          originalName: originalToolName,
-          serverName,
-          toolName,
-          arguments: content.input
-        });
+        // console.log('\n[DEBUG] Calling MCP tool:', {
+        //   anthropicName: content.name,
+        //   originalName: originalToolName,
+        //   serverName,
+        //   toolName,
+        //   arguments: content.input
+        // });
 
         const client = mcpClients.get(serverName);
         if (!client) {
@@ -458,20 +403,17 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
         }
 
         try {
-          // Use the dedicated callTool method with proper argument typing
           const toolResult = await client.callTool({
             name: toolName,
             arguments: content.input ? content.input as Record<string, unknown> : {}
           });
 
-          // Add tool usage message first
           messages.push({
             role: 'assistant',
             content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
           });
 
           if (toolResult && typeof toolResult === 'object') {
-            // Handle tool result content
             if ('content' in toolResult && Array.isArray(toolResult.content)) {
               const textContent = toolResult.content.find((item): item is z.infer<typeof TextContentSchema> => 
                 item.type === 'text' && typeof item.text === 'string'
@@ -484,21 +426,17 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
                 });
               }
             } else {
-              // If no content array, stringify the entire result
               messages.push({
                 role: 'user',
                 content: [{ type: 'text', text: JSON.stringify(toolResult) }]
               });
             }
 
-            // Handle bibliography if present
             if ('bibliography' in toolResult && toolResult.bibliography) {
-              console.log('\n[DEBUG] Raw bibliography data:', JSON.stringify(toolResult.bibliography, null, 2));
-              // Store bibliography for later use
+              // console.log('\n[DEBUG] Raw bibliography data:', JSON.stringify(toolResult.bibliography, null, 2));
               (messages as any).bibliography = toolResult.bibliography;
             }
           } else {
-            // Handle case where toolResult is not an object
             messages.push({
               role: 'user',
               content: [{ type: 'text', text: JSON.stringify(toolResult) }]
@@ -515,15 +453,14 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
     }
 
     const updatedAnthMessages = convertChatMessages(messages);
-    console.log('[SERVER] Sending updated conversation to Claude:', {
-      model: 'claude-3-5-sonnet-20241022',
-      messages: updatedAnthMessages,
-      systemPrompt: 'main prompt',
-      tool_choice: { type: "tool", name: "response_formatter" }
-    });
+    // console.log('[SERVER] Sending updated conversation to Claude:', {
+    //   model: 'claude-3-5-sonnet-20241022',
+    //   messages: updatedAnthMessages,
+    //   systemPrompt: 'main prompt',
+    //   tool_choice: { type: "tool", name: "response_formatter" }
+    // });
 
-    // Call Anthropic API again with the updated conversation and a response_formatter tool.
-    console.log('\n[DEBUG] Sending conversation to Claude with tool results:', JSON.stringify(messages, null, 2));
+    // console.log('\n[DEBUG] Sending conversation to Claude with tool results:', JSON.stringify(messages, null, 2));
     
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
@@ -590,13 +527,13 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       tool_choice: { type: "tool", name: "response_formatter" }
     });
 
-    console.log('[SERVER] Raw response from Claude:', {
-      type: response.content[0].type,
-      content: response.content[0]
-    });
+    // console.log('[SERVER] Raw response from Claude:', {
+    //   type: response.content[0].type,
+    //   content: response.content[0]
+    // });
 
     if (response.content[0].type !== 'tool_use') {
-      console.log('[SERVER] Unexpected response type:', response.content[0].type);
+      // console.log('[SERVER] Unexpected response type:', response.content[0].type);
       throw new Error('Expected tool_use response from Claude');
     }
 
@@ -605,10 +542,9 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       throw new Error('Expected response_formatter tool response');
     }
 
-    console.log('[SERVER] Tool response input:', JSON.stringify(toolResponse.input, null, 2));
+    // console.log('[SERVER] Tool response input:', JSON.stringify(toolResponse.input, null, 2));
     const jsonResponse = toolResponse.input as FormatterInput;
 
-    // Add bibliography as an artifact if it exists
     if ((messages as any).bibliography) {
       jsonResponse.conversation.push({
         type: "artifact",
@@ -621,20 +557,19 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       });
     }
 
-    console.log('[SERVER] Parsed JSON response:', JSON.stringify(jsonResponse, null, 2));
+    // console.log('[SERVER] Parsed JSON response:', JSON.stringify(jsonResponse, null, 2));
 
-    // Convert JSON response to XML for backward compatibility.
     const xmlResponseWithCDATA = convertJsonToXml(jsonResponse);
-    console.log('[SERVER] Generated XML before validation:', xmlResponseWithCDATA);
+    // console.log('[SERVER] Generated XML before validation:', xmlResponseWithCDATA);
 
     const isValid = await isValidXMLResponse(xmlResponseWithCDATA);
-    console.log('[SERVER] XML validation result:', isValid);
+    // console.log('[SERVER] XML validation result:', isValid);
     if (!isValid) {
       throw new Error('Generated XML response is invalid');
     }
 
     const xmlResponse = stripCDATATags(xmlResponseWithCDATA);
-    console.log('[SERVER] Final XML being sent to client:', xmlResponse);
+    // console.log('[SERVER] Final XML being sent to client:', xmlResponse);
 
     res.json({ response: xmlResponse });
 
@@ -673,24 +608,24 @@ function convertJsonToXml(jsonResponse: FormatterInput): string {
 
 // Simple XML validation helper (unchanged)
 async function isValidXMLResponse(response: string): Promise<boolean> {
-  console.log('[SERVER] XML Validation - Input length:', response.length);
+  // console.log('[SERVER] XML Validation - Input length:', response.length);
   try {
     if (!response.includes('<response>')) {
-      console.log('[SERVER] XML Validation - No XML structure found, wrapping response');
+      // console.log('[SERVER] XML Validation - No XML structure found, wrapping response');
       response = `<response>\n<conversation>\n${response}\n</conversation>\n</response>`;
     }
-    console.log('[SERVER] XML Validation - Attempting to parse...');
+    // console.log('[SERVER] XML Validation - Attempting to parse...');
     try {
       const result = (await parseXML(response)) as XMLResponse;
       const hasResponse = result && 'response' in result;
       const hasConversation = hasResponse && Array.isArray(result.response.conversation);
-      console.log('[SERVER] XML Validation - Structure check results:', {
-        hasResponse,
-        hasConversation
-      });
+      // console.log('[SERVER] XML Validation - Structure check results:', {
+      //   hasResponse,
+      //   hasConversation
+      // });
       return hasResponse && hasConversation;
     } catch (parseError) {
-      console.log('[SERVER] XML Validation - Parse error:', parseError);
+      // console.log('[SERVER] XML Validation - Parse error:', parseError);
       return false;
     }
   } catch (error) {
