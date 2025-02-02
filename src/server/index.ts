@@ -15,6 +15,18 @@ import { systemPrompt } from './systemPrompt';
 import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
+// Update type imports from SDK
+import { 
+  ListToolsResultSchema,
+  CallToolResultSchema,
+  ToolSchema,
+  ResultSchema,
+  TextContentSchema,
+  ImageContentSchema,
+  EmbeddedResourceSchema
+} from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';  // Add Zod import
+
 const parseXML = promisify(parseString);
 
 // ES Module dirname equivalent
@@ -100,6 +112,44 @@ interface MCPServersConfig {
   mcpServers: Record<string, MCPServerConfig>;
 }
 
+// Add type definition for tool list response
+interface ToolListResponse {
+  tools: Array<{
+    name: string;
+    description?: string;
+    inputSchema: {
+      type: string;
+      properties?: Record<string, unknown>;
+      required?: string[];
+    };
+  }>;
+}
+
+interface ToolCallResponse {
+  result: any;
+  content?: Array<{type: string; text?: string}>;
+  bibliography?: any;
+}
+
+// Add type for tool content
+type ToolContent = {
+  type: 'text';
+  text: string;
+} | {
+  type: 'image';
+  data: string;
+  mimeType: string;
+} | {
+  type: 'resource';
+  resource: any;  // We can make this more specific if needed
+};
+
+// Add type definition for text content
+type TextContent = {
+  type: 'text';
+  text: string;
+};
+
 dotenv.config();
 
 const app = express();
@@ -115,6 +165,9 @@ const anthropic = new Anthropic({
 
 // Add a map to store MCP clients for each server
 const mcpClients = new Map<string, McpClient>();
+
+// Bidirectional mapping for tool names
+const toolNameMapping = new Map<string, string>();
 
 // Store original console methods before any overrides
 const originalConsoleLog = console.log;
@@ -295,64 +348,50 @@ function convertChatMessages(messages: ChatMessage[]): { role: string; content: 
 
 // Get available tools from MCP using the MCP clients
 async function getAllAvailableTools(): Promise<AnthropicTool[]> {
-  let mcpTools: ServerTool[] = [];
+  let mcpTools: AnthropicTool[] = [];
+  
+  // Clear previous mappings
+  toolNameMapping.clear();
   
   // Collect tools from all servers
   for (const [serverName, client] of mcpClients.entries()) {
     try {
-      const response = await client.listTools();
-      if (response.tools) {
-        // Process tools based on server
-        const processedTools = response.tools.map(tool => {
-          const toolName = tool.name;
-          // If it's already in the format we want (e.g., brave_web_search), leave it
-          if (toolName.includes('_') && !toolName.includes(':')) {
-            console.log(`[DEBUG] Keeping original tool name: "${toolName}"`);
-            return tool;
-          }
-          // For other tools, ensure the name follows Anthropic's pattern
-          if (!toolName.includes(':')) {
-            // Convert server:toolName format to server_toolName
-            tool.name = `${serverName}_${toolName}`;
-            console.log(`[DEBUG] Formatted tool name: "${toolName}" -> "${tool.name}"`);
-          } else {
-            // Replace any colons with underscores
-            tool.name = toolName.replace(/:/g, '_');
-            console.log(`[DEBUG] Formatted tool name: "${toolName}" -> "${tool.name}"`);
-          }
-          return tool;
+      const toolsResult = await client.listTools();
+      
+      if (toolsResult.tools) {
+        const toolsWithPrefix = toolsResult.tools.map(tool => {
+          // Original MCP name with server:tool format
+          const originalName = `${serverName}:${tool.name}`;
+          // Create Anthropic-compatible name
+          const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+          
+          // Store the mapping
+          toolNameMapping.set(anthropicName, originalName);
+          console.log(`[DEBUG] Tool name mapping: "${anthropicName}" -> "${originalName}"`);
+          
+          const formattedTool: AnthropicTool = {
+            name: anthropicName,
+            description: tool.description || `Tool for ${tool.name} from ${serverName} server`,
+            input_schema: {
+              type: "object",
+              properties: tool.inputSchema.properties || {},
+              required: Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required : []
+            }
+          };
+          return formattedTool;
         });
-        mcpTools = mcpTools.concat(processedTools);
+        mcpTools = mcpTools.concat(toolsWithPrefix);
       }
     } catch (error) {
-      console.error('Failed to get tools from server:', error);
+      console.error(`Failed to get tools from server ${serverName}:`, error);
     }
   }
   
-  // Format tools for Anthropic API
-  const formattedTools = mcpTools.map((tool: ServerTool) => {
-    if (!tool.name || !tool.inputSchema) {
-      console.log('\n[DEBUG] WARNING: Tool missing required fields:', JSON.stringify(tool, null, 2));
-      return null;
-    }
-    
-    const formattedTool: AnthropicTool = {
-      name: tool.name,
-      description: tool.description || `Tool for ${tool.name}`,
-      input_schema: {
-        type: "object",
-        properties: tool.inputSchema.properties || {},
-        required: tool.inputSchema.required || []
-      }
-    };
-    return formattedTool;
-  }).filter((tool): tool is AnthropicTool => tool !== null);
-  
-  if (!formattedTools.length) {
+  if (!mcpTools.length) {
     console.log('\n[DEBUG] WARNING: No tools were formatted!');
   } else {
     console.log('\n[DEBUG] === FORMATTED TOOLS FOR CLAUDE ===');
-    formattedTools.forEach(tool => {
+    mcpTools.forEach(tool => {
       console.log(`\n[TOOL] ${tool.name}`);
       console.log(`Description: ${tool.description}`);
       console.log('Input Schema:', JSON.stringify(tool.input_schema, null, 2));
@@ -360,7 +399,7 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
     console.log('\n[DEBUG] === END FORMATTED TOOLS ===\n');
   }
   
-  return formattedTools;
+  return mcpTools;
 }
 
 // Strip CDATA tags from XML (for backward compatibility)
@@ -395,57 +434,81 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
     // Check for tool-use blocks in Claude's response.
     for (const content of toolSelectionResponse.content) {
       if (content.type === 'tool_use') {
-        // If the tool name is formatted as "serverName:toolName", extract toolName.
-        const toolName = content.name.includes(':') ? content.name.split(':')[1] : content.name;
-        // Call the tool via the MCP client. The callTool method expects a single object parameter.
+        // Look up the original MCP tool name
+        const originalToolName = toolNameMapping.get(content.name);
+        if (!originalToolName) {
+          console.error(`No mapping found for tool name: ${content.name}`);
+          continue;
+        }
+
+        // Split the original name to get server and tool
+        const [serverName, toolName] = originalToolName.split(':');
         console.log('\n[DEBUG] Calling MCP tool:', {
+          anthropicName: content.name,
+          originalName: originalToolName,
+          serverName,
           toolName,
           arguments: content.input
         });
-        const serverName = content.name.split(':')[0];
+
         const client = mcpClients.get(serverName);
         if (!client) {
           console.error(`No client found for server ${serverName}`);
           continue;
         }
-        const toolResult = await client.callTool({
-          name: toolName,
-          arguments: (content.input ? content.input as Record<string, unknown> : {})
-        });
-        
-        // console.log('\n[DEBUG] MCP tool result:', JSON.stringify(toolResult, null, 2));
-        
-        // Add debug log for bibliography
-        if ('bibliography' in toolResult) {
-          console.log('\n[DEBUG] Raw bibliography data:', JSON.stringify(toolResult.bibliography, null, 2));
-        }
 
-        // Append the tool-use block and its result to the conversation.
-        messages.push({
-          role: 'assistant',
-          content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
-        });
-        
-        // If the tool result has content array with markdown text, use it directly
-        if (toolResult && 'content' in toolResult && Array.isArray(toolResult.content)) {
-          const textContent = toolResult.content.find(item => item.type === 'text')?.text;
-          // Store bibliography separately if it exists
-          const bibliography = 'bibliography' in toolResult ? toolResult.bibliography : null;
-          
-          if (textContent) {
+        try {
+          // Use the dedicated callTool method with proper argument typing
+          const toolResult = await client.callTool({
+            name: toolName,
+            arguments: content.input ? content.input as Record<string, unknown> : {}
+          });
+
+          // Add tool usage message first
+          messages.push({
+            role: 'assistant',
+            content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
+          });
+
+          if (toolResult && typeof toolResult === 'object') {
+            // Handle tool result content
+            if ('content' in toolResult && Array.isArray(toolResult.content)) {
+              const textContent = toolResult.content.find((item): item is z.infer<typeof TextContentSchema> => 
+                item.type === 'text' && typeof item.text === 'string'
+              );
+              
+              if (textContent) {
+                messages.push({
+                  role: 'user',
+                  content: [{ type: 'text', text: textContent.text }]
+                });
+              }
+            } else {
+              // If no content array, stringify the entire result
+              messages.push({
+                role: 'user',
+                content: [{ type: 'text', text: JSON.stringify(toolResult) }]
+              });
+            }
+
+            // Handle bibliography if present
+            if ('bibliography' in toolResult && toolResult.bibliography) {
+              console.log('\n[DEBUG] Raw bibliography data:', JSON.stringify(toolResult.bibliography, null, 2));
+              // Store bibliography for later use
+              (messages as any).bibliography = toolResult.bibliography;
+            }
+          } else {
+            // Handle case where toolResult is not an object
             messages.push({
               role: 'user',
-              content: [{ type: 'text', text: typeof textContent === 'string' ? textContent : JSON.stringify(textContent) }]
+              content: [{ type: 'text', text: JSON.stringify(toolResult) }]
             });
-            // Store bibliography in a way that persists through the conversation
-            if (bibliography) {
-              (messages as any).bibliography = bibliography;
-            }
           }
-        } else {
+        } catch (error) {
+          console.error(`Error calling tool ${content.name}:`, error);
           messages.push({
             role: 'user',
-            content: [{ type: 'text', text: JSON.stringify(toolResult) }]
+            content: [{ type: 'text', text: `Error: Failed to execute tool ${content.name}` }]
           });
         }
       }
