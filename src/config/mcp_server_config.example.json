@@ -51,6 +51,14 @@
         "args": [
           "./src/custom-mcp-servers/string-db-mcp/dist/index.js"
         ]
+      },
+      "medikanren-api": {
+        "command": "npx",
+        "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/mediKanrenOpenAPI.yaml"]
+      },
+      "mondo-api": {
+        "command": "npx",
+        "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/monarchOpenAPI.yaml"]
       }
     }
 } 

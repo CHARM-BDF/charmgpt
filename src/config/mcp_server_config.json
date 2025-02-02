@@ -24,8 +24,8 @@
         "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
       ],
       "env": {
-        "NCBI_API_KEY": "3164038b9b88adef161172a783ea32602708",
-        "NCBI_TOOL_EMAIL": "acrouse.uab@gmail.com"
+        "NCBI_API_KEY": "${NCBI_API_KEY}",
+        "NCBI_TOOL_EMAIL": "${NCBI_TOOL_EMAIL}"
       }
     },
     "server-sequential-thinking": {
@@ -51,6 +51,14 @@
       "args": [
         "./src/custom-mcp-servers/string-db-mcp/dist/index.js"
       ]
+    },
+    "medikanren-api": {
+      "command": "npx",
+      "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/mediKanrenOpenAPI.yaml"]
+    },
+    "mondo-api": {
+      "command": "npx",
+      "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/monarchOpenAPI.yaml"]
     }
   }
 }

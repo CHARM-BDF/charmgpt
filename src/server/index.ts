@@ -302,6 +302,49 @@ function convertChatMessages(messages: ChatMessage[]): { role: string; content: 
   });
 }
 
+// Add helper function to resolve schema references
+function resolveSchemaRefs(schema: any, definitions: Record<string, any> = {}): any {
+  if (!schema || typeof schema !== 'object') return schema;
+
+  console.log('\n[DEBUG] Resolving schema:', JSON.stringify(schema, null, 2));
+  console.log('[DEBUG] Available definitions:', Object.keys(definitions));
+
+  if ('$ref' in schema) {
+    const refPath = schema.$ref.replace(/^#\/components\/schemas\//, '').replace(/^#\/\$defs\//, '');
+    console.log(`[DEBUG] Resolving reference: ${schema.$ref} -> ${refPath}`);
+    const resolved = definitions[refPath];
+    if (!resolved) {
+      console.error(`[ERROR] Failed to resolve reference: ${schema.$ref}, available keys:`, Object.keys(definitions));
+      return schema;
+    }
+    console.log('[DEBUG] Resolved to:', JSON.stringify(resolved, null, 2));
+    // Merge any additional properties (like description) with the resolved schema
+    const { $ref, ...rest } = schema;
+    return { ...resolveSchemaRefs(resolved, definitions), ...rest };
+  }
+
+  if (Array.isArray(schema)) {
+    return schema.map(item => resolveSchemaRefs(item, definitions));
+  }
+
+  const result: any = {};
+  for (const [key, value] of Object.entries(schema as object)) {
+    if (key === 'properties' && typeof value === 'object' && value !== null) {
+      result[key] = {};
+      for (const [propKey, propValue] of Object.entries(value)) {
+        result[key][propKey] = resolveSchemaRefs(propValue, definitions);
+      }
+    } else if (key === 'items' && typeof value === 'object') {
+      result[key] = resolveSchemaRefs(value, definitions);
+    } else if (typeof value === 'object') {
+      result[key] = resolveSchemaRefs(value, definitions);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 // Get available tools from MCP using the MCP clients
 async function getAllAvailableTools(): Promise<AnthropicTool[]> {
   let mcpTools: AnthropicTool[] = [];
@@ -313,22 +356,44 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
       const toolsResult = await client.listTools();
       
       if (toolsResult.tools) {
+        console.log(`\n[DEBUG] Processing tools for server ${serverName}`);
         const toolsWithPrefix = toolsResult.tools.map(tool => {
+          console.log(`\n[DEBUG] Processing tool: ${tool.name}`);
+          console.log('[DEBUG] Original input schema:', JSON.stringify(tool.inputSchema, null, 2));
+          
           const originalName = `${serverName}:${tool.name}`;
           const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
           
           toolNameMapping.set(anthropicName, originalName);
-          // console.log(`[DEBUG] Tool name mapping: "${anthropicName}" -> "${originalName}"`);
+          
+          // Extract any schema definitions that might be present
+          const definitions = tool.inputSchema.$defs || {};
+          console.log('[DEBUG] Extracted definitions:', Object.keys(definitions));
+          
+          // Create a complete schema with definitions and properties
+          const completeSchema = {
+            ...tool.inputSchema,
+            properties: tool.inputSchema.properties || {}
+          };
+          console.log('[DEBUG] Complete schema before resolution:', JSON.stringify(completeSchema, null, 2));
+
+          // Resolve any references in the complete schema
+          const resolvedSchema = resolveSchemaRefs(completeSchema, definitions);
+          console.log('[DEBUG] Resolved schema:', JSON.stringify(resolvedSchema, null, 2));
           
           const formattedTool: AnthropicTool = {
             name: anthropicName,
             description: tool.description || `Tool for ${tool.name} from ${serverName} server`,
             input_schema: {
               type: "object",
-              properties: tool.inputSchema.properties || {},
+              properties: resolvedSchema.properties || {},
               required: Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required : []
             }
           };
+
+          console.log(`[DEBUG] Final formatted tool schema for ${anthropicName}:`, 
+            JSON.stringify(formattedTool.input_schema, null, 2));
+          
           return formattedTool;
         });
         mcpTools = mcpTools.concat(toolsWithPrefix);
@@ -363,7 +428,28 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
     const { message, history } = req.body;
 
     const formattedTools = await getAllAvailableTools();
-    // console.log('\n[DEBUG] TOOLS BEING SENT TO ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
+    console.log('\n[DEBUG] === CHECKING TOOLS FOR ISSUES ===');
+    formattedTools.forEach((tool, index) => {
+      try {
+        console.log(`\n[DEBUG] Tool ${index}:`, {
+          name: tool.name,
+          schema: tool.input_schema,
+          hasProperties: !!tool.input_schema.properties,
+          schemaType: tool.input_schema.type,
+          required: tool.input_schema.required || []
+        });
+        
+        // Validate schema structure
+        if (tool.input_schema.type !== "object") {
+          console.error(`[ERROR] Tool ${index} (${tool.name}): Schema type must be "object", got "${tool.input_schema.type}"`);
+        }
+        if (!tool.input_schema.properties || typeof tool.input_schema.properties !== 'object') {
+          console.error(`[ERROR] Tool ${index} (${tool.name}): Missing or invalid properties`);
+        }
+      } catch (error) {
+        console.error(`[ERROR] Tool ${index} validation failed:`, error);
+      }
+    });
 
     const messages: ChatMessage[] = [
       ...history,

@@ -1,0 +1,99 @@
+openapi: 3.1.0
+info:
+  title: mediKanren
+  description: Query mediKanren for simple 1-hop queries.
+  version: 'v1'
+servers:
+  - url: https://medikanren-gpt-edu.livecode.ch
+paths:
+  /query:
+    post:
+      operationId: query
+      x-openai-isConsequential: false
+      summary: Runs a 1-hop query given a direction (X->Known for subject unknown or Known->X for object unknown), a biolink predicate (biolink:treats, biolink:regulates, biolink:causes, ...), and a CURIE (get the CURIE using a Monarch action), which is the known entity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/queryRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/queryResponse'
+  /pubmed:
+    post:
+      operationId: getPubmedAbstract
+      x-openai-isConsequential: false
+      summary: Retrieves a PubMed abstract given a PubMed or PMC ID. For a PMC id prefix the ID number with PMC, and for PubMed, prefix it with PMID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/pubmedRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pubmedResponse'
+
+components:
+  schemas:
+    queryResponse:
+      oneOf:
+        - type: array
+          items:
+            type: array
+            items:
+              oneOf:
+                - type: string
+                - type: array
+                  items:
+                    type: string  # Ensure nested arrays have items defined
+                - type: object
+        - type: object
+          properties:
+            error:
+              type: string
+          required:
+            - error
+    queryRequest:
+      type: object
+      properties:
+        e1:
+          type: string
+          description: X->Known or Known->X, for subject unknown or object unknown respectively.
+        e2:
+          type: string
+          description: A biolink predicate such as biolink:treats, from the biolink list.
+        e3:
+          type: string
+          description: A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.
+    pubmedRequest:
+      type: object
+      properties:
+        pubmed_id:
+          type: string
+          description: The PubMed (or PubMed Central ID) for the article.
+    pubmedResponse:
+      oneOf:
+        - type: object
+          properties:
+            title:
+              type: string
+              description: The title of the PubMed article.
+            abstract:
+              type: string
+              description: The abstract of the PubMed article.
+        - type: object
+          properties:
+            error:
+              type: string
+          required:
+            - error
