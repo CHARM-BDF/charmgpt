@@ -54,7 +54,7 @@ interface ServerTool {
   description?: string;
   inputSchema?: {
     type: string;
-    properties: Record<string, unknown>;
+    properties?: Record<string, unknown>;
     required?: string[];
   };
 }
@@ -82,11 +82,11 @@ interface ChatMessage {
   content: string | Array<{ type: string; text: string }>;
 }
 
-// Add ServerStatus interface with correct typing
+// Update ServerStatus interface to match store
 interface ServerStatus {
     name: string;
     isRunning: boolean;
-    tools: string[];
+    tools?: ServerTool[];  // Changed from string[] to ServerTool[]
 }
 
 // Add interface for MCP server config
@@ -113,64 +113,164 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// ----- MCP Client Initialization using the official SDK -----
-const mcpClient = new McpClient(
-  { name: 'mcp-backend-client', version: '1.0.0' },
-  { capabilities: { tools: {} } }
-);
+// Add a map to store MCP clients for each server
+const mcpClients = new Map<string, McpClient>();
+
+// Store original console methods before any overrides
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleDebug = console.debug;
+
+// Add logging utility
+function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
+  const now = new Date();
+  // Convert to Central Time
+  const centralTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(now);
+
+  const logDir = '/Users/andycrouse/Documents/GitHub/charm-mcp/logs/detailedserverlog';
+  
+  // Create logs directory if it doesn't exist
+  try {
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+      originalConsoleLog(`Created log directory at: ${logDir}`);
+    }
+    
+    const fileName = `detaillog_${centralTime.replace(/[\/:]/g, '-')}.log`;
+    const logPath = path.join(logDir, fileName);
+    const logEntry = `[${centralTime}] [${type.toUpperCase()}] ${message}\n`;
+    
+    // Append to log file
+    fs.appendFileSync(logPath, logEntry);
+    
+    // Use the original console.log to avoid recursion
+    originalConsoleLog(logEntry);
+  } catch (error) {
+    // Use original console to report logging errors
+    originalConsoleError('Error writing to log file:', error);
+  }
+}
+
+// Override console methods to also write to file
+console.log = (...args: any[]) => {
+  const message = args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ');
+  logToFile(message, 'info');
+};
+
+console.error = (...args: any[]) => {
+  const message = args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ');
+  logToFile(message, 'error');
+};
+
+console.debug = (...args: any[]) => {
+  const message = args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ');
+  logToFile(message, 'debug');
+};
 
 try {
-  console.log('Starting server initialization...');
+  console.log('\n=== Starting MCP Server Initialization ===');
   const mcpConfigPath = path.join(__dirname, '../config/mcp_server_config.json');
   const configContent = fs.readFileSync(mcpConfigPath, 'utf-8');
   const config = JSON.parse(configContent) as MCPServersConfig;
   
-  console.log('Found MCP servers in config:', Object.keys(config.mcpServers));
+  console.log('\nFound MCP servers in config:', Object.keys(config.mcpServers));
+  
+  // Track server statuses
+  const serverStatuses: Record<string, boolean> = {};
   
   // Start each MCP server
   for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
-    console.log(`Starting MCP server: ${serverName}`);
+    console.log(`\n[${serverName}] Starting server...`);
     const { command, args = [], env = {} } = serverConfig;
     
-    // Modify paths to be relative to project root if needed
-    const modifiedArgs = args.map(arg => {
-      if (arg.startsWith('./node_modules/')) {
-        return arg.replace('./', '');
-      }
-      return arg;
-    });
+    try {
+      // Create a new MCP client for this server
+      const client = new McpClient(
+        { name: `${serverName}-client`, version: '1.0.0' },
+        { capabilities: { tools: {} } }
+      );
+      
+      // Modify paths to be relative to project root if needed
+      const modifiedArgs = args.map(arg => {
+        if (arg.startsWith('./node_modules/')) {
+          return arg.replace('./', '');
+        }
+        return arg;
+      });
 
-    // Now connect the MCP client
-    console.log(`Connecting to MCP server: ${serverName}`);
-    await mcpClient.connect(new StdioClientTransport({ 
-      command,
-      args: modifiedArgs,
-      env: {
-        ...Object.fromEntries(
-          Object.entries(process.env).filter(([_, v]) => v !== undefined)
-        ) as Record<string, string>,
-        ...env
+      console.log(`[${serverName}] Connecting with command:`, command);
+      console.log(`[${serverName}] Using args:`, modifiedArgs);
+
+      // Connect the client for this server
+      await client.connect(new StdioClientTransport({ 
+        command,
+        args: modifiedArgs,
+        env: {
+          ...env,  // First spread config file values
+          ...Object.fromEntries(  // Then spread process.env values to override
+            Object.entries(process.env).filter(([_, v]) => v !== undefined)
+          ) as Record<string, string>
+        }
+      }));
+
+      // Store the client
+      mcpClients.set(serverName, client);
+
+      // Verify server is operational by listing its tools
+      const tools = await client.listTools();
+      // console.log(`[${serverName}] Tools response:`, JSON.stringify(tools, null, 2));
+      
+      // Handle the nested tools structure
+      const toolsList = (tools.tools || []) as unknown[];
+      const serverTools = toolsList
+        .filter((tool: unknown) => {
+          if (!tool || typeof tool !== 'object') return false;
+          const t = tool as { name: string };
+          if (!t.name || typeof t.name !== 'string') return false;
+          // Some servers prefix their tools with serverName:
+          return t.name.startsWith(`${serverName}:`) || !t.name.includes(':');
+        })
+        .map((tool: unknown) => (tool as { name: string }).name);
+
+      if (serverTools.length > 0) {
+        console.log(`[${serverName}] ✅ Server started successfully with ${serverTools.length} tools:`, serverTools);
+        serverStatuses[serverName] = true;
+      } else {
+        console.log(`[${serverName}] ⚠️ Server started but no tools found`);
+        serverStatuses[serverName] = false;
       }
-    }));
+    } catch (error) {
+      console.error(`[${serverName}] ❌ Failed to start:`, error);
+      serverStatuses[serverName] = false;
+    }
   }
   
   app.listen(port, async () => {
     try {
-      // Check MCP server status
-      // const tools = await mcpClient.listTools();
-      // console.log('\nMCP Server Status:');
-      // console.log('- MCP Client connected and initialized successfully');
-      // console.log('\n[DEBUG] INITIAL MCP TOOLS:', JSON.stringify(tools, null, 2));
-      // if (Object.values(tools).length > 0) {
-      //   console.log(`- Available tools: ${Object.values(tools).map((tool: unknown) => (tool as ServerTool).name).join(', ')}`);
-      // } else {
-      //   console.log('- No tools available');
-      // }
+      console.log('\n=== MCP Server Status Summary ===');
+      Object.entries(serverStatuses).forEach(([name, status]) => {
+        console.log(`${status ? '✅' : '❌'} ${name}: ${status ? 'Running' : 'Failed'}`);
+      });
 
       const now = new Date();
       const timestamp = now.toLocaleString();
-      console.log(`\nHot reload at: ${timestamp}`);
-      console.log(`Server running at http://localhost:${port}`);
+      console.log(`\nServer started at: ${timestamp}`);
+      console.log(`API running at http://localhost:${port}`);
     } catch (error) {
       console.error('Failed to verify MCP server status:', error);
       process.exit(1);
@@ -193,43 +293,44 @@ function convertChatMessages(messages: ChatMessage[]): { role: string; content: 
   });
 }
 
-// Get available tools from MCP using the MCP client
+// Get available tools from MCP using the MCP clients
 async function getAllAvailableTools(): Promise<AnthropicTool[]> {
-  // Get tools from MCP client
-  const rawTools = await mcpClient.listTools();
-  
-  // console.log('\n[DEBUG] RAW TOOLS TYPE:', typeof rawTools, Array.isArray(rawTools));
-  // console.log('\n[DEBUG] RAW TOOLS STRUCTURE:', JSON.stringify(rawTools, null, 2));
-  
-  // Handle the tools response structure
   let mcpTools: ServerTool[] = [];
-  if (typeof rawTools === 'object' && rawTools !== null) {
-    // If it's an array, use it directly
-    if (Array.isArray(rawTools)) {
-      mcpTools = rawTools as unknown as ServerTool[];
-    }
-    // If it has a tools property that's an array, use that
-    else if ('tools' in rawTools && Array.isArray(rawTools.tools)) {
-      mcpTools = rawTools.tools as unknown as ServerTool[];
-    }
-    // If it's an object with tool entries, use Object.values
-    else {
-      mcpTools = Object.values(rawTools) as unknown as ServerTool[];
-    }
-  } else {
-    console.log('\n[DEBUG] WARNING: Unexpected tools format:', typeof rawTools);
-    return [];
-  }
   
-  // console.log('\n[DEBUG] PROCESSED MCP TOOLS:', JSON.stringify(mcpTools, null, 2));
-  // just console a list of the tool names
-  console.log('\n[DEBUG] MCP TOOL NAMES:', mcpTools.map((tool: ServerTool) => tool.name));
+  // Collect tools from all servers
+  for (const [serverName, client] of mcpClients.entries()) {
+    try {
+      const response = await client.listTools();
+      if (response.tools) {
+        // Process tools based on server
+        const processedTools = response.tools.map(tool => {
+          const toolName = tool.name;
+          // If it's already in the format we want (e.g., brave_web_search), leave it
+          if (toolName.includes('_') && !toolName.includes(':')) {
+            console.log(`[DEBUG] Keeping original tool name: "${toolName}"`);
+            return tool;
+          }
+          // For other tools, ensure the name follows Anthropic's pattern
+          if (!toolName.includes(':')) {
+            // Convert server:toolName format to server_toolName
+            tool.name = `${serverName}_${toolName}`;
+            console.log(`[DEBUG] Formatted tool name: "${toolName}" -> "${tool.name}"`);
+          } else {
+            // Replace any colons with underscores
+            tool.name = toolName.replace(/:/g, '_');
+            console.log(`[DEBUG] Formatted tool name: "${toolName}" -> "${tool.name}"`);
+          }
+          return tool;
+        });
+        mcpTools = mcpTools.concat(processedTools);
+      }
+    } catch (error) {
+      console.error('Failed to get tools from server:', error);
+    }
+  }
   
   // Format tools for Anthropic API
   const formattedTools = mcpTools.map((tool: ServerTool) => {
-    // console.log('\n[DEBUG] PROCESSING TOOL:', tool.name);
-    
-    // Ensure we have all required fields
     if (!tool.name || !tool.inputSchema) {
       console.log('\n[DEBUG] WARNING: Tool missing required fields:', JSON.stringify(tool, null, 2));
       return null;
@@ -244,15 +345,19 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
         required: tool.inputSchema.required || []
       }
     };
-    
-    // console.log('\n[DEBUG] SINGLE FORMATTED TOOL:', JSON.stringify(formattedTool, null, 2));
     return formattedTool;
   }).filter((tool): tool is AnthropicTool => tool !== null);
   
-  // console.log('\n[DEBUG] FORMATTED TOOLS FOR ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
-  
   if (!formattedTools.length) {
     console.log('\n[DEBUG] WARNING: No tools were formatted!');
+  } else {
+    console.log('\n[DEBUG] === FORMATTED TOOLS FOR CLAUDE ===');
+    formattedTools.forEach(tool => {
+      console.log(`\n[TOOL] ${tool.name}`);
+      console.log(`Description: ${tool.description}`);
+      console.log('Input Schema:', JSON.stringify(tool.input_schema, null, 2));
+    });
+    console.log('\n[DEBUG] === END FORMATTED TOOLS ===\n');
   }
   
   return formattedTools;
@@ -269,7 +374,7 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
 
     // Get available tools from MCP, formatted for Anthropic.
     const formattedTools = await getAllAvailableTools();
-    // console.log('\n[DEBUG] TOOLS BEING SENT TO ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
+    console.log('\n[DEBUG] TOOLS BEING SENT TO ANTHROPIC:', JSON.stringify(formattedTools, null, 2));
 
     // Create conversation array from history and the new message.
     const messages: ChatMessage[] = [
@@ -297,7 +402,13 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
           toolName,
           arguments: content.input
         });
-        const toolResult = await mcpClient.callTool({
+        const serverName = content.name.split(':')[0];
+        const client = mcpClients.get(serverName);
+        if (!client) {
+          console.error(`No client found for server ${serverName}`);
+          continue;
+        }
+        const toolResult = await client.callTool({
           name: toolName,
           arguments: (content.input ? content.input as Record<string, unknown> : {})
         });
@@ -525,33 +636,56 @@ async function isValidXMLResponse(response: string): Promise<boolean> {
   }
 }
 
-// Update server-status endpoint
+// Update the server-status endpoint to use the correct client for each server
 app.get('/api/server-status', async (_req: Request, res: Response) => {
-  try {
-    let serverStatus: ServerStatus[] = [];
-    
     try {
-      const tools = await mcpClient.listTools();
-      serverStatus.push({
-        name: 'mcp-backend-client',
-        isRunning: true,
-        tools: Object.values(tools).map((tool: unknown) => (tool as ServerTool).name)
-      });
-    } catch (error) {
-      console.error('Failed to list tools:', error);
-      serverStatus.push({
-        name: 'mcp-backend-client',
-        isRunning: false,
-        tools: []
-      });
-    }
+        const serverStatuses: ServerStatus[] = [];
+        
+        // Get server names from config
+        const mcpConfigPath = path.join(__dirname, '../config/mcp_server_config.json');
+        const configContent = fs.readFileSync(mcpConfigPath, 'utf-8');
+        const config = JSON.parse(configContent) as MCPServersConfig;
+        
+        for (const [serverName, _] of Object.entries(config.mcpServers)) {
+            try {
+                // Get the correct client for this server
+                const client = mcpClients.get(serverName);
+                if (!client) {
+                    throw new Error('Client not found');
+                }
 
-    res.json({ servers: serverStatus });
-  } catch (error) {
-    console.error('Failed to get server status:', error);
-    res.status(500).json({
-      error: 'Failed to get server status',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
+                // Get tools for this server
+                const tools = await client.listTools();
+                const toolsList = (tools.tools || []).map(tool => ({
+                    name: tool.name,
+                    description: tool.description,
+                    inputSchema: {
+                        type: tool.inputSchema.type,
+                        properties: tool.inputSchema.properties as Record<string, unknown>
+                    }
+                })) as ServerTool[];
+
+                serverStatuses.push({
+                    name: serverName,
+                    isRunning: true,
+                    tools: toolsList
+                });
+            } catch (error) {
+                console.error(`Failed to get status for server ${serverName}:`, error);
+                serverStatuses.push({
+                    name: serverName,
+                    isRunning: false,
+                    tools: []
+                });
+            }
+        }
+
+        res.json({ servers: serverStatuses });
+    } catch (error) {
+        console.error('Failed to get server status:', error);
+        res.status(500).json({
+            error: 'Failed to get server status',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
 });

@@ -1,0 +1,192 @@
+
+=== Tool Usage 2025-01-30T16:42:14.426Z ===
+Server: pubmed
+Tool: search
+Arguments: {
+  "query": "GNB1 AND GIRK channel",
+  "max_results": 5
+}
+Result: null
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T16:42:15.008Z ===
+Server: pubmed
+Tool: search
+Arguments: {
+  "query": "GNB1 AND GIRK channel",
+  "max_results": 5
+}
+Result: {
+  "content": [
+    {
+      "type": "text",
+      "text": "Search results for \"GNB1 AND GIRK channel\":\n\nTitle: Ethosuximide: Subunit- and Gβγ-dependent blocker and reporter of allosteric changes in GIRK channels.\nAuthors: Shalomov B, Friesacher T, Yakubovich D, Combista JC, Reddy HP, Dabbah S, Bernsteiner H, Zangerl-Plessl EM, Stary-Weinzinger A, Dascal N\nJournal: British journal of pharmacology (2025)\nPMID: 39814556\nAbstract: The antiepileptic drug ethosuximide (ETX) suppresses epileptiform activity in a mouse model of GNB1 syndrome, caused by mutations in Gβ1 protein, likely through the inhibition of G-protein gated K+ (GIRK) channels. Here, we investigated the mechanism of ETX inhibition (block) of different GIRKs.We studied ETX inhibition of GIRK channels expressed in Xenopus oocytes with or without their physiological activator, the G protein subunit dimer Gβγ. ETX binding site and mode of action were analysed using molecular dynamic (MD) simulations and kinetic modelling, and the predictions were tested by mutagenesis and functional testing.We show that ETX is a subunit-selective, allosteric blocker of GIRKs. The potency of ETX block is increased by Gβγ, in parallel with channel activation. MD simulations and mutagenesis locate the ETX binding site in GIRK2 to a region associated with phosphatidylinositol-4,5-bisphosphate (PIP2) regulation, and suggest that ETX acts by closing the helix bundle crossing (HBC) gate and altering channel's interaction with PIP2. The apparent affinity of ETX block is highly sensitive to changes in channel gating caused by mutations in Gβ1 or GIRK subunits.ETX block of GIRKs is allosteric, subunit-specific, and enhanced by Gβγ through an intricate network of allosteric interactions within the channel molecule. Our findings pose GIRK as a potential therapeutic target for ETX and ETX as a potent allosteric GIRK blocker and a tool for probing gating-related conformational changes in GIRK.© 2025 The Author(s). British Journal of Pharmacology published by John Wiley & Sons Ltd on behalf of British Pharmacological Society.\n---\nTitle: Epilepsy in a mouse model of GNB1 encephalopathy arises from altered potassium (GIRK) channel signaling and is alleviated by a GIRK inhibitor.\nAuthors: Colombo S, Reddy HP, Petri S, Williams DJ, Shalomov B, Dhindsa RS, Gelfman S, Krizay D, Bera AK, Yang M, Peng Y, Makinson CD, Boland MJ, Frankel WN, Goldstein DB, Dascal N\nJournal: Frontiers in cellular neuroscience (2023)\nPMID: 37275776\nAbstract: De novo mutations in GNB1, encoding the Gβ1 subunit of G proteins, cause a neurodevelopmental disorder with global developmental delay and epilepsy, GNB1 encephalopathy. Here, we show that mice carrying a pathogenic mutation, K78R, recapitulate aspects of the disorder, including developmental delay and generalized seizures. Cultured mutant cortical neurons also display aberrant bursting activity on multi-electrode arrays. Strikingly, the antiepileptic drug ethosuximide (ETX) restores normal neuronal network behavior in vitro and suppresses spike-and-wave discharges (SWD) in vivo. ETX is a known blocker of T-type voltage-gated Ca2+ channels and G protein-coupled potassium (GIRK) channels. Accordingly, we present evidence that K78R results in a gain-of-function (GoF) effect by increasing the activation of GIRK channels in cultured neurons and a heterologous model (Xenopus oocytes)-an effect we show can be potently inhibited by ETX. This work implicates a GoF mechanism for GIRK channels in epilepsy, identifies a new mechanism of action for ETX in preventing seizures, and establishes this mouse model as a pre-clinical tool for translational research with predicative value for GNB1 encephalopathy.Copyright © 2023 Colombo, Reddy, Petri, Williams, Shalomov, Dhindsa, Gelfman, Krizay, Bera, Yang, Peng, Makinson, Boland, Frankel, Goldstein and Dascal.\n---\nTitle: Encephalopathy-causing mutations in Gβ1 (GNB1) alter regulation of neuronal GIRK channels.\nAuthors: Reddy HP, Yakubovich D, Keren-Raifman T, Tabak G, Tsemakhovich VA, Pedersen MH, Shalomov B, Colombo S, Goldstein DB, Javitch JA, Bera AK, Dascal N\nJournal: iScience (2021)\nPMID: 34522861\nAbstract: Mutations in the GNB1 gene, encoding the Gβ1 subunit of heterotrimeric G proteins, cause GNB1 Encephalopathy. Patients experience seizures, pointing to abnormal activity of ion channels or neurotransmitter receptors. We studied three Gβ1 mutations (K78R, I80N and I80T) using computational and functional approaches. In heterologous expression models, these mutations did not alter the coupling between G protein-coupled receptors to Gi/o, or the Gβγ regulation of the neuronal voltage-gated Ca2+ channel CaV2.2. However, the mutations profoundly affected the Gβγ regulation of the G protein-gated inwardly rectifying potassium channels (GIRK, or Kir3). Changes were observed in Gβ1 protein expression levels, Gβγ binding to cytosolic segments of GIRK subunits, and in Gβγ function, and included gain-of-function for K78R or loss-of-function for I80T/N, which were GIRK subunit-specific. Our findings offer new insights into subunit-dependent gating of GIRKs by Gβγ, and indicate diverse etiology of GNB1 Encephalopathy cases, bearing a potential for personalized treatment.© 2021 The Author(s).\n---\nTitle: Cooperative regulation by G proteins and Na(+) of neuronal GIRK2 K(+) channels.\nAuthors: Wang W, Touhara KK, Weir K, Bean BP, MacKinnon R\nJournal: eLife (2016)\nPMID: 27074662\nAbstract: G protein gated inward rectifier K(+) (GIRK) channels open and thereby silence cellular electrical activity when inhibitory G protein coupled receptors (GPCRs) are stimulated. Here we describe an assay to measure neuronal GIRK2 activity as a function of membrane-anchored G protein concentration. Using this assay we show that four Gβγ subunits bind cooperatively to open GIRK2, and that intracellular Na(+) - which enters neurons during action potentials - further amplifies opening mostly by increasing Gβγ affinity. A Na(+) amplification function is characterized and used to estimate the concentration of Gβγ subunits that appear in the membrane of mouse dopamine neurons when GABAB receptors are stimulated. We conclude that GIRK2, through its dual responsiveness to Gβγ and Na(+), mediates a form of neuronal inhibition that is amplifiable in the setting of excess electrical activity.\n---"
+    }
+  ]
+}
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T16:42:15.009Z ===
+Server: pubmed
+Tool: get-details
+Arguments: {
+  "pmid": "15572350"
+}
+Result: null
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T16:42:15.184Z ===
+Server: pubmed
+Tool: get-details
+Arguments: {
+  "pmid": "15572350"
+}
+Result: {
+  "content": [
+    {
+      "type": "text",
+      "text": "Title: Biophysical characterization of ERp29. Evidence for a key structural role of cysteine 125.\nAuthors: Hermann VM, Cutfield JF, Hubbard MJ\nJournal: The Journal of biological chemistry (2005)\nPMID: 15572350\nAbstract: ERp29 is a major resident of the endoplasmic reticulum (ER) that seemingly plays an important role in most animal cells. Although a protein-folding association is widely supported, ERp29's specific molecular function remains unknown. A chaperone activity was postulated from evidence that ERp29 forms multimers like the classical ER chaperones, but conflicting results have emerged from our recent studies. Here a biophysical approach was used to clarify this issue and also reveal a key structural role for ERp29's characteristic cysteine, Cys-125. Applying hydrodynamic parameters derived from sedimentation and dynamic light-scattering analyses, a model of ERp29's quaternary structure was assembled from existing tertiary substructures. Comparison with Windbeutel, an ERp29-like protein from fruit fly with specialized chaperone activity, revealed similar tri-lobar gross structures but some finer differences consistent with functional divergence. Solubility and hydrophobic probe assays revealed moderate surface hydrophobicity, which was reduced in mutant ERp29 in which serine replaced Cys-125. This mutant was also relatively labile to proteolytic degradation, providing two reasons for the strict conservation of Cys-125. No multimerization was observed with untagged ERp29, which existed as tight homodimers (K(d) < 50 nm), whereas His-tagged ERp29 artifactually formed 670-kDa oligomers. These findings distinguish ERp29 biophysically from its peers in the ER including Windbeutel, endorsing our postulate that ERp29 adds a distinct type of folding activity to the ER machinery. By invoking novel functional associations for Cys-125 and the adjoining linker, new clues about how ERp29 might work have also arisen.\n---"
+    }
+  ]
+}
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T16:42:15.185Z ===
+Server: pubmed
+Tool: search
+Arguments: {
+  "query": "G protein beta gamma subunit GIRK activation mechanism",
+  "max_results": 5
+}
+Result: null
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T16:42:15.220Z ===
+Server: pubmed
+Tool: search
+Arguments: {
+  "query": "G protein beta gamma subunit GIRK activation mechanism",
+  "max_results": 5
+}
+Result: {
+  "content": [
+    {
+      "type": "text",
+      "text": "Failed to retrieve search results"
+    }
+  ]
+}
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T21:37:21.019Z ===
+User Message: use your memory to create a knowledge graph of the proteins that interact with GNB1
+Server: string-db
+Tool: get-protein-interactions
+Arguments: {
+  "protein": "GNB1"
+}
+Result: null
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T21:37:51.025Z ===
+User Message: use your memory to create a knowledge graph of the proteins that interact with GNB1
+Server: string-db
+Tool: get-protein-interactions
+Arguments: {
+  "protein": "GNB1"
+}
+Error: Tool call timed out: string-db/get-protein-interactions
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T21:37:51.033Z ===
+User Message: use your memory to create a knowledge graph of the proteins that interact with GNB1
+Server: memory
+Tool: read_graph
+Arguments: {}
+Result: null
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-30T21:37:51.035Z ===
+User Message: use your memory to create a knowledge graph of the proteins that interact with GNB1
+Server: memory
+Tool: read_graph
+Arguments: {}
+Result: {
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"entities\": [],\n  \"relations\": []\n}"
+    }
+  ]
+}
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-31T00:01:07.758Z ===
+User Message: look papers on the gene GNB1 and provide a summary
+Server: pubmed
+Tool: search
+Arguments: {
+  "terms": [
+    {
+      "term": "GNB1"
+    }
+  ]
+}
+Result: null
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-31T00:01:37.762Z ===
+User Message: look papers on the gene GNB1 and provide a summary
+Server: pubmed
+Tool: search
+Arguments: {
+  "terms": [
+    {
+      "term": "GNB1"
+    }
+  ]
+}
+Error: Tool call timed out: pubmed/search
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-31T00:22:07.517Z ===
+User Message: look papers on the gene GNB1 and provide a summary
+Server: pubmed
+Tool: search
+Arguments: {
+  "terms": [
+    {
+      "term": "GNB1"
+    }
+  ]
+}
+Result: null
+=== End Tool Usage ===
+
+
+=== Tool Usage 2025-01-31T00:22:37.522Z ===
+User Message: look papers on the gene GNB1 and provide a summary
+Server: pubmed
+Tool: search
+Arguments: {
+  "terms": [
+    {
+      "term": "GNB1"
+    }
+  ]
+}
+Error: Tool call timed out: pubmed/search
+=== End Tool Usage ===
+

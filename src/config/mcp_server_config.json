@@ -1,6 +1,23 @@
 {
   "mcpServers": {
-
+    "filesystem": {
+      "command": "node",
+      "args": [
+        "./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+        "/Users/andycrouse/Desktop",
+        "/Users/andycrouse/Downloads",
+        "/Users/andycrouse/Documents/GitHub/MCP/pubmed-mcp"
+      ]
+    },
+    "brave-search": {
+      "command": "node",
+      "args": [
+        "./node_modules/@modelcontextprotocol/server-brave-search/dist/index.js"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    },
     "pubmed": {
       "command": "node",
       "args": [
@@ -10,6 +27,30 @@
         "NCBI_API_KEY": "3164038b9b88adef161172a783ea32602708",
         "NCBI_TOOL_EMAIL": "acrouse.uab@gmail.com"
       }
+    },
+    "server-sequential-thinking": {
+      "command": "node",
+      "args": [
+        "./node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"
+      ]
+    },
+    "memory": {
+      "command": "node",
+      "args": [
+        "./node_modules/@modelcontextprotocol/server-memory/dist/index.js"
+      ]
+    },
+    "puppeteer": {
+      "command": "node",
+      "args": [
+        "./node_modules/@modelcontextprotocol/server-puppeteer/dist/index.js"
+      ]
+    },
+    "string-db": {
+      "command": "node",
+      "args": [
+        "./src/custom-mcp-servers/string-db-mcp/dist/index.js"
+      ]
     }
   }
 }
