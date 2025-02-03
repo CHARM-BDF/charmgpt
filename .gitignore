@@ -30,3 +30,6 @@ Thumbs.db
 
 # Configuration files with sensitive data
 src/config/mcp_server_config.json
+
+# Ignore files in doc/archive
+doc/archive/*

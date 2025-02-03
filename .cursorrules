@@ -1,0 +1,178 @@
+# Cursor AI Processing Rules
+
+## Documentation Structure Protocol
+LOCATION: /docs
+PURPOSE: Modular documentation system for efficient context loading and maintenance
+ACCESS_PATTERN: Load core overview first, then specific modules as needed
+
+## Context Management Rules
+1. START_SEQUENCE:
+   - Load /docs/core/README.OVERVIEW.md first
+   - Parse quick reference section
+   - Identify relevant module documentation
+   - Load only required type definitions
+
+2. DOCUMENTATION_MODULES:
+   core/ -> High-level system overview and current status
+   types/ -> Data structure definitions
+   implementation/ -> Component-specific details
+   reference/ -> LLM guidance and decisions
+
+3. CROSS_REFERENCE_PROTOCOL:
+   - Maintain documentation links
+   - Update related files when changes made
+   - Propagate type changes across modules
+   - Track dependency chain
+
+## Processing Instructions
+ON_NEW_CONVERSATION:
+  1. CHECK current task scope
+  2. LOAD minimal required documentation
+  3. TRACK loaded context
+  4. REQUEST additional modules if needed
+
+ON_TYPE_UPDATE:
+  1. IDENTIFY affected modules
+  2. LOAD all dependent type definitions
+  3. ENSURE consistency across files
+  4. UPDATE all related documentation
+
+ON_IMPLEMENTATION:
+  1. LOAD relevant type definitions
+  2. CHECK implementation requirements
+  3. VERIFY against type constraints
+  4. UPDATE implementation documentation
+
+## Context Optimization
+MEMORY_MANAGEMENT:
+  - Prioritize loading sequence
+  - Release non-essential context
+  - Maintain core type definitions
+  - Cache frequently accessed modules
+
+EFFICIENCY_RULES:
+  - Load types progressively
+  - Defer loading implementation details
+  - Cache validation rules
+  - Maintain cross-reference index
+
+## Documentation Maintenance
+ON_UPDATE:
+  1. IDENTIFY primary document
+  2. LOAD dependent documents
+  3. PROPAGATE changes
+  4. VERIFY consistency
+  5. UPDATE cross-references
+
+## Type Definition Protocol
+WHEN_PROCESSING_TYPES:
+  1. LOAD base type definition
+  2. CHECK inheritance chain
+  3. VERIFY constraints
+  4. VALIDATE relationships
+
+## Implementation Guidelines
+WHEN_IMPLEMENTING:
+  1. LOAD minimal type context
+  2. REQUEST additional context as needed
+  3. MAINTAIN implementation-type consistency
+  4. UPDATE documentation in parallel
+
+## Error Prevention
+BEFORE_CHANGES:
+  1. VERIFY current context
+  2. LOAD dependent types
+  3. CHECK cross-references
+  4. VALIDATE consistency
+
+## Response Formation
+WHEN_RESPONDING:
+  1. CHECK loaded context
+  2. REQUEST missing context
+  3. FORM response based on available information
+  4. INDICATE if more context needed
+
+## Documentation Evolution
+ON_NEW_REQUIREMENTS:
+  1. EVALUATE current structure
+  2. PROPOSE structural updates
+  3. MAINTAIN backward compatibility
+  4. UPDATE cross-references
+
+## Continual Improvement Documentation
+LOCATION: /README.Continual.Improvement.md
+PURPOSE: Track solutions to complex problems and maintain institutional knowledge
+UPDATE_TRIGGERS:
+  - Complex problem solved
+  - Recurring error pattern identified
+  - Non-obvious solution discovered
+  - System behavior edge case encountered
+
+DOCUMENTATION_STRUCTURE:
+  1. CONTEXT:
+     - System state
+     - Relevant configurations
+     - Environmental factors
+     - User requirements
+
+  2. PROBLEM:
+     - Error messages
+     - Unexpected behaviors
+     - Failed attempts
+     - Impact and scope
+
+  3. INVESTIGATION:
+     - Debug steps taken
+     - Tools/methods used
+     - Key insights gained
+     - Decision points
+
+  4. SOLUTION:
+     - Implemented fix
+     - Why it works
+     - Alternative approaches considered
+     - Verification methods
+
+  5. PREVENTION:
+     - Early warning signs
+     - Best practices
+     - Related scenarios
+     - Future considerations
+
+ON_PROBLEM_SOLVED:
+  1. DOCUMENT immediately while context is fresh
+  2. INCLUDE all relevant error messages
+  3. DETAIL investigation process
+  4. EXPLAIN why solution works
+  5. TAG for searchability
+
+MAINTENANCE:
+  1. REVIEW periodically for relevance
+  2. UPDATE with new findings
+  3. CROSS-REFERENCE related issues
+  4. CATEGORIZE by problem type
+
+## Context Flags
+LOADED_CONTEXT: Track currently loaded documentation
+PENDING_UPDATES: Track required documentation updates
+CROSS_REFERENCES: Track documentation dependencies
+IMPLEMENTATION_STATUS: Track implementation progress
+
+## Special Instructions
+- PREFER partial loads over full document loads
+- MAINTAIN context awareness across conversations
+- UPDATE documentation proactively
+- ENSURE LLM-friendly annotations
+- PRESERVE cross-reference integrity
+
+## Optimization Notes
+- Cache frequently used type definitions
+- Load implementation details on demand
+- Maintain minimal effective context
+- Update documentation atomically
+- Track context dependencies
+
+## End Note
+This file serves as a processing guide for AI operations.
+Update rules as patterns emerge and efficiency improves.
+Maintain focus on minimal effective context loading. 

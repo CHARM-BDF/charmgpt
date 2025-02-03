@@ -1,0 +1,116 @@
+# Metadata Types Reference
+
+## Purpose
+This document defines all metadata-related type definitions used in the file management system.
+
+## Core Metadata Types
+
+### FileMetadata
+Primary metadata structure for file entries.
+
+```typescript
+interface FileMetadata {
+  description: string;        // Required description
+  schema: SchemaInfo;        // Schema information (required)
+  origin: {                  // Required origin information
+    type: "upload" | "derived";
+    sourceId?: string;       // Parent file ID if derived
+    operation?: OperationType; // Operation that created this file
+    parameters?: Record<string, unknown>; // Operation parameters
+    timestamp: Date;         // When the operation occurred
+  };
+  version: {                // Required version information
+    major: number;          // Major version
+    minor: number;          // Minor version
+    patch: number;          // Patch version
+    branch: {              // Branch information
+      name: string;        // Branch name
+      parent: string;      // Parent branch name
+      created: Date;       // Branch creation date
+      description: string; // Branch purpose
+    };
+    history: Array<{       // Version history
+      id: string;          // Version identifier
+      timestamp: Date;     // Version timestamp
+      message: string;     // Version message
+      user: string;        // User who created version
+      branch: string;      // Branch name
+      parent: string;      // Parent version ID
+    }>;
+  };
+  analysisInfo: {           // Required analysis information
+    rowCount?: number;      // For tabular data
+    summary: {              // Statistical or structural summary
+      numeric?: Record<string, {
+        min: number;
+        max: number;
+        mean: number;
+        nullCount: number;
+      }>;
+      categorical?: Record<string, {
+        uniqueCount: number;
+        topValues: string[];
+        nullCount: number;
+      }>;
+    };
+    quality: {              // Data quality metrics
+      nullCount: number;
+      duplicateCount: number;
+      errorCount: number;
+      completeness: number; // Percentage of non-null values
+    };
+  };
+}
+```
+
+### AnalysisMetadata
+Detailed analysis information for data files.
+
+```typescript
+interface AnalysisMetadata {
+  timestamp: Date;           // When analysis was performed
+  tool: string;             // Tool used for analysis
+  metrics: {
+    rowCount?: number;
+    columnCount?: number;
+    memoryUsage: number;
+    processingTime: number;
+  };
+  insights?: string[];      // LLM-generated insights
+  recommendations?: string[]; // LLM-generated recommendations
+}
+```
+
+### ValidationMetadata
+Metadata for data validation results.
+
+```typescript
+interface ValidationMetadata {
+  timestamp: Date;
+  validator: string;
+  rules: Array<{
+    type: string;
+    field?: string;
+    condition: string;
+    passed: boolean;
+    failures?: number;
+  }>;
+  summary: {
+    totalRules: number;
+    passedRules: number;
+    failedRules: number;
+    warningCount: number;
+  };
+}
+```
+
+## Related Documentation
+- [Data Types](./README.DATA.TYPES.md)
+- [Operation Types](./README.OPERATION.TYPES.md)
+- [Branch Types](./README.BRANCH.TYPES.md)
+
+## Usage Notes
+1. All timestamps should be in UTC
+2. Descriptions should be clear and LLM-friendly
+3. Analysis information should be updated after each operation
+4. Version information must be maintained consistently 
