@@ -1,3 +1,9 @@
+/**
+ * MCP (Model Context Protocol) Server Implementation
+ * This server acts as a bridge between the client application and various MCP-compatible model servers.
+ * It handles communication with Anthropic's Claude model and manages multiple MCP server instances.
+ */
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { Anthropic } from '@anthropic-ai/sdk';
@@ -27,34 +33,39 @@ const parseXML = promisify(parseString);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Define types for XML structure
+/**
+ * Type Definitions
+ * These interfaces define the structure of data flowing through the system
+ */
+
+// Structure for parsed XML responses from the model
 interface XMLResponse {
   response: {
-    thinking?: string[];
-    conversation: string[];
-    artifact?: Array<{
+    thinking?: string[];        // Optional internal reasoning process
+    conversation: string[];     // Required conversation elements
+    artifact?: Array<{         // Optional artifacts (code, images, etc.)
       $: {
-        type: string;
-        id: string;
-        title: string;
+        type: string;          // Type of artifact (code, image, etc.)
+        id: string;            // Unique identifier
+        title: string;         // Display title
       };
-      _: string;
+      _: string;              // Artifact content
     }>;
   };
 }
 
-// Tool definition types for Anthropic
+// Definition for tools that can be used with Anthropic's API
 interface AnthropicTool {
-  name: string;
-  description: string;
-  input_schema: {
+  name: string;               // Tool identifier
+  description: string;        // Tool description
+  input_schema: {            // Schema defining tool inputs
     type: "object";
     properties: Record<string, unknown>;
     required?: string[];
   };
 }
 
-// Server tool definition interface (from MCP server)
+// Definition for tools provided by MCP servers
 interface ServerTool {
   name: string;
   description?: string;
@@ -65,75 +76,91 @@ interface ServerTool {
   };
 }
 
-// Interface for tool response (used for formatting later)
+// Structure for formatting model responses
 interface FormatterInput {
-  thinking?: string;
+  thinking?: string;          // Optional reasoning process
   conversation: Array<{
     type: 'text' | 'artifact';
     content?: string;
     artifact?: {
-      type: string;
-      id: string;
-      title: string;
-      content: string;
-      language?: string;
+      type: string;          // Artifact type (markdown, code, etc.)
+      id: string;            // Unique identifier
+      title: string;         // Display title
+      content: string;       // Artifact content
+      language?: string;     // Optional language specification
     };
   }>;
 }
 
-// Chat message interface used in our app
+// Structure for chat messages in the application
 interface ChatMessage {
   role: 'user' | 'assistant';
-  // We'll store content as either a plain string or as an array of blocks.
   content: string | Array<{ type: string; text: string }>;
 }
 
-// Update ServerStatus interface to match store
+// Server status tracking interface
 interface ServerStatus {
-    name: string;
-    isRunning: boolean;
-    tools?: ServerTool[];  // Changed from string[] to ServerTool[]
+    name: string;            // Server identifier
+    isRunning: boolean;      // Operational status
+    tools?: ServerTool[];    // Available tools on this server
 }
 
-// Add interface for MCP server config
+// Configuration structure for MCP servers
 interface MCPServerConfig {
-  command: string;
-  args: string[];
-  env?: Record<string, string>;
+  command: string;           // Command to start the server
+  args: string[];           // Command arguments
+  env?: Record<string, string>; // Optional environment variables
 }
 
+// Overall servers configuration structure
 interface MCPServersConfig {
   mcpServers: Record<string, MCPServerConfig>;
 }
 
 dotenv.config();
 
+/**
+ * Express Server Setup
+ * Initialize the main Express application server with necessary middleware
+ */
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-// Initialize Anthropic client
+// Initialize Anthropic client for LLM interactions
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Add a map to store MCP clients for each server
+/**
+ * Global State Management
+ * These maps and variables maintain the server's operational state
+ */
+// Store MCP clients for each server instance
 const mcpClients = new Map<string, McpClient>();
 
-// Bidirectional mapping for tool names
+// Maintain mapping between Anthropic-friendly tool names and original MCP tool names
 const toolNameMapping = new Map<string, string>();
 
-// Store original console methods before any overrides
+/**
+ * Logging System Setup
+ * Preserve original console methods and implement file-based logging
+ */
+// Store original console methods for fallback
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
-// const originalConsoleDebug = console.debug;
 
-// Add logging utility
+/**
+ * Enhanced Logging Function
+ * Writes logs to both console and file with timestamps in Central Time
+ * @param message - The message to log
+ * @param type - Log level (info, error, or debug)
+ */
 function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
   const now = new Date();
-  // Convert to Central Time
+  // Format timestamp in Central Time
   const centralTime = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
     year: 'numeric',
@@ -147,8 +174,8 @@ function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
 
   const logDir = '/Users/andycrouse/Documents/GitHub/charm-mcp/logs/detailedserverlog';
   
-  // Create logs directory if it doesn't exist
   try {
+    // Ensure log directory exists
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
       originalConsoleLog(`Created log directory at: ${logDir}`);
@@ -158,18 +185,18 @@ function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
     const logPath = path.join(logDir, fileName);
     const logEntry = `[${centralTime}] [${type.toUpperCase()}] ${message}\n`;
     
-    // Append to log file
+    // Write to log file and console
     fs.appendFileSync(logPath, logEntry);
-    
-    // Use the original console.log to avoid recursion
     originalConsoleLog(logEntry);
   } catch (error) {
-    // Use original console to report logging errors
     originalConsoleError('Error writing to log file:', error);
   }
 }
 
-// Override console methods to also write to file
+/**
+ * Console Method Overrides
+ * Enhance console methods to include file logging while maintaining original functionality
+ */
 console.log = (...args: any[]) => {
   const message = args.map(arg => 
     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
@@ -191,76 +218,72 @@ console.debug = (...args: any[]) => {
   logToFile(message, 'debug');
 };
 
+/**
+ * Server Initialization
+ * Initialize MCP servers and establish connections based on configuration
+ */
 try {
   console.log('\n=== Starting MCP Server Initialization ===');
+  
+  // Load MCP server configuration from JSON file
   const mcpConfigPath = path.join(__dirname, '../config/mcp_server_config.json');
   const configContent = fs.readFileSync(mcpConfigPath, 'utf-8');
   const config = JSON.parse(configContent) as MCPServersConfig;
   
-  // console.log('\nFound MCP servers in config:', Object.keys(config.mcpServers));
-  
-  // Track server statuses
+  // Track operational status of each server
   const serverStatuses: Record<string, boolean> = {};
   
-  // Start each MCP server
+  // Initialize each configured MCP server
   for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
-    // console.log(`\n[${serverName}] Starting server...`);
-    const { command, args = [], env = {} } = serverConfig;
-    
     try {
-      // Create a new MCP client for this server
+      // Create new MCP client instance for this server
       const client = new McpClient(
         { name: `${serverName}-client`, version: '1.0.0' },
         { capabilities: { tools: {} } }
       );
       
-      // Modify paths to be relative to project root if needed
-      const modifiedArgs = args.map(arg => {
+      // Adjust paths for node_modules if needed
+      const modifiedArgs = serverConfig.args.map(arg => {
         if (arg.startsWith('./node_modules/')) {
           return arg.replace('./', '');
         }
         return arg;
       });
 
-      // console.log(`[${serverName}] Connecting with command:`, command);
-      // console.log(`[${serverName}] Using args:`, modifiedArgs);
-
-      // Connect the client for this server
+      // Connect client using StdioClientTransport
       await client.connect(new StdioClientTransport({ 
-        command,
+        command: serverConfig.command,
         args: modifiedArgs,
         env: {
-          ...env,  // First spread config file values
-          ...Object.fromEntries(  // Then spread process.env values to override
+          ...serverConfig.env,  // Base environment from config
+          ...Object.fromEntries(  // Override with process.env values
             Object.entries(process.env).filter(([_, v]) => v !== undefined)
           ) as Record<string, string>
         }
       }));
 
-      // Store the client
+      // Store client instance for future use
       mcpClients.set(serverName, client);
 
-      // Verify server is operational by listing its tools
+      // Verify server functionality by listing available tools
       const tools = await client.listTools();
-      // console.log(`[${serverName}] Tools response:`, JSON.stringify(tools, null, 2));
       
-      // Handle the nested tools structure
+      // Process and validate tool list
       const toolsList = (tools.tools || []) as unknown[];
       const serverTools = toolsList
         .filter((tool: unknown) => {
           if (!tool || typeof tool !== 'object') return false;
           const t = tool as { name: string };
           if (!t.name || typeof t.name !== 'string') return false;
-          // Some servers prefix their tools with serverName:
+          // Accept tools prefixed with serverName or without prefix
           return t.name.startsWith(`${serverName}:`) || !t.name.includes(':');
         })
         .map((tool: unknown) => (tool as { name: string }).name);
 
+      // Update server status based on tool availability
       if (serverTools.length > 0) {
-        // console.log(`[${serverName}] ✅ Server started successfully with ${serverTools.length} tools:`, serverTools);
         serverStatuses[serverName] = true;
       } else {
-        // console.log(`[${serverName}] ⚠️ Server started but no tools found`);
         serverStatuses[serverName] = false;
       }
     } catch (error) {
@@ -269,6 +292,10 @@ try {
     }
   }
   
+  /**
+   * Express Server Startup
+   * Start the Express server and log initialization status
+   */
   app.listen(port, async () => {
     try {
       console.log('\n=== MCP Server Status Summary ===');
@@ -290,22 +317,39 @@ try {
   process.exit(1);
 }
 
-// Helper: Convert our ChatMessage[] into Anthropic's expected MessageParam[] format.
+/**
+ * Message Conversion Utilities
+ * Functions for converting between different message formats used in the system
+ */
+
+/**
+ * Convert ChatMessage array to Anthropic's message format
+ * Handles both string content and structured message blocks
+ * @param messages - Array of chat messages to convert
+ * @returns Array of messages in Anthropic's format
+ */
 function convertChatMessages(messages: ChatMessage[]): { role: string; content: string | { type: "text"; text: string }[] }[] {
   return messages.map(m => {
     if (typeof m.content === 'string') {
       return { role: m.role, content: m.content };
     } else {
-      // Ensure each block has type exactly "text"
+      // Convert each block to Anthropic's expected format
       return { role: m.role, content: m.content.map(block => ({ type: "text", text: block.text })) };
     }
   });
 }
 
-// Add helper function to resolve schema references
+/**
+ * Schema Reference Resolution
+ * Recursively resolves references in JSON schemas to their full definitions
+ * @param schema - The schema object to resolve
+ * @param definitions - Map of available schema definitions
+ * @returns Resolved schema with all references replaced with their full definitions
+ */
 function resolveSchemaRefs(schema: any, definitions: Record<string, any> = {}): any {
   if (!schema || typeof schema !== 'object') return schema;
 
+  // Handle direct references
   if ('$ref' in schema) {
     const refPath = schema.$ref.replace(/^#\/components\/schemas\//, '').replace(/^#\/\$defs\//, '');
     const resolved = definitions[refPath];
@@ -317,10 +361,12 @@ function resolveSchemaRefs(schema: any, definitions: Record<string, any> = {}): 
     return { ...resolveSchemaRefs(resolved, definitions), ...rest };
   }
 
+  // Handle arrays
   if (Array.isArray(schema)) {
     return schema.map(item => resolveSchemaRefs(item, definitions));
   }
 
+  // Handle nested objects and special cases
   const result: any = {};
   for (const [key, value] of Object.entries(schema as object)) {
     if (key === 'properties' && typeof value === 'object' && value !== null) {
@@ -339,7 +385,16 @@ function resolveSchemaRefs(schema: any, definitions: Record<string, any> = {}): 
   return result;
 }
 
-// Get available tools from MCP using the MCP clients
+/**
+ * Tool Management
+ * Functions for managing and converting between different tool formats
+ */
+
+/**
+ * Retrieve and format all available tools from connected MCP servers
+ * Converts MCP tool formats to Anthropic-compatible format
+ * @returns Promise<AnthropicTool[]> Array of tools in Anthropic's format
+ */
 async function getAllAvailableTools(): Promise<AnthropicTool[]> {
   let mcpTools: AnthropicTool[] = [];
   
@@ -351,23 +406,24 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
       
       if (toolsResult.tools) {
         const toolsWithPrefix = toolsResult.tools.map(tool => {
+          // Create Anthropic-friendly tool name and store mapping
           const originalName = `${serverName}:${tool.name}`;
           const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
-          
           toolNameMapping.set(anthropicName, originalName);
           
-          // Extract any schema definitions that might be present
+          // Extract and process schema definitions
           const definitions = tool.inputSchema.$defs || {};
           
-          // Create a complete schema with definitions and properties
+          // Create complete schema with all properties
           const completeSchema = {
             ...tool.inputSchema,
             properties: tool.inputSchema.properties || {}
           };
 
-          // Resolve any references in the complete schema
+          // Resolve all schema references
           const resolvedSchema = resolveSchemaRefs(completeSchema, definitions);
           
+          // Format tool for Anthropic's API
           const formattedTool: AnthropicTool = {
             name: anthropicName,
             description: tool.description || `Tool for ${tool.name} from ${serverName} server`,
@@ -390,28 +446,107 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
   return mcpTools;
 }
 
-// Strip CDATA tags from XML (for backward compatibility)
+/**
+ * Response Formatting
+ * Functions for converting between JSON and XML formats for client communication
+ */
+
+/**
+ * Convert JSON response to XML format
+ * Transforms the structured JSON response into an XML string with CDATA sections
+ * @param jsonResponse - Structured response data
+ * @returns XML string representation of the response
+ */
+function convertJsonToXml(jsonResponse: FormatterInput): string {
+  let xml = '<response>\n';
+  
+  // Add thinking section if present
+  if (jsonResponse.thinking) {
+    xml += '    <thinking>\n';
+    xml += `        <![CDATA[${jsonResponse.thinking}]]>\n`;
+    xml += '    </thinking>\n';
+  }
+  
+  // Add conversation elements
+  xml += '    <conversation>\n';
+  for (const segment of jsonResponse.conversation) {
+    if (segment.type === 'text' && segment.content) {
+      // Handle text segments
+      xml += `        <![CDATA[${segment.content}]]>\n`;
+    } else if (segment.type === 'artifact' && segment.artifact) {
+      // Handle artifacts with their attributes
+      const artifact = segment.artifact;
+      xml += `        <artifact type="${artifact.type}" id="${artifact.id}" title="${artifact.title}"${artifact.language ? ` language="${artifact.language}"` : ''}>\n`;
+      xml += `            <![CDATA[${artifact.content}]]>\n`;
+      xml += '        </artifact>\n';
+    }
+  }
+  xml += '    </conversation>\n';
+  xml += '</response>';
+  return xml;
+}
+
+/**
+ * XML Response Validation
+ * Validates the structure and content of XML responses
+ * @param response - XML string to validate
+ * @returns Promise<boolean> indicating if the XML is valid
+ */
+async function isValidXMLResponse(response: string): Promise<boolean> {
+  try {
+    // Ensure basic XML structure exists
+    if (!response.includes('<response>')) {
+      response = `<response>\n<conversation>\n${response}\n</conversation>\n</response>`;
+    }
+
+    try {
+      // Parse and validate XML structure
+      const result = (await parseXML(response)) as XMLResponse;
+      
+      // Check for required elements
+      const hasResponse = result && 'response' in result;
+      const hasConversation = hasResponse && Array.isArray(result.response.conversation);
+      
+      return hasResponse && hasConversation;
+    } catch (parseError) {
+      return false;
+    }
+  } catch (error) {
+    console.error('[SERVER] XML Validation - Error during validation:', error);
+    return false;
+  }
+}
+
+/**
+ * CDATA Processing
+ * Removes CDATA tags from XML for cleaner processing
+ * @param xml - XML string containing CDATA sections
+ * @returns XML string with CDATA tags removed
+ */
 function stripCDATATags(xml: string): string {
   return xml.replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1');
 }
 
+/**
+ * API Endpoints
+ * Express routes for handling client requests
+ */
+
+/**
+ * Chat API Endpoint
+ * Handles chat interactions between client and AI model
+ * POST /api/chat
+ */
 app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Array<{ role: 'user' | 'assistant'; content: string }> }>, res: Response) => {
   try {
     const { message, history } = req.body;
 
+    // Get available tools from all connected MCP servers
     const formattedTools = await getAllAvailableTools();
     console.log('\n[DEBUG] === CHECKING TOOLS FOR ISSUES ===');
     formattedTools.forEach((tool, index) => {
       try {
-        // console.log(`\n[DEBUG] Tool ${index}:`, {
-        //   name: tool.name,
-        //   schema: tool.input_schema,
-        //   hasProperties: !!tool.input_schema.properties,
-        //   schemaType: tool.input_schema.type,
-        //   required: tool.input_schema.required || []
-        // });
-        
-        // Validate schema structure
+        // Validate tool schema structure
         if (tool.input_schema.type !== "object") {
           console.error(`[ERROR] Tool ${index} (${tool.name}): Schema type must be "object", got "${tool.input_schema.type}"`);
         }
@@ -423,12 +558,14 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       }
     });
 
+    // Prepare conversation history
     const messages: ChatMessage[] = [
       ...history,
       { role: 'user', content: message }
     ];
     const anthMessages = convertChatMessages(messages);
 
+    // First Anthropic call: Tool selection and execution
     const toolSelectionResponse = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
@@ -437,8 +574,10 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       tools: formattedTools,
     });
 
+    // Process tool usage from response
     for (const content of toolSelectionResponse.content) {
       if (content.type === 'tool_use') {
+        // Map Anthropic tool name to original MCP tool name
         const originalToolName = toolNameMapping.get(content.name);
         if (!originalToolName) {
           console.error(`No mapping found for tool name: ${content.name}`);
@@ -446,14 +585,6 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
         }
 
         const [serverName, toolName] = originalToolName.split(':');
-        // console.log('\n[DEBUG] Calling MCP tool:', {
-        //   anthropicName: content.name,
-        //   originalName: originalToolName,
-        //   serverName,
-        //   toolName,
-        //   arguments: content.input
-        // });
-
         const client = mcpClients.get(serverName);
         if (!client) {
           console.error(`No client found for server ${serverName}`);
@@ -461,16 +592,19 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
         }
 
         try {
+          // Execute tool and process result
           const toolResult = await client.callTool({
             name: toolName,
             arguments: content.input ? content.input as Record<string, unknown> : {}
           });
 
+          // Add tool usage to conversation
           messages.push({
             role: 'assistant',
             content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
           });
 
+          // Process and add tool result to conversation
           if (toolResult && typeof toolResult === 'object') {
             if ('content' in toolResult && Array.isArray(toolResult.content)) {
               const textContent = toolResult.content.find((item): item is z.infer<typeof TextContentSchema> => 
@@ -490,8 +624,8 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
               });
             }
 
+            // Handle bibliography if present
             if ('bibliography' in toolResult && toolResult.bibliography) {
-              // console.log('\n[DEBUG] Raw bibliography data:', JSON.stringify(toolResult.bibliography, null, 2));
               (messages as any).bibliography = toolResult.bibliography;
             }
           } else {
@@ -510,16 +644,8 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       }
     }
 
+    // Second Anthropic call: Generate final response
     const updatedAnthMessages = convertChatMessages(messages);
-    // console.log('[SERVER] Sending updated conversation to Claude:', {
-    //   model: 'claude-3-5-sonnet-20241022',
-    //   messages: updatedAnthMessages,
-    //   systemPrompt: 'main prompt',
-    //   tool_choice: { type: "tool", name: "response_formatter" }
-    // });
-
-    // console.log('\n[DEBUG] Sending conversation to Claude with tool results:', JSON.stringify(messages, null, 2));
-    
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
@@ -585,13 +711,8 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       tool_choice: { type: "tool", name: "response_formatter" }
     });
 
-    // console.log('[SERVER] Raw response from Claude:', {
-    //   type: response.content[0].type,
-    //   content: response.content[0]
-    // });
-
+    // Process and validate response
     if (response.content[0].type !== 'tool_use') {
-      // console.log('[SERVER] Unexpected response type:', response.content[0].type);
       throw new Error('Expected tool_use response from Claude');
     }
 
@@ -600,9 +721,8 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       throw new Error('Expected response_formatter tool response');
     }
 
-    // console.log('[SERVER] Tool response input:', JSON.stringify(toolResponse.input, null, 2));
+    // Format response with bibliography if present
     const jsonResponse = toolResponse.input as FormatterInput;
-
     if ((messages as any).bibliography) {
       jsonResponse.conversation.push({
         type: "artifact",
@@ -615,20 +735,15 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       });
     }
 
-    // console.log('[SERVER] Parsed JSON response:', JSON.stringify(jsonResponse, null, 2));
-
+    // Convert to XML and validate
     const xmlResponseWithCDATA = convertJsonToXml(jsonResponse);
-    // console.log('[SERVER] Generated XML before validation:', xmlResponseWithCDATA);
-
     const isValid = await isValidXMLResponse(xmlResponseWithCDATA);
-    // console.log('[SERVER] XML validation result:', isValid);
     if (!isValid) {
       throw new Error('Generated XML response is invalid');
     }
 
+    // Strip CDATA tags and send response
     const xmlResponse = stripCDATATags(xmlResponseWithCDATA);
-    // console.log('[SERVER] Final XML being sent to client:', xmlResponse);
-
     res.json({ response: xmlResponse });
 
   } catch (error) {
@@ -640,77 +755,29 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
   }
 });
 
-// Convert JSON response to XML format (unchanged)
-function convertJsonToXml(jsonResponse: FormatterInput): string {
-  let xml = '<response>\n';
-  if (jsonResponse.thinking) {
-    xml += '    <thinking>\n';
-    xml += `        <![CDATA[${jsonResponse.thinking}]]>\n`;
-    xml += '    </thinking>\n';
-  }
-  xml += '    <conversation>\n';
-  for (const segment of jsonResponse.conversation) {
-    if (segment.type === 'text' && segment.content) {
-      xml += `        <![CDATA[${segment.content}]]>\n`;
-    } else if (segment.type === 'artifact' && segment.artifact) {
-      const artifact = segment.artifact;
-      xml += `        <artifact type="${artifact.type}" id="${artifact.id}" title="${artifact.title}"${artifact.language ? ` language="${artifact.language}"` : ''}>\n`;
-      xml += `            <![CDATA[${artifact.content}]]>\n`;
-      xml += '        </artifact>\n';
-    }
-  }
-  xml += '    </conversation>\n';
-  xml += '</response>';
-  return xml;
-}
-
-// Simple XML validation helper (unchanged)
-async function isValidXMLResponse(response: string): Promise<boolean> {
-  // console.log('[SERVER] XML Validation - Input length:', response.length);
-  try {
-    if (!response.includes('<response>')) {
-      // console.log('[SERVER] XML Validation - No XML structure found, wrapping response');
-      response = `<response>\n<conversation>\n${response}\n</conversation>\n</response>`;
-    }
-    // console.log('[SERVER] XML Validation - Attempting to parse...');
-    try {
-      const result = (await parseXML(response)) as XMLResponse;
-      const hasResponse = result && 'response' in result;
-      const hasConversation = hasResponse && Array.isArray(result.response.conversation);
-      // console.log('[SERVER] XML Validation - Structure check results:', {
-      //   hasResponse,
-      //   hasConversation
-      // });
-      return hasResponse && hasConversation;
-    } catch (parseError) {
-      // console.log('[SERVER] XML Validation - Parse error:', parseError);
-      return false;
-    }
-  } catch (error) {
-    console.error('[SERVER] XML Validation - Error during validation:', error);
-    return false;
-  }
-}
-
-// Update the server-status endpoint to use the correct client for each server
+/**
+ * Server Status Endpoint
+ * Returns the operational status and available tools for each MCP server
+ * GET /api/server-status
+ */
 app.get('/api/server-status', async (_req: Request, res: Response) => {
     try {
         const serverStatuses: ServerStatus[] = [];
         
-        // Get server names from config
+        // Load server configuration
         const mcpConfigPath = path.join(__dirname, '../config/mcp_server_config.json');
         const configContent = fs.readFileSync(mcpConfigPath, 'utf-8');
         const config = JSON.parse(configContent) as MCPServersConfig;
         
+        // Check status of each configured server
         for (const [serverName, _] of Object.entries(config.mcpServers)) {
             try {
-                // Get the correct client for this server
                 const client = mcpClients.get(serverName);
                 if (!client) {
                     throw new Error('Client not found');
                 }
 
-                // Get tools for this server
+                // Get available tools for this server
                 const tools = await client.listTools();
                 const toolsList = (tools.tools || []).map(tool => ({
                     name: tool.name,
