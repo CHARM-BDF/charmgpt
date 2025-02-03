@@ -336,4 +336,125 @@ router.put('/files/:id/metadata', async (req: Request, res: Response): Promise<v
   }
 });
 
+// Get relationships for a file
+router.get('/files/:id/relationships', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const fileId = req.params.id;
+    const relationshipsPath = path.join(relationshipsDir, `${fileId}.json`);
+    
+    try {
+      const relationshipsData = await fs.readFile(relationshipsPath, 'utf-8');
+      const relationships = JSON.parse(relationshipsData);
+      
+      // Get related file details
+      const relatedFiles = await Promise.all(
+        relationships.map(async (rel: { targetId: string; type: string }) => {
+          try {
+            const metadataPath = path.join(metadataDir, `${rel.targetId}.json`);
+            const fileData = await fs.readFile(metadataPath, 'utf-8');
+            const fileEntry = JSON.parse(fileData) as FileEntry;
+            return {
+              ...fileEntry,
+              type: rel.type
+            };
+          } catch (error) {
+            console.error(`Error loading related file ${rel.targetId}:`, error);
+            return null;
+          }
+        })
+      );
+
+      // Filter out any null entries from failed loads
+      res.json(relatedFiles.filter(Boolean));
+    } catch (error) {
+      // If the relationships file doesn't exist, return empty array
+      if ((error as { code?: string }).code === 'ENOENT') {
+        res.json([]);
+      } else {
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('Error getting relationships:', error);
+    res.status(500).json({ error: 'Failed to get relationships' });
+  }
+});
+
+// Add a relationship between files
+router.post('/files/:id/relationships', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const sourceId = req.params.id;
+    const { targetId, type } = req.body;
+
+    if (!targetId || !type) {
+      res.status(400).json({ error: 'Missing targetId or type' });
+      return;
+    }
+
+    // Verify both files exist
+    const sourceMetadataPath = path.join(metadataDir, `${sourceId}.json`);
+    const targetMetadataPath = path.join(metadataDir, `${targetId}.json`);
+    
+    try {
+      await fs.access(sourceMetadataPath);
+      await fs.access(targetMetadataPath);
+    } catch {
+      res.status(404).json({ error: 'Source or target file not found' });
+      return;
+    }
+
+    const relationshipsPath = path.join(relationshipsDir, `${sourceId}.json`);
+    let relationships = [];
+    
+    try {
+      const existingData = await fs.readFile(relationshipsPath, 'utf-8');
+      relationships = JSON.parse(existingData);
+    } catch (error) {
+      // If file doesn't exist, start with empty array
+      if ((error as { code?: string }).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+
+    // Add new relationship if it doesn't exist
+    if (!relationships.some((rel: any) => rel.targetId === targetId && rel.type === type)) {
+      relationships.push({ targetId, type });
+      await fs.writeFile(relationshipsPath, JSON.stringify(relationships, null, 2));
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error adding relationship:', error);
+    res.status(500).json({ error: 'Failed to add relationship' });
+  }
+});
+
+// Remove a relationship
+router.delete('/files/:sourceId/relationships/:targetId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sourceId, targetId } = req.params;
+    const relationshipsPath = path.join(relationshipsDir, `${sourceId}.json`);
+    
+    try {
+      const relationshipsData = await fs.readFile(relationshipsPath, 'utf-8');
+      let relationships = JSON.parse(relationshipsData);
+      
+      // Remove the relationship
+      relationships = relationships.filter((rel: any) => rel.targetId !== targetId);
+      
+      await fs.writeFile(relationshipsPath, JSON.stringify(relationships, null, 2));
+      res.json({ success: true });
+    } catch (error) {
+      if ((error as { code?: string }).code === 'ENOENT') {
+        res.json({ success: true }); // If file doesn't exist, consider it a success
+      } else {
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('Error removing relationship:', error);
+    res.status(500).json({ error: 'Failed to remove relationship' });
+  }
+});
+
 export default router; 

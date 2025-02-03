@@ -63,6 +63,39 @@ interface FileMetadata {
 }
 ```
 
+### RelationshipMetadata
+Metadata for file relationships.
+
+```typescript
+interface RelationshipMetadata {
+  sourceId: string;         // ID of the source file
+  targetId: string;         // ID of the target file
+  type: string;            // Type of relationship (e.g., "references", "depends-on", "derived-from")
+  created: Date;           // When the relationship was created
+  description?: string;    // Optional description of the relationship
+  metadata?: Record<string, unknown>; // Additional relationship metadata
+}
+```
+
+### FileRelationship
+Structure for storing file relationships.
+
+```typescript
+interface FileRelationship {
+  targetId: string;        // ID of the target file
+  type: string;           // Type of relationship
+}
+```
+
+### RelatedFile
+Extended FileEntry with relationship type.
+
+```typescript
+interface RelatedFile extends FileEntry {
+  type: string;           // Type of relationship to the source file
+}
+```
+
 ### AnalysisMetadata
 Detailed analysis information for data files.
 
@@ -113,4 +146,6 @@ interface ValidationMetadata {
 1. All timestamps should be in UTC
 2. Descriptions should be clear and LLM-friendly
 3. Analysis information should be updated after each operation
-4. Version information must be maintained consistently 
+4. Version information must be maintained consistently
+5. Relationships are stored in separate files in the relationships directory
+6. Relationship types should be descriptive and consistent across the system 

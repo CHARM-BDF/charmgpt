@@ -6,15 +6,29 @@ interface FileManagerProps {
   storageService: BaseStorageService;
 }
 
+interface RelatedFile extends FileEntry {
+  type: string;
+}
+
 export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [showRelationshipModal, setShowRelationshipModal] = useState(false);
+  const [selectedRelatedFile, setSelectedRelatedFile] = useState('');
+  const [relationshipType, setRelationshipType] = useState('');
+  const [relatedFiles, setRelatedFiles] = useState<RelatedFile[]>([]);
 
   useEffect(() => {
     loadFiles();
   }, []);
+
+  useEffect(() => {
+    if (selectedFile) {
+      loadRelatedFiles(selectedFile.id);
+    }
+  }, [selectedFile]);
 
   const loadFiles = async () => {
     try {
@@ -22,6 +36,16 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
       setFiles(fileList);
     } catch (error) {
       console.error('Error loading files:', error);
+    }
+  };
+
+  const loadRelatedFiles = async (fileId: string) => {
+    try {
+      const related = await storageService.getRelatedFiles(fileId);
+      setRelatedFiles(related as RelatedFile[]);
+    } catch (error) {
+      console.error('Error loading related files:', error);
+      setRelatedFiles([]);
     }
   };
 
@@ -67,6 +91,37 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
       setFiles(results);
     } catch (error) {
       console.error('Error searching files:', error);
+    }
+  };
+
+  const handleAddRelationship = (fileId: string) => {
+    setShowRelationshipModal(true);
+  };
+
+  const handleRemoveRelationship = async (fileId: string, relationId: string) => {
+    try {
+      await storageService.removeRelationship(fileId, relationId, 'related');
+      await loadRelatedFiles(fileId);
+    } catch (error) {
+      console.error('Error removing relationship:', error);
+    }
+  };
+
+  const handleCreateRelationship = async () => {
+    if (!selectedFile || !selectedRelatedFile) return;
+
+    try {
+      await storageService.addRelationship(
+        selectedFile.id,
+        selectedRelatedFile,
+        relationshipType || 'related'
+      );
+      await loadRelatedFiles(selectedFile.id);
+      setShowRelationshipModal(false);
+      setSelectedRelatedFile('');
+      setRelationshipType('');
+    } catch (error) {
+      console.error('Error creating relationship:', error);
     }
   };
 
@@ -186,17 +241,151 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
                     {JSON.stringify(selectedFile.metadata, null, 2)}
                   </pre>
                 </div>
+
+                {/* Relationships */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100">Relationships</h3>
+                    <button
+                      onClick={() => handleAddRelationship(selectedFile.id)}
+                      className="px-2 py-1 text-sm bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700
+                        text-white font-medium rounded-md transition-colors"
+                    >
+                      Add Relationship
+                    </button>
+                  </div>
+                  
+                  {/* Relationship List */}
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-md p-2">
+                    {relatedFiles.length > 0 ? (
+                      <div className="space-y-2">
+                        {relatedFiles.map((relation) => (
+                          <div 
+                            key={relation.id}
+                            className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-md"
+                          >
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{relation.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{relation.metadata.description}</p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                                {relation.type || 'related'}
+                              </span>
+                              <button
+                                onClick={() => handleRemoveRelationship(selectedFile.id, relation.id)}
+                                className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                        No relationships found
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowRelationshipModal(true)}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700
+                    text-white font-medium rounded-md transition-colors"
+                >
+                  Manage Relationships
+                </button>
                 <button
                   onClick={() => setSelectedFile(null)}
                   className="px-4 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600
                     text-white font-medium rounded-md transition-colors"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Relationship Modal */}
+      {showRelationshipModal && selectedFile && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg m-4">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Add Relationship
+              </h3>
+            </div>
+            
+            <div className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Related File
+                  </label>
+                  <select
+                    value={selectedRelatedFile}
+                    onChange={(e) => setSelectedRelatedFile(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
+                      bg-white dark:bg-gray-700 
+                      text-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">Select a file...</option>
+                    {files
+                      .filter(f => f.id !== selectedFile.id)
+                      .map(file => (
+                        <option key={file.id} value={file.id}>
+                          {file.name}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Relationship Type
+                  </label>
+                  <input
+                    type="text"
+                    value={relationshipType}
+                    onChange={(e) => setRelationshipType(e.target.value)}
+                    placeholder="e.g., references, depends-on, related"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md
+                      bg-white dark:bg-gray-700 
+                      text-gray-900 dark:text-gray-100
+                      placeholder-gray-500 dark:placeholder-gray-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowRelationshipModal(false)}
+                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600
+                    text-white font-medium rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateRelationship}
+                  disabled={!selectedRelatedFile}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700
+                    text-white font-medium rounded-md transition-colors
+                    disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Create
                 </button>
               </div>
             </div>
