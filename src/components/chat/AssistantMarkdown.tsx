@@ -143,19 +143,27 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
     // Handle code blocks and spacing
     .split('\n')
     .map((line: string) => {
-      // If we're in a code block, preserve all spacing
-      if (line.trim().startsWith('```')) {
+      // If we're in a code block or the line starts with backticks, preserve all spacing
+      if (line.trim().startsWith('```') || line.trim().startsWith('`')) {
         return line.trimStart(); // Only trim the start of code block markers
       }
-      // For all other lines, clean up excessive indentation
+      // For all other lines, clean up excessive indentation while preserving markdown structure
+      const trimmed = line.trimStart();
+      if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('1. ')) {
+        return trimmed; // Preserve list markers
+      }
+      if (trimmed.startsWith('> ')) {
+        return trimmed; // Preserve blockquotes
+      }
       if (line.startsWith('    ')) {
-        return line.slice(4);
+        return line.slice(4); // Handle indented code blocks
       }
       return line;
     })
     .join('\n')
     // Ensure code blocks are properly formatted
     .replace(/```(\w+)\s*([\s\S]*?)```/g, (match, lang, code) => {
+      if (!code) return match; // If no code content, return as is
       // Find the minimum indentation level (excluding empty lines)
       const nonEmptyLines = code.split('\n').filter((line: string) => line.trim().length > 0);
       const minIndent = Math.min(...nonEmptyLines.map((line: string) => {

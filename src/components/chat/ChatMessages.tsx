@@ -41,7 +41,12 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     
     const shouldScroll = force || isNearBottom();
     if (shouldScroll) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      const behavior = streamingMessageId ? 'auto' : 'smooth';
+      const options: ScrollIntoViewOptions = { 
+        behavior: behavior as ScrollBehavior,
+        block: 'start' as ScrollLogicalPosition 
+      };
+      messagesEndRef.current.scrollIntoView(options);
     }
   };
 
@@ -54,9 +59,10 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     const isNewMessage = lastMessage.id !== lastMessageRef.current;
     const forceScroll = lastMessage.role === 'user' || isNewMessage;
     
-    scrollToBottom(forceScroll);
+    // Use requestAnimationFrame to ensure smooth scrolling during streaming
+    requestAnimationFrame(() => scrollToBottom(forceScroll));
     lastMessageRef.current = lastMessage.id;
-  }, [messages]);
+  }, [messages, streamingContent]); // Also watch streamingContent for scroll updates
 
   /**
    * CRITICAL: Copy Functionality
@@ -162,7 +168,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
             </div>
           );
         })}
-        <div className="h-8 flex items-center px-6">
+        <div className="h-8 flex items-center px-6 mb-24">
           <BrainWaveCharm isLoading={isLoading} />
           <div ref={messagesEndRef} />
         </div>
