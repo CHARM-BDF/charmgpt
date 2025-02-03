@@ -41,15 +41,16 @@ const __dirname = path.dirname(__filename);
 // Structure for parsed XML responses from the model
 interface XMLResponse {
   response: {
-    thinking?: string[];        // Optional internal reasoning process
-    conversation: string[];     // Required conversation elements
-    artifact?: Array<{         // Optional artifacts (code, images, etc.)
+    error?: string[];         // Optional error messages
+    thinking?: string[];      // Optional internal reasoning process
+    conversation: string[];   // Required conversation elements
+    artifact?: Array<{       // Optional artifacts (code, images, etc.)
       $: {
-        type: string;          // Type of artifact (code, image, etc.)
-        id: string;            // Unique identifier
-        title: string;         // Display title
+        type: string;        // Type of artifact (code, image, etc.)
+        id: string;          // Unique identifier
+        title: string;       // Display title
       };
-      _: string;              // Artifact content
+      _: string;            // Artifact content
     }>;
   };
 }
@@ -79,6 +80,7 @@ interface ServerTool {
 // Structure for formatting model responses
 interface FormatterInput {
   thinking?: string;          // Optional reasoning process
+  error?: string;            // Optional error message
   conversation: Array<{
     type: 'text' | 'artifact';
     content?: string;
@@ -460,6 +462,13 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
 function convertJsonToXml(jsonResponse: FormatterInput): string {
   let xml = '<response>\n';
   
+  // Add error section if present
+  if (jsonResponse.error) {
+    xml += '    <error>\n';
+    xml += `        <![CDATA[${jsonResponse.error}]]>\n`;
+    xml += '    </error>\n';
+  }
+  
   // Add thinking section if present
   if (jsonResponse.thinking) {
     xml += '    <thinking>\n';
@@ -507,7 +516,10 @@ async function isValidXMLResponse(response: string): Promise<boolean> {
       const hasResponse = result && 'response' in result;
       const hasConversation = hasResponse && Array.isArray(result.response.conversation);
       
-      return hasResponse && hasConversation;
+      // Allow error messages in the response
+      const hasValidError = !result.response.error || Array.isArray(result.response.error);
+      
+      return hasResponse && hasConversation && hasValidError;
     } catch (parseError) {
       return false;
     }
@@ -636,9 +648,14 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
           }
         } catch (error) {
           console.error(`Error calling tool ${content.name}:`, error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const detailedError = error instanceof Error && error.stack ? `\nDetails: ${error.stack}` : '';
           messages.push({
-            role: 'user',
-            content: [{ type: 'text', text: `Error: Failed to execute tool ${content.name}` }]
+            role: 'assistant',
+            content: [{ 
+              type: 'text', 
+              text: `Error executing tool ${content.name}:\n${errorMessage}${detailedError}\n\nPlease try again or rephrase your request.` 
+            }]
           });
         }
       }
