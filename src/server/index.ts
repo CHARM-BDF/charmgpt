@@ -306,19 +306,13 @@ function convertChatMessages(messages: ChatMessage[]): { role: string; content: 
 function resolveSchemaRefs(schema: any, definitions: Record<string, any> = {}): any {
   if (!schema || typeof schema !== 'object') return schema;
 
-  console.log('\n[DEBUG] Resolving schema:', JSON.stringify(schema, null, 2));
-  console.log('[DEBUG] Available definitions:', Object.keys(definitions));
-
   if ('$ref' in schema) {
     const refPath = schema.$ref.replace(/^#\/components\/schemas\//, '').replace(/^#\/\$defs\//, '');
-    console.log(`[DEBUG] Resolving reference: ${schema.$ref} -> ${refPath}`);
     const resolved = definitions[refPath];
     if (!resolved) {
-      console.error(`[ERROR] Failed to resolve reference: ${schema.$ref}, available keys:`, Object.keys(definitions));
+      console.error(`Failed to resolve reference: ${schema.$ref}`);
       return schema;
     }
-    console.log('[DEBUG] Resolved to:', JSON.stringify(resolved, null, 2));
-    // Merge any additional properties (like description) with the resolved schema
     const { $ref, ...rest } = schema;
     return { ...resolveSchemaRefs(resolved, definitions), ...rest };
   }
@@ -356,11 +350,7 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
       const toolsResult = await client.listTools();
       
       if (toolsResult.tools) {
-        console.log(`\n[DEBUG] Processing tools for server ${serverName}`);
         const toolsWithPrefix = toolsResult.tools.map(tool => {
-          console.log(`\n[DEBUG] Processing tool: ${tool.name}`);
-          console.log('[DEBUG] Original input schema:', JSON.stringify(tool.inputSchema, null, 2));
-          
           const originalName = `${serverName}:${tool.name}`;
           const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
           
@@ -368,18 +358,15 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
           
           // Extract any schema definitions that might be present
           const definitions = tool.inputSchema.$defs || {};
-          console.log('[DEBUG] Extracted definitions:', Object.keys(definitions));
           
           // Create a complete schema with definitions and properties
           const completeSchema = {
             ...tool.inputSchema,
             properties: tool.inputSchema.properties || {}
           };
-          console.log('[DEBUG] Complete schema before resolution:', JSON.stringify(completeSchema, null, 2));
 
           // Resolve any references in the complete schema
           const resolvedSchema = resolveSchemaRefs(completeSchema, definitions);
-          console.log('[DEBUG] Resolved schema:', JSON.stringify(resolvedSchema, null, 2));
           
           const formattedTool: AnthropicTool = {
             name: anthropicName,
@@ -390,9 +377,6 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
               required: Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required : []
             }
           };
-
-          console.log(`[DEBUG] Final formatted tool schema for ${anthropicName}:`, 
-            JSON.stringify(formattedTool.input_schema, null, 2));
           
           return formattedTool;
         });
@@ -401,18 +385,6 @@ async function getAllAvailableTools(): Promise<AnthropicTool[]> {
     } catch (error) {
       console.error(`Failed to get tools from server ${serverName}:`, error);
     }
-  }
-  
-  if (!mcpTools.length) {
-    // console.log('\n[DEBUG] WARNING: No tools were formatted!');
-  } else {
-    // console.log('\n[DEBUG] === FORMATTED TOOLS FOR CLAUDE ===');
-    // mcpTools.forEach(tool => {
-    //   console.log(`\n[TOOL] ${tool.name}`);
-    //   console.log(`Description: ${tool.description}`);
-    //   console.log('Input Schema:', JSON.stringify(tool.input_schema, null, 2));
-    // });
-    // console.log('\n[DEBUG] === END FORMATTED TOOLS ===\n');
   }
   
   return mcpTools;
@@ -431,13 +403,13 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
     console.log('\n[DEBUG] === CHECKING TOOLS FOR ISSUES ===');
     formattedTools.forEach((tool, index) => {
       try {
-        console.log(`\n[DEBUG] Tool ${index}:`, {
-          name: tool.name,
-          schema: tool.input_schema,
-          hasProperties: !!tool.input_schema.properties,
-          schemaType: tool.input_schema.type,
-          required: tool.input_schema.required || []
-        });
+        // console.log(`\n[DEBUG] Tool ${index}:`, {
+        //   name: tool.name,
+        //   schema: tool.input_schema,
+        //   hasProperties: !!tool.input_schema.properties,
+        //   schemaType: tool.input_schema.type,
+        //   required: tool.input_schema.required || []
+        // });
         
         // Validate schema structure
         if (tool.input_schema.type !== "object") {

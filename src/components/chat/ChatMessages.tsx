@@ -9,7 +9,7 @@ import BrainWaveCharm from '../animations/BrainWaveCharm';
 // const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
 export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ messages }) => {
-  const { selectArtifact, isLoading } = useChatStore();
+  const { selectArtifact, isLoading, streamingMessageId, streamingContent } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string | null>(null);
@@ -79,6 +79,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
           const messageWithThinking = message as MessageWithThinking;
           const isAssistant = message.role === 'assistant';
           const hasThinking = isAssistant && messageWithThinking.thinking;
+          const isStreaming = streamingMessageId === message.id;
           
           return (
             <div
@@ -112,7 +113,12 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                     )}
                     <div className="flex justify-between items-start">
                       <div className="flex-grow">
-                        <AssistantMarkdown content={message.content} />
+                        <AssistantMarkdown 
+                          content={isStreaming ? streamingContent : message.content} 
+                        />
+                        {isStreaming && (
+                          <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
+                        )}
                       </div>
                       <div className="ml-4">
                         <button

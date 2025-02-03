@@ -5,12 +5,18 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  thinking?: string;
 }
 
 export interface MessageWithThinking extends Message {
   thinking?: string;
-  artifactId?: string;  // DO NOT REMOVE: Required for artifact linking
+  artifactId?: string;
+  isStreaming?: boolean;
+}
+
+export interface StreamingState {
+  messageId: string | null;
+  content: string;
+  isComplete: boolean;
 }
 
 // New types for XML response parsing

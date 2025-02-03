@@ -23,6 +23,9 @@ interface ChatState {
   showList: boolean;
   isLoading: boolean;
   error: string | null;
+  streamingMessageId: string | null;
+  streamingContent: string;
+  streamingComplete: boolean;
   
   addMessage: (message: Omit<MessageWithThinking, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, content: string) => void;
@@ -36,6 +39,9 @@ interface ChatState {
   processMessage: (content: string) => Promise<void>;
   clearMessages: () => void;
   clearChat: () => void;
+  startStreaming: (messageId: string) => void;
+  updateStreamingContent: (content: string) => void;
+  completeStreaming: () => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -48,6 +54,9 @@ export const useChatStore = create<ChatState>()(
       showList: false,
       isLoading: false,
       error: null,
+      streamingMessageId: null,
+      streamingContent: '',
+      streamingComplete: true,
 
       clearMessages: () => {
         console.log('ChatStore: Clearing all messages and artifacts');
@@ -64,12 +73,14 @@ export const useChatStore = create<ChatState>()(
           return state;
         }
         
+        const newMessage = {
+          ...message,
+          id: crypto.randomUUID(),
+          timestamp: new Date(),
+        };
+
         return {
-          messages: [...state.messages, {
-            ...message,
-            id: crypto.randomUUID(),
-            timestamp: new Date(),
-          }],
+          messages: [...state.messages, newMessage],
         };
       }),
 
@@ -157,10 +168,32 @@ export const useChatStore = create<ChatState>()(
        */
       processMessage: async (content: string) => {
         try {
-          set({ isLoading: true, error: null });
+          // Reset streaming state at the start
+          set({ 
+            isLoading: true, 
+            error: null,
+            streamingContent: '', // Clear previous streaming content
+            streamingComplete: false
+          });
+          
+          // Create a new message ID for streaming
+          const messageId = crypto.randomUUID();
+          
+          // Add initial empty assistant message
+          const newMessage: MessageWithThinking = {
+            role: 'assistant',
+            content: '',
+            id: messageId,
+            timestamp: new Date()
+          };
+          
+          set(state => ({
+            messages: [...state.messages, newMessage],
+            streamingMessageId: messageId,
+            streamingContent: '' // Ensure streaming content is empty
+          }));
 
           // REQUIRED: Server communication
-          // This section must be preserved to maintain AI interaction
           console.log('ChatStore: Sending request to server...');
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
             method: 'POST',
@@ -184,61 +217,68 @@ export const useChatStore = create<ChatState>()(
 
           const data = await response.json();
           
-          console.log('\n=== Chat Store: Received Server Response ===');
-          console.log('Raw response:', {
-            length: data.response.length,
-            preview: data.response.slice(0, 200) + '...'
-          });
-
           try {
             console.log('ChatStore: Parsing XML response...');
-            // XML Response Processing
-            // This section handles both artifacts and messages
-            // Both parts are required for proper functionality
             const xmlResponse = await parseXMLResponse(data.response);
-            console.log('ChatStore: XML parsed successfully:', {
-              hasThinking: !!xmlResponse.thinking,
-              conversationLength: xmlResponse.conversation.length,
-              artifactsCount: xmlResponse.artifacts.length
-            });
             
-            // Process artifacts first - Required for proper linking
-            const artifactIds = xmlResponse.artifacts.map(artifact => {
-              console.log('ChatStore: Adding artifact:', {
-                type: artifact.type,
-                title: artifact.title,
-                position: artifact.position
-              });
+            // Get the full content
+            const fullContent = xmlResponse.conversation;
+            const chunkSize = 5; // Increased for smoother appearance
+            let currentPosition = 0;
+            
+            // Stream the content in chunks
+            while (currentPosition < fullContent.length) {
+              currentPosition += chunkSize;
+              const chunk = fullContent.slice(0, currentPosition);
+              
+              set(state => ({
+                messages: state.messages.map(msg =>
+                  msg.id === messageId ? { ...msg, content: chunk } : msg
+                ),
+                streamingContent: chunk
+              }));
+              
+              // Small delay between chunks
+              await new Promise(resolve => setTimeout(resolve, 5));
+            }
+
+            // Process artifacts
+            const artifactIds = xmlResponse.artifacts?.map(artifact => {
               return get().addArtifact({
-                id: artifact.id,  // Include the ID from XML
-                artifactId: artifact.artifactId,  // Add the original XML ID
+                id: artifact.id,
+                artifactId: artifact.artifactId,
                 type: artifact.type,
                 title: artifact.title,
                 content: artifact.content,
                 position: artifact.position,
                 language: artifact.language
               });
-            });
+            }) || [];
 
-            // Add assistant message with artifact linking
-            // The artifactId link is essential for the reference system
-            console.log('ChatStore: Adding assistant message with artifact link:', {
-              artifactId: artifactIds[0] || null
-            });
-            get().addMessage({
-              role: 'assistant',
-              content: xmlResponse.conversation,
-              thinking: xmlResponse.thinking,
-              artifactId: artifactIds[0] // DO NOT REMOVE: Links message to first artifact
-            });
+            // Update final message state
+            set(state => ({
+              messages: state.messages.map(msg =>
+                msg.id === messageId ? {
+                  ...msg,
+                  content: fullContent,
+                  thinking: xmlResponse.thinking,
+                  artifactId: artifactIds[0]
+                } : msg
+              ),
+              streamingMessageId: null,
+              streamingComplete: true
+            }));
 
           } catch (parseError) {
             console.error('ChatStore: XML parsing error:', parseError);
-            console.warn('ChatStore: Failed to parse XML response, falling back to plain text');
-            get().addMessage({
-              role: 'assistant',
-              content: data.response
-            });
+            set(state => ({
+              messages: state.messages.map(msg =>
+                msg.id === messageId ? { ...msg, content: data.response } : msg
+              ),
+              streamingMessageId: null,
+              streamingContent: '', // Clear streaming content
+              streamingComplete: true
+            }));
           }
           
           set({ isLoading: false });
@@ -246,11 +286,10 @@ export const useChatStore = create<ChatState>()(
           console.error('ChatStore: Error processing message:', error);
           set({ 
             error: error instanceof Error ? error.message : 'Unknown error',
-            isLoading: false 
-          });
-          get().addMessage({
-            role: 'assistant',
-            content: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
+            isLoading: false,
+            streamingMessageId: null,
+            streamingContent: '', // Clear streaming content
+            streamingComplete: true
           });
         }
       },
@@ -262,6 +301,25 @@ export const useChatStore = create<ChatState>()(
         isLoading: false,
         error: null
       })),
+
+      startStreaming: (messageId: string) => {
+        set({ 
+          streamingMessageId: messageId,
+          streamingContent: '',
+          streamingComplete: false
+        });
+      },
+
+      updateStreamingContent: (content: string) => {
+        set({ streamingContent: content });
+      },
+
+      completeStreaming: () => {
+        set({ 
+          streamingMessageId: null,
+          streamingComplete: true
+        });
+      },
     }),
     {
       name: 'chat-storage',
