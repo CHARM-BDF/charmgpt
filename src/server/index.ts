@@ -131,6 +131,10 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Import and mount API routes
+import apiRouter from './api';
+app.use('/api', apiRouter);
+
 // Initialize Anthropic client for LLM interactions
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
