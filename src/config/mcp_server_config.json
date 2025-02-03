@@ -21,7 +21,7 @@
     "pubmed": {
       "command": "node",
       "args": [
-        "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
+        "./custom-mcp-servers/pubmed-mcp/dist/index.js"
       ],
       "env": {
         "NCBI_API_KEY": "${NCBI_API_KEY}",
@@ -49,7 +49,7 @@
     "string-db": {
       "command": "node",
       "args": [
-        "./src/custom-mcp-servers/string-db-mcp/dist/index.js"
+        "./custom-mcp-servers/string-db-mcp/dist/index.js"
       ]
     },
     "medikanren-api": {
