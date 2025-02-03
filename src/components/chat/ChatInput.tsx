@@ -40,7 +40,7 @@ export const ChatInput: React.FC = () => {
     }
     // think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one. 
 
-    setInput(' look up papers on the gene DYRK1A and provide a summary.');
+    setInput('look up papers on the gene DYRK1A and provide a summary.');
     // setInput('make a meal plan for a week of lunches that can be packed for a teenager to take to school, describe but make an artifact for the final plan and number it the version after the last one.');
     // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. Include a table.');
     // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. And include an artifact of a sacred geometry svg.');

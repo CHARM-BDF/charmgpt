@@ -2,9 +2,7 @@
 export default {
   content: [
     "./index.html",
-    "./src/components/**/*.{js,ts,jsx,tsx}",
-    "./src/pages/**/*.{js,ts,jsx,tsx}",
-    "./src/app/**/*.{js,ts,jsx,tsx}"
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   darkMode: 'class',
   theme: {
@@ -13,10 +11,21 @@ export default {
         'fade-in': {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        'ripple': {
+          '0%': {
+            transform: 'scale(1)',
+            opacity: '1'
+          },
+          '100%': {
+            transform: 'scale(2)',
+            opacity: '0'
+          }
         }
       },
       animation: {
-        'fade-in': 'fade-in 0.2s ease-out'
+        'fade-in': 'fade-in 0.2s ease-out',
+        'ripple': 'ripple 2s infinite'
       }
     },
   },

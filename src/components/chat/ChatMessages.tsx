@@ -3,12 +3,13 @@ import { MessageWithThinking } from '../../types/chat';
 import { useChatStore } from '../../store/chatStore';
 import { AssistantMarkdown } from './AssistantMarkdown';
 import { ClipboardIcon } from '@heroicons/react/24/solid';
+import BrainWaveCharm from '../animations/BrainWaveCharm';
 
 // Remove or set to a past date to enable copy buttons for all messages
 // const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
 export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ messages }) => {
-  const { selectArtifact } = useChatStore();
+  const { selectArtifact, isLoading } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string | null>(null);
@@ -72,89 +73,94 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   };
 
   return (
-    <div ref={containerRef} className="w-full space-y-6">
-      {messages.map((message) => {
-        const messageWithThinking = message as MessageWithThinking;
-        const isAssistant = message.role === 'assistant';
-        const hasThinking = isAssistant && messageWithThinking.thinking;
-        
-        return (
-          <div
-            key={message.id}
-            className={`flex ${isAssistant ? 'justify-start' : 'justify-start'}`}
-          >
+    <div ref={containerRef} className="w-full max-w-3xl mx-auto px-4 pt-6">
+      <div className="w-full space-y-6">
+        {messages.map((message) => {
+          const messageWithThinking = message as MessageWithThinking;
+          const isAssistant = message.role === 'assistant';
+          const hasThinking = isAssistant && messageWithThinking.thinking;
+          
+          return (
             <div
-              className={`w-full max-w-3xl rounded-lg p-6 shadow-sm ${
-                isAssistant
-                  ? 'bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-gray-100 dark:shadow-gray-900/20'
-                  : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/10'
-              }`}
+              key={message.id}
+              className={`flex ${isAssistant ? 'justify-start' : 'justify-start'}`}
             >
-              {isAssistant ? (
-                <>
-                  {hasThinking && (
-                    <div className="mb-2">
+              <div
+                className={`w-full max-w-3xl rounded-lg p-6 shadow-sm ${
+                  isAssistant
+                    ? 'bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-gray-100 dark:shadow-gray-900/20'
+                    : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/10'
+                }`}
+              >
+                {isAssistant ? (
+                  <>
+                    {hasThinking && (
+                      <div className="mb-2">
+                        <button
+                          onClick={() => toggleThinking(message.id)}
+                          className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
+                        >
+                          <span>{showThinkingMap[message.id] ? '▼' : '▶'}</span>
+                          <span>Thinking Process</span>
+                        </button>
+                        {showThinkingMap[message.id] && messageWithThinking.thinking && (
+                          <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                            <AssistantMarkdown content={messageWithThinking.thinking} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-start">
+                      <div className="flex-grow">
+                        <AssistantMarkdown content={message.content} />
+                      </div>
+                      <div className="ml-4">
+                        <button
+                          onClick={() => copyToClipboard(message.content)}
+                          className="p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                          title="Copy message"
+                        >
+                          <ClipboardIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex gap-2">
                       <button
-                        onClick={() => toggleThinking(message.id)}
-                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
+                        onClick={() => console.log('Message Debug Data:', {
+                          message,
+                          content: message.content,
+                          thinking: messageWithThinking.thinking,
+                          artifactId: message.artifactId
+                        })}
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       >
-                        <span>{showThinkingMap[message.id] ? '▼' : '▶'}</span>
-                        <span>Thinking Process</span>
+                        Debug Info
                       </button>
-                      {showThinkingMap[message.id] && messageWithThinking.thinking && (
-                        <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
-                          <AssistantMarkdown content={messageWithThinking.thinking} />
-                        </div>
+                      {message.artifactId && (
+                        <button
+                          onClick={() => {
+                            console.log('ChatMessages: View Artifact clicked with artifactId:', message.artifactId);
+                            selectArtifact(message.artifactId ?? null);
+                          }}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          View Artifact
+                        </button>
                       )}
                     </div>
-                  )}
-                  <div className="flex justify-between items-start">
-                    <div className="flex-grow">
-                      <AssistantMarkdown content={message.content} />
-                    </div>
-                    <div className="ml-4">
-                      <button
-                        onClick={() => copyToClipboard(message.content)}
-                        className="p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                        title="Copy message"
-                      >
-                        <ClipboardIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      onClick={() => console.log('Message Debug Data:', {
-                        message,
-                        content: message.content,
-                        thinking: messageWithThinking.thinking,
-                        artifactId: message.artifactId
-                      })}
-                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    >
-                      Debug Info
-                    </button>
-                    {message.artifactId && (
-                      <button
-                        onClick={() => {
-                          console.log('ChatMessages: View Artifact clicked with artifactId:', message.artifactId);
-                          selectArtifact(message.artifactId ?? null);
-                        }}
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        View Artifact
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="whitespace-pre-wrap break-words">{message.content}</div>
-              )}
+                  </>
+                ) : (
+                  <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
-      <div ref={messagesEndRef} />
+          );
+        })}
+        <div className="h-8 flex items-center px-6">
+          <BrainWaveCharm isLoading={isLoading} />
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
     </div>
   );
 };
