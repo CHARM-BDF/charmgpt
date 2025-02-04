@@ -112,8 +112,84 @@ const ArtifactButton: React.FC<{
   );
 };
 
+interface CodeBlockAccumulator {
+  lines: string[];
+  inCodeBlock: boolean;
+}
+
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
   const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
+
+  // Pre-process XML content before rendering
+  const processXMLContent = (rawContent: string): string => {
+    console.log('1. Raw XML content:', rawContent);
+    
+    // First process artifact tags
+    const artifactProcessed = rawContent.replace(
+      /<artifact\s+([^>]+)>([\s\S]*?)<\/artifact>/g,
+      (match, attributes, content) => {
+        const languageMatch = attributes.match(/language="([^"]+)"/);
+        const language = languageMatch ? languageMatch[1] : '';
+        if (language) {
+          return `\`\`\`${language}\n${content.trim()}\n\`\`\``;
+        }
+        return match;
+      }
+    );
+    
+    // Then split content into sections and wrap each in a div
+    const processedContent = artifactProcessed
+      .split(/(<button.*?<\/button>)/g)
+      .map((section, index) => {
+        if (section.startsWith('<button')) {
+          // For button sections, just return as is
+          console.log('2. Processing button section:', section);
+          return `<div class="my-4">${section}</div>`;
+        } else if (section.trim()) {
+          // For text sections, wrap in a div if not empty
+          console.log('2. Processing text section:', section);
+          return `<div>${section}</div>`;
+        }
+        return '';
+      })
+      .filter(Boolean) // Remove empty sections
+      .join('\n');
+
+    console.log('3. After XML processing:', processedContent);
+    return processedContent;
+  };
+
+  const cleanContent = processXMLContent(content)
+    // First, replace [BACKTICK] tags with actual backticks
+    .replace(/\[BACKTICK\]/g, '`')
+    // Handle code blocks and spacing
+    .split('\n')
+    .reduce<CodeBlockAccumulator>((acc: CodeBlockAccumulator, line: string) => {
+      // Track if we're in a code block
+      const isStartOfCodeBlock = line.trim().startsWith('```');
+      if (isStartOfCodeBlock) {
+        // If this is a start/end of code block, update the state
+        acc.inCodeBlock = !acc.inCodeBlock;
+        // Trim only the code block markers
+        acc.lines.push(line.trimStart());
+      } else if (acc.inCodeBlock) {
+        // If we're in a code block, preserve all spacing
+        acc.lines.push(line);
+      } else {
+        // Outside code blocks, clean up indentation while preserving markdown structure
+        const trimmed = line.trimStart();
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('1. ')) {
+          acc.lines.push(trimmed); // Preserve list markers
+        } else if (trimmed.startsWith('> ')) {
+          acc.lines.push(trimmed); // Preserve blockquotes
+        } else {
+          acc.lines.push(trimmed); // Remove indentation for regular text
+        }
+      }
+      return acc;
+    }, { lines: [], inCodeBlock: false })
+    .lines
+    .join('\n');
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -137,53 +213,6 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
   };
 
   // Clean up content by removing leading spaces while preserving markdown
-  const cleanContent = content
-    // First, replace [BACKTICK] tags with actual backticks
-    .replace(/\[BACKTICK\]/g, '`')
-    // Handle code blocks and spacing
-    .split('\n')
-    .map((line: string) => {
-      // If we're in a code block or the line starts with backticks, preserve all spacing
-      if (line.trim().startsWith('```') || line.trim().startsWith('`')) {
-        return line.trimStart(); // Only trim the start of code block markers
-      }
-      // For all other lines, clean up excessive indentation while preserving markdown structure
-      const trimmed = line.trimStart();
-      if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('1. ')) {
-        return trimmed; // Preserve list markers
-      }
-      if (trimmed.startsWith('> ')) {
-        return trimmed; // Preserve blockquotes
-      }
-      if (line.startsWith('    ')) {
-        return line.slice(4); // Handle indented code blocks
-      }
-      return line;
-    })
-    .join('\n')
-    // Ensure code blocks are properly formatted
-    .replace(/```(\w+)\s*([\s\S]*?)```/g, (match, lang, code) => {
-      if (!code) return match; // If no code content, return as is
-      // Find the minimum indentation level (excluding empty lines)
-      const nonEmptyLines = code.split('\n').filter((line: string) => line.trim().length > 0);
-      const minIndent = Math.min(...nonEmptyLines.map((line: string) => {
-        const match = line.match(/^\s*/);
-        return match ? match[0].length : 0;
-      }));
-      
-      // Remove only the common indentation from each line
-      const normalizedCode = code
-        .split('\n')
-        .map((line: string) => {
-          if (line.trim().length === 0) return '';
-          return line.slice(minIndent);
-        })
-        .join('\n')
-        .trim();
-      
-      return `\`\`\`${lang}\n${normalizedCode}\n\`\`\``;
-    });
-
   const markdownComponents = {
     h1: ({node, ...props}: any) => <h1 className="text-4xl font-bold mb-6 mt-8 text-gray-900 dark:text-gray-100" {...props} />,
     h2: ({node, ...props}: any) => <h2 className="text-3xl font-semibold mb-4 mt-6 text-gray-800 dark:text-gray-200" {...props} />,
@@ -232,7 +261,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       return (
         <div className="mb-4 overflow-hidden rounded-md border-2 border-gray-200 dark:border-gray-700 shadow-md">
           <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
-            <span className="uppercase font-semibold">{language || 'Text'}</span>
+            <span className="uppercase font-semibold">{language || 'Output'}</span>
             <button 
               onClick={() => copyToClipboard(String(children))} 
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -246,60 +275,8 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
           </div>
           <div className="bg-gray-50 dark:bg-[#1F2937]">
             <SyntaxHighlighter
-              style={typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? {
-                ...oneDark,
-                'punctuation': {
-                  color: '#d1d5db'
-                },
-                'operator': {
-                  color: '#d1d5db'
-                },
-                'token': {
-                  color: '#d1d5db'
-                },
-                'token.punctuation': {
-                  color: '#d1d5db'
-                },
-                'token.operator': {
-                  color: '#d1d5db'
-                },
-                'token.keyword': {
-                  color: '#d1d5db'
-                },
-                'token.string': {
-                  color: '#d1d5db'
-                },
-                'token.comment': {
-                  color: '#9ca3af'
-                }
-              } : {
-                ...oneLight,
-                'maybe-class-name': {
-                  color: '#2563eb'  // blue-600
-                },
-                'parameter': {
-                  color: '#2563eb'  // blue-600
-                },
-                'plain-text': {
-                  color: '#1f2937'  // gray-800
-                },
-                'imports': {
-                  color: '#2563eb'  // blue-600
-                },
-                'variable': {
-                  color: '#2563eb'  // blue-600
-                },
-                'function-variable': {
-                  color: '#2563eb'  // blue-600
-                },
-                'property-access': {
-                  color: '#2563eb'  // blue-600
-                },
-                'span': {
-                  color: '#2563eb'  // blue-600
-                }
-              }}
-              language={language}
+              style={typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? oneDark : oneLight}
+              language={language || 'text'}
               PreTag="div"
               customStyle={{
                 margin: 0,
@@ -307,15 +284,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
                 background: 'inherit',
                 padding: '1rem'
               }}
-              codeTagProps={{
-                style: {
-                  background: 'transparent !important'
-                }
-              }}
-              className="syntax-highlighter"
-              wrapLines={true}
-              wrapLongLines={true}
-              useInlineStyles={true}
+              {...props}
             >
               {String(children).replace(/\n$/, '')}
             </SyntaxHighlighter>

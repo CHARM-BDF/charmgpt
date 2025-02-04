@@ -59,6 +59,12 @@
     "mondo-api": {
       "command": "npx",
       "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/monarchOpenAPI.yaml"]
+    },
+    "python": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/python-mcp/dist/index.js"
+      ]
     }
   }
 }

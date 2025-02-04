@@ -10,7 +10,7 @@ This document outlines the implementation plan for a Data Analysis MCP server th
    - Metadata management
    - Extensible design for future runtime support
 
-2. **Python Runtime** (Secondary Focus)
+2. **Python Runtime** (Primary Focus)
    - Code execution and validation
    - Resource management
    - Results handling
@@ -89,19 +89,10 @@ custom-mcp-servers/data-analysis-mcp/
      - Content validation
      - Size optimization
 
-### 3. Python Runtime (Secondary Focus)
-- **Location**: `src/runtime/python/`
+### 3. Python Runtime (Primary Focus)
+- **Location**: `src/tools/python/`
 - **Components**:
-  1. **Code Execution**
-     - Code validation
-     - Resource monitoring
-     - Result capture
-     - Error handling
-
-### 4. MCP Tools Implementation
-- **Location**: `src/tools/`
-- **Tools**:
-  1. **execute_python** (Initial Focus)
+  1. **Code Execution Tool**
      ```typescript
      {
        name: "execute_python",
@@ -109,78 +100,63 @@ custom-mcp-servers/data-analysis-mcp/
        inputSchema: {
          code: string,
          dataFiles?: Record<string, string>,
-         requirements?: string[],
          timeout?: number
        }
      }
      ```
-  2. **manage_files** (Initial Focus)
-     ```typescript
-     {
-       name: "manage_files",
-       description: "Upload and manage data files",
-       inputSchema: {
-         action: "upload" | "list" | "delete" | "track",
-         files?: Record<string, string>,
-         fileIds?: string[],
-         metadata?: {
-           parentId?: string,
-           version?: string,
-           description?: string,
-           tags?: string[],
-           derivationType?: "transform" | "aggregate" | "filter" | "custom"
-         }
-       }
-     }
-     ```
-  3. **query_files** (Initial Focus)
-     ```typescript
-     {
-       name: "query_files",
-       description: "Query file relationships and metadata",
-       inputSchema: {
-         query: {
-           type: "ancestry" | "derivatives" | "versions" | "metadata",
-           fileId: string,
-           depth?: number,
-           filter?: Record<string, unknown>
-         }
-       }
-     }
-     ```
+  2. **Execution Environment**
+     - Using python-shell for execution
+     - Resource monitoring
+     - Result capture
+     - Error handling
+
+### 4. MCP Tools Implementation
+- **Location**: `src/tools/`
+- **Tools**:
+  1. **execute_python**
+     - Safe code execution in isolated environment
+     - Access to approved data science packages
+     - File input/output through existing file management
+     - Resource limits and monitoring
 
 ## Security Measures
 
 ### 1. Code Execution Security
-- **AI Code Verification**
-  - Pattern matching against known AI-generated structures
-  - Code signature verification
-  - Standard library usage validation
-  - Automated code review checks
+- **Package Management**
+  - Whitelist of allowed packages:
+    - Core data science: numpy, pandas, scipy, sklearn, statsmodels
+    - Visualization: matplotlib, seaborn, plotly, bokeh
+    - Machine Learning: tensorflow, torch, keras, xgboost, lightgbm
+    - Data Processing: nltk, spacy, gensim, beautifulsoup4, requests
+    - Utilities: datetime, json, csv, math, random, collections, re, itertools, functools
+  - Package validation before execution
+  - Import restrictions
 
-- **Resource Management** (Primary Focus)
-  - Memory limits
-  - CPU usage monitoring
-  - Execution timeouts
-  - Concurrent execution limits
-
-- **System Stability**
+- **Resource Management**
+  - Memory limit: 512MB
+  - Output buffer: 50MB
+  - Execution timeout: 30 seconds default
   - Process isolation
-  - Clean state between executions
-  - Resource cleanup
-  - Error recovery
+
+- **System Security**
+  - Blocked dangerous operations:
+    - System calls (os, sys, subprocess)
+    - File operations (open, file)
+    - Network operations (socket)
+    - Code execution (eval, exec)
+  - Environment variable controls
+  - Non-interactive matplotlib backend
 
 ### 2. File Management Security
-- Size and type validation
-- Temporary file lifecycle management
-- Automatic cleanup
-- Access path restrictions
+- Isolated temporary directory
+- Automatic cleanup after execution
+- Restricted file system access
 
 ### 3. Environment Security
-- Standard environment configuration
-- Pre-approved package set
-- Version control
-- Dependency verification
+- Restricted Python path
+- Controlled environment variables
+- UTF-8 encoding enforcement
+- Disabled potentially dangerous Python settings
 
 ### 4. AI Code Pattern Library
 - Maintained list of approved code patterns
@@ -202,9 +178,43 @@ python:
   max_execution_time: 30
   max_memory_mb: 512
   allowed_packages:
+    # Core data science
     - numpy
     - pandas
-    - scikit-learn
+    - scipy
+    - sklearn
+    - statsmodels
+    
+    # Visualization
+    - matplotlib
+    - seaborn
+    - plotly
+    - bokeh
+    
+    # Machine Learning
+    - tensorflow
+    - torch
+    - keras
+    - xgboost
+    - lightgbm
+    
+    # Data Processing
+    - nltk
+    - spacy
+    - gensim
+    - beautifulsoup4
+    - requests
+    
+    # Utilities
+    - datetime
+    - json
+    - csv
+    - math
+    - random
+    - collections
+    - re
+    - itertools
+    - functools
 
 files:
   max_size_mb: 10
@@ -231,22 +241,23 @@ files:
 4. Develop metadata management
 
 ### Phase 2: Python Integration (Week 2)
-1. Implement Python execution
-2. Add resource management
-3. Create result handling
-4. Develop error management
+1. Set up python-shell integration
+2. Implement basic code execution
+3. Add security sandboxing
+4. Create result formatting
+5. Allow access to run code using current MCP server
 
 ### Phase 3: Integration and Testing (Week 3)
-1. Connect file system with Python runtime
-2. Implement logging
-3. Add error handling
-4. Create documentation
+1. Connect to existing file system
+2. Add error handling
+3. Implement resource monitoring
+4. Add logging
 
 ### Phase 4: Enhancement (Week 4)
-1. Optimize file operations
-2. Enhance Python integration
-3. Add advanced features
-4. Comprehensive testing
+1. Performance optimization
+2. Security hardening
+3. Comprehensive testing
+4. Documentation
 
 ## Testing Strategy
 
@@ -276,8 +287,7 @@ files:
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "typescript": "^5.0.0",
-    "python-shell": "^5.0.0",
-    "fs-extra": "^11.0.0"
+    "python-shell": "^5.0.0"
   }
 }
 ```
@@ -285,9 +295,9 @@ files:
 ### Python Dependencies
 ```
 python==3.11.*
-RestrictedPython==6.0
-psutil==5.9.*
-PyYAML==6.0.*
+numpy==1.24.*
+pandas==2.0.*
+scikit-learn==1.2.*
 ```
 
 ## Monitoring and Maintenance
@@ -362,4 +372,159 @@ PyYAML==6.0.*
 2. Set up basic project structure
 3. Implement core file operations
 4. Add relationship tracking
-5. Proceed with Python runtime integration 
+5. Proceed with Python runtime integration
+
+## MCP Interaction Guide
+
+### 1. Connection and Discovery
+```typescript
+// Connect to the Data Analysis MCP Server
+const server = await MCP.connect('http://localhost:3000');
+
+// Discover available tools
+const tools = await server.getTools();
+// Returns array of available tools including:
+// - execute_python
+// - manage_files
+// - analyze_data
+```
+
+### 2. Tool Schemas and Capabilities
+
+#### Python Execution Tool
+```typescript
+// Tool definition that MCPs will see
+{
+  name: "execute_python",
+  description: "Execute Python code with data science capabilities",
+  inputSchema: {
+    type: "object",
+    required: ["code"],
+    properties: {
+      code: {
+        type: "string",
+        description: "Python code to execute"
+      },
+      dataFiles: {
+        type: "object",
+        description: "Map of variable names to file paths",
+        additionalProperties: { type: "string" }
+      },
+      timeout: {
+        type: "number",
+        description: "Execution timeout in milliseconds",
+        default: 30000
+      }
+    }
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      output: {
+        type: "string",
+        description: "Raw output from Python execution"
+      },
+      error: {
+        type: "string",
+        description: "Raw error message if execution failed"
+      }
+    }
+  }
+}
+```
+
+### 3. Example Interactions
+
+#### Basic Code Execution
+```typescript
+// Execute simple Python code
+const response = await server.execute("execute_python", {
+  code: `
+import numpy as np
+arr = np.array([1, 2, 3, 4, 5])
+print(f"Mean: {arr.mean()}")
+`
+});
+// Raw response from Python execution
+// MCP server will handle formatting for its specific needs
+```
+
+#### Data File Integration
+```typescript
+// Execute code with data file input
+const response = await server.execute("execute_python", {
+  code: `
+import pandas as pd
+df = pd.read_csv(data_file)
+print(f"Shape: {df.shape}")
+print(f"Columns: {df.columns.tolist()}")
+`,
+  dataFiles: {
+    "data_file": "/path/to/data.csv"
+  }
+});
+// Raw output will be returned to MCP server for formatting
+```
+
+#### Visualization Generation
+```typescript
+// Generate and return a plot
+const response = await server.execute("execute_python", {
+  code: `
+import matplotlib.pyplot as plt
+import numpy as np
+
+x = np.linspace(0, 10, 100)
+y = np.sin(x)
+plt.plot(x, y)
+plt.title('Sine Wave')
+plt.savefig('plot.png')
+`
+});
+// Raw output and generated files will be returned to MCP server
+// MCP server will handle formatting and file management
+```
+
+### 4. Error Handling
+
+#### Security Violation
+```typescript
+try {
+  const response = await server.execute("execute_python", {
+    code: `
+import os  # This will be blocked
+os.system('ls')
+    `
+  });
+} catch (error) {
+  // Raw error message will be returned
+  // MCP server will handle error formatting and presentation
+}
+```
+
+### 5. Best Practices for MCPs
+
+1. **Resource Management**
+   - Set appropriate timeouts for long-running operations
+   - Handle memory-intensive operations carefully
+   - Clean up resources after use
+
+2. **Error Handling**
+   - Implement proper error handling for raw Python outputs
+   - Format error messages appropriately for your use case
+   - Handle security violations according to your requirements
+
+3. **Data Management**
+   - Handle raw output formatting based on your needs
+   - Process Python results according to your application's requirements
+   - Implement your own artifact handling if needed
+
+4. **Security**
+   - Validate user input before sending to server
+   - Handle sensitive data appropriately
+   - Respect package restrictions
+
+5. **Performance**
+   - Batch operations when possible
+   - Implement your own caching strategy if needed
+   - Monitor resource usage 

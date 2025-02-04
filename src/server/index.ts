@@ -600,6 +600,10 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
           continue;
         }
 
+        console.log('\n=== TOOL EXECUTION DETAILS ===');
+        console.log(`Tool Selected: ${content.name} (Original name: ${originalToolName})`);
+        console.log('Tool Input:', JSON.stringify(content.input, null, 2));
+
         const [serverName, toolName] = originalToolName.split(':');
         const client = mcpClients.get(serverName);
         if (!client) {
@@ -614,6 +618,9 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
             arguments: content.input ? content.input as Record<string, unknown> : {}
           });
 
+          console.log('\n=== TOOL EXECUTION RESPONSE ===');
+          console.log('Raw Tool Result:', JSON.stringify(toolResult, null, 2));
+
           // Add tool usage to conversation
           messages.push({
             role: 'assistant',
@@ -622,18 +629,21 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
 
           // Process and add tool result to conversation
           if (toolResult && typeof toolResult === 'object') {
+            console.log('\n=== PROCESSED TOOL RESULT ===');
             if ('content' in toolResult && Array.isArray(toolResult.content)) {
               const textContent = toolResult.content.find((item): item is z.infer<typeof TextContentSchema> => 
                 item.type === 'text' && typeof item.text === 'string'
               );
               
               if (textContent) {
+                console.log('Text Content Found:', textContent.text);
                 messages.push({
                   role: 'user',
                   content: [{ type: 'text', text: textContent.text }]
                 });
               }
             } else {
+              console.log('Non-Text Content:', JSON.stringify(toolResult));
               messages.push({
                 role: 'user',
                 content: [{ type: 'text', text: JSON.stringify(toolResult) }]
@@ -642,16 +652,21 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
 
             // Handle bibliography if present
             if ('bibliography' in toolResult && toolResult.bibliography) {
+              console.log('\n=== BIBLIOGRAPHY DATA ===');
+              console.log(JSON.stringify(toolResult.bibliography, null, 2));
               (messages as any).bibliography = toolResult.bibliography;
             }
           } else {
+            console.log('\n=== UNSTRUCTURED TOOL RESULT ===');
+            console.log(JSON.stringify(toolResult));
             messages.push({
               role: 'user',
               content: [{ type: 'text', text: JSON.stringify(toolResult) }]
             });
           }
         } catch (error) {
-          console.error(`Error calling tool ${content.name}:`, error);
+          console.error('\n=== TOOL EXECUTION ERROR ===');
+          console.error(`Error executing tool ${content.name}:`, error);
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           const detailedError = error instanceof Error && error.stack ? `\nDetails: ${error.stack}` : '';
           messages.push({

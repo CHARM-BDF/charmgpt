@@ -19,6 +19,11 @@ function validateArtifactType(type: string): ArtifactType {
         'application/vnd.bibliography'
     ];
 
+    // Handle application/vnd.ant.code type
+    if (type?.startsWith('application/vnd.ant.code')) {
+        return 'code';
+    }
+
     // Handle code snippets with language attribute
     if (type?.startsWith('code/')) {
         return 'code';
@@ -96,13 +101,30 @@ export async function parseXMLResponse(xmlString: string) {
 
     // Extract artifacts
     const artifacts: XMLArtifact[] = [];
-    const artifactRegex = /<artifact\s+type="([^"]+)"\s+id="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/artifact>/g;
+    const artifactRegex = /<artifact\s+([^>]+)>([\s\S]*?)<\/artifact>/g;
     
     let artifactMatch;
     let position = 0;
     while ((artifactMatch = artifactRegex.exec(xmlString)) !== null) {
-        const [fullMatch, type, originalId, title, content] = artifactMatch;
+        const [fullMatch, attributes, content] = artifactMatch;
+        
+        // Parse attributes
+        const typeMatch = attributes.match(/type="([^"]+)"/);
+        const idMatch = attributes.match(/id="([^"]+)"/);
+        const titleMatch = attributes.match(/title="([^"]+)"/);
+        const languageMatch = attributes.match(/language="([^"]+)"/);
+        
+        if (!typeMatch || !idMatch || !titleMatch) {
+            console.warn('Skipping artifact due to missing required attributes');
+            continue;
+        }
+        
+        const type = typeMatch[1];
+        const originalId = idMatch[1];
+        const title = titleMatch[1];
+        const language = languageMatch ? languageMatch[1] : undefined;
         const uniqueId = crypto.randomUUID();
+        
         artifacts.push({
             type: validateArtifactType(type),
             id: uniqueId,           // Unique ID for internal use
@@ -110,7 +132,7 @@ export async function parseXMLResponse(xmlString: string) {
             title,
             content: content.trim(),
             position: position,
-            language: type.split('/')[1] || undefined
+            language
         });
 
         // Replace artifact XML with a button that includes data attributes and inline styles
