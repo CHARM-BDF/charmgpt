@@ -6,6 +6,14 @@ import { FileEntry, FileMetadata } from '../../types/fileManagement';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
+import { Anthropic } from '@anthropic-ai/sdk';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+// Log the API key presence (not the key itself)
+console.log('Anthropic API Key present:', !!process.env.ANTHROPIC_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,6 +63,11 @@ async function initializeStorage() {
 initializeStorage().catch(error => {
   console.error('Failed to initialize storage:', error);
   process.exit(1);
+});
+
+// Initialize Anthropic client after other initializations
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // File upload endpoint
@@ -454,6 +467,95 @@ router.delete('/files/:sourceId/relationships/:targetId', async (req: Request, r
   } catch (error) {
     console.error('Error removing relationship:', error);
     res.status(500).json({ error: 'Failed to remove relationship' });
+  }
+});
+
+// Add file analysis endpoint before the export
+router.post('/files/:id/analyze', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id;
+    console.log('Starting analysis for file:', { id });
+    
+    const metadataPath = path.join(metadataDir, `${id}.json`);
+    console.log('Looking for metadata at:', { metadataPath });
+    
+    // Get the metadata
+    const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf-8')) as FileEntry;
+    console.log('Found metadata for file:', { 
+      name: metadata.name,
+      path: metadata.path,
+      mimeType: metadata.mimeType
+    });
+    
+    // Use the stored file path from metadata
+    console.log('Attempting to read file from:', { filePath: metadata.path });
+    const content = await fs.readFile(metadata.path, 'utf-8').catch(error => {
+      console.error('Error reading file:', {
+        error,
+        path: metadata.path,
+        exists: fs.access(metadata.path).then(() => true).catch(() => false)
+      });
+      throw new Error(`Failed to read file content: ${error.message}`);
+    });
+
+    // Take a sample of the content (first 1000 characters)
+    const contentSample = content.slice(0, 1000);
+    console.log('Successfully read file content, sample length:', { 
+      sampleLength: contentSample.length,
+      totalLength: content.length
+    });
+
+    // Create the prompt for analysis
+    const prompt = `Please analyze this file content and provide a concise description that would be helpful for understanding how to use this file in code generation. Focus on the structure, format, and key information that would be relevant for programming tasks. Here's a sample of the file content:
+
+${contentSample}
+
+Please provide your analysis in a structured format with these fields:
+- fileType: The type of file and its format
+- contentSummary: A brief description of what the file contains
+- keyFeatures: Main characteristics that would be important for code generation
+- recommendations: Suggestions for how to best use this file in code generation`;
+
+    console.log('Calling Anthropic API with prompt length:', { promptLength: prompt.length });
+    
+    // Call Anthropic API
+    const completion = await anthropic.messages.create({
+      model: "claude-3-sonnet-20240229",
+      max_tokens: 1000,
+      messages: [{
+        role: "user",
+        content: prompt
+      }],
+      temperature: 0.5
+    }).catch(error => {
+      console.error('Anthropic API error:', error);
+      throw new Error(`Anthropic API error: ${error.message}`);
+    });
+
+    // Extract the analysis from the response using type assertion
+    const analysis = (completion as any).content[0].text;
+    console.log('Received analysis from Anthropic:', { 
+      analysisLength: analysis.length,
+      fileId: id 
+    });
+
+    // Update file metadata with the analysis
+    metadata.llmNotes = analysis;
+    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    console.log('Updated metadata with analysis');
+
+    res.json({ analysis });
+  } catch (err) {
+    const error = err as Error;
+    console.error('Error analyzing file:', {
+      error,
+      stack: error.stack,
+      message: error.message
+    });
+    res.status(500).json({ 
+      error: 'Failed to analyze file',
+      details: error.message
+    });
   }
 });
 

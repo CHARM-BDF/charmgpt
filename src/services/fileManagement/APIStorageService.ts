@@ -201,8 +201,19 @@ export class APIStorageService extends BaseStorageService {
     }
 
     async analyzeFile(id: string): Promise<FileMetadata['analysisInfo']> {
-        const response = await fetch(`${this.baseUrl}/files/${id}/analyze`);
-        return response.json();
+        const response = await fetch(`${this.baseUrl}/files/${id}/analyze`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to analyze file');
+        }
+
+        const result = await response.json();
+        return result.analysis;
     }
 
     async validateFile(id: string, schema?: SchemaInfo): Promise<{

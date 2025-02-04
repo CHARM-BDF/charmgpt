@@ -1,0 +1,61 @@
+{
+  "id": "a7d737b6-fdcc-42f3-b19b-2ec770a35771",
+  "name": "example_data.csv",
+  "path": "/Users/andycrouse/Documents/GitHub/charm-mcp/storage/content/a7d737b6-fdcc-42f3-b19b-2ec770a35771.csv",
+  "mimeType": "text/csv",
+  "size": 812,
+  "hash": {
+    "algorithm": "sha256",
+    "value": "4318d87cd421f098de94e0acc3cb14c68cab95f9c9aa955518716f18b085a2f2"
+  },
+  "status": "active",
+  "owner": "system",
+  "created": "2025-02-04T01:53:52.245Z",
+  "modified": "2025-02-04T01:53:52.247Z",
+  "lastAccessed": "2025-02-04T01:53:52.245Z",
+  "tags": [],
+  "llmNotes": "",
+  "metadata": {
+    "description": "example_data.csv",
+    "schema": {
+      "type": "json",
+      "format": "text/csv",
+      "encoding": "utf-8",
+      "sampleData": ""
+    },
+    "origin": {
+      "type": "upload",
+      "timestamp": "2025-02-04T01:53:52.248Z"
+    },
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0,
+      "branch": {
+        "name": "main",
+        "parent": "",
+        "created": "2025-02-04T01:53:52.248Z",
+        "description": "Initial version"
+      },
+      "history": [
+        {
+          "id": "767d6c41-0dbb-4620-8a42-2ea8dc69928b",
+          "timestamp": "2025-02-04T01:53:52.248Z",
+          "message": "Initial upload",
+          "user": "system",
+          "branch": "main",
+          "parent": ""
+        }
+      ]
+    },
+    "analysisInfo": {
+      "summary": {},
+      "quality": {
+        "nullCount": 0,
+        "duplicateCount": 0,
+        "errorCount": 0,
+        "completeness": 100
+      }
+    }
+  }
+}

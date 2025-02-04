@@ -9,6 +9,7 @@ import { ArtifactDrawer } from '../artifacts/ArtifactDrawer';
 import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
 import { MCPStatusModal } from '../mcp/MCPStatusModal';
+// @ts-ignore - Heroicons type definitions mismatch
 import { ServerIcon, FolderOpenIcon } from '@heroicons/react/24/outline';
 // import { useMCPStore } from '../../store/mcpStore';
 import { FileManager } from '../files/FileManager';

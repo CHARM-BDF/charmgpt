@@ -33,6 +33,13 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
   const loadFiles = async () => {
     try {
       const fileList = await storageService.listFiles();
+      console.log('Files in File Manager:', fileList.map(f => ({
+        name: f.name,
+        id: f.id,
+        path: f.path,
+        size: f.size,
+        type: f.mimeType
+      })));
       setFiles(fileList);
     } catch (error) {
       console.error('Error loading files:', error);
@@ -125,6 +132,37 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
     }
   };
 
+  const handleAnalyze = async () => {
+    if (!selectedFile) return;
+    try {
+      console.log('Attempting to analyze file:', {
+        name: selectedFile.name,
+        id: selectedFile.id,
+        path: selectedFile.path,
+        mimeType: selectedFile.mimeType
+      });
+      const analysis = await storageService.analyzeFile(selectedFile.id);
+      // Convert analysis to string if it isn't already
+      const analysisString = typeof analysis === 'string' ? analysis : JSON.stringify(analysis, null, 2);
+      
+      console.log('Analysis completed successfully:', {
+        fileId: selectedFile.id,
+        analysisLength: analysisString.length
+      });
+      
+      // Refresh the file details to show updated llmNotes
+      const updatedFiles = files.map(f => 
+        f.id === selectedFile.id 
+          ? { ...f, llmNotes: analysisString } 
+          : f
+      );
+      setFiles(updatedFiles);
+      setSelectedFile(prev => prev ? { ...prev, llmNotes: analysisString } : null);
+    } catch (error) {
+      console.error('Error analyzing file:', error);
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="mb-4">
@@ -181,7 +219,15 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
                 : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
               }
               transition-all duration-200`}
-            onClick={() => setSelectedFile(file)}
+            onClick={() => {
+              console.log('Selected file:', {
+                name: file.name,
+                id: file.id,
+                path: file.path,
+                metadata: file.metadata
+              });
+              setSelectedFile(file);
+            }}
           >
             <h3 className="font-medium text-gray-900 dark:text-gray-100">{file.name}</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{file.metadata.description}</p>
@@ -232,7 +278,24 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
                       <p className="text-gray-600 dark:text-gray-400">Modified: {new Date(selectedFile.modified).toLocaleString()}</p>
                     </div>
                   </div>
+                  <button
+                    onClick={handleAnalyze}
+                    className="mt-2 px-4 py-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700
+                      text-white font-medium rounded-md transition-colors"
+                  >
+                    Analyze with AI
+                  </button>
                 </div>
+
+                {/* LLM Analysis */}
+                {selectedFile.llmNotes && (
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">AI Analysis</h3>
+                    <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md text-sm text-gray-800 dark:text-gray-200">
+                      <pre className="whitespace-pre-wrap">{selectedFile.llmNotes}</pre>
+                    </div>
+                  </div>
+                )}
 
                 {/* Metadata */}
                 <div>

@@ -1,0 +1,61 @@
+{
+  "id": "989ca7f6-8922-43d5-ae31-9788b5466551",
+  "name": "example_data.csv",
+  "path": "/Users/andycrouse/Documents/GitHub/charm-mcp/storage/content/989ca7f6-8922-43d5-ae31-9788b5466551.csv",
+  "mimeType": "text/csv",
+  "size": 812,
+  "hash": {
+    "algorithm": "sha256",
+    "value": "4318d87cd421f098de94e0acc3cb14c68cab95f9c9aa955518716f18b085a2f2"
+  },
+  "status": "active",
+  "owner": "system",
+  "created": "2025-02-04T01:54:57.330Z",
+  "modified": "2025-02-04T01:54:57.331Z",
+  "lastAccessed": "2025-02-04T01:54:57.330Z",
+  "tags": [],
+  "llmNotes": "```yaml\nfileType: CSV (Comma-Separated Values)\ncontentSummary: The file appears to be a dataset containing employee information such as ID, name, email, department, role, hire date, and salary.\nkeyFeatures:\n  - Tabular data structure with rows and columns\n  - Header row with column names\n  - Each row represents an employee record\n  - Columns include employee ID, name, email, department, role, hire date, and salary\n  - Data is delimited by commas\nrecommendations:\n  - Use a CSV parsing library or built-in functions in your programming language to read and process the data\n  - Validate the data types of each column (e.g., ID and salary should be numeric, hire_date should be a date format)\n  - Handle potential issues like missing values, inconsistent formatting, or duplicate entries\n  - Consider separating the data into different data structures (e.g., lists, dictionaries, or objects) based on your use case\n  - Implement data filtering, sorting, or aggregation operations based on specific requirements (e.g., group employees by department, filter by hire date range)\n  - Ensure proper handling of string data, such as names and emails, which may contain special characters or whitespace\n  - If working with large datasets, consider optimizations like reading the file in chunks or using streaming techniques to avoid loading the entire dataset into memory at once\n```",
+  "metadata": {
+    "description": "example_data.csv",
+    "schema": {
+      "type": "json",
+      "format": "text/csv",
+      "encoding": "utf-8",
+      "sampleData": ""
+    },
+    "origin": {
+      "type": "upload",
+      "timestamp": "2025-02-04T01:54:57.331Z"
+    },
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0,
+      "branch": {
+        "name": "main",
+        "parent": "",
+        "created": "2025-02-04T01:54:57.331Z",
+        "description": "Initial version"
+      },
+      "history": [
+        {
+          "id": "8d73fbd6-82da-490e-8e26-e618e2fb87d9",
+          "timestamp": "2025-02-04T01:54:57.331Z",
+          "message": "Initial upload",
+          "user": "system",
+          "branch": "main",
+          "parent": ""
+        }
+      ]
+    },
+    "analysisInfo": {
+      "summary": {},
+      "quality": {
+        "nullCount": 0,
+        "duplicateCount": 0,
+        "errorCount": 0,
+        "completeness": 100
+      }
+    }
+  }
+}
