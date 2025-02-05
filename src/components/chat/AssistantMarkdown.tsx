@@ -178,7 +178,28 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       } else {
         // Outside code blocks, clean up indentation while preserving markdown structure
         const trimmed = line.trimStart();
-        if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('1. ')) {
+        if (trimmed.startsWith('#')) {
+          // Ensure proper heading format with space after #
+          const headingMatch = trimmed.match(/^(#+)(.*)$/);
+          console.log('Processing heading line:', {
+            original: trimmed,
+            match: headingMatch,
+            headingLevel: headingMatch ? headingMatch[1].length : 'no match',
+            content: headingMatch ? headingMatch[2].trim() : 'no match'
+          });
+          if (headingMatch) {
+            const [, hashes, content] = headingMatch;
+            const processedLine = `${hashes} ${content.trim()}`;
+            console.log('Processed heading:', {
+              line: processedLine,
+              level: hashes.length,
+              content: content.trim()
+            });
+            acc.lines.push(processedLine);
+          } else {
+            acc.lines.push(trimmed);
+          }
+        } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('1. ')) {
           acc.lines.push(trimmed); // Preserve list markers
         } else if (trimmed.startsWith('> ')) {
           acc.lines.push(trimmed); // Preserve blockquotes
@@ -214,8 +235,14 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
 
   // Clean up content by removing leading spaces while preserving markdown
   const markdownComponents = {
-    h1: ({node, ...props}: any) => <h1 className="text-4xl font-bold mb-6 mt-8 text-gray-900 dark:text-gray-100" {...props} />,
-    h2: ({node, ...props}: any) => <h2 className="text-3xl font-semibold mb-4 mt-6 text-gray-800 dark:text-gray-200" {...props} />,
+    h1: ({node, children, ...props}: any) => {
+      console.log('h1 component called with:', { node, children, props });
+      return <h1 className="text-4xl font-bold mb-6 mt-8 text-gray-900 dark:text-gray-100" {...props}>{children}</h1>;
+    },
+    h2: ({node, children, ...props}: any) => {
+      console.log('h2 component called with:', { node, children, props });
+      return <h2 className="text-3xl font-semibold mb-4 mt-6 text-gray-800 dark:text-gray-200" {...props}>{children}</h2>;
+    },
     h3: ({node, ...props}: any) => <h3 className="text-2xl font-medium mb-3 mt-5 text-gray-700 dark:text-gray-300" {...props} />,
     p: ({node, ...props}: any) => <p className="mb-4 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />,
     ul: ({node, ordered, ...props}: any) => <ul className="list-disc pl-6 mb-4" {...props} />,

@@ -9,13 +9,13 @@ import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
 import { MCPStatusModal } from '../mcp/MCPStatusModal';
 // @ts-ignore - Heroicons type definitions mismatch
-import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
+import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon } from '@heroicons/react/24/outline';
 // import { useMCPStore } from '../../store/mcpStore';
 import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 
 export const ChatInterface: React.FC = () => {
-  const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList } = useChatStore();
+  const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
   const storageService = useMemo(() => new APIStorageService(), []);
@@ -98,6 +98,28 @@ export const ChatInterface: React.FC = () => {
                   </button>
                 </div>
                 <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Chat Controls</span>
+              </div>
+
+              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+              
+              {/* Streaming Controls Section */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={toggleStreaming}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title={streamingEnabled ? "Disable streaming" : "Enable streaming"}
+                  >
+                    <ForwardIcon 
+                      className={`w-5 h-5 ${
+                        streamingEnabled 
+                          ? 'text-blue-600 dark:text-blue-400' 
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`} 
+                    />
+                  </button>
+                </div>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Streaming</span>
               </div>
             </div>
           </div>

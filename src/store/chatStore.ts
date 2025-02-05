@@ -26,6 +26,7 @@ interface ChatState {
   streamingMessageId: string | null;
   streamingContent: string;
   streamingComplete: boolean;
+  streamingEnabled: boolean;  // New state variable
   
   addMessage: (message: Omit<MessageWithThinking, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, content: string) => void;
@@ -42,6 +43,7 @@ interface ChatState {
   startStreaming: (messageId: string) => void;
   updateStreamingContent: (content: string) => void;
   completeStreaming: () => void;
+  toggleStreaming: () => void;  // New function to toggle streaming
 }
 
 export const useChatStore = create<ChatState>()(
@@ -57,6 +59,7 @@ export const useChatStore = create<ChatState>()(
       streamingMessageId: null,
       streamingContent: '',
       streamingComplete: true,
+      streamingEnabled: true,
 
       clearMessages: () => {
         console.log('ChatStore: Clearing all messages and artifacts');
@@ -225,23 +228,35 @@ export const useChatStore = create<ChatState>()(
             
             // Get the full content
             const fullContent = xmlResponse.conversation;
-            const chunkSize = 5; // Increased for smoother appearance
-            let currentPosition = 0;
             
-            // Stream the content in chunks
-            while (currentPosition < fullContent.length) {
-              currentPosition += chunkSize;
-              const chunk = fullContent.slice(0, currentPosition);
+            if (get().streamingEnabled) {
+              // Stream the content in chunks
+              const chunkSize = 10; // Increased from 5 for faster streaming
+              let currentPosition = 0;
               
+              while (currentPosition < fullContent.length) {
+                currentPosition += chunkSize;
+                const chunk = fullContent.slice(0, currentPosition);
+                
+                set(state => ({
+                  messages: state.messages.map(msg =>
+                    msg.id === messageId ? { ...msg, content: chunk } : msg
+                  ),
+                  streamingContent: chunk
+                }));
+                
+                // Reduced delay between chunks from 5ms to 2ms
+                await new Promise(resolve => setTimeout(resolve, 2));
+              }
+            } else {
+              // If streaming is disabled, update content immediately
               set(state => ({
                 messages: state.messages.map(msg =>
-                  msg.id === messageId ? { ...msg, content: chunk } : msg
+                  msg.id === messageId ? { ...msg, content: fullContent } : msg
                 ),
-                streamingContent: chunk
+                streamingContent: fullContent,
+                streamingComplete: true
               }));
-              
-              // Small delay between chunks
-              await new Promise(resolve => setTimeout(resolve, 5));
             }
 
             // Process artifacts
@@ -322,6 +337,12 @@ export const useChatStore = create<ChatState>()(
           streamingMessageId: null,
           streamingComplete: true
         });
+      },
+
+      toggleStreaming: () => {
+        set((state) => ({
+          streamingEnabled: !state.streamingEnabled
+        }));
       },
     }),
     {
