@@ -21,6 +21,11 @@ import { systemPrompt } from './systemPrompt';
 import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
+// Update type imports from SDK - only keep what we use
+import { 
+  TextContentSchema
+} from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';  // Keep Zod import as it's used for type inference
 
 
 const parseXML = promisify(parseString);
@@ -113,6 +118,15 @@ interface MCPServerConfig {
 // Overall servers configuration structure
 interface MCPServersConfig {
   mcpServers: Record<string, MCPServerConfig>;
+}
+
+interface ToolResponse {
+    type: 'tool_use';
+    name: string;
+    input: {
+        thinking?: string;
+        conversation: string | FormatterInput['conversation'];
+    };
 }
 
 dotenv.config();
@@ -801,20 +815,46 @@ app.post('/api/chat', async (req: Request<{}, {}, {
 
         // Format response with bibliography if present
         console.log('\n=== FORMATTING RESPONSE ===');
-        let jsonResponse = toolResponse.input as FormatterInput;
+        let jsonResponse: FormatterInput;
         
-        // Now we can safely push to the array
-        console.log('Adding bibliography artifact to conversation array');
-        const bibliographyId = crypto.randomUUID();
-        jsonResponse.conversation.push({
-            type: "artifact",
-            artifact: {
-                type: "application/vnd.bibliography",
-                id: bibliographyId,
-                title: "Article References",
-                content: JSON.stringify((messages as any).bibliography)
+        try {
+            const toolResp = toolResponse as ToolResponse;
+            const input = toolResp.input;
+            
+            // Parse the conversation if it's a string
+            if (typeof input.conversation === 'string') {
+                const parsed = JSON.parse(input.conversation);
+                jsonResponse = {
+                    thinking: input.thinking,
+                    conversation: parsed.conversation || []
+                };
+            } else {
+                jsonResponse = {
+                    thinking: input.thinking,
+                    conversation: input.conversation
+                };
             }
-        });
+
+            // Now we can safely push to the array
+            console.log('Adding bibliography artifact to conversation array');
+            if ((messages as any).bibliography) {
+                const bibliographyId = crypto.randomUUID();
+                jsonResponse.conversation.push({
+                    type: "artifact",
+                    artifact: {
+                        type: "application/vnd.bibliography",
+                        id: bibliographyId,
+                        title: "Article References",
+                        content: JSON.stringify((messages as any).bibliography)
+                    }
+                });
+            }
+        } catch (parseError) {
+            console.error('\n=== RESPONSE PARSING ERROR ===');
+            console.error('Failed to parse response:', parseError);
+            console.error('Tool response input:', toolResponse);
+            throw new Error('Failed to parse response format');
+        }
 
         // Convert to XML and validate
         console.log('\n=== CONVERTING TO XML ===');

@@ -132,7 +132,8 @@ export const useChatStore = create<ChatState>()(
         console.log('ChatStore: Clearing all artifacts');
         set({ 
           artifacts: [],
-          selectedArtifactId: null
+          selectedArtifactId: null,
+          showArtifactWindow: false
         });
       },
 
@@ -300,7 +301,8 @@ export const useChatStore = create<ChatState>()(
         selectedArtifactId: null,
         artifacts: [],
         isLoading: false,
-        error: null
+        error: null,
+        showArtifactWindow: false
       })),
 
       startStreaming: (messageId: string) => {

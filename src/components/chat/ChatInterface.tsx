@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { ArtifactWindow } from '../artifacts/ArtifactWindow';
-import { ArtifactControls } from '../artifacts/ArtifactControls';
 import { ArtifactDrawer } from '../artifacts/ArtifactDrawer';
 // import { MCPTools } from '../mcp/MCPTools';
 // import { MCPServerControl } from '../mcp/MCPServerControl';
@@ -10,13 +9,13 @@ import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
 import { MCPStatusModal } from '../mcp/MCPStatusModal';
 // @ts-ignore - Heroicons type definitions mismatch
-import { ServerIcon, FolderOpenIcon } from '@heroicons/react/24/outline';
+import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
 // import { useMCPStore } from '../../store/mcpStore';
 import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 
 export const ChatInterface: React.FC = () => {
-  const { messages, showArtifactWindow, clearChat } = useChatStore();
+  const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList } = useChatStore();
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
   const storageService = useMemo(() => new APIStorageService(), []);
@@ -29,39 +28,81 @@ export const ChatInterface: React.FC = () => {
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">MCP Chat Interface</h1>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">CHARM GPT Interface</h1>
               {/* <MCPServerControl /> */}
             </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowFileManager(!showFileManager)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                title="File Manager"
-              >
-                <FolderOpenIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              </button>
-              <button
-                onClick={() => setIsStatusModalOpen(true)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                title="Server Status"
-              >
-                <ServerIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              </button>
-              <DarkModeToggle />
-              <button
-                onClick={clearChat}
-                className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 rounded-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                title="Clear chat history"
-              >
-                Clear Chat
-              </button>
+            <div className="flex items-center space-x-6">
+              {/* Files Section */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setShowFileManager(!showFileManager)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="File Manager"
+                  >
+                    <FolderOpenIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                </div>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Files</span>
+              </div>
+
+              {/* MCP Server Section */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setIsStatusModalOpen(true)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="Server Status"
+                  >
+                    <ServerIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                </div>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">MCP Server</span>
+              </div>
+
+              {/* Display Controls Section */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center space-x-3">
+                  <DarkModeToggle />
+                </div>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Display</span>
+              </div>
+
+              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+              
+              {/* Chat Controls Section */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setShowList(!showList)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title={showList ? "Hide List" : "Show List"}
+                  >
+                    <ListBulletIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                  
+                  <button
+                    onClick={toggleArtifactWindow}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="Toggle Artifact Window"
+                  >
+                    <ArrowsRightLeftIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                  
+                  <button
+                    onClick={clearChat}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="Clear chat history"
+                  >
+                    <TrashIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                </div>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Chat Controls</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Artifact Controls - Always visible */}
-      <ArtifactControls />
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
