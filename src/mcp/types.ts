@@ -13,6 +13,12 @@ export interface MCPServerInfo {
   capabilities: Record<string, any>;
 }
 
+export interface MCPServerState extends MCPServerInfo {
+  status: 'inactive' | 'active' | 'blocked';
+  tools?: MCPTool[];
+  isRunning: boolean;  // To maintain compatibility with existing code
+}
+
 export interface MCPToolResult {
   isError: boolean;
   content: Array<{

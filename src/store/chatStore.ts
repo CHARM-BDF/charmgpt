@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Message } from '../types/chat';
 import { Artifact } from '../types/artifacts';
-// import { useMCPStore } from './mcpStore';
+import { useMCPStore } from './mcpStore';
 import { parseXMLResponse } from '../utils/xmlParser';
 
 /**
@@ -207,7 +207,8 @@ export const useChatStore = create<ChatState>()(
                 .map(msg => ({
                   role: msg.role,
                   content: msg.content
-                }))
+                })),
+              blockedServers: useMCPStore.getState().getBlockedServers()
             })
           });
 

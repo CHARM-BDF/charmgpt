@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
 import { useMCPStore } from '../../store/mcpStore';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { Switch } from '@headlessui/react';
 
 interface MCPStatusModalProps {
     isOpen: boolean;
@@ -9,13 +10,23 @@ interface MCPStatusModalProps {
 }
 
 export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose }) => {
-    const { servers, lastChecked, isLoading, fetchStatus } = useMCPStore();
+    const { servers, lastChecked, isLoading, fetchStatus, toggleServerBlock } = useMCPStore();
 
     useEffect(() => {
         if (isOpen) {
             fetchStatus();
         }
     }, [isOpen, fetchStatus]);
+
+    const getStatusColor = (server: { isRunning: boolean; status: string }) => {
+        if (!server.isRunning) return 'bg-red-500'; // Inactive
+        return server.status === 'blocked' ? 'bg-blue-500' : 'bg-green-500'; // Blocked or Active
+    };
+
+    const getStatusText = (server: { isRunning: boolean; status: string }) => {
+        if (!server.isRunning) return 'Inactive';
+        return server.status === 'blocked' ? 'Blocked' : 'Active';
+    };
 
     return (
         <Dialog
@@ -45,15 +56,33 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                             <div key={server.name} className="flex flex-col p-4 bg-gray-50 rounded-lg">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="font-medium">{server.name}</span>
-                                    <div className="flex items-center">
-                                        <div 
-                                            className={`w-3 h-3 rounded-full ${
-                                                server.isRunning ? 'bg-green-500' : 'bg-red-500'
-                                            }`}
-                                        />
-                                        <span className="ml-2 text-sm text-gray-600">
-                                            {server.isRunning ? 'Running' : 'Stopped'}
-                                        </span>
+                                    <div className="flex items-center space-x-4">
+                                        <div className="flex items-center">
+                                            <div 
+                                                className={`w-3 h-3 rounded-full ${getStatusColor(server)}`}
+                                            />
+                                            <span className="ml-2 text-sm text-gray-600">
+                                                {getStatusText(server)}
+                                            </span>
+                                        </div>
+                                        <Switch
+                                            checked={server.status !== 'blocked'}
+                                            onChange={() => server.isRunning && toggleServerBlock(server.name)}
+                                            disabled={!server.isRunning}
+                                            className={`${
+                                                server.isRunning ? (
+                                                    server.status === 'blocked' 
+                                                        ? 'bg-blue-500' 
+                                                        : 'bg-green-500'
+                                                ) : 'bg-gray-200'
+                                            } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
+                                        >
+                                            <span
+                                                className={`${
+                                                    server.status !== 'blocked' ? 'translate-x-6' : 'translate-x-1'
+                                                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                                            />
+                                        </Switch>
                                     </div>
                                 </div>
                                 

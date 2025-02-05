@@ -158,9 +158,34 @@ const toolNameMapping = new Map<string, string>();
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 
+// Create a session-specific log file name when the server starts
+const sessionStartTime = new Date();
+const sessionLogFileName = sessionStartTime.toLocaleString('en-US', {
+  timeZone: 'America/Chicago',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false
+}).replace(/[\/:]/g, '-') + '.log';
+
+const logDir = '/Users/andycrouse/Documents/GitHub/charm-mcp/logs/detailedserverlog';
+const sessionLogPath = path.join(logDir, sessionLogFileName);
+
+// Ensure log directory exists
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+  originalConsoleLog(`Created log directory at: ${logDir}`);
+}
+
+// Initialize the session log file with a header
+fs.writeFileSync(sessionLogPath, `=== Session Started: ${sessionStartTime.toISOString()} ===\n\n`);
+
 /**
  * Enhanced Logging Function
- * Writes logs to both console and file with timestamps in Central Time
+ * Writes logs to both console and a single session file with timestamps
  * @param message - The message to log
  * @param type - Log level (info, error, or debug)
  */
@@ -177,22 +202,12 @@ function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
     second: '2-digit',
     hour12: false
   }).format(now);
-
-  const logDir = '/Users/andycrouse/Documents/GitHub/charm-mcp/logs/detailedserverlog';
   
   try {
-    // Ensure log directory exists
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-      originalConsoleLog(`Created log directory at: ${logDir}`);
-    }
-    
-    const fileName = `detaillog_${centralTime.replace(/[\/:]/g, '-')}.log`;
-    const logPath = path.join(logDir, fileName);
     const logEntry = `[${centralTime}] [${type.toUpperCase()}] ${message}\n`;
     
-    // Write to log file and console
-    fs.appendFileSync(logPath, logEntry);
+    // Write to session log file and console
+    fs.appendFileSync(sessionLogPath, logEntry);
     originalConsoleLog(logEntry);
   } catch (error) {
     originalConsoleError('Error writing to log file:', error);
@@ -401,55 +416,82 @@ function resolveSchemaRefs(schema: any, definitions: Record<string, any> = {}): 
  * Converts MCP tool formats to Anthropic-compatible format
  * @returns Promise<AnthropicTool[]> Array of tools in Anthropic's format
  */
-async function getAllAvailableTools(): Promise<AnthropicTool[]> {
-  let mcpTools: AnthropicTool[] = [];
-  
-  toolNameMapping.clear();
-  
-  for (const [serverName, client] of mcpClients.entries()) {
-    try {
-      const toolsResult = await client.listTools();
-      
-      if (toolsResult.tools) {
-        const toolsWithPrefix = toolsResult.tools.map(tool => {
-          // Create Anthropic-friendly tool name and store mapping
-          const originalName = `${serverName}:${tool.name}`;
-          const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
-          toolNameMapping.set(anthropicName, originalName);
-          
-          // Extract and process schema definitions
-          const definitions = tool.inputSchema.$defs || {};
-          
-          // Create complete schema with all properties
-          const completeSchema = {
-            ...tool.inputSchema,
-            properties: tool.inputSchema.properties || {}
-          };
-
-          // Resolve all schema references
-          const resolvedSchema = resolveSchemaRefs(completeSchema, definitions);
-          
-          // Format tool for Anthropic's API
-          const formattedTool: AnthropicTool = {
-            name: anthropicName,
-            description: tool.description || `Tool for ${tool.name} from ${serverName} server`,
-            input_schema: {
-              type: "object",
-              properties: resolvedSchema.properties || {},
-              required: Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required : []
+async function getAllAvailableTools(blockedServers: string[] = []): Promise<AnthropicTool[]> {
+    let mcpTools: AnthropicTool[] = [];
+    
+    console.log('\n=== Tool Selection Process ===');
+    console.log('Checking available servers and their tools...');
+    console.log('Blocked servers:', blockedServers);
+    
+    toolNameMapping.clear();
+    
+    for (const [serverName, client] of mcpClients.entries()) {
+        try {
+            console.log(`\nServer: ${serverName}`);
+            console.log(`Status: ${blockedServers.includes(serverName) ? 'BLOCKED' : 'AVAILABLE'}`);
+            
+            if (blockedServers.includes(serverName)) {
+                console.log('Skipping blocked server');
+                continue;
             }
-          };
-          
-          return formattedTool;
-        });
-        mcpTools = mcpTools.concat(toolsWithPrefix);
-      }
-    } catch (error) {
-      console.error(`Failed to get tools from server ${serverName}:`, error);
+
+            const toolsResult = await client.listTools();
+            
+            if (toolsResult.tools) {
+                console.log(`Available tools: ${toolsResult.tools.length}`);
+                const toolsWithPrefix = toolsResult.tools.map(tool => {
+                    console.log(`- ${tool.name}: ${tool.description || 'No description'}`);
+                    
+                    // Create Anthropic-friendly tool name and store mapping
+                    const originalName = `${serverName}:${tool.name}`;
+                    const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+                    toolNameMapping.set(anthropicName, originalName);
+                    
+                    // Extract and process schema definitions
+                    const definitions = tool.inputSchema.$defs || {};
+                    
+                    // Create complete schema with all properties
+                    const completeSchema = {
+                        ...tool.inputSchema,
+                        properties: tool.inputSchema.properties || {}
+                    };
+
+                    // Resolve all schema references
+                    const resolvedSchema = resolveSchemaRefs(completeSchema, definitions);
+                    
+                    // Format tool for Anthropic's API
+                    const formattedTool: AnthropicTool = {
+                        name: anthropicName,
+                        description: tool.description || `Tool for ${tool.name} from ${serverName} server`,
+                        input_schema: {
+                            type: "object",
+                            properties: resolvedSchema.properties || {},
+                            required: Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required : []
+                        }
+                    };
+                    
+                    return formattedTool;
+                });
+                mcpTools = mcpTools.concat(toolsWithPrefix);
+            } else {
+                console.log('No tools available');
+            }
+        } catch (error) {
+            console.error(`Failed to get tools from server ${serverName}:`, error);
+        }
     }
-  }
-  
-  return mcpTools;
+    
+    console.log('\n=== Tool Selection Summary ===');
+    console.log(`Total tools available to LLM: ${mcpTools.length}`);
+    if (mcpTools.length > 0) {
+        console.log('\nAvailable Tools List:');
+        mcpTools.forEach(tool => {
+            console.log(`- [${tool.name}] ${tool.description}`);
+        });
+    }
+    console.log('=============================\n');
+    
+    return mcpTools;
 }
 
 /**
@@ -553,12 +595,16 @@ function stripCDATATags(xml: string): string {
  * Handles chat interactions between client and AI model
  * POST /api/chat
  */
-app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Array<{ role: 'user' | 'assistant'; content: string }> }>, res: Response) => {
+app.post('/api/chat', async (req: Request<{}, {}, { 
+    message: string; 
+    history: Array<{ role: 'user' | 'assistant'; content: string }>;
+    blockedServers?: string[];
+}>, res: Response) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, blockedServers = [] } = req.body;
 
     // Get available tools from all connected MCP servers
-    const formattedTools = await getAllAvailableTools();
+    const formattedTools = await getAllAvailableTools(blockedServers);
     console.log('\n[DEBUG] === CHECKING TOOLS FOR ISSUES ===');
     formattedTools.forEach((tool, index) => {
       try {
@@ -590,6 +636,12 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       tools: formattedTools,
     });
 
+    console.log('\n=== ANTHROPIC TOOL SELECTION RESPONSE ===');
+    console.log('Response received from Anthropic');
+    console.log('Content types:', toolSelectionResponse.content.map(c => c.type).join(', '));
+    console.log('Number of content blocks:', toolSelectionResponse.content.length);
+    console.log('=========================================\n');
+
     // Process tool usage from response
     for (const content of toolSelectionResponse.content) {
       if (content.type === 'tool_use') {
@@ -613,6 +665,7 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
 
         try {
           // Execute tool and process result
+          console.log(`Executing tool ${toolName} on server ${serverName}...`);
           const toolResult = await client.callTool({
             name: toolName,
             arguments: content.input ? content.input as Record<string, unknown> : {}
@@ -641,9 +694,11 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
                   role: 'user',
                   content: [{ type: 'text', text: textContent.text }]
                 });
+              } else {
+                console.log('No text content found in tool result');
               }
             } else {
-              console.log('Non-Text Content:', JSON.stringify(toolResult));
+              console.log('Tool result is not in expected format:', JSON.stringify(toolResult));
               messages.push({
                 role: 'user',
                 content: [{ type: 'text', text: JSON.stringify(toolResult) }]
@@ -667,8 +722,18 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
         } catch (error) {
           console.error('\n=== TOOL EXECUTION ERROR ===');
           console.error(`Error executing tool ${content.name}:`, error);
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          const detailedError = error instanceof Error && error.stack ? `\nDetails: ${error.stack}` : '';
+          console.error('Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            toolName,
+            serverName,
+            input: content.input
+          });
+          
+          // Declare error message variables
+          const errorMessage: string = error instanceof Error ? error.message : 'Unknown error';
+          const detailedError: string = error instanceof Error && error.stack ? `\nDetails: ${error.stack}` : '';
+          
           messages.push({
             role: 'assistant',
             content: [{ 
@@ -747,40 +812,197 @@ app.post('/api/chat', async (req: Request<{}, {}, { message: string; history: Ar
       tool_choice: { type: "tool", name: "response_formatter" }
     });
 
-    // Process and validate response
-    if (response.content[0].type !== 'tool_use') {
-      throw new Error('Expected tool_use response from Claude');
-    }
-
-    const toolResponse = response.content[0];
-    if (toolResponse.type !== 'tool_use' || toolResponse.name !== 'response_formatter') {
-      throw new Error('Expected response_formatter tool response');
-    }
-
-    // Format response with bibliography if present
-    const jsonResponse = toolResponse.input as FormatterInput;
-    if ((messages as any).bibliography) {
-      jsonResponse.conversation.push({
-        type: "artifact",
-        artifact: {
-          type: "application/vnd.bibliography",
-          id: "bibliography",
-          title: "Article References",
-          content: JSON.stringify((messages as any).bibliography)
+    console.log('\n=== ANTHROPIC FINAL RESPONSE ===');
+    console.log('Response received from Anthropic');
+    console.log('Content types:', response.content.map(c => c.type).join(', '));
+    console.log('Number of content blocks:', response.content.length);
+    if (response.content[0].type === 'tool_use') {
+        console.log('Tool used:', response.content[0].name);
+        console.log('\n=== RAW TOOL RESPONSE ===');
+        console.log('Input type:', typeof response.content[0].input);
+        if (typeof response.content[0].input === 'object' && response.content[0].input !== null) {
+            const input = response.content[0].input as any;
+            console.log('Conversation type:', typeof input.conversation);
+            console.log('Is array?', Array.isArray(input.conversation));
+            console.log('Raw conversation value:', JSON.stringify(input.conversation, null, 2));
         }
-      });
     }
+    console.log('================================\n');
 
-    // Convert to XML and validate
-    const xmlResponseWithCDATA = convertJsonToXml(jsonResponse);
-    const isValid = await isValidXMLResponse(xmlResponseWithCDATA);
-    if (!isValid) {
-      throw new Error('Generated XML response is invalid');
+    // Process and validate response
+    try {
+        console.log('\n=== PROCESSING ANTHROPIC RESPONSE ===');
+        if (response.content[0].type !== 'tool_use') {
+            console.error('Unexpected response type:', response.content[0].type);
+            throw new Error('Expected tool_use response from Claude');
+        }
+
+        const toolResponse = response.content[0];
+        console.log('Tool response type:', toolResponse.type);
+        console.log('Tool response name:', toolResponse.name);
+        
+        if (toolResponse.type !== 'tool_use' || toolResponse.name !== 'response_formatter') {
+            console.error('Invalid tool response:', JSON.stringify(toolResponse, null, 2));
+            throw new Error('Expected response_formatter tool response');
+        }
+
+        // Format response with bibliography if present
+        console.log('\n=== FORMATTING RESPONSE ===');
+        let jsonResponse = toolResponse.input as FormatterInput;
+        
+        // CRITICAL: Bibliography Processing - DO NOT REMOVE
+        // This section handles the bibliography data from PubMed and other research tools
+        if ((messages as any).bibliography) {
+            console.log('Adding bibliography to response');
+            console.log('Current bibliography data:', JSON.stringify((messages as any).bibliography, null, 2));
+            console.log('Current response format:', {
+                conversationType: typeof jsonResponse.conversation,
+                isArray: Array.isArray(jsonResponse.conversation)
+            });
+            
+            try {
+                let conversationArray: FormatterInput['conversation'];
+                
+                // Handle string conversation
+                if (typeof jsonResponse.conversation === 'string') {
+                    console.log('Converting string conversation to JSON');
+                    try {
+                        const parsed = JSON.parse(jsonResponse.conversation);
+                        if (Array.isArray(parsed.conversation)) {
+                            conversationArray = parsed.conversation;
+                        } else {
+                            // Ensure we have a valid array with the text content
+                            conversationArray = [{
+                                type: 'text',
+                                content: typeof parsed === 'string' ? parsed : JSON.stringify(parsed)
+                            }];
+                        }
+                    } catch (parseError) {
+                        console.error('Failed to parse conversation string:', parseError);
+                        // Create a valid text content if parsing fails
+                        conversationArray = [{
+                            type: 'text',
+                            content: jsonResponse.conversation
+                        }];
+                    }
+                } else if (Array.isArray(jsonResponse.conversation)) {
+                    // Make sure each item in the array has the required structure
+                    conversationArray = jsonResponse.conversation.map(item => {
+                        if (typeof item === 'string') {
+                            return { type: 'text', content: item };
+                        }
+                        return item;
+                    });
+                } else {
+                    console.error('Unexpected conversation format:', jsonResponse.conversation);
+                    // Provide a fallback structure
+                    conversationArray = [{
+                        type: 'text',
+                        content: 'Error processing response format'
+                    }];
+                }
+
+                // Create new response object with the processed conversation
+                jsonResponse = {
+                    ...jsonResponse,
+                    conversation: conversationArray
+                };
+
+                // Now we can safely push to the array
+                console.log('Adding bibliography artifact to conversation array');
+                jsonResponse.conversation.push({
+                    type: "artifact",
+                    artifact: {
+                        type: "application/vnd.bibliography",
+                        id: "bibliography",
+                        title: "Article References",
+                        content: JSON.stringify((messages as any).bibliography)
+                    }
+                });
+
+                // Validate the final structure
+                console.log('Final response structure:', {
+                    hasConversation: Boolean(jsonResponse.conversation),
+                    conversationLength: jsonResponse.conversation.length,
+                    itemTypes: jsonResponse.conversation.map(item => item.type)
+                });
+
+                console.log('Bibliography successfully added to response');
+            } catch (bibliographyError) {
+                console.error('\n=== BIBLIOGRAPHY PROCESSING ERROR ===');
+                console.error('Failed to add bibliography. State at failure:');
+                console.error('Bibliography data:', (messages as any).bibliography);
+                console.error('Current jsonResponse state:', JSON.stringify(jsonResponse, null, 2));
+                console.error('Error details:', bibliographyError);
+                throw bibliographyError;
+            }
+        }
+
+        // Convert to XML and validate
+        console.log('\n=== CONVERTING TO XML ===');
+        let xmlResponseWithCDATA: string;
+        try {
+            xmlResponseWithCDATA = convertJsonToXml(jsonResponse);
+            console.log('XML conversion complete, validating...');
+        } catch (xmlError) {
+            console.error('\n=== XML CONVERSION ERROR ===');
+            console.error('Failed to convert to XML. State at failure:');
+            console.error('JSON Response:', JSON.stringify(jsonResponse, null, 2));
+            console.error('Error details:', xmlError);
+            throw xmlError;
+        }
+        
+        let isValid: boolean;
+        try {
+            isValid = await isValidXMLResponse(xmlResponseWithCDATA);
+            if (!isValid) {
+                console.error('\n=== XML VALIDATION ERROR ===');
+                console.error('XML Validation failed. State at failure:');
+                console.error('XML content:', xmlResponseWithCDATA);
+                console.error('Original JSON:', JSON.stringify(jsonResponse, null, 2));
+                throw new Error('Generated XML response is invalid');
+            }
+        } catch (validationError) {
+            console.error('\n=== XML VALIDATION ERROR ===');
+            console.error('Failed to validate XML. State at failure:');
+            console.error('XML content:', xmlResponseWithCDATA);
+            console.error('Original JSON:', JSON.stringify(jsonResponse, null, 2));
+            console.error('Error details:', validationError);
+            throw validationError;
+        }
+
+        // Strip CDATA tags and send response
+        console.log('\n=== PREPARING FINAL RESPONSE ===');
+        let xmlResponse: string;
+        try {
+            xmlResponse = stripCDATATags(xmlResponseWithCDATA);
+            res.json({ response: xmlResponse });
+            console.log('Response sent successfully');
+        } catch (stripError) {
+            console.error('\n=== CDATA STRIPPING ERROR ===');
+            console.error('Failed to strip CDATA tags. State at failure:');
+            console.error('XML with CDATA:', xmlResponseWithCDATA);
+            console.error('Error details:', stripError);
+            throw stripError;
+        }
+    } catch (error) {
+        console.error('\n=== RESPONSE PROCESSING ERROR ===');
+        console.error('Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            responseContent: response.content,
+            toolResponseType: response.content[0]?.type
+        });
+        res.status(500).json({
+            error: 'Failed to process response',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            state: {
+                responseType: response.content[0]?.type,
+                toolResponse: response.content[0],
+                bibliography: (messages as any).bibliography ? 'Present' : 'Not present'
+            }
+        });
     }
-
-    // Strip CDATA tags and send response
-    const xmlResponse = stripCDATATags(xmlResponseWithCDATA);
-    res.json({ response: xmlResponse });
 
   } catch (error) {
     console.error('Error processing request:', error);
