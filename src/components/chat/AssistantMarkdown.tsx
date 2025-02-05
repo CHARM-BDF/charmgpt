@@ -122,8 +122,6 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
 
   // Pre-process XML content before rendering
   const processXMLContent = (rawContent: string): string => {
-    // console.log('1. Raw XML content:', rawContent);
-    
     // First process artifact tags
     const artifactProcessed = rawContent.replace(
       /<artifact\s+([^>]+)>([\s\S]*?)<\/artifact>/g,
@@ -137,25 +135,27 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       }
     );
     
+    // Remove any quotes around heading markers
+    const headingProcessed = artifactProcessed.replace(/"(#+\s[^"]+)"/g, '$1');
+    
     // Then split content into sections and wrap each in a div
-    const processedContent = artifactProcessed
+    const processedContent = headingProcessed
       .split(/(<button.*?<\/button>)/g)
       .map((section, index) => {
         if (section.startsWith('<button')) {
-          // For button sections, just return as is
-          // console.log('2. Processing button section:', section);
           return `<div class="my-4">${section}</div>`;
         } else if (section.trim()) {
-          // For text sections, wrap in a div if not empty
-          // console.log('2. Processing text section:', section);
+          // Don't wrap sections that start with heading markers in divs
+          if (section.trim().match(/^#+\s/)) {
+            return section;
+          }
           return `<div>${section}</div>`;
         }
         return '';
       })
-      .filter(Boolean) // Remove empty sections
+      .filter(Boolean)
       .join('\n');
 
-    // console.log('3. After XML processing:', processedContent);
     return processedContent;
   };
 

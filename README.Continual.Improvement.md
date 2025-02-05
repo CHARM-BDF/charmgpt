@@ -601,3 +601,41 @@ Tags: integration, python, documentation, planning
 2. Add comprehensive logging for resource usage
 3. Create platform-specific test configurations
 4. Enhance error reporting and handling
+
+## Markdown Processing Issues
+
+### Heading Marker Processing
+**Context:**
+- Component: AssistantMarkdown.tsx
+- Issue: Single # heading markers (h1) were not being processed correctly while ## (h2) and ### (h3) worked fine
+- Environment: React component using react-markdown
+
+**Problem:**
+- Heading markers were being wrapped in quotes and divs during XML content processing
+- This prevented the markdown parser from recognizing them as proper heading elements
+- Resulted in h1 headings being rendered as plain text within divs
+
+**Solution:**
+1. Remove quotes around heading markers during preprocessing:
+```typescript
+const headingProcessed = artifactProcessed.replace(/"(#+\s[^"]+)"/g, '$1');
+```
+
+2. Prevent wrapping heading sections in divs:
+```typescript
+if (section.trim().match(/^#+\s/)) {
+  return section;
+}
+```
+
+**Prevention:**
+- When processing markdown content that includes XML or HTML:
+  1. Ensure markdown syntax elements aren't wrapped in HTML elements
+  2. Remove any quotes that might be added during processing
+  3. Keep markdown syntax at the root level of the content
+  4. Test all heading levels (h1, h2, h3) when making changes to markdown processing
+
+**Related Scenarios:**
+- Similar issues might occur with other markdown syntax elements if they get wrapped in HTML
+- Watch for inconsistent behavior between different markdown elements
+- Pay attention to XML/HTML processing that might interfere with markdown syntax
