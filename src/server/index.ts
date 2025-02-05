@@ -583,73 +583,42 @@ app.post('/api/chat', async (req: Request<{}, {}, {
 
   try {
     const { message, history, blockedServers = [] } = req.body;
+    let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
+    let isSequentialThinkingComplete = false;
+    let cumulativeBibliography: any[] = [];  // Add at the start of the chat endpoint handler
 
-    // Get available tools from all connected MCP servers
-    const formattedTools = await getAllAvailableTools(blockedServers);
-    console.log('\n[DEBUG] === CHECKING TOOLS FOR ISSUES ===');
-    formattedTools.forEach((tool, index) => {
-      try {
-        // Validate tool schema structure
-        if (tool.input_schema.type !== "object") {
-          console.error(`[ERROR] Tool ${index} (${tool.name}): Schema type must be "object", got "${tool.input_schema.type}"`);
-        }
-        if (!tool.input_schema.properties || typeof tool.input_schema.properties !== 'object') {
-          console.error(`[ERROR] Tool ${index} (${tool.name}): Missing or invalid properties`);
-        }
-      } catch (error) {
-        console.error(`[ERROR] Tool ${index} validation failed:`, error);
-      }
-    });
+    // First phase: Sequential thinking and tool usage
+    while (!isSequentialThinkingComplete) {
+      // Get available tools (but exclude response_formatter for now)
+      const formattedTools = await getAllAvailableTools(blockedServers);
+      
+      // Make Anthropic call for next thought/tool use
+      const toolResponse = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4000,
+        messages: convertChatMessages(messages) as any,
+        temperature: 0.7,
+        tools: formattedTools,
+      });
 
-    // Prepare conversation history
-    const messages: ChatMessage[] = [
-      ...history,
-      { role: 'user', content: message }
-    ];
-    const anthMessages = convertChatMessages(messages);
+      // Process tool usage
+      for (const content of toolResponse.content) {
+        if (content.type === 'tool_use') {
+          const originalToolName = toolNameMapping.get(content.name);
+          if (!originalToolName) continue;
 
-    // First Anthropic call: Tool selection and execution
-    const toolSelectionResponse = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      messages: anthMessages as any,
-      temperature: 0.7,
-      tools: formattedTools,
-    });
+          const [serverName, toolName] = originalToolName.split(':');
+          const client = mcpClients.get(serverName);
+          if (!client) continue;
 
-    console.log('\n=== ANTHROPIC TOOL SELECTION RESPONSE ===');
-    console.log('Response received from Anthropic');
-    console.log('Content types:', toolSelectionResponse.content.map(c => c.type).join(', '));
-    console.log('Number of content blocks:', toolSelectionResponse.content.length);
-    console.log('=========================================\n');
+          console.log('\n=== TOOL EXECUTION DETAILS ===');
+          console.log(`Tool Selected: ${content.name} (Original name: ${originalToolName})`);
+          console.log('Tool Input:', JSON.stringify(content.input, null, 2));
 
-    // Process tool usage from response
-    for (const content of toolSelectionResponse.content) {
-      if (content.type === 'tool_use') {
-        // Map Anthropic tool name to original MCP tool name
-        const originalToolName = toolNameMapping.get(content.name);
-        if (!originalToolName) {
-          console.error(`No mapping found for tool name: ${content.name}`);
-          continue;
-        }
-
-        console.log('\n=== TOOL EXECUTION DETAILS ===');
-        console.log(`Tool Selected: ${content.name} (Original name: ${originalToolName})`);
-        console.log('Tool Input:', JSON.stringify(content.input, null, 2));
-
-        const [serverName, toolName] = originalToolName.split(':');
-        const client = mcpClients.get(serverName);
-        if (!client) {
-          console.error(`No client found for server ${serverName}`);
-          continue;
-        }
-
-        try {
-          // Execute tool and process result
-          console.log(`Executing tool ${toolName} on server ${serverName}...`);
+          // Execute tool
           const toolResult = await client.callTool({
             name: toolName,
-            arguments: content.input ? content.input as Record<string, unknown> : {}
+            arguments: content.input as Record<string, unknown>
           });
 
           console.log('\n=== TOOL EXECUTION RESPONSE ===');
@@ -661,77 +630,84 @@ app.post('/api/chat', async (req: Request<{}, {}, {
             content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
           });
 
-          // Process and add tool result to conversation
-          if (toolResult && typeof toolResult === 'object') {
-            console.log('\n=== PROCESSED TOOL RESULT ===');
-            if ('content' in toolResult && Array.isArray(toolResult.content)) {
-              const textContent = toolResult.content.find((item): item is z.infer<typeof TextContentSchema> => 
-                item.type === 'text' && typeof item.text === 'string'
-              );
-              
-              if (textContent) {
-                console.log('Text Content Found:', textContent.text);
-                messages.push({
-                  role: 'user',
-                  content: [{ type: 'text', text: textContent.text }]
-                });
-              } else {
-                console.log('No text content found in tool result');
-              }
-            } else {
-              console.log('Tool result is not in expected format:', JSON.stringify(toolResult));
+          // Process tool result
+          if (toolResult && typeof toolResult === 'object' && 'content' in toolResult) {
+            const textContent = (toolResult.content as any[]).find((item: any) => 
+              item.type === 'text' && typeof item.text === 'string'
+            );
+
+            if (textContent) {
+              console.log('\n=== PROCESSED TOOL RESULT ===');
+              console.log('Text Content Found:', textContent.text);
+
               messages.push({
                 role: 'user',
-                content: [{ type: 'text', text: JSON.stringify(toolResult) }]
+                content: [{ type: 'text', text: textContent.text }]
               });
+
+              // Check if this was sequential thinking tool
+              if (content.name.includes('sequential-thinking')) {
+                try {
+                  const result = JSON.parse(textContent.text);
+                  isSequentialThinkingComplete = !result.nextThoughtNeeded;
+                  console.log('\n=== SEQUENTIAL THINKING STATUS ===');
+                  console.log('Next thought needed:', result.nextThoughtNeeded);
+                  console.log('Current thought number:', result.thoughtNumber);
+                  console.log('Total thoughts planned:', result.totalThoughts);
+                } catch (error) {
+                  console.error('Error parsing sequential thinking result:', error);
+                  isSequentialThinkingComplete = true;
+                }
+              }
             }
 
             // Handle bibliography if present
             if ('bibliography' in toolResult && toolResult.bibliography) {
               console.log('\n=== BIBLIOGRAPHY DATA ===');
               console.log(JSON.stringify(toolResult.bibliography, null, 2));
-              (messages as any).bibliography = toolResult.bibliography;
+              
+              // Check if bibliography exists and merge if it does
+              if ((messages as any).bibliography) {
+                // Merge and deduplicate based on PMID
+                const currentBibliography = (messages as any).bibliography as any[];
+                const newBibliography = toolResult.bibliography as any[];
+                
+                // Create a map of existing PMIDs
+                const existingPmids = new Set(currentBibliography.map(entry => entry.pmid));
+                
+                // Only add entries with new PMIDs
+                const uniqueNewEntries = newBibliography.filter(entry => !existingPmids.has(entry.pmid));
+                
+                console.log('Bibliography merge results:', {
+                    currentCount: currentBibliography.length,
+                    newEntriesCount: newBibliography.length,
+                    uniqueNewCount: uniqueNewEntries.length,
+                    skippedDuplicates: newBibliography.length - uniqueNewEntries.length
+                });
+
+                // Merge unique new entries with existing bibliography
+                (messages as any).bibliography = [...currentBibliography, ...uniqueNewEntries];
+              } else {
+                // First bibliography, just set it
+                (messages as any).bibliography = toolResult.bibliography;
+              }
             }
-          } else {
-            console.log('\n=== UNSTRUCTURED TOOL RESULT ===');
-            console.log(JSON.stringify(toolResult));
-            messages.push({
-              role: 'user',
-              content: [{ type: 'text', text: JSON.stringify(toolResult) }]
-            });
           }
-        } catch (error) {
-          console.error('\n=== TOOL EXECUTION ERROR ===');
-          console.error(`Error executing tool ${content.name}:`, error);
-          console.error('Error details:', {
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            toolName,
-            serverName,
-            input: content.input
-          });
-          
-          // Declare error message variables
-          const errorMessage: string = error instanceof Error ? error.message : 'Unknown error';
-          const detailedError: string = error instanceof Error && error.stack ? `\nDetails: ${error.stack}` : '';
-          
-          messages.push({
-            role: 'assistant',
-            content: [{ 
-              type: 'text', 
-              text: `Error executing tool ${content.name}:\n${errorMessage}${detailedError}\n\nPlease try again or rephrase your request.` 
-            }]
-          });
         }
+      }
+
+      // If no tool was used, end the loop
+      if (!toolResponse.content.some(c => c.type === 'tool_use')) {
+        isSequentialThinkingComplete = true;
       }
     }
 
-    // Second Anthropic call: Generate final response
-    const updatedAnthMessages = convertChatMessages(messages);
+    // Final phase: Response formatting
+    console.log('\n=== PREPARING FINAL RESPONSE ===');
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
-      messages: updatedAnthMessages as any,
+      messages: convertChatMessages(messages) as any,
       system: systemPrompt,
       temperature: 0.7,
       tools: [{
@@ -831,93 +807,18 @@ app.post('/api/chat', async (req: Request<{}, {}, {
         console.log('\n=== FORMATTING RESPONSE ===');
         let jsonResponse = toolResponse.input as FormatterInput;
         
-        // CRITICAL: Bibliography Processing - DO NOT REMOVE
-        // This section handles the bibliography data from PubMed and other research tools
-        if ((messages as any).bibliography) {
-            console.log('Adding bibliography to response');
-            console.log('Current bibliography data:', JSON.stringify((messages as any).bibliography, null, 2));
-            console.log('Current response format:', {
-                conversationType: typeof jsonResponse.conversation,
-                isArray: Array.isArray(jsonResponse.conversation)
-            });
-            
-            try {
-                let conversationArray: FormatterInput['conversation'];
-                
-                // Handle string conversation
-                if (typeof jsonResponse.conversation === 'string') {
-                    console.log('Converting string conversation to JSON');
-                    try {
-                        const parsed = JSON.parse(jsonResponse.conversation);
-                        if (Array.isArray(parsed.conversation)) {
-                            conversationArray = parsed.conversation;
-                        } else {
-                            // Ensure we have a valid array with the text content
-                            conversationArray = [{
-                                type: 'text',
-                                content: typeof parsed === 'string' ? parsed : JSON.stringify(parsed)
-                            }];
-                        }
-                    } catch (parseError) {
-                        console.error('Failed to parse conversation string:', parseError);
-                        // Create a valid text content if parsing fails
-                        conversationArray = [{
-                            type: 'text',
-                            content: jsonResponse.conversation
-                        }];
-                    }
-                } else if (Array.isArray(jsonResponse.conversation)) {
-                    // Make sure each item in the array has the required structure
-                    conversationArray = jsonResponse.conversation.map(item => {
-                        if (typeof item === 'string') {
-                            return { type: 'text', content: item };
-                        }
-                        return item;
-                    });
-                } else {
-                    console.error('Unexpected conversation format:', jsonResponse.conversation);
-                    // Provide a fallback structure
-                    conversationArray = [{
-                        type: 'text',
-                        content: 'Error processing response format'
-                    }];
-                }
-
-                // Create new response object with the processed conversation
-                jsonResponse = {
-                    ...jsonResponse,
-                    conversation: conversationArray
-                };
-
-                // Now we can safely push to the array
-                console.log('Adding bibliography artifact to conversation array');
-                jsonResponse.conversation.push({
-                    type: "artifact",
-                    artifact: {
-                        type: "application/vnd.bibliography",
-                        id: "bibliography",
-                        title: "Article References",
-                        content: JSON.stringify((messages as any).bibliography)
-                    }
-                });
-
-                // Validate the final structure
-                console.log('Final response structure:', {
-                    hasConversation: Boolean(jsonResponse.conversation),
-                    conversationLength: jsonResponse.conversation.length,
-                    itemTypes: jsonResponse.conversation.map(item => item.type)
-                });
-
-                console.log('Bibliography successfully added to response');
-            } catch (bibliographyError) {
-                console.error('\n=== BIBLIOGRAPHY PROCESSING ERROR ===');
-                console.error('Failed to add bibliography. State at failure:');
-                console.error('Bibliography data:', (messages as any).bibliography);
-                console.error('Current jsonResponse state:', JSON.stringify(jsonResponse, null, 2));
-                console.error('Error details:', bibliographyError);
-                throw bibliographyError;
+        // Now we can safely push to the array
+        console.log('Adding bibliography artifact to conversation array');
+        const bibliographyId = crypto.randomUUID();
+        jsonResponse.conversation.push({
+            type: "artifact",
+            artifact: {
+                type: "application/vnd.bibliography",
+                id: bibliographyId,
+                title: "Article References",
+                content: JSON.stringify((messages as any).bibliography)
             }
-        }
+        });
 
         // Convert to XML and validate
         console.log('\n=== CONVERTING TO XML ===');
