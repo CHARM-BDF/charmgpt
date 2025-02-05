@@ -150,94 +150,17 @@ const mcpClients = new Map<string, McpClient>();
 // Maintain mapping between Anthropic-friendly tool names and original MCP tool names
 const toolNameMapping = new Map<string, string>();
 
-/**
- * Logging System Setup
- * Preserve original console methods and implement file-based logging
- */
 // Store original console methods for fallback
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 
-// Create a session-specific log file name when the server starts
-const sessionStartTime = new Date();
-const sessionLogFileName = sessionStartTime.toLocaleString('en-US', {
-  timeZone: 'America/Chicago',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false
-}).replace(/[\/:]/g, '-') + '.log';
-
 const logDir = '/Users/andycrouse/Documents/GitHub/charm-mcp/logs/detailedserverlog';
-const sessionLogPath = path.join(logDir, sessionLogFileName);
 
 // Ensure log directory exists
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
   originalConsoleLog(`Created log directory at: ${logDir}`);
 }
-
-// Initialize the session log file with a header
-fs.writeFileSync(sessionLogPath, `=== Session Started: ${sessionStartTime.toISOString()} ===\n\n`);
-
-/**
- * Enhanced Logging Function
- * Writes logs to both console and a single session file with timestamps
- * @param message - The message to log
- * @param type - Log level (info, error, or debug)
- */
-function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
-  const now = new Date();
-  // Format timestamp in Central Time
-  const centralTime = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(now);
-  
-  try {
-    const logEntry = `[${centralTime}] [${type.toUpperCase()}] ${message}\n`;
-    
-    // Write to session log file and console
-    fs.appendFileSync(sessionLogPath, logEntry);
-    originalConsoleLog(logEntry);
-  } catch (error) {
-    originalConsoleError('Error writing to log file:', error);
-  }
-}
-
-/**
- * Console Method Overrides
- * Enhance console methods to include file logging while maintaining original functionality
- */
-console.log = (...args: any[]) => {
-  const message = args.map(arg => 
-    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
-  ).join(' ');
-  logToFile(message, 'info');
-};
-
-console.error = (...args: any[]) => {
-  const message = args.map(arg => 
-    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
-  ).join(' ');
-  logToFile(message, 'error');
-};
-
-console.debug = (...args: any[]) => {
-  const message = args.map(arg => 
-    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
-  ).join(' ');
-  logToFile(message, 'debug');
-};
 
 /**
  * Server Initialization
@@ -600,6 +523,64 @@ app.post('/api/chat', async (req: Request<{}, {}, {
     history: Array<{ role: 'user' | 'assistant'; content: string }>;
     blockedServers?: string[];
 }>, res: Response) => {
+  const promptTime = new Date();
+  const promptLogFileName = promptTime.toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace(/[\/:]/g, '-') + '.log';
+
+  const promptLogPath = path.join(logDir, promptLogFileName);
+  fs.writeFileSync(promptLogPath, `=== Prompt Started: ${promptTime.toISOString()} ===\n\n`);
+
+  function logToFile(message: string, type: 'info' | 'error' | 'debug' = 'info') {
+    const now = new Date();
+    const centralTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(now);
+    
+    try {
+      const logEntry = `[${centralTime}] [${type.toUpperCase()}] ${message}\n`;
+      fs.appendFileSync(promptLogPath, logEntry);
+      originalConsoleLog(logEntry);
+    } catch (error) {
+      originalConsoleError('Error writing to log file:', error);
+    }
+  }
+
+  console.log = (...args: any[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+    ).join(' ');
+    logToFile(message, 'info');
+  };
+
+  console.error = (...args: any[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+    ).join(' ');
+    logToFile(message, 'error');
+  };
+
+  console.debug = (...args: any[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+    ).join(' ');
+    logToFile(message, 'debug');
+  };
+
   try {
     const { message, history, blockedServers = [] } = req.body;
 
