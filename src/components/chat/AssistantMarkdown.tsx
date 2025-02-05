@@ -18,6 +18,7 @@ class MarkdownErrorBoundary extends Component<{ children: React.ReactNode }, { h
   }
 
   static getDerivedStateFromError(error: any) {
+    console.error('MarkdownErrorBoundary caught an error:', error);
     return { hasError: true };
   }
 
@@ -141,7 +142,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
     // Then split content into sections and wrap each in a div
     const processedContent = headingProcessed
       .split(/(<button.*?<\/button>)/g)
-      .map((section, index) => {
+      .map((section, _index) => {
         if (section.startsWith('<button')) {
           return `<div class="my-4">${section}</div>`;
         } else if (section.trim()) {
@@ -181,20 +182,9 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
         if (trimmed.startsWith('#')) {
           // Ensure proper heading format with space after #
           const headingMatch = trimmed.match(/^(#+)(.*)$/);
-          console.log('Processing heading line:', {
-            original: trimmed,
-            match: headingMatch,
-            headingLevel: headingMatch ? headingMatch[1].length : 'no match',
-            content: headingMatch ? headingMatch[2].trim() : 'no match'
-          });
           if (headingMatch) {
             const [, hashes, content] = headingMatch;
             const processedLine = `${hashes} ${content.trim()}`;
-            console.log('Processed heading:', {
-              line: processedLine,
-              level: hashes.length,
-              content: content.trim()
-            });
             acc.lines.push(processedLine);
           } else {
             acc.lines.push(trimmed);
@@ -236,30 +226,28 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
   // Clean up content by removing leading spaces while preserving markdown
   const markdownComponents = {
     h1: ({node, children, ...props}: any) => {
-      console.log('h1 component called with:', { node, children, props });
-      return <h1 className="text-4xl font-bold mb-6 mt-8 text-gray-900 dark:text-gray-100" {...props}>{children}</h1>;
+      return <h1 className="font-display text-2xl font-extrabold mb-4 mt-6 text-gray-900 dark:text-gray-100 tracking-tight" {...props}>{children}</h1>;
     },
     h2: ({node, children, ...props}: any) => {
-      console.log('h2 component called with:', { node, children, props });
-      return <h2 className="text-3xl font-semibold mb-4 mt-6 text-gray-800 dark:text-gray-200" {...props}>{children}</h2>;
+      return <h2 className="font-display text-xl font-bold mb-3 mt-5 text-gray-800 dark:text-gray-200 tracking-tight" {...props}>{children}</h2>;
     },
-    h3: ({node, ...props}: any) => <h3 className="text-2xl font-medium mb-3 mt-5 text-gray-700 dark:text-gray-300" {...props} />,
-    p: ({node, ...props}: any) => <p className="mb-4 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />,
-    ul: ({node, ordered, ...props}: any) => <ul className="list-disc pl-6 mb-4" {...props} />,
-    ol: ({node, ordered, ...props}: any) => <ol className="list-decimal pl-6 mb-4" {...props} />,
-    li: ({node, ordered, checked, ...props}: any) => {
-      const className = "mb-2 text-gray-700 dark:text-gray-300";
+    h3: ({node, ...props}: any) => <h3 className="font-display text-lg font-bold mb-2 mt-4 text-gray-700 dark:text-gray-300 tracking-tight" {...props} />,
+    p: ({node, ...props}: any) => <p className="font-sans text-[15px] mb-3 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />,
+    ul: ({node, ordered, className, ...props}: any) => <ul className="font-sans list-disc pl-5 mb-3 space-y-1.5" {...props} />,
+    ol: ({node, ordered, className, ...props}: any) => <ol className="font-sans list-decimal pl-5 mb-3 space-y-1.5" {...props} />,
+    li: ({node, ordered, checked, className, ...props}: any) => {
+      const liClassName = "font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed";
       if (checked !== null && checked !== undefined) {
         return (
-          <li className={className}>
-            <input type="checkbox" checked={checked} readOnly /> {props.children}
+          <li className={liClassName}>
+            <input type="checkbox" checked={checked} readOnly className="mr-2" /> {props.children}
           </li>
         );
       }
-      return <li className={className} {...props} />;
+      return <li className={liClassName} {...props} />;
     },
     blockquote: ({node, ...props}: any) => (
-      <blockquote className="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400" {...props} />
+      <blockquote className="font-sans border-l-3 border-blue-500 pl-4 my-3 text-gray-600 dark:text-gray-400" {...props} />
     ),
     pre: ({node, children, ...props}: any) => {
       // If this is a code block, just return it directly
@@ -279,7 +267,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       
       if (inline) {
         return (
-          <code className="bg-gray-100 dark:bg-[#1F2937] rounded px-1 py-0.5 text-sm" {...props}>
+          <code className="font-mono bg-gray-100 dark:bg-[#1F2937] rounded px-1.5 py-0.5 text-sm" {...props}>
             {children}
           </code>
         );

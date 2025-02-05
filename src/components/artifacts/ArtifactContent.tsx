@@ -106,7 +106,70 @@ export const ArtifactContent: React.FC<{
           .join('\n');
         return (
           <div className="prose max-w-none dark:prose-invert">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({node, children, ...props}: any) => (
+                  <h1 className="font-display text-2xl font-extrabold mb-4 mt-6 text-gray-900 dark:text-gray-100 tracking-tight" {...props}>{children}</h1>
+                ),
+                h2: ({node, children, ...props}: any) => (
+                  <h2 className="font-display text-xl font-bold mb-3 mt-5 text-gray-800 dark:text-gray-200 tracking-tight" {...props}>{children}</h2>
+                ),
+                h3: ({node, ...props}: any) => (
+                  <h3 className="font-display text-lg font-bold mb-2 mt-4 text-gray-700 dark:text-gray-300 tracking-tight" {...props}>{props.children}</h3>
+                ),
+                p: ({node, ...props}: any) => (
+                  <p className="font-sans text-[15px] mb-3 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />
+                ),
+                ul: ({node, ...props}: any) => (
+                  <ul className="font-sans list-disc pl-5 mb-3 space-y-1.5" {...props} />
+                ),
+                ol: ({node, ...props}: any) => (
+                  <ol className="font-sans list-decimal pl-5 mb-3 space-y-1.5" {...props} />
+                ),
+                li: ({node, checked, ...props}: any) => (
+                  <li className="font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed" {...props} />
+                ),
+                blockquote: ({node, ...props}: any) => (
+                  <blockquote className="font-sans border-l-3 border-blue-500 pl-4 my-3 text-gray-600 dark:text-gray-400" {...props} />
+                ),
+                code: ({node, inline, className, children, ...props}: any) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const language = match ? match[1] : '';
+                  
+                  if (inline) {
+                    return (
+                      <code className="font-mono bg-gray-100 dark:bg-[#1F2937] rounded px-1.5 py-0.5 text-sm" {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+
+                  return (
+                    <div className="mb-4 overflow-hidden rounded-md border-2 border-gray-200 dark:border-gray-700 shadow-md">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 flex justify-between items-center">
+                        <span className="uppercase font-semibold">{language || 'Output'}</span>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-[#1F2937]">
+                        <SyntaxHighlighter
+                          language={language || 'text'}
+                          style={oneLight}
+                          customStyle={{
+                            margin: 0,
+                            borderRadius: 0,
+                            background: 'inherit',
+                            padding: '1rem'
+                          }}
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      </div>
+                    </div>
+                  );
+                }
+              }}
+            >
               {trimmedContent}
             </ReactMarkdown>
           </div>
