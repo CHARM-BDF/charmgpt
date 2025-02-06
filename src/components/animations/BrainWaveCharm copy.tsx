@@ -5,28 +5,6 @@ interface BrainWaveCharmProps {
   isLoading?: boolean;
 }
 
-// C(-.-.)-H(....)-A(.-)-R(.-.)-M(--) GPT(--./.--./-) 
-const morseWidths = [
-  // C: -.-.
-  'border-4', 'border', 'border-4', 'border',
-  // H: ....
-  'border', 'border', 'border', 'border',
-  // A: .-
-  'border', 'border-4',
-  // R: .-.
-  'border', 'border-4', 'border',
-  // M: --
-  'border-4', 'border-4',
-  // Space
-  'border-0',
-  // G: --.
-  'border-4', 'border-4', 'border',
-  // P: .--.
-  'border', 'border-4', 'border-4', 'border',
-  // T: -
-  'border-4'
-];
-
 const BrainWaveCharm: React.FC<BrainWaveCharmProps> = ({ isLoading = false }) => {
   return (
     <div className="flex items-center">
@@ -36,13 +14,12 @@ const BrainWaveCharm: React.FC<BrainWaveCharmProps> = ({ isLoading = false }) =>
             size={32} 
             className={`stroke-[#4F46E5] stroke-2 ${isLoading ? 'animate-pulse' : ''}`} 
           />
-          {isLoading && morseWidths.map((width, index) => (
+          {isLoading && [1, 2, 3].map((ring) => (
             <div
-              key={index}
-              className={`absolute inset-0 ${width} border-[#4F46E5]/20 dark:border-[#4F46E5]/30 rounded-full animate-ripple`}
+              key={ring}
+              className="absolute inset-0 border-2 border-[#4F46E5]/20 dark:border-[#4F46E5]/30 rounded-full animate-ripple"
               style={{
-                animationDelay: `${index * 0.5}s`,
-                animationDuration: '2s'
+                animationDelay: `${ring * 0.3}s`
               }}
             />
           ))}
