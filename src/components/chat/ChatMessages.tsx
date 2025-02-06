@@ -9,12 +9,27 @@ import BrainWaveCharm from '../animations/BrainWaveCharm';
 // const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
 export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ messages }) => {
-  const { selectArtifact, isLoading, streamingMessageId, streamingContent } = useChatStore();
+  const { selectArtifact, isLoading, streamingMessageId, streamingContent, artifacts } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string | null>(null);
   const [showThinkingMap, setShowThinkingMap] = useState<Record<string, boolean>>({});
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
+  // Function to get all artifacts associated with a message
+  const getMessageArtifacts = (message: MessageWithThinking) => {
+    // First get the directly linked artifact if it exists
+    const linkedArtifacts = message.artifactId ? 
+      artifacts.filter(a => a.id === message.artifactId) : [];
+    
+    // Then get any artifacts that reference this message
+    const referencedArtifacts = artifacts.filter(a => a.artifactId === message.id);
+    
+    // Combine and sort all artifacts
+    return [...linkedArtifacts, ...referencedArtifacts]
+      .sort((a, b) => a.position - b.position);
+  };
+
   // Log messages when they change
   useEffect(() => {
     console.log('ChatMessages received:', messages);
@@ -69,9 +84,11 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
    * This function provides essential clipboard functionality for messages
    * DO NOT REMOVE: Required for user experience and accessibility
    */
-  const copyToClipboard = async (text: string) => {
+  const copyToClipboard = async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000); // Hide after 2 seconds
       console.log('Successfully copied to clipboard');
     } catch (err) {
       console.error('Failed to copy text:', err);
@@ -93,12 +110,32 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
               className={`flex ${isAssistant ? 'justify-start' : 'justify-start'}`}
             >
               <div
-                className={`w-full max-w-3xl rounded-lg p-6 shadow-sm ${
+                className={`w-full max-w-3xl rounded-lg p-6 shadow-sm relative ${
                   isAssistant
                     ? 'bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-gray-100 dark:shadow-gray-900/20'
                     : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/10'
                 }`}
               >
+                {isAssistant && (
+                  <div className="absolute top-4 right-4">
+                    <button
+                      onClick={() => copyToClipboard(message.content, message.id)}
+                      className="p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                      title="Copy raw markdown"
+                    >
+                      {copiedMessageId === message.id ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                          <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                )}
                 {isAssistant ? (
                   <>
                     {hasThinking && (
@@ -126,24 +163,26 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                           <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
                         )}
                       </div>
-                      <div className="ml-4">
-                        <button
-                          onClick={() => copyToClipboard(message.content)}
-                          className="p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                          title="Copy message"
-                        >
-                          <ClipboardIcon className="h-5 w-5" />
-                        </button>
-                      </div>
                     </div>
                     <div className="mt-2 flex gap-2">
                       <button
-                        onClick={() => console.log('Message Debug Data:', {
-                          message,
-                          content: message.content,
-                          thinking: messageWithThinking.thinking,
-                          artifactId: message.artifactId
-                        })}
+                        onClick={() => {
+                          const messageArtifacts = getMessageArtifacts(message);
+                          console.log('Message Debug Data:', {
+                            message,
+                            content: message.content,
+                            thinking: messageWithThinking.thinking,
+                            artifacts: messageArtifacts.map(artifact => ({
+                              id: artifact.id,
+                              artifactId: artifact.artifactId,
+                              type: artifact.type,
+                              title: artifact.title,
+                              content: artifact.content,
+                              position: artifact.position,
+                              language: artifact.language
+                            }))
+                          });
+                        }}
                         className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       >
                         Debug Info

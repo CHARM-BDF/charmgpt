@@ -20,7 +20,11 @@ export const ArtifactContent: React.FC<{
     });
   };
 
-  const getLanguage = (type: string): string => {
+  const getLanguage = (type: string, language?: string): string => {
+    if (language) {
+      return language;
+    }
+    
     switch (type) {
       case 'application/python':
         return 'python';
@@ -64,11 +68,11 @@ export const ArtifactContent: React.FC<{
         return (
           <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
-              {artifact.type.replace('application/', '')}
+              {artifact.language || artifact.type.replace('application/', '')}
             </div>
             <div className="p-4">
               <SyntaxHighlighter
-                language={getLanguage(artifact.type)}
+                language={getLanguage(artifact.type, artifact.language)}
                 style={oneLight}
                 customStyle={{ margin: 0, background: 'transparent' }}
               >
@@ -250,7 +254,9 @@ export const ArtifactContent: React.FC<{
       <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-lg">
         <div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{artifact.title}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Type: {artifact.type}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Type: {artifact.type === 'code' && artifact.language ? `${artifact.type} (${artifact.language})` : artifact.type}
+          </p>
         </div>
         {canToggleView && (
           <button

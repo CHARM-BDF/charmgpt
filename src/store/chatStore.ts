@@ -231,22 +231,70 @@ export const useChatStore = create<ChatState>()(
             
             if (get().streamingEnabled) {
               // Stream the content in chunks
-              const chunkSize = 10; // Increased from 5 for faster streaming
+              const chunkSize = 10;
               let currentPosition = 0;
+              let buffer = '';
+              let accumulatedContent = '';
+              
+              const processChunk = (chunk: string): string => {
+                // Combine buffer with new chunk
+                const combined = buffer + chunk;
+                let safeText = combined;
+                let newBuffer = '';
+
+                // Look for incomplete tags
+                const lastOpenIndex = combined.lastIndexOf('<');
+                if (lastOpenIndex !== -1) {
+                  const closeIndex = combined.indexOf('>', lastOpenIndex);
+                  if (closeIndex === -1) {
+                    // We have an incomplete tag, buffer it
+                    safeText = combined.slice(0, lastOpenIndex);
+                    newBuffer = combined.slice(lastOpenIndex);
+                  }
+                }
+
+                // Also check for incomplete code blocks
+                const backtickCount = (safeText.match(/`/g) || []).length;
+                if (backtickCount % 2 !== 0) {
+                  // We have an incomplete code block
+                  const lastBacktickIndex = safeText.lastIndexOf('`');
+                  newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
+                  safeText = safeText.slice(0, lastBacktickIndex);
+                }
+
+                buffer = newBuffer;
+                return safeText;
+              };
               
               while (currentPosition < fullContent.length) {
-                currentPosition += chunkSize;
-                const chunk = fullContent.slice(0, currentPosition);
+                const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
+                const chunk = fullContent.slice(currentPosition, nextPosition);
                 
+                const safeChunk = processChunk(chunk);
+                if (safeChunk) {
+                  accumulatedContent += safeChunk;
+                  
+                  set(state => ({
+                    messages: state.messages.map(msg =>
+                      msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
+                    ),
+                    streamingContent: accumulatedContent
+                  }));
+                }
+                
+                currentPosition = nextPosition;
+                await new Promise(resolve => setTimeout(resolve, 2));
+              }
+              
+              // Flush any remaining buffer at the end
+              if (buffer) {
+                accumulatedContent += buffer;
                 set(state => ({
                   messages: state.messages.map(msg =>
-                    msg.id === messageId ? { ...msg, content: chunk } : msg
+                    msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
                   ),
-                  streamingContent: chunk
+                  streamingContent: accumulatedContent
                 }));
-                
-                // Reduced delay between chunks from 5ms to 2ms
-                await new Promise(resolve => setTimeout(resolve, 2));
               }
             } else {
               // If streaming is disabled, update content immediately
@@ -343,14 +391,14 @@ export const useChatStore = create<ChatState>()(
         set((state) => ({
           streamingEnabled: !state.streamingEnabled
         }));
-      },
+      }
     }),
     {
       name: 'chat-storage',
       partialize: (state) => ({
         messages: state.messages,
         artifacts: state.artifacts,
-      }),
+      })
     }
   )
 );

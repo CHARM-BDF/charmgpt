@@ -288,7 +288,7 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
               </svg>
             </button>
           </div>
-          <div className="bg-gray-50 dark:bg-[#1F2937]">
+          <div className="overflow-x-auto bg-gray-50 dark:bg-[#1F2937] max-w-full mx-auto" style={{ width: '600px' }}>
             <SyntaxHighlighter
               style={typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? oneDark : oneLight}
               language={language || 'text'}
@@ -297,7 +297,8 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
                 margin: 0,
                 borderRadius: 0,
                 background: 'inherit',
-                padding: '1rem'
+                padding: '1rem',
+                width: '100%'
               }}
               {...props}
             >

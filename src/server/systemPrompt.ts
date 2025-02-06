@@ -106,7 +106,6 @@ You must use the response_formatter tool for ALL responses. Here is the schema:
 
 7. application/vnd.ant.json
    - JSON data
-   - Python code
    - Requires language property
 
 8. application/vnd.ant.python
