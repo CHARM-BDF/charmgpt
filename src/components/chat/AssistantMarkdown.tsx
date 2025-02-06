@@ -96,18 +96,23 @@ const ArtifactButton: React.FC<{
 
   return (
     <button
-      className="inline-flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700 min-w-[50%] max-w-full"
+      className="inline-flex items-center gap-3 px-3 py-2 
+                bg-slate-200 hover:bg-slate-300
+                text-slate-700
+                rounded-lg border border-slate-300
+                shadow-[0_2px_4px_rgba(148,163,184,0.1)] hover:shadow-[0_4px_6px_rgba(148,163,184,0.15)]
+                transition-all duration-200
+                min-w-[50%] max-w-full"
       onClick={handleClick}
       data-artifact-id={id}
       data-artifact-type={type}
-      style={{ cursor: 'pointer' }}
     >
-      <div className="flex-shrink-0 p-2 border-r border-gray-200 dark:border-gray-700">
+      <div className="flex-shrink-0 p-2 border-r border-slate-300">
         {getIcon()}
       </div>
       <div className="flex flex-col items-start min-w-0">
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate w-full">{title}</span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">Click to open</span>
+        <span className="text-sm font-medium truncate w-full">{title}</span>
+        <span className="text-xs text-slate-500">Click to open</span>
       </div>
     </button>
   );

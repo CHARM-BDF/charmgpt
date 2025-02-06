@@ -113,7 +113,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                 className={`w-full max-w-3xl rounded-lg p-6 shadow-sm relative ${
                   isAssistant
                     ? 'bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-gray-100 dark:shadow-gray-900/20'
-                    : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/10'
+                    : 'bg-gradient-to-b from-[#1E40AF] to-[#2563EB] text-white shadow-[#1E40AF]/10'
                 }`}
               >
                 {isAssistant && (
