@@ -231,7 +231,7 @@ export const useChatStore = create<ChatState>()(
             
             if (get().streamingEnabled) {
               // Stream the content in chunks
-              const chunkSize = 10;
+              const chunkSize = 20;
               let currentPosition = 0;
               let buffer = '';
               let accumulatedContent = '';
@@ -283,7 +283,7 @@ export const useChatStore = create<ChatState>()(
                 }
                 
                 currentPosition = nextPosition;
-                await new Promise(resolve => setTimeout(resolve, 2));
+                await new Promise(resolve => setTimeout(resolve, .5));
               }
               
               // Flush any remaining buffer at the end
