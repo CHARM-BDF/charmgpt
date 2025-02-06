@@ -13,7 +13,14 @@ interface ExecuteArgs {
   timeout?: number;
 }
 
-export async function execute(args: ExecuteArgs): Promise<{ output: string; code: string }> {
+interface ExecuteResult {
+  output: string;
+  code: string;
+  type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json';
+  metadata?: Record<string, any>;
+}
+
+export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   const { code, timeout = 30 } = args;
   let scriptPath = '';
   
@@ -81,8 +88,13 @@ export async function execute(args: ExecuteArgs): Promise<{ output: string; code
       }
     }
 
-    // Return just the output and code
-    return { output, code };
+    // Return output with type information
+    return { 
+      output, 
+      code,
+      type: 'text', // Default type, will be enhanced by Python to include actual type
+      metadata: {} 
+    };
 
   } catch (error) {
     // Attempt cleanup even if execution failed

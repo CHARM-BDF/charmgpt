@@ -595,7 +595,7 @@ app.post('/api/chat', async (req: Request<{}, {}, {
     const { message, history, blockedServers = [] } = req.body;
     let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
-    let cumulativeBibliography: any[] = [];  // Add at the start of the chat endpoint handler
+    // let cumulativeBibliography: any[] = [];  // Add at the start of the chat endpoint handler
 
     // First phase: Sequential thinking and tool usage
     while (!isSequentialThinkingComplete) {

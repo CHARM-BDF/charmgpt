@@ -121,7 +121,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     logger.debug("Execution result:", result);
 
     return {
-      content: [{ type: "text", text: result.output }],
+      content: [{
+        type: result.type || "text",
+        text: result.output,
+        metadata: result.metadata
+      }],
       isError: false,
     };
   } catch (error) {

@@ -96,11 +96,10 @@ export const ArtifactDrawer: React.FC = () => {
   } = useChatStore();
 
   const handleArtifactClick = (id: string) => {
-    selectArtifact(id);
-    setShowList(false); // Close the drawer
-    if (!showArtifactWindow) {
-      toggleArtifactWindow(); // Show the artifact window if it's not visible
-    }
+    console.log('ArtifactDrawer: handleArtifactClick called with id:', id);
+    selectArtifact(id);  // This will set showArtifactWindow to true
+    setShowList(false);  // Close the drawer
+    console.log('ArtifactDrawer: Selection complete');
   };
 
   // Sort artifacts by position

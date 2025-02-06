@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { ArtifactWindow } from '../artifacts/ArtifactWindow';
@@ -21,6 +21,14 @@ export const ChatInterface: React.FC = () => {
   const [showFileManager, setShowFileManager] = useState(false);
   const storageService = useMemo(() => new APIStorageService(), []);
   // const { activeServer } = useMCPStore();
+
+  console.log('ChatInterface: Rendering with showArtifactWindow:', showArtifactWindow);
+  console.log('ChatInterface: Current artifacts:', artifacts);
+
+  // Effect to log artifact window visibility changes
+  useEffect(() => {
+    console.log('ChatInterface: showArtifactWindow changed to:', showArtifactWindow);
+  }, [showArtifactWindow]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-200 dark:bg-gray-900">
