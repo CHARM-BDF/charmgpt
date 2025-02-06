@@ -54,11 +54,11 @@
     },
     "medikanren-api": {
       "command": "npx",
-      "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/mediKanrenOpenAPI.yaml"]
+      "args": ["openapi-mcp-server", "./custom-mcp-servers/openapi-mcp-input/mediKanrenOpenAPI.yaml"]
     },
     "mondo-api": {
       "command": "npx",
-      "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/monarchOpenAPI.yaml"]
+      "args": ["openapi-mcp-server", "./custom-mcp-servers/openapi-mcp-input/monarchOpenAPI.yaml"]
     },
     "python": {
       "command": "node",

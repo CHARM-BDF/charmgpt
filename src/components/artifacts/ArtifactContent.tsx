@@ -128,12 +128,30 @@ export const ArtifactContent: React.FC<{
                 ul: ({node, ...props}: any) => (
                   <ul className="font-sans list-disc pl-5 mb-3 space-y-1.5" {...props} />
                 ),
-                ol: ({node, ...props}: any) => (
+                ol: ({ node, ordered, ...props }: any) => (
                   <ol className="font-sans list-decimal pl-5 mb-3 space-y-1.5" {...props} />
                 ),
-                li: ({node, checked, ...props}: any) => (
-                  <li className="font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed" {...props} />
-                ),
+                
+                li: ({node, checked, ordered, children, ...props}: any) => {
+                  // Debug logging for li component props
+                  console.log('Li Component Props:', {
+                    ordered,
+                    checked,
+                    otherProps: props,
+                    nodeType: node?.type,
+                    parentType: node?.parent?.type,
+                    children: children
+                  });
+                  
+                  // Remove all non-HTML attributes
+                  const { ordered: _, checked: __, node: ___, className: ____, ...cleanProps } = props;
+                  
+                  return (
+                    <li className="font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {children}
+                    </li>
+                  );
+                },
                 blockquote: ({node, ...props}: any) => (
                   <blockquote className="font-sans border-l-3 border-blue-500 pl-4 my-3 text-gray-600 dark:text-gray-400" {...props} />
                 ),

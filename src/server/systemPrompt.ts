@@ -43,7 +43,8 @@ You must use the response_formatter tool for ALL responses. Here is the schema:
                                             "image/svg+xml",
                                             "application/vnd.mermaid",
                                             "text/html",
-                                            "application/vnd.react"
+                                            "application/vnd.react",
+                                            "application/vnd.bibliography"
                                         ]
                                     },
                                     "id": {
@@ -111,6 +112,11 @@ You must use the response_formatter tool for ALL responses. Here is the schema:
 8. application/vnd.ant.python
    - Python code
    - Requires language property
+
+9. application/vnd.bibliography
+   - Bibliography entries
+   - JSON-formatted reference data
+   - Academic citations
 
 # Example Response Structure
 

@@ -22,10 +22,10 @@ import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 // Update type imports from SDK - only keep what we use
-import { 
-  TextContentSchema
-} from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';  // Keep Zod import as it's used for type inference
+// import { 
+//   TextContentSchema
+// } from '@modelcontextprotocol/sdk/types.js';
+// import { z } from 'zod';  // Keep Zod import as it's used for type inference
 
 
 const parseXML = promisify(parseString);
