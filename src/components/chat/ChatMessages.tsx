@@ -18,16 +18,29 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   
   // Function to get all artifacts associated with a message
   const getMessageArtifacts = (message: MessageWithThinking) => {
-    // First get the directly linked artifact if it exists
+    // Step 1: Get directly linked artifacts
     const linkedArtifacts = message.artifactId ? 
       artifacts.filter(a => a.id === message.artifactId) : [];
     
-    // Then get any artifacts that reference this message
+    // Step 2: Get artifacts that reference this message
     const referencedArtifacts = artifacts.filter(a => a.artifactId === message.id);
     
-    // Combine and sort all artifacts
-    return [...linkedArtifacts, ...referencedArtifacts]
+    // Step 3: Get artifacts referenced in message content via buttons
+    const contentReferencedArtifacts = (() => {
+      // Extract artifact IDs from button data attributes in content
+      const artifactIdRegex = /data-artifact-id="([^"]+)"/g;
+      const matches = [...message.content.matchAll(artifactIdRegex)];
+      const contentArtifactIds = matches.map(match => match[1]);
+      
+      // Get artifacts with these IDs
+      return artifacts.filter(a => contentArtifactIds.includes(a.id));
+    })();
+    
+    // Step 4: Combine all unique artifacts and sort by position
+    const allArtifacts = [...new Set([...linkedArtifacts, ...referencedArtifacts, ...contentReferencedArtifacts])]
       .sort((a, b) => a.position - b.position);
+    
+    return allArtifacts;
   };
 
   // Log messages when they change
@@ -187,7 +200,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                       >
                         Debug Info
                       </button>
-                      {message.artifactId && (
+                      {/* {message.artifactId && (
                         <button
                           onClick={() => {
                             console.log('ChatMessages: View Artifact clicked with artifactId:', message.artifactId);
@@ -197,7 +210,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                         >
                           View Artifact
                         </button>
-                      )}
+                      )} */}
                     </div>
                   </>
                 ) : (

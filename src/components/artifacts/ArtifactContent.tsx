@@ -134,14 +134,14 @@ export const ArtifactContent: React.FC<{
                 
                 li: ({node, checked, ordered, children, ...props}: any) => {
                   // Debug logging for li component props
-                  console.log('Li Component Props:', {
-                    ordered,
-                    checked,
-                    otherProps: props,
-                    nodeType: node?.type,
-                    parentType: node?.parent?.type,
-                    children: children
-                  });
+                  // console.log('Li Component Props:', {
+                  //   ordered,
+                  //   checked,
+                  //   otherProps: props,
+                  //   nodeType: node?.type,
+                  //   parentType: node?.parent?.type,
+                  //   children: children
+                  // });
                   
                   // Remove all non-HTML attributes
                   const { ordered: _, checked: __, node: ___, className: ____, ...cleanProps } = props;
