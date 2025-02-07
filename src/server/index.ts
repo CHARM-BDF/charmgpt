@@ -688,19 +688,32 @@ app.post('/api/chat', async (req: Request<{}, {}, {
                 // Only add entries with new PMIDs
                 const uniqueNewEntries = newBibliography.filter(entry => !existingPmids.has(entry.pmid));
                 
-                console.log('Bibliography merge results:', {
-                    currentCount: currentBibliography.length,
-                    newEntriesCount: newBibliography.length,
-                    uniqueNewCount: uniqueNewEntries.length,
-                    skippedDuplicates: newBibliography.length - uniqueNewEntries.length
-                });
-
                 // Merge unique new entries with existing bibliography
                 (messages as any).bibliography = [...currentBibliography, ...uniqueNewEntries];
               } else {
                 // First bibliography, just set it
                 (messages as any).bibliography = toolResult.bibliography;
               }
+            }
+
+            // Handle binary output if present
+            if ('binaryOutput' in toolResult && toolResult.binaryOutput) {
+              console.log('\n=== BINARY OUTPUT DATA ===');
+              const binaryOutput = toolResult.binaryOutput as {
+                type: string;
+                data: string;
+                metadata: Record<string, any>;
+              };
+              console.log('Type:', binaryOutput.type);
+              console.log('Metadata:', JSON.stringify(binaryOutput.metadata, null, 2));
+              
+              // Initialize binaryOutputs array if it doesn't exist
+              if (!(messages as any).binaryOutputs) {
+                (messages as any).binaryOutputs = [];
+              }
+              
+              // Add binary output to the collection
+              (messages as any).binaryOutputs.push(binaryOutput);
             }
           }
         }
@@ -836,7 +849,7 @@ app.post('/api/chat', async (req: Request<{}, {}, {
             }
 
             // Now we can safely push to the array
-            console.log('Adding bibliography artifact to conversation array');
+            console.log('Adding bibliography and binary outputs to conversation array');
             if ((messages as any).bibliography) {
                 const bibliographyId = crypto.randomUUID();
                 jsonResponse.conversation.push({
@@ -848,6 +861,26 @@ app.post('/api/chat', async (req: Request<{}, {}, {
                         content: JSON.stringify((messages as any).bibliography)
                     }
                 });
+            }
+
+            // Add binary outputs as artifacts
+            if ((messages as any).binaryOutputs) {
+                for (const binaryOutput of (messages as any).binaryOutputs as Array<{
+                    type: string;
+                    data: string;
+                    metadata: Record<string, any>;
+                }>) {
+                    const binaryId = crypto.randomUUID();
+                    jsonResponse.conversation.push({
+                        type: "artifact",
+                        artifact: {
+                            type: binaryOutput.type,
+                            id: binaryId,
+                            title: `Generated ${binaryOutput.type.split('/')[1].toUpperCase()}`,
+                            content: binaryOutput.data
+                        }
+                    });
+                }
             }
         } catch (parseError) {
             console.error('\n=== RESPONSE PARSING ERROR ===');

@@ -2,13 +2,15 @@ export type ArtifactType =
   | 'code'
   | 'html'
   | 'image/svg+xml'
+  | 'image/png'
   | 'text'
   | 'application/vnd.ant.mermaid'
   | 'text/markdown'
   | 'application/python'
   | 'application/javascript'
   | 'application/vnd.react'
-  | 'application/vnd.bibliography';
+  | 'application/vnd.bibliography'
+  | 'application/vnd.ant.python';
 
 export interface Artifact {
   id: string;           // Unique UUID for internal use

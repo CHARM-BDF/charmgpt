@@ -4,6 +4,11 @@ DEFAULT TO THE MINIMUM CHANGES REQUIRED TO FIX THE ISSUE.
 DO NOT ADD UNNECESSARY COMPLEXITY.
 IF YOU THINNK IT WOULD HELP TO DO MORE, ASK FOR PERMISSION FIRST.
 NEVER REMOVE CODE THAT IS NOT RELATED TO THE TASK YOU ARE WORKING ON.
+AFTER MAKING CHANGES TO CODE THAT REQUIRES A BUILD STEP:
+  1. IDENTIFY if changes require rebuilding
+  2. EXPLAIN why rebuild is needed
+  3. EXECUTE the build command using run_terminal_cmd tool
+  4. SPECIFY which build command to use and why
 
 ## Documentation Structure Protocol
 LOCATION: /docs
@@ -180,4 +185,14 @@ IMPLEMENTATION_STATUS: Track implementation progress
 ## End Note
 This file serves as a processing guide for AI operations.
 Update rules as patterns emerge and efficiency improves.
-Maintain focus on minimal effective context loading. 
+Maintain focus on minimal effective context loading.
+
+# Plan Consistency and User Guidance
+- When user suggests changes, verify they align with current implementation plan
+- If suggestion deviates from plan:
+  1. Acknowledge the suggestion
+  2. Point out the deviation
+  3. Explain why original plan is better
+  4. Guide user to correct approach
+- Use teaching moments to reinforce architecture understanding
+- Document successful redirections in README.continual.improvement.md 

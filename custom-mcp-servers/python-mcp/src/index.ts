@@ -7,18 +7,19 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
 import { validatePythonCode } from "./tools/env.js";
+import os from "os";
 
 // Logger utility
 const logger = {
   info: (message: string, ...args: any[]) => {
-    console.error(`[INFO] ${message}`, ...args);
+    console.error(`\x1b[36m[PYTHON-MCP INFO]\x1b[0m ${message}`, ...args);
   },
   error: (message: string, ...args: any[]) => {
-    console.error(`[ERROR] ${message}`, ...args);
+    console.error(`\x1b[31m[PYTHON-MCP ERROR]\x1b[0m ${message}`, ...args);
   },
   debug: (message: string, ...args: any[]) => {
     if (process.env.DEBUG) {
-      console.error(`[DEBUG] ${message}`, ...args);
+      console.error(`\x1b[35m[PYTHON-MCP DEBUG]\x1b[0m ${message}`, ...args);
     }
   }
 };
@@ -27,14 +28,29 @@ const logger = {
 const PYTHON_EXECUTION_TOOL = {
   name: "execute_python",
   description: "Execute Python code with data science capabilities. Supports numpy, pandas, matplotlib, and other common data science packages. " +
-    "Code execution is sandboxed with security restrictions and resource limits. " +
-    "Maximum execution time is 30 seconds, and memory usage is limited to 256MB.",
+    "⚠️ CRITICAL FILE OUTPUT INSTRUCTIONS ⚠️\n" +
+    "This runs in a non-interactive environment with strict file output requirements:\n" +
+    "1. ALWAYS use os.environ['OUTPUT_DIR'] for ANY file operations\n" +
+    "2. NEVER use relative paths (like 'plot.png') - they will fail\n" +
+    "3. ALWAYS include 'import os' when saving files\n\n" +
+    "Required Pattern for File Outputs:\n" +
+    "```python\n" +
+    "import os\n" +
+    "# Save files using os.path.join with OUTPUT_DIR:\n" +
+    "plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], 'plot.png'))\n" +
+    "df.to_csv(os.path.join(os.environ['OUTPUT_DIR'], 'data.csv'))\n" +
+    "```\n" +
+    "Other Requirements:\n" +
+    "- Use print() for text output\n" +
+    "- Return values for data structures\n" +
+    "- Maximum execution time: 30 seconds\n" +
+    "- Memory limit: 256MB",
   inputSchema: {
     type: "object",
     properties: {
       code: {
         type: "string",
-        description: "Python code to execute"
+        description: "Python code to execute. ⚠️ MUST use os.environ['OUTPUT_DIR'] for ALL file outputs. Example: plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], 'plot.png'))"
       },
       dataFiles: {
         type: "object",
@@ -118,12 +134,44 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       timeout: timeout && timeout > 0 && timeout <= 30 ? timeout : 30,
     });
     logger.info("Code execution completed successfully");
-    logger.debug("Execution result:", result);
+    logger.debug("Raw execution result:", result);
 
+    // Handle binary output if present
+    if (result.binaryOutput) {
+      logger.info("Binary output detected:");
+      logger.info(`- Type: ${result.binaryOutput.type}`);
+      logger.info(`- Size: ${result.binaryOutput.metadata.size} bytes`);
+      logger.info(`- Metadata: ${JSON.stringify(result.binaryOutput.metadata, null, 2)}`);
+      
+      // Return a description of the binary output instead of the data itself
+      return {
+        content: [{
+          type: "text",
+          text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
+          metadata: {
+            hasBinaryOutput: true,
+            binaryType: result.binaryOutput.type,
+            ...result.binaryOutput.metadata
+          }
+        }],
+        binaryOutput: result.binaryOutput,  // Store binary data for later use
+        isError: false,
+      };
+    }
+
+    // Log standard output result
+    logger.info("Standard output result:");
+    logger.info(`- Type: ${result.type || 'text'}`);
+    logger.info(`- Output length: ${result.output.length} characters`);
+    if (result.metadata) {
+      logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
+    }
+
+    // Default response for non-binary output
     return {
       content: [{
         type: result.type || "text",
-        text: result.output,
+        text: result.output || "Code executed successfully with no text output.",
         metadata: result.metadata
       }],
       isError: false,

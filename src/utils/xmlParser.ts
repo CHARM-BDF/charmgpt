@@ -10,13 +10,15 @@ function validateArtifactType(type: string): ArtifactType {
         'code',
         'html',
         'image/svg+xml',
+        'image/png',
         'text',
         'application/vnd.ant.mermaid',
         'text/markdown',
         'application/python',
         'application/javascript',
         'application/vnd.react',
-        'application/vnd.bibliography'
+        'application/vnd.bibliography',
+        'application/vnd.ant.python'  // Add vendor-specific Python type
     ];
 
     // Handle application/vnd.ant.code type
@@ -27,6 +29,11 @@ function validateArtifactType(type: string): ArtifactType {
     // Handle code snippets with language attribute
     if (type?.startsWith('code/')) {
         return 'code';
+    }
+
+    // Handle binary types explicitly
+    if (type === 'image/png') {
+        return 'image/png';
     }
 
     // If no type is specified or type is 'text', default to text/markdown

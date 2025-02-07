@@ -101,6 +101,130 @@ Tags: integration, python, documentation, planning
   - Integration test documentation
   - Performance monitoring documentation
 
+### Python MCP Server Self-Correcting Feedback Loop - [2024-02-07]
+Tags: python, error-handling, automation, feedback-loop
+
+#### Context
+- System State: Python MCP Server with Claude integration
+- Configuration: Bidirectional communication between Claude and Python execution
+- Environment: Node.js with Python shell integration
+- Requirements: Automated error correction and code improvement
+
+#### Problem Description
+- Challenge: Handling Python execution errors and warnings automatically
+- Impact: Need for manual intervention in code corrections
+- Potential Issues: Non-interactive environment limitations, syntax errors, runtime errors
+
+#### Investigation
+- Debug Process: Implemented logging and error capture system
+- Tools Used: Python shell events, MCP protocol, Claude
+- Key Insights: 
+  - All Python output (stdout, stderr) can be fed back to Claude
+  - Claude can interpret errors and modify code accordingly
+  - Creates autonomous debugging cycle
+
+#### Solution
+- Implementation:
+  1. Capture all Python output types:
+     ```typescript
+     pyshell.on('message', (message) => {
+       // Standard output
+       logger.success(`Python output: ${message}`);
+     });
+
+     pyshell.on('stderr', (stderr) => {
+       // Error output
+       logger.error(`Python stderr: ${stderr}`);
+     });
+     ```
+  2. Feed output back to Claude through MCP protocol
+  3. Allow Claude to modify code based on error messages
+  4. Create iterative improvement cycle
+
+- Why It Works:
+  - Complete output capture ensures Claude has full context
+  - Error messages provide specific guidance for fixes
+  - Iterative approach allows for progressive improvement
+  - Autonomous correction reduces need for manual intervention
+
+#### Prevention
+- Warning Signs:
+  - Repeated similar errors
+  - Infinite correction loops
+  - Unhandled error types
+  - Missing error context
+
+- Best Practices:
+  1. Capture all types of Python output
+  2. Provide detailed error context to Claude
+  3. Log all iterations of code changes
+  4. Monitor for correction cycles
+  5. Set maximum iteration limits
+
+- Related Scenarios:
+  - Matplotlib non-interactive environment handling
+  - Package import errors
+  - Syntax error correction
+  - Runtime error handling
+
+- Future Considerations:
+  - Enhanced error categorization
+  - Pattern recognition for common errors
+  - Optimization of correction cycles
+  - Error prevention through pre-execution analysis
+
+### Python MCP Temporary Directory Alignment - [2024-02-07]
+Tags: python, file-handling, path-resolution, configuration
+
+#### Context
+- System State: Python MCP Server handling file outputs
+- Configuration: Temporary directory for file operations
+- Environment: Node.js with Python shell integration
+- Requirements: Consistent file handling between Python and Node.js
+
+#### Problem Description
+- Challenge: Mismatched paths for saving and retrieving files
+- Impact: PNG files not being found after being saved
+- Error Pattern: Files saved in one directory but searched for in another
+- Root Cause: Inconsistent path resolution between components
+
+#### Investigation
+- Debug Process:
+  1. Traced file operations through logs
+  2. Identified two different temp paths in use:
+     - Save path: `/custom-mcp-servers/python-mcp/temp`
+     - Search path: `/logs/python-mcp/temp`
+  3. Found path resolution inconsistency in `env.ts`
+
+#### Solution
+- Implementation:
+  1. Standardized on `/logs/python-mcp/temp` for all operations
+  2. Updated `TEMP_DIR` in `env.ts` to use consistent path
+  3. Ensured all components reference the same `TEMP_DIR`
+- Why It Works:
+  - Single source of truth for temp directory
+  - Consistent path resolution across components
+  - Aligned with logging directory structure
+
+#### Prevention
+- Warning Signs:
+  - Files not found after successful save operations
+  - Different paths appearing in logs
+  - Inconsistent cleanup operations
+- Best Practices:
+  1. Use single source of truth for paths
+  2. Log both save and search paths
+  3. Verify path consistency across components
+  4. Test file operations end-to-end
+- Related Scenarios:
+  - File output handling
+  - Temporary file management
+  - Cross-component file operations
+- Future Considerations:
+  - Consider configuration file for paths
+  - Add path validation on startup
+  - Implement path resolution tests
+
 ## Categories
 - Configuration Issues
 - Performance Problems
@@ -639,3 +763,153 @@ if (section.trim().match(/^#+\s/)) {
 - Similar issues might occur with other markdown syntax elements if they get wrapped in HTML
 - Watch for inconsistent behavior between different markdown elements
 - Pay attention to XML/HTML processing that might interfere with markdown syntax
+
+## Type System Mismatches
+
+### MIME Type Conventions in MCP Servers
+**Issue:** Type mismatch between Python MCP server (`application/vnd.ant.python`) and client type system (`application/python`).
+
+**Context:**
+- MIME type naming follows IANA conventions
+- Format: `application/vnd.vendor-name.specific-type`
+  - `application/` - Top-level type for application-specific formats
+  - `vnd.` - Indicates vendor-specific format
+  - `vendor-name` - Unique identifier for the vendor/organization
+  - `specific-type` - The actual format or language
+
+**Impact:**
+- Type validation failures when MCP server and client use different type conventions
+- Can cause response parsing errors even when the actual content is valid
+
+**Prevention:**
+1. Maintain consistent type definitions across all system components
+2. Document MIME type conventions in system architecture
+3. Add type validation checks in development environment
+4. Consider creating a shared types package for all MCP components
+
+**Early Warning Signs:**
+- Response parsing errors with valid content
+- Type validation failures
+- Inconsistent artifact rendering
+
+**Solution Options:**
+1. Standardize on vendor-specific types (`application/vnd.ant.*`)
+2. Use generic types (`application/*`)
+3. Maintain type mapping between MCP servers and client
+
+## Debugging Methodology Learnings
+
+### Premature Solution Jumping
+**Context:** Error in Python MCP server response handling
+- Initial response: Jumped to conclusion about JSON parsing
+- Better response: Carefully analyzed error context and working components
+
+**Problem Pattern:**
+1. Saw error about parsing response
+2. Immediately assumed JSON parsing was broken
+3. Started making changes to working code
+4. Could have broken functional components
+
+**Better Approach Used Later:**
+1. Observed that non-Python functions were working
+2. Analyzed full error context and logs
+3. Noticed the specific artifact type in the error
+4. Traced the actual issue to type validation
+
+**Key Learnings:**
+1. When part of a system works:
+   - Start by understanding what's different about the failing case
+   - Don't change working components without clear evidence
+   - Look for patterns in what works vs what fails
+
+2. Error Investigation Steps:
+   - Identify which components are working
+   - Look for patterns in successful vs failed operations
+   - Trace the full error path before making changes
+   - Question assumptions about where the error originates
+
+3. Red Flags for Premature Solutions:
+   - Wanting to change working code without clear evidence
+   - Not being able to explain why working cases work
+   - Focusing on first theory without validating it
+   - Ignoring evidence from working components
+
+**Prevention:**
+1. Always ask:
+   - "What parts of the system are working?"
+   - "Why would this component behave differently?"
+   - "What evidence supports this being the actual issue?"
+   - "Could this change break working functionality?"
+
+2. Before making changes:
+   - Document working vs non-working cases
+   - Identify specific differences
+   - Validate theory against working cases
+   - Consider impact on working components
+
+**Related Scenarios:**
+- API integration issues
+- Type system mismatches
+- Response formatting errors
+- Cross-component communication
+
+## Plan Consistency and User Guidance
+
+### Context
+- System: AI Assistant working with users on complex implementations
+- Environment: Collaborative coding environment
+- Requirements: Keep implementation aligned with agreed plans while supporting user learning
+
+### Problem Description
+- Users may unknowingly suggest changes that deviate from the established plan
+- Impact: Could lead to inconsistent implementation or confusion
+- Challenge: Need to guide users back to plan while maintaining collaborative relationship
+
+### Investigation
+- Observed Pattern: Users might suggest alternative approaches without realizing they conflict with the plan
+- Example Case: Attempting to modify `.env` file when the solution required Python environment configuration
+- Impact: Could have led to incorrect implementation and confusion
+
+### Solution
+1. Implementation Guidelines:
+   - Always compare user suggestions against current implementation plan
+   - Politely point out when suggestions deviate from plan
+   - Explain why the original plan is more appropriate
+   - Offer to show the correct approach
+
+2. Communication Strategy:
+   ```
+   When user suggests alternative approach:
+   1. Acknowledge the suggestion
+   2. Point out the deviation from plan
+   3. Explain why original plan is better
+   4. Offer to proceed with planned approach
+   ```
+
+### Prevention
+- Warning Signs:
+  - User suggests modifications to unrelated files
+  - Proposed changes don't align with architecture
+  - Solutions involve different layers than planned
+
+- Best Practices:
+  1. Regularly reference the current phase document
+  2. Explain reasoning when redirecting user
+  3. Use teaching moments to reinforce architecture
+  4. Document successful redirections for future reference
+
+- Related Scenarios:
+  - Configuration management decisions
+  - Architecture choices
+  - Implementation strategies
+  - Technology stack decisions
+
+### Example Interaction
+```
+User: "Should we modify the .env file?"
+Assistant: "I notice that's different from our current plan. Let me explain why:
+1. Our plan involves Python environment configuration
+2. The .env file is for application-level settings
+3. Python environment settings are handled in env.ts
+Would you like me to show you how to implement this in the correct location?"
+```

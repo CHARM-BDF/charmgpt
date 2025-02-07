@@ -5,6 +5,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Define separate paths for logs and temp files
+export const LOGS_DIR = path.join(__dirname, '../../../../logs/python-mcp');
+export const TEMP_DIR = path.join(__dirname, '../../temp');  // Keep temp files close to the server
+
 // Comprehensive list of allowed Python packages
 const ALLOWED_PACKAGES = new Set([
   // Core data science
@@ -93,10 +97,15 @@ export function validatePythonCode(code: string): void {
   // Additional check for os module usage
   if (code.includes('import os')) {
     const osOperations = code.match(/os\.\w+/g) || [];
-    const allowedOsOperations = new Set(['os.getpid', 'os._exit']);
+    const allowedOsOperations = new Set([
+      'os.getpid',
+      'os._exit',
+      'os.environ',
+      'os.path.join'
+    ]);
     for (const op of osOperations) {
       if (!allowedOsOperations.has(op)) {
-        throw new Error(`Forbidden os operation: ${op}. Only process management operations are allowed.`);
+        throw new Error(`Forbidden os operation: ${op}. Only process management operations and path operations are allowed.`);
       }
     }
   }
@@ -104,9 +113,8 @@ export function validatePythonCode(code: string): void {
 
 export async function setupPythonEnvironment() {
   // Create temp directory if it doesn't exist
-  const tempDir = path.join(__dirname, '../../temp');
   try {
-    await fs.mkdir(tempDir, { recursive: true });
+    await fs.mkdir(TEMP_DIR, { recursive: true });
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(`Failed to create temp directory: ${error.message}`);
@@ -124,6 +132,7 @@ export async function setupPythonEnvironment() {
       PYTHONPATH: sitePackages,
       PYTHONUNBUFFERED: '1',
       MPLBACKEND: 'Agg',  // Non-interactive matplotlib backend
+      OUTPUT_DIR: TEMP_DIR,  // Use the shared temp directory
       // Disable potentially dangerous environment variables
       PYTHONEXECUTABLE: undefined,
       PYTHONSTARTUP: undefined,
@@ -144,11 +153,10 @@ export async function setupPythonEnvironment() {
 
 export async function cleanupPythonEnvironment() {
   // Clean up temp directory
-  const tempDir = path.join(__dirname, '../../temp');
   try {
-    const files = await fs.readdir(tempDir);
+    const files = await fs.readdir(TEMP_DIR);
     await Promise.all(
-      files.map(file => fs.unlink(path.join(tempDir, file)))
+      files.map(file => fs.unlink(path.join(TEMP_DIR, file)))
     );
   } catch (error) {
     console.error('Error cleaning up temp directory:', error);

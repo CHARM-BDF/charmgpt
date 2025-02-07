@@ -27,6 +27,7 @@ export const ArtifactContent: React.FC<{
     
     switch (type) {
       case 'application/python':
+      case 'application/vnd.ant.python':
         return 'python';
       case 'application/javascript':
         return 'javascript';
@@ -63,6 +64,7 @@ export const ArtifactContent: React.FC<{
     switch (artifact.type) {
       case 'code':
       case 'application/python':
+      case 'application/vnd.ant.python':
       case 'application/javascript':
       case 'application/vnd.react':
         return (
@@ -88,6 +90,17 @@ export const ArtifactContent: React.FC<{
             className="border rounded-lg p-4 bg-white"
             dangerouslySetInnerHTML={{ __html: sanitizeHTML(artifact.content) }}
           />
+        );
+      
+      case 'image/png':
+        return (
+          <div className="flex justify-center items-center">
+            <img 
+              src={`data:image/png;base64,${artifact.content}`}
+              alt={artifact.title}
+              className="max-w-full h-auto"
+            />
+          </div>
         );
       
       case 'image/svg+xml':
