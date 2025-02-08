@@ -94,12 +94,32 @@ export const ArtifactContent: React.FC<{
       
       case 'image/png':
         return (
-          <div className="flex justify-center items-center">
-            <img 
-              src={`data:image/png;base64,${artifact.content}`}
-              alt={artifact.title}
-              className="max-w-full h-auto"
-            />
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex justify-center items-center">
+              <img 
+                src={`data:image/png;base64,${artifact.content}`}
+                alt={artifact.title}
+                className="max-w-full h-auto"
+              />
+            </div>
+            {artifact.sourceCode && (
+              <div className="w-full">
+                <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
+                  <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200">
+                    Source Code
+                  </div>
+                  <div className="p-4">
+                    <SyntaxHighlighter
+                      language="python"
+                      style={oneLight}
+                      customStyle={{ margin: 0, background: 'transparent' }}
+                    >
+                      {artifact.sourceCode}
+                    </SyntaxHighlighter>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       

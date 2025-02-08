@@ -871,6 +871,7 @@ app.post('/api/chat', async (req: Request<{}, {}, {
                     metadata: Record<string, any>;
                 }>) {
                     const binaryId = crypto.randomUUID();
+                    // Add the image artifact
                     jsonResponse.conversation.push({
                         type: "artifact",
                         artifact: {
@@ -880,6 +881,21 @@ app.post('/api/chat', async (req: Request<{}, {}, {
                             content: binaryOutput.data
                         }
                     });
+                    
+                    // If source code is present in metadata, add it as a separate artifact
+                    if (binaryOutput.metadata?.sourceCode) {
+                        const codeId = crypto.randomUUID();
+                        jsonResponse.conversation.push({
+                            type: "artifact",
+                            artifact: {
+                                type: "code/python",
+                                id: codeId,
+                                title: "Source Code",
+                                content: binaryOutput.metadata.sourceCode,
+                                language: "python"
+                            }
+                        });
+                    }
                 }
             }
         } catch (parseError) {

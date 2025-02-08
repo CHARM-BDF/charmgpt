@@ -34,6 +34,7 @@ export interface XMLArtifact {
   content: string;
   position: number;
   language?: string;
+  sourceCode?: string;  // Optional source code for generated artifacts
 }
 
 export interface XMLRef {

@@ -90,7 +90,15 @@ interface ExecuteResult {
   binaryOutput?: {
     data: string;  // base64 encoded
     type: string;  // MIME type
-    metadata: Record<string, any>;
+    metadata: {
+      filename: string;
+      size: number;
+      dimensions: {
+        width: number;
+        height: number;
+      };
+      sourceCode: string;  // Source code that generated the output
+    };
   };
 }
 
@@ -264,7 +272,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
               dimensions: {
                 width,
                 height
-              }
+              },
+              sourceCode: code  // Add the source code to metadata
             }
           };
           

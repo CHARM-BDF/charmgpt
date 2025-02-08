@@ -21,4 +21,5 @@ export interface Artifact {
   timestamp: Date;
   position: number;
   language?: string;
+  sourceCode?: string;  // Optional source code for generated artifacts
 }

@@ -145,16 +145,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       
       // Return a description of the binary output instead of the data itself
       return {
-        content: [{
-          type: "text",
-          text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
-          metadata: {
-            hasBinaryOutput: true,
-            binaryType: result.binaryOutput.type,
-            ...result.binaryOutput.metadata
+        content: [
+
+          {
+            type: "text",
+            text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
+            metadata: {
+              hasBinaryOutput: true,
+              binaryType: result.binaryOutput.type,
+              ...result.binaryOutput.metadata
+            }
           }
-        }],
-        binaryOutput: result.binaryOutput,  // Store binary data for later use
+        ],
+        binaryOutput: {
+          ...result.binaryOutput,
+          metadata: {
+            ...result.binaryOutput.metadata,
+            sourceCode: result.code  // Include the source code in binary output metadata
+          }
+        },
         isError: false,
       };
     }
