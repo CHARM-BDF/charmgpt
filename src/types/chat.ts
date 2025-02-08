@@ -41,3 +41,30 @@ export interface XMLRef {
   artifactId: string;
   description: string;
 }
+
+export interface ButtonProps {
+  className?: string;
+  icon?: string;
+}
+
+export interface Artifact {
+  id: string;
+  artifactId: string;
+  type: string;
+  title: string;
+  content: string;
+  position: number;
+  language?: string;
+  sourceCode?: string;
+  buttonProps?: ButtonProps;
+}
+
+export interface ConversationItem {
+  type: 'text' | 'artifact';
+  content?: string;
+  artifact?: Artifact;
+}
+
+export interface FormatterInput {
+  conversation: ConversationItem[];
+}

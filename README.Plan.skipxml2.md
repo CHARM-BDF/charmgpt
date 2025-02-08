@@ -5,8 +5,47 @@
 ### Phase 1: Core Types and Validation (Foundation)
 1. Create/update type definition files
    - `src/types/artifacts.ts` - Core type definitions
+   ```typescript
+   interface Artifact {
+     id: string;
+     artifactId: string;
+     type: string;
+     title: string;
+     content: string;
+     position: number;
+     language?: string;
+     sourceCode?: string;  // For binary outputs with source code
+     buttonProps?: {
+       className?: string;
+       icon?: string;
+     };
+     timestamp: Date;
+   }
+   ```
    - `src/types/mcp.ts` - MCP specific types
-   Dependencies: None
+   ```typescript
+   interface MCPResponse {
+     content: Array<{
+       type: string;
+       text: string;
+       metadata?: {
+         hasBinaryOutput?: boolean;
+         binaryType?: string;
+         [key: string]: any;
+       }
+     }>;
+     binaryOutput?: {
+       type: string;
+       data: string;
+       metadata: {
+         size: number;
+         sourceCode: string;
+         [key: string]: any;
+       }
+     };
+     isError: boolean;
+   }
+   ```
 
 2. Create type validation utilities
    - `src/utils/typeValidation.ts`
@@ -15,7 +54,50 @@
 ### Phase 2: MCP Response Transformer
 1. Create transformer utility
    - `src/utils/mcpTransformer.ts`
-   Dependencies: Type definitions, Type validation
+   ```typescript
+   export function transformMCPResponse(mcpResponse: MCPResponse): FormatterInput {
+     const response: FormatterInput = {
+       conversation: []
+     };
+
+     // Handle binary output case (like PNG with source code)
+     if (mcpResponse.binaryOutput) {
+       const artifactId = crypto.randomUUID();
+       
+       // Add the text description
+       response.conversation.push({
+         type: 'text',
+         content: mcpResponse.content[0].text
+       });
+
+       // Add the binary output as an artifact with its source code
+       response.conversation.push({
+         type: 'artifact',
+         artifact: {
+           id: artifactId,
+           type: mcpResponse.binaryOutput.type,
+           title: `Generated ${mcpResponse.binaryOutput.type.split('/')[1].toUpperCase()}`,
+           content: mcpResponse.binaryOutput.data,
+           sourceCode: mcpResponse.binaryOutput.metadata.sourceCode,
+           language: 'python',
+           position: response.conversation.length,
+           buttonProps: {
+             className: 'artifact-button',
+             icon: '📎'
+           }
+         }
+       });
+     } else {
+       // Handle regular text/code output
+       response.conversation.push({
+         type: 'text',
+         content: mcpResponse.content[0].text
+       });
+     }
+
+     return response;
+   }
+   ```
 
 2. Create transformer tests
    - `src/utils/mcpTransformer.test.ts`
@@ -24,13 +106,117 @@
 ### Phase 3: Store Updates
 1. Update ChatStore
    - `src/store/chatStore.ts`
-   Dependencies: Type definitions
+   ```typescript
+   addArtifact: (artifact) => {
+     console.log(`ChatStore: Adding artifact ${artifact.id} at position ${artifact.position}`);
+     set((state) => ({
+       artifacts: [...state.artifacts, {
+         ...artifact,
+         timestamp: new Date(),
+         sourceCode: artifact.sourceCode,
+         buttonProps: artifact.buttonProps || {
+           className: 'artifact-button',
+           icon: '📎'
+         }
+       }].sort((a, b) => a.position - b.position),
+       selectedArtifactId: artifact.id,
+       showArtifactWindow: true,
+     }));
+     return artifact.id;
+   }
+   ```
 
 2. Update artifact handling
    - `src/components/artifacts/*`
    Dependencies: ChatStore updates, Type definitions
 
-### Phase 4: Server Updates
+### Phase 4: Button Component Implementation
+1. Create ArtifactButton Component
+   ```typescript
+   const ArtifactButton: React.FC<{
+     id: string;
+     type: string;
+     title: string;
+     buttonProps?: {
+       className?: string;
+       icon?: string;
+     }
+   }> = ({ id, type, title, buttonProps }) => {
+     const { selectArtifact } = useChatStore();
+
+     const handleClick = () => {
+       console.log('ArtifactButton: clicked with id:', id);
+       selectArtifact(id);
+     };
+
+     return (
+       <button
+         className={`inline-flex items-center gap-3 px-3 py-2 
+                   bg-slate-200 hover:bg-slate-300
+                   text-slate-700
+                   rounded-lg border border-slate-300
+                   shadow-[0_2px_4px_rgba(148,163,184,0.1)] 
+                   hover:shadow-[0_4px_6px_rgba(148,163,184,0.15)]
+                   transition-all duration-200
+                   min-w-[50%] max-w-full
+                   ${buttonProps?.className || ''}`}
+         onClick={handleClick}
+         data-artifact-id={id}
+         data-artifact-type={type}
+       >
+         <div className="flex-shrink-0 p-2 border-r border-slate-300">
+           {getIcon(type)}
+         </div>
+         <div className="flex flex-col items-start min-w-0">
+           <span className="text-sm font-medium truncate w-full">
+             {buttonProps?.icon || ''} {title}
+           </span>
+           <span className="text-xs text-slate-500">Click to open</span>
+         </div>
+       </button>
+     );
+   };
+   ```
+
+2. Update AssistantMarkdown Component
+   ```typescript
+   export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
+     return (
+       <ReactMarkdown 
+         children={content}
+         remarkPlugins={[remarkGfm]}
+         rehypePlugins={[rehypeRaw as any]}
+         components={{
+           ...markdownComponents,
+           button: ({node, ...props}: any) => {
+             if (props.className?.includes('artifact-button')) {
+               const id = props['data-artifact-id'];
+               const type = props['data-artifact-type'];
+               const title = props.children[0]?.toString().replace('📎 ', '');
+               
+               if (id && type && title) {
+                 return (
+                   <ArtifactButton
+                     id={id}
+                     type={type}
+                     title={title}
+                     buttonProps={{
+                       className: props.className,
+                       icon: '📎'
+                     }}
+                   />
+                 );
+               }
+             }
+             return <button {...props}>{props.children}</button>;
+           }
+         }}
+       />
+     );
+   };
+   ```
+
+### Phase 5: Server Updates
 1. Remove XML transformation code
    - `src/server/index.ts`
    Dependencies: All previous phases complete
@@ -39,13 +225,13 @@
    - `src/server/index.ts`
    Dependencies: Transformer, Type validation
 
-### Phase 5: Testing and Validation
+### Phase 6: Testing and Validation
 1. Unit tests for all new components
 2. Integration tests for full flow
 3. Performance testing
 4. Error handling validation
 
-### Phase 6: UI Polish and Documentation
+### Phase 7: UI Polish and Documentation
 1. Update source code display
 2. Add icons and indicators
 3. Update documentation
@@ -264,7 +450,11 @@ export function transformMCPResponse(mcpResponse: MCPResponse): FormatterInput {
         content: mcpResponse.binaryOutput.data,
         sourceCode: mcpResponse.binaryOutput.metadata.sourceCode,
         language: 'python',
-        position: response.conversation.length
+        position: response.conversation.length,
+        buttonProps: {
+          className: 'artifact-button',
+          icon: '📎'
+        }
       }
     });
   } else {
@@ -290,7 +480,11 @@ addArtifact: (artifact) => {
     artifacts: [...state.artifacts, {
       ...artifact,
       timestamp: new Date(),
-      sourceCode: artifact.sourceCode // Preserve source code
+      sourceCode: artifact.sourceCode,
+      buttonProps: artifact.buttonProps || {
+        className: 'artifact-button',
+        icon: '📎'
+      }
     }].sort((a, b) => a.position - b.position),
     selectedArtifactId: artifact.id,
     showArtifactWindow: true,
@@ -512,6 +706,7 @@ function updateResponseState(state: ResponseState, newData: Partial<ResponseStat
    - Binary outputs with source code
    - Bibliography handling
    - Error handling
+   - Artifact buttons with proper styling and icons
 2. No XML processing steps
 3. Clean JSON parsing with validation
 4. Proper error handling and recovery
