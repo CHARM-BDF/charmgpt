@@ -3,6 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import { DockerService } from '../services/docker'
+import { ViewMode } from '../types'
 
 const router = express.Router()
 const docker = new DockerService()
@@ -35,11 +36,15 @@ router.post('/upload', upload.single('file'), (req, res) => {
     }
 
     // Return file information
+    const ext = path.extname(req.file.originalname)
+    const viewMode: ViewMode = ext === '.csv' ? 'data' : 'output'
+
     res.json({
-      filepath: req.file.filename, // Just return the filename, not the full path
+      filepath: req.file.filename,
       filename: req.file.originalname,
       mimetype: req.file.mimetype,
-      size: req.file.size
+      size: req.file.size,
+      viewMode
     })
   } catch (error) {
     console.error('Upload error:', error)
