@@ -2,6 +2,7 @@ import express from 'express'
 import multer from 'multer'
 import { DockerService } from '../services/docker'
 import * as fs from 'fs'
+import { v4 as uuidv4 } from 'uuid'
 
 const router = express.Router()
 const docker = new DockerService()
@@ -18,8 +19,9 @@ const storage = multer.diskStorage({
     cb(null, tempDir)
   },
   filename: (req, file, cb) => {
-    // Keep original filename for now
-    cb(null, file.originalname)
+    // Use runId_filename format to match generated files
+    const runId = uuidv4()
+    cb(null, `${runId}_${file.originalname}`)
   }
 })
 
@@ -36,7 +38,7 @@ router.post('/upload', upload.single('file'), (req, res, next) => {
     console.log('File uploaded:', file)
 
     res.json({
-      filepath: file.filename,  // Just the filename, not the full path
+      filepath: file.filename,  // Contains the runId_filename
       filename: file.originalname,
       mimetype: file.mimetype,
       size: file.size,
