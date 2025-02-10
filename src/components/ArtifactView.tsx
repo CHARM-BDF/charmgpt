@@ -84,7 +84,9 @@ export default function ArtifactView() {
   if (!activeArtifact) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography>(artifact view)</Typography>
+        <Typography sx={{ fontStyle: 'italic', color: 'text.disabled' }}>
+          (artifact view)
+        </Typography>
       </Box>
     )
   }

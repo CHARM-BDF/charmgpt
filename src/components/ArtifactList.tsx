@@ -157,7 +157,9 @@ export default function ArtifactList() {
       
       {(artifacts.length == 0) ? (
         <Box sx={{ flex: 1, overflow: 'auto', p: 2}}>
-        <Typography>(artifact list)</Typography>
+        <Typography sx={{ fontStyle: 'italic', color: 'text.disabled' }}>
+          (artifact list)
+        </Typography>
       </Box>
       ) : (
       <List sx={{ flex: 1, overflow: 'auto' }}>
