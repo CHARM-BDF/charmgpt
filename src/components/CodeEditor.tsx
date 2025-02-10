@@ -1,11 +1,9 @@
 import { Box, ToggleButton, ToggleButtonGroup, Button } from '@mui/material'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import SaveIcon from '@mui/icons-material/Save'
-import BarChartIcon from '@mui/icons-material/BarChart'
-import TableChartIcon from '@mui/icons-material/TableChart'
 import Editor from './Editor'
 import { useArtifact } from '../contexts/useArtifact'
-import { EditorMode, ViewMode } from '../contexts/ArtifactContext.types'
+import { EditorMode } from '../contexts/ArtifactContext.types'
 
 export default function CodeEditor() {
   const { 
@@ -15,8 +13,6 @@ export default function CodeEditor() {
     editorContent, 
     planContent, 
     activeArtifact,
-    viewMode,
-    setViewMode
   } = useArtifact()
 
   // Add debug logging
@@ -24,18 +20,11 @@ export default function CodeEditor() {
     activeArtifact,
     hasPlot: activeArtifact?.plotFile,
     hasData: activeArtifact?.dataFile,
-    viewMode
   })
 
   const handleModeChange = (_: React.MouseEvent<HTMLElement>, newMode: EditorMode) => {
     if (newMode !== null) {
       setMode(newMode)
-    }
-  }
-
-  const handleViewChange = (_: React.MouseEvent<HTMLElement>, newMode: ViewMode | null) => {
-    if (newMode !== null) {
-      setViewMode(newMode)
     }
   }
 
@@ -110,27 +99,6 @@ export default function CodeEditor() {
           backgroundColor: 'background.paper',
           alignItems: 'center',
         }}>
-          {activeArtifact?.plotFile || activeArtifact?.dataFile ? (
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={handleViewChange}
-              size="small"
-            >
-              <ToggleButton 
-                value="plot" 
-                disabled={!activeArtifact?.plotFile}
-              >
-                <BarChartIcon fontSize="small" />
-              </ToggleButton>
-              <ToggleButton 
-                value="data" 
-                disabled={!activeArtifact?.dataFile}
-              >
-                <TableChartIcon fontSize="small" />
-              </ToggleButton>
-            </ToggleButtonGroup>
-          ) : null}
           <Button
             variant="contained"
             size="small"
