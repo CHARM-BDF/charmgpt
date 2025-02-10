@@ -141,7 +141,6 @@ export default function ChatInterface() {
           onClick={handleSend}
           disabled={isLoading || !input.trim()}
         >
-          Send
         </Button>
       </Stack>
     </Box>
