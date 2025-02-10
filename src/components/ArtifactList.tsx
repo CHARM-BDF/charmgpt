@@ -31,12 +31,23 @@ export default function ArtifactList() {
     if (!activeArtifact?.dataFile) return
     
     try {
-      const filename = activeArtifact.dataFile.split('/').pop()
-      if (!filename) {
+      // Remove any API prefix if present
+      const fullPath = activeArtifact.dataFile.startsWith('/api/data/') 
+        ? activeArtifact.dataFile.substring('/api/data/'.length)
+        : activeArtifact.dataFile
+
+      // Get the original filename from the path
+      const serverFilename = fullPath.split('/').pop()
+      if (!serverFilename) {
         throw new Error('Invalid file path')
       }
 
-      const response = await fetch(`/api/data/${filename}`)
+      // Use a display name based on the artifact name or original filename
+      const displayName = activeArtifact.name.endsWith('.csv')
+        ? activeArtifact.name
+        : serverFilename.replace(/^[^_]+_/, '') // Remove runId prefix
+
+      const response = await fetch(`/api/data/${serverFilename}`)
       if (!response.ok) {
         throw new Error('Failed to download file')
       }
@@ -45,7 +56,7 @@ export default function ArtifactList() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = filename
+      a.download = displayName
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
