@@ -14,7 +14,7 @@ export default function ChatInterface() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { addArtifact, setEditorContent, setMode, runArtifact } = useArtifact()
+  const { addArtifact, setEditorContent, setMode, runArtifact, generateSummary } = useArtifact()
 
  
   const parseCodeFromResponse = async (response: string, input: string) => {
@@ -65,7 +65,7 @@ export default function ChatInterface() {
     
     const userMessage: Message = {
       role: 'user',
-      content: input
+      content: input + '\n\n' + await generateSummary()
     }
     
     setMessages(prev => [...prev, userMessage])

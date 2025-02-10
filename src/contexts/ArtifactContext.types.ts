@@ -33,6 +33,7 @@ export interface ArtifactContextType {
   addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
   isRunning: boolean
   setIsRunning: (running: boolean) => void
+  generateSummary: () => Promise<string>
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 

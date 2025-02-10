@@ -90,6 +90,26 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }
 
+  const generateSummary = async () => {
+    const summaries = []
+    for (const artifact of artifacts) {
+      if (artifact.dataFile) {
+        // Get the original filename without runId prefix
+        const originalName = artifact.dataFile.split('_').slice(1).join('_')
+        const response = await fetch(`/api/data/${artifact.dataFile}`)
+        if (response.ok) {
+          const text = await response.text()
+          const firstLine = text.split('\n')[0]
+          summaries.push(`data/${originalName} columns: ${firstLine}`)
+        }
+      }
+    }
+
+    return summaries.length > 0 
+      ? '\nAvailable data files:\n' + summaries.join('\n')
+      : ''
+  }
+
   return (
     <ArtifactContext.Provider
       value={{
@@ -108,6 +128,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         setPlanContent,
         isRunning,
         setIsRunning,
+        generateSummary
       }}
     >
       {children}
