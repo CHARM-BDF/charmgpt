@@ -54,9 +54,18 @@ export default function ArtifactList() {
       console.error('Download failed:', err)
     }
   }
-  
-  const handleArtifactSelect = (artifact: typeof artifacts[0], viewMode: ViewMode) => {
+
+  const handleArtifactSelect = (artifact: typeof artifacts[0], viewMode?: ViewMode) => {
     setActiveArtifact(artifact)
+    if (!viewMode) {
+      if (artifact.plotFile) {
+        viewMode = 'plot';
+      } else if (artifact.dataFile?.endsWith('.csv')) {
+        viewMode = 'data';
+      } else {
+        viewMode = 'output';
+      }
+   }
     setViewMode(viewMode)
   }
 
@@ -147,7 +156,7 @@ export default function ArtifactList() {
           <ListItem key={artifact.id} disablePadding>
             <ListItemButton 
               selected={activeArtifact?.id === artifact.id}
-              onClick={() => handleArtifactSelect(artifact, artifact.dataFile?.endsWith('.csv') ? 'data' : 'output')}
+              onClick={() => handleArtifactSelect(artifact)}
             >
               <ListItemText 
                 primary={artifact.name}
