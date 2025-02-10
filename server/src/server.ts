@@ -3,6 +3,7 @@ import cors from 'cors'
 import { config } from 'dotenv'
 import { LLMRouter } from './routes/llm'
 import CodeRouter from './routes/code'
+import uploadRouter from './routes/upload'
 
 config() // Load environment variables
 
@@ -13,6 +14,7 @@ app.use(express.json())
 // Routes
 app.use('/api/llm', LLMRouter)
 app.use('/api', CodeRouter)
+app.use('/api', uploadRouter)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
@@ -31,4 +33,8 @@ app.listen(PORT, () => {
   console.log('  Serves plot images')
   console.log('- DELETE /api/plots/:filename')
   console.log('  Deletes plot files')
+  
+  console.log('\nFile Upload Routes:')
+  console.log('- POST /api/upload')
+  console.log('  Form data: { file: File }')
 }) 

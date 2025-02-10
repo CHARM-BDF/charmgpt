@@ -3,7 +3,7 @@ import { createContext } from 'react'
 export type EditorMode = 'code' | 'plan'
 export type ViewMode = 'plot' | 'data' | 'output'
 
-export type ArtifactType = 'chat' | 'code' | 'visualization'
+export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data'
 
 export interface Artifact {
   id: number
