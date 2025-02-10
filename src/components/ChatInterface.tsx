@@ -98,15 +98,15 @@ export default function ChatInterface() {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 1 }}>
-      <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }}>
-        {(messages.length == 0) ? (
+      {(messages.length == 0) ? (
           <Box sx={{ flex: 1, overflow: 'auto', p: 2}}>
           <Typography sx={{ fontStyle: 'italic', color: 'text.disabled' }}>
             (chat history)
           </Typography>
         </Box>
         ) : (
-        messages.map((message, index) => (
+      <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }}>
+        {messages.map((message, index) => (
           <Box 
             key={index} 
             sx={{ 
@@ -125,11 +125,11 @@ export default function ChatInterface() {
               {message.content}
             </Typography>
           </Box>
-        )))}
+        ))}
         {error && (
           <Typography color="error" variant="body2">{error}</Typography>
         )}
-      </Box>
+      </Box>)}
       
       <Stack direction="row" spacing={1} alignItems="center">
         <TextField
