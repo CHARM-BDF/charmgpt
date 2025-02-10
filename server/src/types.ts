@@ -11,4 +11,5 @@ export interface Artifact {
   code?: string
   source?: string
   pinned?: boolean
+  chatInput?: string
 } 

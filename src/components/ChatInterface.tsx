@@ -18,12 +18,10 @@ export default function ChatInterface() {
 
  
   const parseCodeFromResponse = async (response: string, input: string) => {
-    // Look for code blocks with ```python
     const codeBlockRegex = /```python\n([\s\S]*?)```/g
     const matches = [...response.matchAll(codeBlockRegex)]
     
     if (matches.length > 0) {
-      // Create a concise title from the user's input
       const artifactName = input.length > 50 ? input.substring(0, 47) + '...' : input
       
       // Join all code blocks with newlines between them
@@ -31,27 +29,28 @@ export default function ChatInterface() {
         .map(match => match[1].trim())
         .join('\n\n')
       
-      // Set the combined code in editor and run it
+      // Add the chat input as a comment at the top of the code
+      const codeWithComment = `"""Query: ${input}\n"""\n\n${combinedCode}`
+      
       setMode('code')
-      setEditorContent(combinedCode)
+      setEditorContent(codeWithComment)
       try {
-        await runArtifact(combinedCode, artifactName)
+        await runArtifact(codeWithComment, artifactName, input)
       } catch (err) {
         console.error('Failed to run code:', err)
-        // Only add artifact if execution failed
         addArtifact({
           type: 'code',
           name: artifactName,
-          code: combinedCode,
+          code: codeWithComment,
           output: err instanceof Error ? err.message : 'Failed to run code',
           plotFile: undefined,
           dataFile: undefined,
-          source: 'assistant'
+          source: 'assistant',
+          chatInput: input
         })
       }
     }
 
-    // Return the response with code blocks removed for chat display
     return response.replace(codeBlockRegex, '[Code added to editor and executed]')
   }
 
@@ -78,7 +77,7 @@ export default function ChatInterface() {
       })
 
       // Parse code blocks and create artifacts
-      const processedResponse = await parseCodeFromResponse(response, msg)
+      const processedResponse = await parseCodeFromResponse(response, input)
 
       const assistantMessage: Message = {
         role: 'assistant',

@@ -31,6 +31,7 @@ export interface Artifact {
   code?: string
   source?: string
   pinned?: boolean
+  chatInput?: string
 }
 
 export interface ArtifactContextType {
@@ -41,7 +42,7 @@ export interface ArtifactContextType {
   setMode: (mode: EditorMode) => void
   setViewMode: (mode: ViewMode) => void
   setActiveArtifact: (artifact: Artifact | null) => void
-  runArtifact: (code: string, name?: string) => Promise<void>
+  runArtifact: (code: string, name?: string, chatInput?: string) => Promise<void>
   editorContent: string
   setEditorContent: (content: string) => void
   planContent: string
