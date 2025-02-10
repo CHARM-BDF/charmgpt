@@ -12,12 +12,6 @@ interface DockerRunResult {
   dataFile?: string      // Name of the CSV file if generated
 }
 
-interface DataFileInfo {
-  originalPath: string
-  displayName: string
-  timestamp: number
-}
-
 export class DockerService {
   private tempDir: string
   private readonly imageTag: string
@@ -47,43 +41,39 @@ export class DockerService {
         await fsPromises.unlink(path.join(dataDir, link))
       }
 
-      // Collect all data files from artifacts
-      const artifactsPath = path.join(this.getTempDir(), 'artifacts.json')
-      const artifacts = await fsPromises.readFile(artifactsPath, 'utf-8')
-        .then(data => JSON.parse(data))
-        .catch(() => [])
-
-      // Map to track latest version of each display name
-      const latestFiles = new Map<string, DataFileInfo>()
-
-      // Process each artifact's data file
-      for (const artifact of artifacts) {
-        if (artifact.dataFile) {
-          const originalPath = path.join(this.getTempDir(), artifact.dataFile)
-          const displayName = artifact.name.endsWith('.csv') 
-            ? artifact.name 
-            : artifact.dataFile.replace(/^[^_]+_/, '')
-
-          // Only keep the most recent version of each display name
-          if (!latestFiles.has(displayName) || 
-              latestFiles.get(displayName)!.timestamp < artifact.timestamp) {
-            latestFiles.set(displayName, {
-              originalPath,
-              displayName,
-              timestamp: artifact.timestamp
-            })
+      // Get all files in temp directory
+      const files = await fsPromises.readdir(this.getTempDir())
+      
+      // Group files by their original name (removing runId prefix)
+      const fileGroups = new Map<string, { file: string, timestamp: number }[]>()
+      
+      for (const file of files) {
+        if (file.includes('_') && file.endsWith('.csv')) {
+          const originalName = file.split('_').slice(1).join('_') // Remove runId prefix
+          const stats = await fsPromises.stat(path.join(this.getTempDir(), file))
+          
+          if (!fileGroups.has(originalName)) {
+            fileGroups.set(originalName, [])
           }
+          fileGroups.get(originalName)!.push({
+            file,  // Just store the filename
+            timestamp: stats.mtimeMs
+          })
         }
       }
 
-      // Create symlinks for all latest files
-      for (const fileInfo of latestFiles.values()) {
-        const linkPath = path.join(dataDir, fileInfo.displayName)
+      // Create relative symlinks for the latest version of each file
+      for (const [originalName, versions] of fileGroups) {
+        versions.sort((a, b) => b.timestamp - a.timestamp)
+        const latest = versions[0]
+        const linkPath = path.join(dataDir, originalName)
+        const targetPath = path.join('..', 'temp', latest.file)  // Relative path to temp dir
         
-        // Create symlink if original file exists
-        if (await fsPromises.access(fileInfo.originalPath).then(() => true).catch(() => false)) {
-          await fsPromises.symlink(fileInfo.originalPath, linkPath)
-          console.log(`Created symlink: ${linkPath} -> ${fileInfo.originalPath}`)
+        try {
+          await fsPromises.symlink(targetPath, linkPath)
+          console.log(`Created symlink: ${originalName} -> ${targetPath}`)
+        } catch (error) {
+          console.error(`Failed to create symlink for ${originalName}:`, error)
         }
       }
     } catch (error) {
@@ -122,21 +112,20 @@ export class DockerService {
       const plotFilename = `${runId}_plot.png`
       const plotPath = path.join(tempDir, plotFilename)
       const hasPlot = fs.existsSync(plotPath)
-      console.log('Plot file status:', { plotPath, exists: hasPlot })
 
-      const dataFilename = `${runId}_data.csv`
-      const dataPath = path.join(tempDir, dataFilename)
-      const hasData = fs.existsSync(dataPath)
-      console.log('Data file status:', { dataPath, exists: hasData })
+      // Look for any CSV files with this runId
+      const files = await fsPromises.readdir(tempDir)
+      const csvFile = files.find(f => f.startsWith(runId) && f.endsWith('.csv'))
+      const hasData = !!csvFile
 
       if (hasPlot) console.log('Found plot file:', plotFilename)
-      if (hasData) console.log('Found data file:', dataFilename)
+      if (hasData) console.log('Found data file:', csvFile)
 
       return {
         success: true,
         output: stdout,
         plotFile: hasPlot ? plotFilename : undefined,
-        dataFile: hasData ? dataFilename : undefined
+        dataFile: hasData ? csvFile : undefined
       }
     } catch (error) {
       console.error('Error running code:', error)
@@ -233,7 +222,8 @@ try:
         print(f"\\nFound CSV files: {csv_files}")
         import shutil
         for csv_file in csv_files:
-            output_path = f'/app/output/{runId}_data.csv'
+            # Save with original name in the filename
+            output_path = f'/app/output/{runId}_{csv_file}'
             shutil.move(csv_file, output_path)
             print(f"Moved {csv_file} to {output_path}")
     
@@ -252,8 +242,9 @@ print(output_buffer.getvalue())
         'run',
         '--name', runId,
         '-v', `${codeDir}:/app/code:ro`,  // Code directory (read-only)
-        '-v', `${this.getTempDir()}:/app/output`,  // Output directory
-        '-v', `${this.getTempDir()}:/app/data:ro`,  // Data directory (read-only)
+        '-v', `${this.getTempDir()}:/app/temp:ro`,  // Temp directory (read-only)
+        '-v', `${this.getTempDir()}:/app/output:rw`,  // Output directory (writable)
+        '-v', `${path.join(this.getTempDir(), 'data')}:/app/data:ro`,  // Data directory (read-only)
         '--network', 'none',
         '--memory', '512m',
         '--cpus', '0.5',
