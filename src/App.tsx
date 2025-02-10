@@ -8,6 +8,7 @@ import { useEffect, useCallback, useRef } from 'react'
 import { ArtifactProvider } from './contexts/ArtifactContext'
 import { useArtifact } from './contexts/useArtifact'
 import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels'
+import { ChatProvider } from './contexts/ChatContext'
 
 const theme = createTheme({
   // You can customize your theme here
@@ -147,11 +148,13 @@ export default function App() {
   }, [])
 
   return (
-    <ArtifactProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <AppContent />
-      </ThemeProvider>
-    </ArtifactProvider>
+    <ChatProvider>
+      <ArtifactProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <AppContent />
+        </ThemeProvider>
+      </ArtifactProvider>
+    </ChatProvider>
   )
 }

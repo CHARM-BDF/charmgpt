@@ -1,0 +1,1 @@
+export type ViewMode = 'plot' | 'data' | 'output' 
