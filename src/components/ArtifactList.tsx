@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Box, List, ListItem, ListItemButton, ListItemText, IconButton, ToggleButtonGroup, ToggleButton, Tooltip } from '@mui/material'
+import { Box, List, ListItem, ListItemButton, ListItemText, IconButton, ToggleButtonGroup, ToggleButton, Tooltip, Typography } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import UploadIcon from '@mui/icons-material/Upload'
 import DownloadIcon from '@mui/icons-material/Download'
@@ -151,6 +151,11 @@ export default function ArtifactList() {
         </ToggleButtonGroup>
       </Box>
       
+      {(artifacts.length == 0) ? (
+        <Box sx={{ flex: 1, overflow: 'auto', p: 2}}>
+        <Typography>(artifact list)</Typography>
+      </Box>
+      ) : (
       <List sx={{ flex: 1, overflow: 'auto' }}>
         {artifacts.map((artifact) => (
           <ListItem key={artifact.id} disablePadding>
@@ -166,6 +171,7 @@ export default function ArtifactList() {
           </ListItem>
         ))}
       </List>
+      )}
     </Box>
   )
 } 
