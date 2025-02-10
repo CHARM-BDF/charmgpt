@@ -4,12 +4,12 @@ import DataViewer from './DataViewer'
 
 export default function ArtifactView() {
   const { activeArtifact, viewMode } = useArtifact()
-
+  
   if (!activeArtifact) {
     return (
       <Box sx={{ flex: 1, overflow: 'auto', p: 2}}>
-        <Typography sx={{  height: '100%', p: 2, fontStyle: 'italic', color: 'text.disabled' }}>
-        (artifact view)
+        <Typography sx={{ height: '100%', p: 2, fontStyle: 'italic', color: 'text.disabled' }}>
+          (artifact view)
         </Typography>
       </Box>
     )

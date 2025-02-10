@@ -13,7 +13,6 @@ export default function Editor() {
     setPlanContent,
     mode, 
     artifacts,
-    setActiveArtifact,
     setEditorContent: setEditorContentContext,
     setPlanContent: setPlanContentContext
   } = useArtifact()
@@ -53,9 +52,7 @@ ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
     
     // Update the plan content after insertion
     setPlanContentContext(editor.getValue())
-    // Clear active artifact after insertion
-    setActiveArtifact(null)
-  }, [setPlanContentContext, setActiveArtifact])
+  }, [setPlanContentContext])
 
   // Handle artifact selection
   useEffect(() => {
@@ -66,7 +63,8 @@ ${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
 
     if (activeArtifact && mode === 'plan') {
       insertArtifactAtCursor(activeArtifact)
-    } else if (activeArtifact && mode === 'code' && activeArtifact.code) {
+    }
+    else if (activeArtifact && mode === 'code' && activeArtifact.code) {
       setEditorContentContext(activeArtifact.code)
     }
   }, [activeArtifact, mode, setEditorContentContext, insertArtifactAtCursor])

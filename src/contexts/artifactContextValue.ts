@@ -1,17 +1,21 @@
 import { ArtifactContextType } from './ArtifactContext.types'
 
-export const initialArtifactContextValue: ArtifactContextType = {
+export const artifactContextValue: ArtifactContextType = {
   artifacts: [],
   activeArtifact: null,
   viewMode: 'plot',
   mode: 'code',
-  setMode: () => void 0,
-  setViewMode: () => void 0,
-  setActiveArtifact: () => void 0,
-  runArtifact: async () => void 0,
+  setMode: () => undefined,
+  setViewMode: () => undefined,
+  setActiveArtifact: () => undefined,
+  runArtifact: async () => undefined,
   editorContent: '',
-  setEditorContent: () => void 0,
-  addArtifact: () => void 0,
+  setEditorContent: () => undefined,
+  addArtifact: () => undefined,
   planContent: '',
-  setPlanContent: () => void 0,
+  setPlanContent: () => undefined,
+  isRunning: false,
+  setIsRunning: () => undefined,
+  generateSummary: async () => '',
+  togglePin: async () => undefined
 } 

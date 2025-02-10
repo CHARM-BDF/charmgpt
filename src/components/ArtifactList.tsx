@@ -3,7 +3,7 @@ import { Box, List, ListItem, ListItemButton, ListItemText, IconButton, ToggleBu
 import { useArtifact } from '../contexts/useArtifact'
 import UploadIcon from '@mui/icons-material/Upload'
 import DownloadIcon from '@mui/icons-material/Download'
-import { ViewMode, ArtifactType, getDisplayName } from '../contexts/ArtifactContext.types'
+import { ViewMode, ArtifactType, getDisplayName, Artifact } from '../contexts/ArtifactContext.types'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 
@@ -16,7 +16,17 @@ interface UploadResponse {
 }
 
 export default function ArtifactList() {
-  const { artifacts, addArtifact, activeArtifact, setActiveArtifact, viewMode, setViewMode, togglePin } = useArtifact()
+  const { 
+    artifacts, 
+    addArtifact, 
+    activeArtifact, 
+    setActiveArtifact, 
+    mode,
+    viewMode,
+    setViewMode,
+    setEditorContent,
+    togglePin 
+  } = useArtifact()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleUploadClick = () => {
@@ -63,18 +73,22 @@ export default function ArtifactList() {
     }
   }
 
-  const handleArtifactSelect = (artifact: typeof artifacts[0], viewMode?: ViewMode) => {
+  const handleArtifactSelect = (artifact: Artifact) => {
+    if (mode === 'code' && artifact.code) {
+      // In code mode, load code into editor
+      setEditorContent(artifact.code)
+    }
+    // Always update active artifact for viewing
     setActiveArtifact(artifact)
-    if (!viewMode) {
-      if (artifact.plotFile) {
-        viewMode = 'plot';
-      } else if (artifact.dataFile?.endsWith('.csv')) {
-        viewMode = 'data';
-      } else {
-        viewMode = 'output';
-      }
-   }
-    setViewMode(viewMode)
+
+    // Set appropriate view mode based on artifact content
+    if (artifact.dataFile) {
+      setViewMode('data')
+    } else if (artifact.plotFile) {
+      setViewMode('plot')
+    } else {
+      setViewMode('output')
+    }
   }
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,7 +122,7 @@ export default function ArtifactList() {
       }
 
       addArtifact(newArtifact)
-      handleArtifactSelect(newArtifact, data.viewMode)
+      handleArtifactSelect(newArtifact)
     } catch (error) {
       console.error('Upload failed:', error)
     }

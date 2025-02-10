@@ -8,13 +8,15 @@ interface DataViewerProps {
 
 interface DataRow {
   id: number
-  [key: string]: string | number  // Allow any string key with string or number value
+  [key: string]: string | number
 }
 
 export default function DataViewer({ dataFile }: DataViewerProps) {
   const [rows, setRows] = useState<DataRow[]>([])
   const [columns, setColumns] = useState<GridColDef[]>([])
   const [loading, setLoading] = useState(true)
+
+  console.log('DataViewer received dataFile:', dataFile)
 
   useEffect(() => {
     const loadData = async () => {
@@ -23,11 +25,15 @@ export default function DataViewer({ dataFile }: DataViewerProps) {
       try {
         setLoading(true)
         const response = await fetch(`/api/data/${dataFile}`)
+        if (!response.ok) {
+          throw new Error('Failed to load data')
+        }
+
         const text = await response.text()
-        
-        // Parse CSV
         const lines = text.split('\n').filter(line => line.trim())
-        const headers = lines[0].split(',')
+        if (lines.length === 0) return
+
+        const headers = lines[0].split(',').map(h => h.trim())
         
         // Create column definitions
         const cols = headers.map(header => ({
@@ -40,10 +46,12 @@ export default function DataViewer({ dataFile }: DataViewerProps) {
         
         // Parse data rows
         const data = lines.slice(1).map((line, index) => {
-          const values = line.split(',')
+          const values = line.split(',').map(v => v.trim())
           const row: DataRow = { id: index }
           headers.forEach((header, i) => {
-            row[header] = values[i]
+            // Try to convert to number if possible
+            const value = values[i]
+            row[header] = isNaN(Number(value)) ? value : Number(value)
           })
           return row
         })
