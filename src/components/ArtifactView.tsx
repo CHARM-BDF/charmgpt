@@ -90,8 +90,7 @@ export default function ArtifactView() {
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
+       <Box sx={{ height: '100%', overflow: 'auto', p: 1 }}>
         {viewMode === 'plot' && activeArtifact.plotFile && (
           <Box sx={{ textAlign: 'center' }}>
             <img 
@@ -156,6 +155,5 @@ export default function ArtifactView() {
           </Typography>
         )}
       </Box>
-    </Box>
   )
 }
