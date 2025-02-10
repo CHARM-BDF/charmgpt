@@ -100,13 +100,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         if (response.ok) {
           const text = await response.text()
           const firstLine = text.split('\n')[0]
-          summaries.push(`data/${originalName} columns: ${firstLine}`)
+          summaries.push(`- ${originalName} with columns ${firstLine}`)
         }
       }
     }
 
     return summaries.length > 0 
-      ? '\nAvailable data files:\n' + summaries.join('\n')
+      ? '\nAvailable data files, to be used for plots or tables:\n' + summaries.join('\n')
       : ''
   }
 

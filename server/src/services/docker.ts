@@ -29,10 +29,9 @@ export class DockerService {
     return this.tempDir
   }
 
-  private async prepareDataFiles(): Promise<void> {
-    // Create data directory if it doesn't exist
-    const dataDir = path.join(this.getTempDir(), 'data')
-    await fsPromises.mkdir(dataDir, { recursive: true })
+  private async prepareDataFiles(dataDir: string): Promise<void> {
+    //const dataDir = path.join(this.getTempDir(), 'data')
+    //await fsPromises.mkdir(dataDir, { recursive: true })
 
     try {
       // Clean up old symlinks first
@@ -86,15 +85,15 @@ export class DockerService {
     console.log('Starting code run:', runId)
 
     try {
-      // Prepare data files before running code
-      await this.prepareDataFiles()
-
       const tempDir = this.getTempDir()
+      console.log('Temp directory:', tempDir)
 
       // Save the code to a temporary file
       const codeDir = path.join(tempDir, runId)
       await fsPromises.mkdir(codeDir, { recursive: true })
       
+      await this.prepareDataFiles(codeDir);
+
       const userCodePath = path.join(codeDir, 'user_code.py')
       const wrapperPath = path.join(codeDir, 'wrapper.py')
       
@@ -241,13 +240,12 @@ print(output_buffer.getvalue())
       const docker = spawn('docker', [
         'run',
         '--name', runId,
-        '-v', `${codeDir}:/app/code:ro`,  // Code directory (read-only)
+        '-v', `${codeDir}:/app/code:rw`,  // Code directory (read-only)
         '-v', `${this.getTempDir()}:/app/temp:ro`,  // Temp directory (read-only)
-        '-v', `${this.getTempDir()}:/app/output:rw`,  // Output directory (writable)
-        '-v', `${path.join(this.getTempDir(), 'data')}:/app/data:ro`,  // Data directory (read-only)
-        '--network', 'none',
+        '-v', `${this.getTempDir()}:/app/output:rw`,  // Output directory (writable)      '--network', 'none',
         '--memory', '512m',
         '--cpus', '0.5',
+        '--workdir', '/app/code',
         this.imageTag,
         'python',
         '/app/code/wrapper.py'

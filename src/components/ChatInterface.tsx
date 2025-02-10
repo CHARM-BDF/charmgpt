@@ -63,9 +63,12 @@ export default function ChatInterface() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
     
+    let msg = await generateSummary() + '\n' + input
+    msg = msg.trim()
+
     const userMessage: Message = {
       role: 'user',
-      content: input + '\n\n' + await generateSummary()
+      content: msg
     }
     
     setMessages(prev => [...prev, userMessage])
@@ -74,13 +77,13 @@ export default function ChatInterface() {
     setIsLoading(true)
 
     try {
-      const response = await chatWithLLM(input, {
+      const response = await chatWithLLM(msg, {
         provider: 'ollama',
         model: 'qwen2.5'
       })
 
       // Parse code blocks and create artifacts
-      const processedResponse = await parseCodeFromResponse(response, input)
+      const processedResponse = await parseCodeFromResponse(response, msg)
 
       const assistantMessage: Message = {
         role: 'assistant',
