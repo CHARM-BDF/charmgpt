@@ -107,14 +107,6 @@ export default function ArtifactView() {
     loadCSV()
   }, [activeArtifact])
 
-  useEffect(() => {
-    if (activeArtifact?.dataFile) {
-      if (activeArtifact.dataFile.endsWith('.csv') && viewMode !== 'data') {
-        setViewMode('data')
-      }
-    }
-  }, [activeArtifact, viewMode, setViewMode])
-
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage)
   }
@@ -147,7 +139,9 @@ export default function ArtifactView() {
           {activeArtifact.dataFile && (
             <ToggleButton value="data">Data</ToggleButton>
           )}
-          <ToggleButton value="output">Output</ToggleButton>
+          {activeArtifact.output && (
+            <ToggleButton value="output">Output</ToggleButton>
+          )}
         </ToggleButtonGroup>
 
         {activeArtifact.dataFile && (
