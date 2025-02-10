@@ -22,37 +22,32 @@ export default function ChatInterface() {
     const codeBlockRegex = /```python\n([\s\S]*?)```/g
     const matches = [...response.matchAll(codeBlockRegex)]
     
-    // Create a concise title from the user's input
-    const artifactName = input.length > 50 ? input.substring(0, 47) + '...' : input
-    
-    // Get the last code block to set in editor
-    const lastCodeBlock = matches[matches.length - 1]
-    
-    for (const match of matches) {
-      if (match[1]) {
-        const code = match[1].trim()
-        
-        // If this is the last code block, set it in the editor and run it
-        if (match === lastCodeBlock) {
-          setMode('code')
-          setEditorContent(code)
-          try {
-            // Let runArtifact handle the artifact creation and execution
-            await runArtifact(code, artifactName)
-          } catch (err) {
-            console.error('Failed to run code:', err)
-            // Only add artifact if execution failed
-            addArtifact({
-              type: 'code',
-              name: artifactName,
-              code,
-              output: err instanceof Error ? err.message : 'Failed to run code',
-              plotFile: undefined,
-              dataFile: undefined,
-              source: 'assistant'
-            })
-          }
-        }
+    if (matches.length > 0) {
+      // Create a concise title from the user's input
+      const artifactName = input.length > 50 ? input.substring(0, 47) + '...' : input
+      
+      // Join all code blocks with newlines between them
+      const combinedCode = matches
+        .map(match => match[1].trim())
+        .join('\n\n')
+      
+      // Set the combined code in editor and run it
+      setMode('code')
+      setEditorContent(combinedCode)
+      try {
+        await runArtifact(combinedCode, artifactName)
+      } catch (err) {
+        console.error('Failed to run code:', err)
+        // Only add artifact if execution failed
+        addArtifact({
+          type: 'code',
+          name: artifactName,
+          code: combinedCode,
+          output: err instanceof Error ? err.message : 'Failed to run code',
+          plotFile: undefined,
+          dataFile: undefined,
+          source: 'assistant'
+        })
       }
     }
 
