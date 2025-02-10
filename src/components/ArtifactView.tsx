@@ -119,7 +119,7 @@ export default function ArtifactView() {
   if (!activeArtifact) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography>Select an artifact to view</Typography>
+        <Typography>(artifact view)</Typography>
       </Box>
     )
   }
