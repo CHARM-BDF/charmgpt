@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Box, Paper, Typography, CircularProgress, ToggleButtonGroup, ToggleButton, IconButton, Tooltip } from '@mui/material'
+import { Box, Paper, Typography, CircularProgress } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import Papa from 'papaparse'
-import { ViewMode } from '../contexts/ArtifactContext.types'
-import DownloadIcon from '@mui/icons-material/Download'
+
 import {
   Table,
   TableBody,
@@ -20,46 +19,12 @@ interface CSVData {
 }
 
 export default function ArtifactView() {
-  const { activeArtifact, viewMode, setViewMode } = useArtifact()
+  const { activeArtifact, viewMode } = useArtifact()
   const [csvData, setCSVData] = useState<CSVData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-
-  const handleViewModeChange = (_: React.MouseEvent<HTMLElement>, newMode: ViewMode) => {
-    if (newMode !== null) {
-      setViewMode(newMode)
-    }
-  }
-
-  const handleDownload = async () => {
-    if (!activeArtifact?.dataFile) return
-    
-    try {
-      const filename = activeArtifact.dataFile.split('/').pop()
-      if (!filename) {
-        throw new Error('Invalid file path')
-      }
-
-      const response = await fetch(`/api/data/${filename}`)
-      if (!response.ok) {
-        throw new Error('Failed to download file')
-      }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (err) {
-      console.error('Download failed:', err)
-    }
-  }
 
   useEffect(() => {
     if (!activeArtifact?.dataFile?.endsWith('.csv')) {
@@ -126,33 +91,6 @@ export default function ArtifactView() {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <ToggleButtonGroup
-          value={viewMode}
-          exclusive
-          onChange={handleViewModeChange}
-          size="small"
-        >
-          {activeArtifact.plotFile && (
-            <ToggleButton value="plot">Plot</ToggleButton>
-          )}
-          {activeArtifact.dataFile && (
-            <ToggleButton value="data">Data</ToggleButton>
-          )}
-          {activeArtifact.output && (
-            <ToggleButton value="output">Output</ToggleButton>
-          )}
-        </ToggleButtonGroup>
-
-        {activeArtifact.dataFile && (
-          <Tooltip title="Download data">
-            <IconButton onClick={handleDownload} size="small">
-              <DownloadIcon />
-            </IconButton>
-          </Tooltip>
-        )}
-      </Box>
-
       <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
         {viewMode === 'plot' && activeArtifact.plotFile && (
           <Box sx={{ textAlign: 'center' }}>
