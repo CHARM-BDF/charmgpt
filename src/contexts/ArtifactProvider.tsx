@@ -44,13 +44,17 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
       const result = await response.json()
 
+      // Add API prefix to plot and data files if they exist
+      const plotFile = result.plotFile ? `/api/data/${result.plotFile}` : undefined
+      const dataFile = result.dataFile ? result.dataFile : undefined
+
       const newArtifact = {
         type: 'code' as const,
         name,
         code,
         output: result.output,
-        plotFile: result.plotFile,
-        dataFile: result.dataFile,
+        plotFile,
+        dataFile,
         source: 'assistant'
       }
 
@@ -59,14 +63,14 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       // Set this as the active artifact
       setActiveArtifact({
         ...newArtifact,
-        id: artifacts.length, // This assumes addArtifact adds to the end of the list
+        id: artifacts.length,
         timestamp: Date.now()
       })
 
       // Set the most appropriate view mode based on what's available
-      if (result.plotFile) {
+      if (plotFile) {
         setViewMode('plot')
-      } else if (result.dataFile) {
+      } else if (dataFile) {
         setViewMode('data')
       } else if (result.output) {
         setViewMode('output')

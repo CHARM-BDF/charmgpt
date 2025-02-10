@@ -1,7 +1,7 @@
-import { Box, Paper, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { useState, useEffect } from 'react'
-import { ViewMode } from '../contexts/ArtifactContext.types'
+import { ToggleButtonGroup, ToggleButton } from '@mui/material'
 
 interface DataPreviewProps {
   dataFile: string
@@ -80,35 +80,17 @@ function DataPreview({ dataFile }: DataPreviewProps) {
   )
 }
 
-// Helper function to determine the first available view mode
-function getInitialViewMode(artifact: {
-  plotFile?: string,
-  dataFile?: string,
-  output?: string
-}): ViewMode {
-  if (artifact.plotFile) return 'plot'
-  if (artifact.dataFile) return 'data'
-  if (artifact.output) return 'output'
-  return 'plot' // fallback
-}
-
 export default function ArtifactView() {
   const { activeArtifact, viewMode, setViewMode } = useArtifact()
 
-  // Set initial view mode when artifact changes
-  useEffect(() => {
-    if (activeArtifact) {
-      const initialMode = getInitialViewMode(activeArtifact)
-      setViewMode(initialMode)
+  const handleViewChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newMode: string | null
+  ) => {
+    if (newMode) {
+      setViewMode(newMode as 'plot' | 'data' | 'output')
     }
-  }, [activeArtifact, setViewMode]) // Added missing dependencies
-
-  console.log('ArtifactView render:', { 
-    viewMode, 
-    hasPlot: activeArtifact?.plotFile,
-    hasData: activeArtifact?.dataFile,
-    hasOutput: activeArtifact?.output
-  })
+  }
 
   if (!activeArtifact) {
     return (
@@ -118,99 +100,86 @@ export default function ArtifactView() {
     )
   }
 
+  const renderContent = () => {
+    switch (viewMode) {
+      case 'plot':
+        return activeArtifact.plotFile ? (
+          <Box 
+            component="img" 
+            src={activeArtifact.plotFile}
+            sx={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              maxWidth: '100%',
+              maxHeight: '100%'
+            }}
+          />
+        ) : null
+
+      case 'data':
+        return activeArtifact.dataFile ? (
+          <Box>
+            <Box sx={{ mb: 2 }}>
+              <a 
+                href={`/api/data/${activeArtifact.dataFile}`}
+                download
+                style={{ textDecoration: 'none' }}
+              >
+                Download CSV
+              </a>
+            </Box>
+            <DataPreview dataFile={activeArtifact.dataFile} />
+          </Box>
+        ) : null
+
+      case 'output':
+        return (
+          <Box sx={{ 
+            fontFamily: 'monospace',
+            whiteSpace: 'pre-wrap',
+            overflow: 'auto'
+          }}>
+            {activeArtifact.output}
+          </Box>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
-    <Box sx={{ 
-      p: 2,
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      {/* Header with reduced bottom margin */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center',
-        gap: 2,
-        mb: 1  // Reduced from mb: 2 to mb: 1
-      }}>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          {activeArtifact.name}
-        </Typography>
-        
+    <Box 
+      sx={{ 
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
+      <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
         <ToggleButtonGroup
           value={viewMode}
           exclusive
-          onChange={(_, newMode) => newMode && setViewMode(newMode)}
+          onChange={handleViewChange}
           size="small"
         >
-          <ToggleButton 
-            value="plot" 
-            aria-label="plot view"
-            disabled={!activeArtifact.plotFile}
-          >
-            Plot
-          </ToggleButton>
-          <ToggleButton 
-            value="data" 
-            aria-label="data view"
-            disabled={!activeArtifact.dataFile}
-          >
-            Data
-          </ToggleButton>
-          <ToggleButton 
-            value="output" 
-            aria-label="output view"
-            disabled={!activeArtifact.output}
-          >
-            Output
-          </ToggleButton>
+          {activeArtifact.plotFile && (
+            <ToggleButton value="plot">Plot</ToggleButton>
+          )}
+          {activeArtifact.dataFile && (
+            <ToggleButton value="data">Data</ToggleButton>
+          )}
+          {activeArtifact.output && (
+            <ToggleButton value="output">Output</ToggleButton>
+          )}
         </ToggleButtonGroup>
       </Box>
-
-      {/* Content Area with reduced top padding */}
-      <Paper sx={{ 
-        pt: 1,  // Reduced from p: 2 to pt: 1 for top padding
-        px: 2,  // Keep horizontal padding
-        pb: 2,  // Keep bottom padding
-        flexGrow: 1,
-        overflow: 'auto',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-          {viewMode === 'plot' && activeArtifact.plotFile && (
-            <img 
-              src={`/api/plots/${activeArtifact.plotFile}`}
-              alt="Plot" 
-              style={{ width: '100%', height: 'auto' }}
-            />
-          )}
-          
-          {viewMode === 'data' && activeArtifact.dataFile && (
-            <Box>
-              <Box sx={{ mb: 2 }}>
-                <a 
-                  href={`/api/data/${activeArtifact.dataFile}`}
-                  download
-                  style={{ textDecoration: 'none' }}
-                >
-                  Download CSV
-                </a>
-              </Box>
-              <DataPreview dataFile={activeArtifact.dataFile} />
-            </Box>
-          )}
-
-          {viewMode === 'output' && activeArtifact.output && (
-            <Box sx={{ 
-              fontFamily: 'monospace',
-              whiteSpace: 'pre-wrap',
-              overflow: 'auto'
-            }}>
-              {activeArtifact.output}
-            </Box>
-          )}
-        </Box>
-      </Paper>
+      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        {renderContent()}
+      </Box>
     </Box>
   )
 }
