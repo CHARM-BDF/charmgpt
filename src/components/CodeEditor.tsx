@@ -1,4 +1,4 @@
-import { Box, ToggleButton, ToggleButtonGroup, Button } from '@mui/material'
+import { Box, ToggleButton, ToggleButtonGroup, Button, CircularProgress } from '@mui/material'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import SaveIcon from '@mui/icons-material/Save'
 import Editor from './Editor'
@@ -13,6 +13,7 @@ export default function CodeEditor() {
     editorContent, 
     planContent, 
     activeArtifact,
+    isRunning
   } = useArtifact()
 
   // Add debug logging
@@ -102,11 +103,11 @@ export default function CodeEditor() {
           <Button
             variant="contained"
             size="small"
-            startIcon={<PlayArrowIcon />}
+            startIcon={isRunning ? <CircularProgress size={16} color="inherit" /> : <PlayArrowIcon />}
             onClick={handleRun}
-            disabled={mode === 'plan' || !editorContent}
+            disabled={mode === 'plan' || !editorContent || isRunning}
           >
-            Run
+            {isRunning ? 'Running...' : 'Run'}
           </Button>
           <Button
             variant="outlined"

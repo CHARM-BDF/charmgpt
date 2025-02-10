@@ -31,6 +31,8 @@ export interface ArtifactContextType {
   planContent: string
   setPlanContent: (content: string) => void
   addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
+  isRunning: boolean
+  setIsRunning: (running: boolean) => void
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 

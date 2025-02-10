@@ -13,6 +13,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [editorContent, setEditorContent] = useState('')
   const [planContent, setPlanContent] = useState('')
   const [mode, setMode] = useState<EditorMode>('code')
+  const [isRunning, setIsRunning] = useState(false)
 
   const addArtifact = (artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact = {
@@ -25,6 +26,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
   const runArtifact = async (code: string, name: string = 'Run Result') => {
     try {
+      setIsRunning(true)
       const response = await fetch('/api/run-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,6 +82,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     } catch (error) {
       console.error('Failed to run code:', error)
       throw error
+    } finally {
+      setIsRunning(false)
     }
   }
 
@@ -99,6 +103,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         addArtifact,
         planContent,
         setPlanContent,
+        isRunning,
+        setIsRunning,
       }}
     >
       {children}
