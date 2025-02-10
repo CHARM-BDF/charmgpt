@@ -17,9 +17,11 @@ const ResizeHandle = () => (
   <PanelResizeHandle 
     style={{
       width: '4px',
-      background: 'var(--mui-palette-divider)',
+      background: '#e0e0e0',  // Lighter gray for the handle
       margin: '0',
       cursor: 'col-resize',
+      borderLeft: '1px solid #bdbdbd',  // Add border for definition
+      borderRight: '1px solid #bdbdbd',
     }}
   />
 )
@@ -28,9 +30,11 @@ const VerticalResizeHandle = () => (
   <PanelResizeHandle 
     style={{
       height: '4px',
-      background: 'var(--mui-palette-divider)',
+      background: '#e0e0e0',  // Lighter gray for the handle
       margin: '0',
       cursor: 'row-resize',
+      borderTop: '1px solid #bdbdbd',    // Add border for definition
+      borderBottom: '1px solid #bdbdbd',
     }}
   />
 )
@@ -73,7 +77,8 @@ function AppContent() {
       top: 0,
       left: 0,
       right: 0,
-      bottom: 0
+      bottom: 0,
+      bgcolor: '#f5f5f5',  // Light gray background
     }}>
       <PanelGroup direction="horizontal" style={{ width: '100%' }}>
         <Panel 
@@ -81,7 +86,13 @@ function AppContent() {
           minSize={70} 
           maxSize={85} 
           ref={mainPanelRef}
-          style={{ display: 'flex' }}
+          style={{ 
+            display: 'flex',
+            padding: '8px',
+            backgroundColor: '#fff',  // White background for panels
+            borderRadius: '4px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+          }}
         >
           <PanelGroup direction="vertical" style={{ height: '100%', width: '100%' }}>
             <Panel 
@@ -89,7 +100,12 @@ function AppContent() {
               minSize={50} 
               maxSize={75} 
               ref={editorPanelRef}
-              style={{ display: 'flex' }}
+              style={{ 
+                display: 'flex',
+                backgroundColor: '#fff',
+                borderRadius: '4px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+              }}
             >
               <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
                 <CodeEditor />
@@ -98,7 +114,16 @@ function AppContent() {
             
             <VerticalResizeHandle />
             
-            <Panel minSize={25} maxSize={50} style={{ display: 'flex' }}>
+            <Panel 
+              minSize={25} 
+              maxSize={50} 
+              style={{ 
+                display: 'flex',
+                backgroundColor: '#fff',
+                borderRadius: '4px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+              }}
+            >
               <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
                 <ArtifactView />
               </Box>
@@ -112,7 +137,13 @@ function AppContent() {
           defaultSize={20} 
           minSize={15} 
           maxSize={30}
-          style={{ display: 'flex' }}
+          style={{ 
+            display: 'flex',
+            padding: '8px',
+            backgroundColor: '#fff',
+            borderRadius: '4px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+          }}
         >
           <PanelGroup direction="vertical" style={{ height: '100%', width: '100%' }}>
             <Panel 
@@ -120,7 +151,12 @@ function AppContent() {
               minSize={30} 
               maxSize={70} 
               ref={rightPanelRef}
-              style={{ display: 'flex' }}
+              style={{ 
+                display: 'flex',
+                backgroundColor: '#fff',
+                borderRadius: '4px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+              }}
             >
               <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
                 <ArtifactList />
@@ -129,7 +165,16 @@ function AppContent() {
             
             <VerticalResizeHandle />
             
-            <Panel minSize={30} maxSize={70} style={{ display: 'flex' }}>
+            <Panel 
+              minSize={30} 
+              maxSize={70} 
+              style={{ 
+                display: 'flex',
+                backgroundColor: '#fff',
+                borderRadius: '4px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+              }}
+            >
               <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
                 <ChatInterface />
               </Box>
