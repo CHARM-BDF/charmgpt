@@ -1,17 +1,24 @@
 import express from 'express'
 import multer from 'multer'
 import { DockerService } from '../services/docker'
+import * as fs from 'fs'
 
 const router = express.Router()
 const docker = new DockerService()
 
+// Ensure temp directory exists
+const tempDir = docker.getTempDir()
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true })
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, docker.getTempDir())
+    cb(null, tempDir)
   },
   filename: (req, file, cb) => {
-    // Save uploaded files directly in temp dir with original name
+    // Keep original filename for now
     cb(null, file.originalname)
   }
 })
