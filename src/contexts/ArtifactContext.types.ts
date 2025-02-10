@@ -30,6 +30,7 @@ export interface Artifact {
   timestamp: number
   code?: string
   source?: string
+  pinned?: boolean
 }
 
 export interface ArtifactContextType {
@@ -49,6 +50,7 @@ export interface ArtifactContextType {
   isRunning: boolean
   setIsRunning: (running: boolean) => void
   generateSummary: () => Promise<string>
+  togglePin: (artifactId: number) => Promise<void>
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 

@@ -4,6 +4,7 @@ import { config } from 'dotenv'
 import { LLMRouter } from './routes/llm'
 import CodeRouter from './routes/code'
 import uploadRouter from './routes/upload'
+import artifactsRouter from './routes/artifacts'
 
 config() // Load environment variables
 
@@ -15,6 +16,7 @@ app.use(express.json())
 app.use('/api/llm', LLMRouter)
 app.use('/api', CodeRouter)
 app.use('/api', uploadRouter)
+app.use('/api/artifacts', artifactsRouter)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {

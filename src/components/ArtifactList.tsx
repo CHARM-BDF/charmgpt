@@ -4,6 +4,8 @@ import { useArtifact } from '../contexts/useArtifact'
 import UploadIcon from '@mui/icons-material/Upload'
 import DownloadIcon from '@mui/icons-material/Download'
 import { ViewMode, ArtifactType, getDisplayName } from '../contexts/ArtifactContext.types'
+import PushPinIcon from '@mui/icons-material/PushPin'
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 
 interface UploadResponse {
   filepath: string
@@ -14,7 +16,7 @@ interface UploadResponse {
 }
 
 export default function ArtifactList() {
-  const { artifacts, addArtifact, activeArtifact, setActiveArtifact, viewMode, setViewMode } = useArtifact()
+  const { artifacts, addArtifact, activeArtifact, setActiveArtifact, viewMode, setViewMode, togglePin } = useArtifact()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleUploadClick = () => {
@@ -164,7 +166,15 @@ export default function ArtifactList() {
       ) : (
       <List sx={{ flex: 1, overflow: 'auto' }}>
         {artifacts.map((artifact) => (
-          <ListItem key={artifact.id} disablePadding>
+          <ListItem
+            key={artifact.id}
+            disablePadding
+            secondaryAction={
+              <IconButton edge="end" onClick={() => togglePin(artifact.id)}>
+                {artifact.pinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
+              </IconButton>
+            }
+          >
             <ListItemButton 
               selected={activeArtifact?.id === artifact.id}
               onClick={() => handleArtifactSelect(artifact)}

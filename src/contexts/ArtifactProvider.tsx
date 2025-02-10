@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import { ArtifactContext } from './createArtifactContext'
 import { Artifact, ViewMode, EditorMode, getDisplayName } from './ArtifactContext.types'
 
@@ -15,11 +15,32 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [mode, setMode] = useState<EditorMode>('code')
   const [isRunning, setIsRunning] = useState(false)
 
+  // Split artifact loading into a separate function
+  const loadPinnedArtifacts = async () => {
+    try {
+      const response = await fetch('/api/artifacts/pinned')
+      if (response.ok) {
+        const pinnedArtifacts = await response.json()
+        // Just set the pinned artifacts directly
+        setArtifacts(pinnedArtifacts)
+      }
+    } catch (error) {
+      console.error('Failed to load pinned artifacts:', error)
+    }
+  }
+
+  // Load pinned artifacts on startup
+  useEffect(() => {
+    loadPinnedArtifacts()
+  }, [])
+
+  // Update addArtifact to check for pinned status
   const addArtifact = (artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact = {
       ...artifact,
       id: Date.now(),
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      pinned: false  // Start unpinned
     }
     setArtifacts(prev => [...prev, newArtifact])
   }
@@ -128,6 +149,36 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       : ''
   }
 
+  // Update togglePin to handle persistence
+  const togglePin = async (artifactId: number) => {
+    const artifact = artifacts.find(a => a.id === artifactId)
+    if (!artifact) return
+
+    const newPinnedStatus = !artifact.pinned
+    const updatedArtifact = { ...artifact, pinned: newPinnedStatus }
+
+    try {
+      const response = await fetch('/api/artifacts/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          artifactId,
+          pinned: newPinnedStatus,
+          artifact: updatedArtifact
+        })
+      })
+
+      if (response.ok) {
+        // Just update the pin status, don't reload all artifacts
+        setArtifacts(prev => prev.map(a => 
+          a.id === artifactId ? updatedArtifact : a
+        ))
+      }
+    } catch (error) {
+      console.error('Failed to toggle pin:', error)
+    }
+  }
+
   return (
     <ArtifactContext.Provider
       value={{
@@ -146,7 +197,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         setPlanContent,
         isRunning,
         setIsRunning,
-        generateSummary
+        generateSummary,
+        togglePin
       }}
     >
       {children}
