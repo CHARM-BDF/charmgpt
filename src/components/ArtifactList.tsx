@@ -1,138 +1,99 @@
-import { Box, List, ListItem, ListItemButton, ListItemText, Typography, IconButton, Tooltip } from '@mui/material'
+import { useRef } from 'react'
+import { Box, List, ListItem, ListItemButton, ListItemText, IconButton, Tooltip } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
-import { formatDistanceToNow } from 'date-fns'
-import AddIcon from '@mui/icons-material/Add'
-import DownloadIcon from '@mui/icons-material/Download'
+import UploadIcon from '@mui/icons-material/Upload'
+import { ViewMode, ArtifactType } from '../contexts/ArtifactContext.types'
+
+interface UploadResponse {
+  filepath: string
+  filename: string
+  mimetype: string
+  size: number
+  viewMode: ViewMode
+}
 
 export default function ArtifactList() {
-  const { artifacts, activeArtifact, setActiveArtifact, mode } = useArtifact()
+  const { artifacts, addArtifact, activeArtifact, setActiveArtifact, setViewMode } = useArtifact()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const getArtifactDescription = (artifact: typeof artifacts[0]) => {
-    if (artifact.type === 'visualization') {
-      return 'Plot generated'
-    }
-    // Get the first line of output, or first 50 chars if no newline
-    const firstLine = artifact.output.split('\n')[0]
-    return firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
   }
 
-  const handleAddToPlan = (artifact: typeof artifacts[0], e: React.MouseEvent) => {
-    e.stopPropagation()
-    window.dispatchEvent(new CustomEvent('shouldInsertArtifact'))
+  const handleArtifactSelect = (artifact: typeof artifacts[0], viewMode: ViewMode) => {
     setActiveArtifact(artifact)
+    setViewMode(viewMode)
   }
 
-  const handleDownloadData = (artifact: typeof artifacts[0], e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (artifact.dataFile) {
-      const link = document.createElement('a')
-      link.href = `/api/code/data/${artifact.dataFile}`
-      link.download = artifact.dataFile
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const data: UploadResponse = await response.json()
+      const now = Date.now()
+      
+      // Create new artifact with the uploaded file
+      const newArtifact = {
+        id: now,
+        type: 'upload' as ArtifactType,
+        name: data.filename,
+        dataFile: data.filepath,
+        output: `Uploaded file: ${data.filename}\nSize: ${data.size} bytes\nType: ${data.mimetype}`,
+        timestamp: now
+      }
+
+      // Add artifact and immediately select it with the correct view mode
+      addArtifact(newArtifact)
+      handleArtifactSelect(newArtifact, data.viewMode)
+    } catch (error) {
+      console.error('Upload failed:', error)
+    }
+
+    // Clear the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography variant="h6">History</Typography>
+      <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end' }}>
+        <Tooltip title="Upload file">
+          <IconButton size="small" onClick={handleUploadClick}>
+            <UploadIcon />
+          </IconButton>
+        </Tooltip>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleUpload}
+          style={{ display: 'none' }}
+        />
       </Box>
-      <List 
-        sx={{ 
-          flex: 1, 
-          overflow: 'auto',
-          '& .MuiListItem-root': {
-            padding: 0,
-          },
-          '& .MuiListItemButton-root': {
-            px: 2,
-            py: 1,
-          },
-        }}
-      >
-        {artifacts.slice().reverse().map((artifact) => (
-          <ListItem 
-            key={artifact.id}
-            disablePadding
-            sx={{
-              bgcolor: activeArtifact?.id === artifact.id ? 'action.selected' : 'transparent',
-              '&:hover': {
-                bgcolor: 'action.hover',
-              },
-            }}
-            secondaryAction={
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                {mode === 'plan' && (
-                  <Tooltip title="Add to plan">
-                    <IconButton
-                      edge="end"
-                      aria-label="add to plan"
-                      onClick={(e) => handleAddToPlan(artifact, e)}
-                    >
-                      <AddIcon />
-                    </IconButton>
-                  </Tooltip>
-                )}
-                {artifact.dataFile && (
-                  <Tooltip title="Download data">
-                    <IconButton
-                      edge="end"
-                      aria-label="download data"
-                      onClick={(e) => handleDownloadData(artifact, e)}
-                    >
-                      <DownloadIcon />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </Box>
-            }
-          >
-            <ListItemButton
-              onClick={() => setActiveArtifact(artifact)}
-              dense
+      
+      <List sx={{ flex: 1, overflow: 'auto' }}>
+        {artifacts.map((artifact) => (
+          <ListItem key={artifact.id} disablePadding>
+            <ListItemButton 
+              selected={activeArtifact?.id === artifact.id}
+              onClick={() => handleArtifactSelect(artifact, artifact.dataFile?.endsWith('.csv') ? 'data' : 'output')}
             >
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <Typography
-                      component="span"
-                      sx={{ 
-                        flex: 1,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        mr: 1
-                      }}
-                    >
-                      {artifact.name}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      component="span"
-                      sx={{ 
-                        color: 'text.secondary',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {formatDistanceToNow(artifact.timestamp, { addSuffix: true })}
-                    </Typography>
-                  </Box>
-                }
-                secondary={
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      color: 'text.secondary'
-                    }}
-                  >
-                    {getArtifactDescription(artifact)}
-                  </Typography>
-                }
+              <ListItemText 
+                primary={artifact.name}
+                secondary={new Date(artifact.timestamp).toLocaleString()}
               />
             </ListItemButton>
           </ListItem>
