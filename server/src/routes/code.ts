@@ -58,12 +58,18 @@ router.delete<FileParams>('/plots/:filename', async (req, res) => {
 
 router.post('/run-code', async (req, res) => {
   try {
-    const { code, timestamp } = req.body
+    const { code, artifacts } = req.body
+    
+    // Save artifacts info if provided
+    if (artifacts) {
+      await fsPromises.writeFile(
+        path.join(docker.getTempDir(), 'artifacts.json'),
+        JSON.stringify(artifacts)
+      )
+    }
+
     const result = await docker.runCode(code)
-    res.json({
-      ...result,
-      timestamp  // Return the timestamp to confirm we're getting fresh results
-    })
+    res.json(result)
   } catch (error) {
     console.error('Error running code:', error)
     res.status(500).json({ error: 'Failed to run code' })

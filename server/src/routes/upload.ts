@@ -1,57 +1,42 @@
 import express from 'express'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
 import { DockerService } from '../services/docker'
-import { ViewMode } from '../types'
 
 const router = express.Router()
 const docker = new DockerService()
 
-// Configure multer to use the same temp directory as the code route
+// Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const tempDir = docker.getTempDir()
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true })
-    }
-    cb(null, tempDir)
+  destination: (req, file, cb) => {
+    cb(null, docker.getTempDir())
   },
-  filename: (_req, file, cb) => {
-    // Keep original name but make it unique
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`
-    const ext = path.extname(file.originalname)
-    const basename = path.basename(file.originalname, ext)
-    cb(null, `${basename}-${uniqueSuffix}${ext}`)
+  filename: (req, file, cb) => {
+    // Save uploaded files directly in temp dir with original name
+    cb(null, file.originalname)
   }
 })
 
 const upload = multer({ storage })
 
-router.post('/upload', upload.single('file'), (req, res) => {
+router.post('/upload', upload.single('file'), (req, res, next) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' })
       return
     }
 
-    // Return file information
-    const ext = path.extname(req.file.originalname)
-    const viewMode: ViewMode = ext === '.csv' ? 'data' : 'output'
+    const file = req.file
+    console.log('File uploaded:', file)
 
     res.json({
-      filepath: req.file.filename,
-      filename: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      viewMode
+      filepath: file.filename,  // Just the filename, not the full path
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      viewMode: file.mimetype === 'text/csv' ? 'data' : 'output'
     })
   } catch (error) {
-    console.error('Upload error:', error)
-    res.status(500).json({ 
-      error: 'Failed to upload file',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    })
+    next(error)
   }
 })
 

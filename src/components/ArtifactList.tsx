@@ -105,19 +105,17 @@ export default function ArtifactList() {
         id: now,
         type: 'upload' as ArtifactType,
         name: data.filename,
-        dataFile: data.filepath,
+        dataFile: data.filepath,  // This will be just the filename
         output: `Uploaded file: ${data.filename}\nSize: ${data.size} bytes\nType: ${data.mimetype}`,
         timestamp: now
       }
 
-      // Add artifact and immediately select it with the correct view mode
       addArtifact(newArtifact)
       handleArtifactSelect(newArtifact, data.viewMode)
     } catch (error) {
       console.error('Upload failed:', error)
     }
 
-    // Clear the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
