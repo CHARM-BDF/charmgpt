@@ -95,8 +95,7 @@ export default function ArtifactView() {
           <Box sx={{ textAlign: 'center' }}>
             <img 
               src={`/api/data/${activeArtifact.plotFile.split('/').pop()}`} 
-              alt="Plot" 
-              style={{ maxWidth: '100%', height: 'auto' }}
+              alt="Plot"
             />
           </Box>
         )}
