@@ -5,6 +5,22 @@ export type ViewMode = 'plot' | 'data' | 'output'
 
 export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data'
 
+/**
+ * Gets the display name for a file by removing the runId prefix.
+ * This matches the server-side logic for symlink names.
+ */
+export const getDisplayName = (activeArtifact: Artifact): string => {
+  if (!activeArtifact.dataFile) {
+    return activeArtifact.name
+  }
+  // TODO: Try variant: artifact.dataFile.split('_').slice(1).join('_')
+  // Use a display name based on the artifact name or original filename
+  const displayName = activeArtifact.name.endsWith('.csv')
+    ? activeArtifact.name
+    : activeArtifact.dataFile.replace(/^[^_]+_/, '') // Remove runId prefix
+  return displayName
+}
+
 export interface Artifact {
   id: number
   name: string

@@ -3,7 +3,7 @@ import { Box, List, ListItem, ListItemButton, ListItemText, IconButton, ToggleBu
 import { useArtifact } from '../contexts/useArtifact'
 import UploadIcon from '@mui/icons-material/Upload'
 import DownloadIcon from '@mui/icons-material/Download'
-import { ViewMode, ArtifactType } from '../contexts/ArtifactContext.types'
+import { ViewMode, ArtifactType, getDisplayName } from '../contexts/ArtifactContext.types'
 
 interface UploadResponse {
   filepath: string
@@ -31,21 +31,16 @@ export default function ArtifactList() {
     if (!activeArtifact?.dataFile) return
     
     try {
-      // Remove any API prefix if present
-      const fullPath = activeArtifact.dataFile.startsWith('/api/data/') 
-        ? activeArtifact.dataFile.substring('/api/data/'.length)
-        : activeArtifact.dataFile
 
+      const fullPath = activeArtifact.dataFile.startsWith('/api/data/') 
+      ? activeArtifact.dataFile.substring('/api/data/'.length)
+      : activeArtifact.dataFile
+  
       // Get the original filename from the path
       const serverFilename = fullPath.split('/').pop()
       if (!serverFilename) {
         throw new Error('Invalid file path')
       }
-
-      // Use a display name based on the artifact name or original filename
-      const displayName = activeArtifact.name.endsWith('.csv')
-        ? activeArtifact.name
-        : serverFilename.replace(/^[^_]+_/, '') // Remove runId prefix
 
       const response = await fetch(`/api/data/${serverFilename}`)
       if (!response.ok) {
@@ -56,7 +51,7 @@ export default function ArtifactList() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = displayName
+      a.download = getDisplayName(activeArtifact)
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ViewMode, EditorMode } from './ArtifactContext.types'
+import { Artifact, ViewMode, EditorMode, getDisplayName } from './ArtifactContext.types'
 
 interface ArtifactProviderProps {
   children: ReactNode
@@ -95,7 +95,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     for (const artifact of artifacts) {
       if (artifact.dataFile) {
         // Get the original filename without runId prefix
-        const originalName = artifact.dataFile.split('_').slice(1).join('_')
+        const originalName = getDisplayName(artifact);
         const response = await fetch(`/api/data/${artifact.dataFile}`)
         if (response.ok) {
           const text = await response.text()
