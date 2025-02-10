@@ -25,7 +25,7 @@ export interface ArtifactContextType {
   setMode: (mode: EditorMode) => void
   setViewMode: (mode: ViewMode) => void
   setActiveArtifact: (artifact: Artifact | null) => void
-  runArtifact: (code: string) => Promise<void>
+  runArtifact: (code: string, name?: string) => Promise<void>
   editorContent: string
   setEditorContent: (content: string) => void
   planContent: string

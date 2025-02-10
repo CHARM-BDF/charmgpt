@@ -23,77 +23,59 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     setArtifacts(prev => [...prev, newArtifact])
   }
 
-  const runArtifact = async (code: string) => {
+  const runArtifact = async (code: string, name: string = 'Run Result') => {
     try {
-      console.log('Starting runArtifact with code:', code)
-      
       const response = await fetch('/api/run-code', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
       })
-
-      console.log('API Response status:', response.status)
-      const responseText = await response.text()
-      console.log('API Response text:', responseText)
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`)
+        const errorText = await response.text()
+        throw new Error(`Failed to run code: ${errorText}`)
       }
 
-      let result
-      try {
-        result = JSON.parse(responseText)
-      } catch (e) {
-        console.error('Failed to parse response as JSON:', e)
-        throw new Error('Invalid response format from server')
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response but got: ${text.substring(0, 100)}...`)
       }
 
-      console.log('Parsed result:', result)
-
-      const timestamp = new Date().toLocaleTimeString()
-      const name = `Run Result (${timestamp})`
-
-      console.log('Creating new artifact with name:', name)
+      const result = await response.json()
 
       const newArtifact = {
+        type: 'code' as const,
         name,
-        output: result.output || '',
+        code,
+        output: result.output,
         plotFile: result.plotFile,
         dataFile: result.dataFile,
-        type: 'visualization' as const,
-        code
+        source: 'assistant'
       }
 
-      console.log('New artifact:', newArtifact)
-
-      // Add the new artifact
       addArtifact(newArtifact)
 
-      // Set it as active after adding it
-      setArtifacts(prevArtifacts => {
-        console.log('Previous artifacts:', prevArtifacts)
-        const latest = prevArtifacts[prevArtifacts.length - 1]
-        if (latest) {
-          console.log('Setting active artifact:', latest)
-          setActiveArtifact(latest)
-        }
-        return prevArtifacts
+      // Set this as the active artifact
+      setActiveArtifact({
+        ...newArtifact,
+        id: artifacts.length, // This assumes addArtifact adds to the end of the list
+        timestamp: Date.now()
       })
 
-    } catch (error) {
-      console.error('Error in runArtifact:', error)
-      const timestamp = new Date().toLocaleTimeString()
-      const errorArtifact = {
-        name: `Error (${timestamp})`,
-        output: error instanceof Error ? error.message : 'Unknown error',
-        type: 'visualization' as const,
-        code
+      // Set the most appropriate view mode based on what's available
+      if (result.plotFile) {
+        setViewMode('plot')
+      } else if (result.dataFile) {
+        setViewMode('data')
+      } else if (result.output) {
+        setViewMode('output')
       }
-      console.log('Adding error artifact:', errorArtifact)
-      addArtifact(errorArtifact)
+
+      return result
+    } catch (error) {
+      console.error('Failed to run code:', error)
+      throw error
     }
   }
 

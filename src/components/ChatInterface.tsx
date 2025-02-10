@@ -14,40 +14,49 @@ export default function ChatInterface() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { addArtifact, setEditorContent, setMode } = useArtifact()
+  const { addArtifact, setEditorContent, setMode, runArtifact } = useArtifact()
 
-  const parseCodeFromResponse = (response: string, input: string) => {
+  const parseCodeFromResponse = async (response: string, input: string) => {
     // Look for code blocks with ```python
     const codeBlockRegex = /```python\n([\s\S]*?)```/g
     const matches = [...response.matchAll(codeBlockRegex)]
-    const inputShort = input.length > 20 ? input.substring(0, 20) + '...' : input
+    
+    // Create a concise title from the user's input
+    const artifactName = input.length > 50 ? input.substring(0, 47) + '...' : input
     
     // Get the last code block to set in editor
     const lastCodeBlock = matches[matches.length - 1]
     
-    matches.forEach(match => {
+    for (const match of matches) {
       if (match[1]) {
         const code = match[1].trim()
-        addArtifact({
-          type: 'code',
-          name: inputShort,
-          code,
-          output: '',
-          plotFile: undefined,
-          dataFile: undefined,
-          source: 'assistant'
-        })
         
-        // If this is the last code block, set it in the editor
+        // If this is the last code block, set it in the editor and run it
         if (match === lastCodeBlock) {
           setMode('code')
           setEditorContent(code)
+          try {
+            // Let runArtifact handle the artifact creation and execution
+            await runArtifact(code, artifactName)
+          } catch (err) {
+            console.error('Failed to run code:', err)
+            // Only add artifact if execution failed
+            addArtifact({
+              type: 'code',
+              name: artifactName,
+              code,
+              output: err instanceof Error ? err.message : 'Failed to run code',
+              plotFile: undefined,
+              dataFile: undefined,
+              source: 'assistant'
+            })
+          }
         }
       }
-    })
+    }
 
     // Return the response with code blocks removed for chat display
-    return response.replace(codeBlockRegex, '[Code added to editor]')
+    return response.replace(codeBlockRegex, '[Code added to editor and executed]')
   }
 
   const handleSend = async () => {
@@ -70,7 +79,7 @@ export default function ChatInterface() {
       })
 
       // Parse code blocks and create artifacts
-      const processedResponse = parseCodeFromResponse(response, input)
+      const processedResponse = await parseCodeFromResponse(response, input)
 
       const assistantMessage: Message = {
         role: 'assistant',
