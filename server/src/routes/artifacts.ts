@@ -36,7 +36,9 @@ async function loadPinnedArtifacts(): Promise<Artifact[]> {
 
 // Save pinned artifacts
 async function savePinnedArtifacts(artifacts: Artifact[]) {
-  await fs.writeFile(ARTIFACTS_FILE, JSON.stringify(artifacts, null, 2))
+  // Only save artifacts that are marked as pinned
+  const pinnedArtifacts = artifacts.filter(a => a.pinned)
+  await fs.writeFile(ARTIFACTS_FILE, JSON.stringify(pinnedArtifacts, null, 2))
 }
 
 router.get('/pinned', async (req, res) => {
@@ -62,17 +64,16 @@ router.post('/pin', async (req, res) => {
       // Add to pinned artifacts if not already there
       if (!artifacts.find((a) => a.id === artifactId)) {
         artifacts.push(artifact)
-        await savePinnedArtifacts(artifacts)
       }
     } else {
       // Remove from pinned artifacts
       const index = artifacts.findIndex((a) => a.id === artifactId)
       if (index !== -1) {
         artifacts.splice(index, 1)
-        await savePinnedArtifacts(artifacts)
       }
     }
     
+    await savePinnedArtifacts(artifacts)
     res.json({ success: true })
   } catch (error) {
     void error

@@ -21,8 +21,12 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       const response = await fetch('/api/artifacts/pinned')
       if (response.ok) {
         const pinnedArtifacts = await response.json()
-        // Just set the pinned artifacts directly
-        setArtifacts(pinnedArtifacts)
+        
+        // Set initial artifacts to the pinned ones
+        setArtifacts(pinnedArtifacts.map((a: Artifact) => ({
+          ...a,
+          pinned: true  // Ensure they're marked as pinned
+        })))
       }
     } catch (error) {
       console.error('Failed to load pinned artifacts:', error)
