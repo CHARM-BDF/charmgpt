@@ -142,6 +142,9 @@ import numpy as np
 # Set the runId for the plot filename
 runId = '${runId}'
 
+# Add data directory to Python path
+sys.path.append('/app/data')
+
 # Capture print output
 output_buffer = StringIO()
 sys.stdout = output_buffer
@@ -182,8 +185,9 @@ print(output_buffer.getvalue())
       const docker = spawn('docker', [
         'run',
         '--name', runId,
-        '-v', `${codeDir}:/app/code:ro`,
-        '-v', `${this.getTempDir()}:/app/output`,
+        '-v', `${codeDir}:/app/code:ro`,  // Code directory (read-only)
+        '-v', `${this.getTempDir()}:/app/output`,  // Output directory
+        '-v', `${this.getTempDir()}:/app/data:ro`,  // Data directory (read-only)
         '--network', 'none',
         '--memory', '512m',
         '--cpus', '0.5',
