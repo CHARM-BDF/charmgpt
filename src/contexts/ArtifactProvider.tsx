@@ -91,17 +91,35 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }
 
   const generateSummary = async () => {
-    const summaries = []
+    // Group artifacts by their display name to get latest versions
+    const fileGroups = new Map<string, { artifact: Artifact, timestamp: number }[]>()
+    
     for (const artifact of artifacts) {
       if (artifact.dataFile) {
-        // Get the original filename without runId prefix
-        const originalName = getDisplayName(artifact);
-        const response = await fetch(`/api/data/${artifact.dataFile}`)
-        if (response.ok) {
-          const text = await response.text()
-          const firstLine = text.split('\n')[0]
-          summaries.push(`- ${originalName} with columns ${firstLine}`)
+        const displayName = getDisplayName(artifact)
+        
+        if (!fileGroups.has(displayName)) {
+          fileGroups.set(displayName, [])
         }
+        fileGroups.get(displayName)!.push({
+          artifact,
+          timestamp: artifact.timestamp
+        })
+      }
+    }
+
+    const summaries = []
+    for (const [displayName, versions] of fileGroups) {
+      // Sort by timestamp and get the latest version
+      versions.sort((a, b) => b.timestamp - a.timestamp)
+      const latest = versions[0].artifact
+      
+      // Get column info for the latest version
+      const response = await fetch(`/api/data/${latest.dataFile}`)
+      if (response.ok) {
+        const text = await response.text()
+        const firstLine = text.split('\n')[0]
+        summaries.push(`- ${displayName} with columns ${firstLine}`)
       }
     }
 

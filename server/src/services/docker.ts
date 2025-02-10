@@ -240,9 +240,10 @@ print(output_buffer.getvalue())
       const docker = spawn('docker', [
         'run',
         '--name', runId,
-        '-v', `${codeDir}:/app/code:rw`,  // Code directory (read-only)
-        '-v', `${this.getTempDir()}:/app/temp:ro`,  // Temp directory (read-only)
-        '-v', `${this.getTempDir()}:/app/output:rw`,  // Output directory (writable)      '--network', 'none',
+        '-v', `${codeDir}:/app/code:rw`,
+        '-v', `${this.getTempDir()}:/app/temp:rw`,
+        '-v', `${this.getTempDir()}:/app/output:rw`,
+        '--network', 'none',
         '--memory', '512m',
         '--cpus', '0.5',
         '--workdir', '/app/code',
