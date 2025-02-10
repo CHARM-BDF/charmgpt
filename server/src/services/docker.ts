@@ -188,6 +188,7 @@ export class DockerService {
     return `
 import sys
 import json
+import os
 from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -217,6 +218,9 @@ try:
     # Check for any CSV files in the current directory
     import glob
     csv_files = glob.glob('*.csv')
+    # Filter out symlinks (which are our data files)
+    csv_files = [f for f in csv_files if not os.path.islink(f)]
+    
     if csv_files:
         print(f"\\nFound CSV files: {csv_files}")
         import shutil
