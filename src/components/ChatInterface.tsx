@@ -112,8 +112,7 @@ export default function ChatInterface() {
             <Typography 
               variant="body2" 
               sx={{ 
-                whiteSpace: 'pre-wrap',
-                fontFamily: message.content.includes('```') ? 'monospace' : 'inherit'
+                whiteSpace: 'pre-wrap'
               }}
             >
               {message.content}
