@@ -120,6 +120,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     const fileGroups = new Map<string, { artifact: Artifact, timestamp: number }[]>()
     
     for (const artifact of artifacts) {
+      if (!artifact.pinned) {
+        continue
+      }
       if (artifact.dataFile) {
         const displayName = getDisplayName(artifact)
         
