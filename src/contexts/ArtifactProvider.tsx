@@ -255,7 +255,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       })
 
       // Process response and create artifacts in order
-      await parseCodeFromResponse(response, message || '(plan)')
+      await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)
     } catch (err) {
       console.error('Chat error:', err)
     } finally {
