@@ -39,7 +39,7 @@ export default function CodeEditor() {
       if (mode === 'code') {
         await runArtifact(editorContent)
       } else {
-        await handleChat(planContent)
+        await handleChat()
       }
     } catch (error) {
       console.error('Error in handleRun:', error)

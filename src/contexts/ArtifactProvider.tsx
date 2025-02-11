@@ -230,23 +230,23 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [setMode, setEditorContent, runArtifact, addArtifact])
 
-  const handleChat = useCallback(async (message?: string) => {
+  const handleChat = useCallback(async (message: string | undefined = undefined) => {
     if (isRunning) return
-    
-    // Include plan content if it exists
 
     let msg = "";
     if (planContent.trim()) {
-      msg = '\n\nGiven:\n' + planContent
+      msg = planContent
     } else {
       msg = await generateSummary()
     }
-    if (msg) {
+    if (message) {
+      msg = '\n\nGiven:\n' + msg;
       msg += '\n\nAnswer:\n'
+      msg += message
     }
-    msg +=message
     msg = msg.trim()
 
+    console.log("Chat message:", msg);
     try {
       setIsRunning(true)
       const response = await chatWithLLM(msg, {
