@@ -47,8 +47,7 @@ async function loadPinnedArtifacts(): Promise<Artifact[]> {
         console.error('Invalid artifacts data format:', artifacts)
         return []
       }
-      // Ensure pinned flag is set correctly on load
-      return artifacts.map(a => ({ ...a, pinned: true }))
+      return artifacts
     } catch (parseError) {
       console.error('Failed to parse artifacts JSON:', parseError)
       return []
@@ -92,21 +91,20 @@ router.post('/pin', async (req, res) => {
       pinned: boolean
       artifact: Artifact
     }
-    const pinnedArtifacts = await loadPinnedArtifacts()
+    let pinnedArtifacts = await loadPinnedArtifacts()
     
     if (pinned) {
       // Add to pinned artifacts if not already there
       if (!pinnedArtifacts.find((a) => a.id === artifactId)) {
-        // Ensure pinned flag is set when saving
         pinnedArtifacts.push({ ...artifact, pinned: true })
-        await savePinnedArtifacts(pinnedArtifacts)
       }
     } else {
       // Remove from pinned artifacts
-      const filteredArtifacts = pinnedArtifacts.filter(a => a.id !== artifactId)
-      await savePinnedArtifacts(filteredArtifacts)
+      pinnedArtifacts = pinnedArtifacts.filter(a => a.id !== artifactId)
     }
     
+    // Save only once
+    await savePinnedArtifacts(pinnedArtifacts)
     res.json({ success: true })
   } catch (error) {
     void error

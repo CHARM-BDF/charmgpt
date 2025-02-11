@@ -143,34 +143,40 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [artifacts])
 
   // Update togglePin to handle persistence
-  const togglePin = async (artifactId: number) => {
+  const togglePin = useCallback(async (artifactId: number) => {
     const artifact = artifacts.find(a => a.id === artifactId)
     if (!artifact) return
 
+    // Update UI state optimistically
     const newPinnedStatus = !artifact.pinned
-    const updatedArtifact = { ...artifact, pinned: newPinnedStatus }
+    setArtifacts(prev => prev.map(a => 
+      a.id === artifactId ? { ...a, pinned: newPinnedStatus } : a
+    ))
 
     try {
       const response = await fetch('/api/artifacts/pin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           artifactId,
           pinned: newPinnedStatus,
-          artifact: updatedArtifact
+          artifact: { ...artifact, pinned: newPinnedStatus }
         })
       })
 
-      if (response.ok) {
-        // Just update the pin status, don't reload all artifacts
-        setArtifacts(prev => prev.map(a => 
-          a.id === artifactId ? updatedArtifact : a
-        ))
+      if (!response.ok) {
+        throw new Error('Failed to update pinned status')
       }
-    } catch (error) {
-      console.error('Failed to toggle pin:', error)
+    } catch (err) {
+      console.error('Failed to toggle pin:', err)
+      // Revert UI state on error
+      setArtifacts(prev => prev.map(a => 
+        a.id === artifactId ? { ...a, pinned: !newPinnedStatus } : a
+      ))
     }
-  }
+  }, [artifacts])
 
   const updateArtifact = useCallback((updatedArtifact: Artifact) => {
     setArtifacts(prev => prev.map(art => 
