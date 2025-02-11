@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react'
+import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { ArtifactContext } from './createArtifactContext'
 import { Artifact, ViewMode, EditorMode, getDisplayName } from './ArtifactContext.types'
 
@@ -186,28 +186,35 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }
 
+  const updateArtifact = useCallback((updatedArtifact: Artifact) => {
+    setArtifacts(prev => prev.map(art => 
+      art.id === updatedArtifact.id ? updatedArtifact : art
+    ))
+  }, [])
+
+  const value = {
+    artifacts,
+    activeArtifact,
+    viewMode,
+    mode,
+    setMode,
+    setViewMode,
+    setActiveArtifact,
+    runArtifact,
+    editorContent,
+    setEditorContent,
+    planContent,
+    setPlanContent,
+    addArtifact,
+    isRunning,
+    setIsRunning,
+    generateSummary,
+    togglePin,
+    updateArtifact
+  }
+
   return (
-    <ArtifactContext.Provider
-      value={{
-        artifacts,
-        activeArtifact,
-        viewMode,
-        mode,
-        setMode,
-        setViewMode,
-        setActiveArtifact,
-        runArtifact,
-        editorContent,
-        setEditorContent,
-        addArtifact,
-        planContent,
-        setPlanContent,
-        isRunning,
-        setIsRunning,
-        generateSummary,
-        togglePin
-      }}
-    >
+    <ArtifactContext.Provider value={value}>
       {children}
     </ArtifactContext.Provider>
   )

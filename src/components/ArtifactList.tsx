@@ -21,7 +21,7 @@ export default function ArtifactList() {
     artifacts, 
     addArtifact, 
     activeArtifact, 
-    setActiveArtifact, 
+    setActiveArtifact,
     mode,
     viewMode,
     setViewMode,
@@ -29,7 +29,8 @@ export default function ArtifactList() {
     togglePin,
     setMode,
     setPlanContent,
-    planContent
+    planContent,
+    updateArtifact
   } = useArtifact()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -77,13 +78,51 @@ export default function ArtifactList() {
     }
   }
 
-  const handleArtifactSelect = (artifact: Artifact) => {
+  const handleArtifactSelect = async (artifact: Artifact) => {
+    setActiveArtifact(artifact)
+
+    if (artifact.processingJob?.status === 'processing' && artifact.processingJob?.jobId) {
+      // Start polling for status
+      const pollStatus = async () => {
+        try {
+          const response = await fetch(`/api/service/document-status/${artifact.processingJob!.jobId}`)
+          const data = await response.json()
+
+          if (data.summaryJobId) {
+            // Update artifact with summary job ID
+            updateArtifact({
+              ...artifact,
+              processingJob: {
+                jobId: data.summaryJobId,
+                status: 'processing' as const,
+                type: 'summary' as const
+              }
+            })
+          } else if (data.summary) {
+            // Processing complete
+            updateArtifact({
+              ...artifact,
+              name: artifact.name.replace('Processing:', 'Processed:'),
+              output: data.summary,
+              processingJob: undefined
+            })
+            setMode('plan')
+            setPlanContent(((planContent || '').trim() + '\n\n' + data.summary.trim()).trim())
+          }
+        } catch (error) {
+          console.error('Failed to check status:', error)
+        }
+      }
+
+      // Poll every 5 seconds
+      const interval = setInterval(pollStatus, 5000)
+      return () => clearInterval(interval)
+    }
+
     if (mode === 'code' && artifact.code) {
       // In code mode, load code into editor
       setEditorContent(artifact.code)
     }
-    // Always update active artifact for viewing
-    setActiveArtifact(artifact)
 
     // Set appropriate view mode based on artifact content
     if (artifact.dataFile) {
@@ -115,26 +154,24 @@ export default function ArtifactList() {
         }
 
         const data = await response.json()
-        const { summary } = data
         
-        // Create artifact for the processed document
+        // Create artifact for the processing document
         const now = Date.now()
         const newArtifact = {
           id: now,
           type: 'data' as ArtifactType,
-          name: `Processed: ${file.name}`,
-          output: summary,
+          name: `Processing: ${file.name}`,
+          output: 'Document is being processed...',
           timestamp: now,
           source: 'upload',
-          code: undefined,
-          plotFile: undefined,
-          dataFile: undefined
+          processingJob: {
+            jobId: data.conversionJobId,
+            status: 'processing' as const,
+            type: 'conversion' as const
+          }
         }
 
         addArtifact(newArtifact)
-        setMode('plan')
-        // Add both summary and content to plan
-        setPlanContent(((planContent || '').trim() + '\n\n' + summary.trim()).trim())
         handleArtifactSelect(newArtifact)
       } else {
         // Handle other file types as before

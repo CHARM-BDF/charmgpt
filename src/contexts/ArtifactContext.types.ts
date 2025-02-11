@@ -20,6 +20,13 @@ export const getDisplayName = (artifact: Artifact): string => {
   return displayName
 }
 
+export interface ProcessingJob {
+  jobId: string;
+  status: 'pending' | 'processing' | 'complete' | 'error';
+  type: 'conversion' | 'summary';
+  error?: string;
+}
+
 export interface Artifact {
   id: number
   name: string
@@ -32,6 +39,7 @@ export interface Artifact {
   source?: string
   pinned?: boolean
   chatInput?: string
+  processingJob?: ProcessingJob
 }
 
 export interface ArtifactContextType {
@@ -52,6 +60,7 @@ export interface ArtifactContextType {
   setIsRunning: (running: boolean) => void
   generateSummary: () => Promise<string>
   togglePin: (artifactId: number) => Promise<void>
+  updateArtifact: (artifact: Artifact) => void
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 

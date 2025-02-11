@@ -25,58 +25,6 @@ interface SummaryJob {
   chunks_completed?: number;
 }
 
-interface DocumentObject {
-  content: string;
-  metadata: {
-    title?: string;
-    author?: string;
-    date?: string;
-    pages?: number;
-  };
-  chunks?: {
-    text: string;
-    page?: number;
-    position?: number;
-  }[];
-}
-
-interface SummaryResult {
-  annotations: {
-    summary?: string;
-    key_points?: string[];
-    topics?: string[];
-  };
-  document: DocumentObject;
-  metadata: {
-    model: string;
-    method: string;
-    chunk_group: string;
-    temperature: number;
-  };
-}
-
-async function pollJobUntilComplete<T>(url: string, maxAttempts = 30, delayMs = 2000): Promise<T> {
-  let attempts = 0;
-  
-  while (attempts < maxAttempts) {
-    const response = await axios.get(url);
-    const job = response.data;
-
-    if (job.status === 'complete') {
-      return (await axios.get(`${url}/result`)).data;
-    }
-    
-    if (job.status === 'error') {
-      throw new Error(`Job failed: ${job.error}`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-    attempts++;
-  }
-
-  throw new Error('Job timed out');
-}
-
 router.post('/summarize-document', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -84,7 +32,7 @@ router.post('/summarize-document', upload.single('file'), async (req, res) => {
       return;
     }
 
-    // Step 1: Convert the document
+    // Step 1: Start document conversion
     const formData = new FormData();
     formData.append('file', fs.createReadStream(req.file.path), {
       filename: req.file.originalname,
@@ -106,41 +54,67 @@ router.post('/summarize-document', upload.single('file'), async (req, res) => {
       if (err) console.error('Error cleaning up temp file:', err);
     });
 
-    // Poll until conversion is complete
-    const documentObject = await pollJobUntilComplete<DocumentObject>(
-      `${CHARMONIZER_BASE_URL}/conversions/documents/${conversionResponse.data.job_id}`
-    );
-
-    // Step 2: Generate summary
-    const summaryResponse = await axios.post<SummaryJob>(
-      `${CHARMONIZER_BASE_URL}/summaries`,
-      {
-        document: documentObject,
-        model: 'my-ollama-model',
-        method: 'fold',
-        chunk_group: 'pages',
-        guidance: 'Provide a concise summary/cheatsheet that helps using the datasets described in the document.',
-        temperature: 0.7,
-        ocr_threshold: 0.0
-      }
-    );
-
-    // Poll until summary is complete
-    const summaryResult = await pollJobUntilComplete<SummaryResult>(
-      `${CHARMONIZER_BASE_URL}/summaries/${summaryResponse.data.job_id}`
-    );
-
-    // Return the final summary
+    // Return the conversion job ID immediately
     res.json({
-      summary: summaryResult.annotations?.summary || 'No summary generated',
-      document: summaryResult
+      conversionJobId: conversionResponse.data.job_id,
+      status: 'processing'
     });
   } catch (error) {
-    console.error('Error processing document:', error);
+    console.error('Error starting document processing:', error);
     res.status(500).json({ 
-      error: 'Failed to process document',
+      error: 'Failed to start document processing',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+});
+
+// Add endpoint to check conversion status and start summary if ready
+router.get('/document-status/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const response = await axios.get(
+      `${CHARMONIZER_BASE_URL}/conversions/documents/${jobId}`
+    );
+
+    const conversionJob = response.data;
+    
+    if (conversionJob.status === 'complete') {
+      // Get the converted document
+      const documentResult = await axios.get(
+        `${CHARMONIZER_BASE_URL}/conversions/documents/${jobId}/result`
+      );
+      
+      // Start the summary job
+      const summaryResponse = await axios.post<SummaryJob>(
+        `${CHARMONIZER_BASE_URL}/summaries`,
+        {
+          document: documentResult.data,
+          model: 'my-ollama-model',
+          method: 'fold',
+          chunk_group: 'pages',
+          guidance: 'Provide a concise summary/cheatsheet that helps using the datasets described in the document.',
+          temperature: 0.7,
+          ocr_threshold: 0.0
+        }
+      );
+
+      res.json({
+        conversionStatus: 'complete',
+        summaryJobId: summaryResponse.data.job_id,
+        status: 'processing'
+      });
+    } else {
+      res.json({
+        conversionStatus: conversionJob.status,
+        progress: {
+          pagesTotal: conversionJob.pages_total,
+          pagesConverted: conversionJob.pages_converted
+        }
+      });
+    }
+  } catch (error) {
+    void error;
+    res.status(500).json({ error: 'Failed to check document status' });
   }
 });
 
