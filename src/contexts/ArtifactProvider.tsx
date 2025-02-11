@@ -230,10 +230,21 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [setMode, setEditorContent, runArtifact, addArtifact])
 
-  const handleChat = useCallback(async (message: string) => {
-    if (!message.trim() || isRunning) return
+  const handleChat = useCallback(async (message?: string) => {
+    if (isRunning) return
     
-    let msg = await generateSummary() + '\n' + message
+    // Include plan content if it exists
+
+    let msg = "";
+    if (planContent.trim()) {
+      msg = '\n\nGiven:\n' + planContent
+    } else {
+      msg = await generateSummary()
+    }
+    if (msg) {
+      msg += '\n\nAnswer:\n'
+    }
+    msg +=message
     msg = msg.trim()
 
     try {
@@ -244,13 +255,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       })
 
       // Process response and create artifacts in order
-      await parseCodeFromResponse(response, message)
+      await parseCodeFromResponse(response, message || '(plan)')
     } catch (err) {
       console.error('Chat error:', err)
     } finally {
       setIsRunning(false)
     }
-  }, [generateSummary, isRunning, parseCodeFromResponse, setIsRunning])
+  }, [generateSummary, isRunning, parseCodeFromResponse, setIsRunning, planContent])
 
   const value = {
     artifacts,

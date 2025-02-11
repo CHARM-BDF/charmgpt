@@ -32,7 +32,7 @@ export class LLMService {
       case 'ollama':
         return new ChatOllama({
           baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-          model: config.model || 'mistral',
+          model: config.model || 'qwen2.5',
           temperature: config.temperature || 0.7,
         })
 
@@ -57,7 +57,7 @@ export class LLMService {
 
   async generateCode(prompt: string): Promise<string> {
     const codePrompt = `Generate Python code for the following request. Only return the code without any explanation:\n${prompt}`
-    
+    console.log(codePrompt);
     try {
       const response = await this.llm.invoke([
         new SystemMessage(this.systemPrompt),
