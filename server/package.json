@@ -22,18 +22,15 @@
     "@types/express": "^5.0.0",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.10",
-    "axios": "^1.7.9",
     "cors": "^2.8.5",
     "dockerode": "^4.0.4",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "multer": "^1.4.5-lts.1",
-    "node-fetch": "^3.3.2",
     "typescript": "^5.7.3"
   },
   "devDependencies": {
     "@types/dockerode": "^3.3.34",
-    "@types/node-fetch": "^2.6.12",
     "ts-node-dev": "^2.0.0"
   }
 }

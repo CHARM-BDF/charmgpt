@@ -6,7 +6,6 @@ import DownloadIcon from '@mui/icons-material/Download'
 import { ViewMode, ArtifactType, getDisplayName, Artifact } from '../contexts/ArtifactContext.types'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
-import { convertToMarkdown } from '../services/api'
 
 interface UploadResponse {
   filepath: string
@@ -26,10 +25,7 @@ export default function ArtifactList() {
     viewMode,
     setViewMode,
     setEditorContent,
-    togglePin,
-    setMode,
-    setPlanContent,
-    planContent
+    togglePin 
   } = useArtifact()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -99,61 +95,34 @@ export default function ArtifactList() {
     const file = event.target.files?.[0]
     if (!file) return
 
+    const formData = new FormData()
+    formData.append('file', file)
+
     try {
-      if (file.type === 'application/pdf' || 
-          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        // Convert docx/pdf to markdown
-        const markdown = await convertToMarkdown(file)
-        console.log('Received markdown:', markdown)  // Add logging to debug
-        
-        // Create artifact for the converted document
-        const now = Date.now()
-        const newArtifact = {
-          id: now,
-          type: 'data' as ArtifactType,
-          name: `Converted: ${file.name}`,
-          output: markdown, // Store the markdown in output too
-          timestamp: now,
-          source: 'upload',
-          code: undefined,
-          plotFile: undefined,
-          dataFile: undefined
-        }
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
 
-        addArtifact(newArtifact)
-        setMode('plan')
-        // Trim whitespace and add the markdown content
-        setPlanContent(((planContent || '').trim() + '\n\n' + markdown.trim()).trim())
-        handleArtifactSelect(newArtifact)
-      } else {
-        // Handle other file types as before
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!response.ok) {
-          throw new Error('Upload failed')
-        }
-
-        const data: UploadResponse = await response.json()
-        const now = Date.now()
-        
-        const newArtifact = {
-          id: now,
-          type: 'upload' as ArtifactType,
-          name: data.filename,
-          dataFile: data.filepath,
-          output: `Uploaded file: ${data.filename}\nSize: ${data.size} bytes\nType: ${data.mimetype}`,
-          timestamp: now
-        }
-
-        addArtifact(newArtifact)
-        handleArtifactSelect(newArtifact)
+      if (!response.ok) {
+        throw new Error('Upload failed')
       }
+
+      const data: UploadResponse = await response.json()
+      const now = Date.now()
+      
+      // Create new artifact with the uploaded file
+      const newArtifact = {
+        id: now,
+        type: 'upload' as ArtifactType,
+        name: data.filename,
+        dataFile: data.filepath,  // This will be just the filename
+        output: `Uploaded file: ${data.filename}\nSize: ${data.size} bytes\nType: ${data.mimetype}`,
+        timestamp: now
+      }
+
+      addArtifact(newArtifact)
+      handleArtifactSelect(newArtifact)
     } catch (error) {
       console.error('Upload failed:', error)
     }
