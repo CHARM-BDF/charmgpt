@@ -65,13 +65,10 @@ export default function Editor() {
       return
     }
 
-    if (activeArtifact && mode === 'plan') {
-      insertArtifactAtCursor(activeArtifact)
-    }
-    else if (activeArtifact && mode === 'code' && activeArtifact.code) {
+   if (activeArtifact && mode === 'code' && activeArtifact.code) {
       setEditorContentContext(activeArtifact.code)
     }
-  }, [activeArtifact, mode, setEditorContentContext, insertArtifactAtCursor])
+  }, [activeArtifact, mode, setEditorContentContext])
 
   const handleChange: OnChange = (value) => {
     if (value === undefined) return
