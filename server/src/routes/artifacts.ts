@@ -112,4 +112,16 @@ router.post('/pin', async (req, res) => {
   }
 })
 
+router.post('/plan', async (req, res) => {
+  try {
+    const { content } = req.body
+    const planFile = path.join(docker.getTempDir(), 'plan.md')
+    await fs.writeFile(planFile, content)
+    res.json({ success: true })
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to save plan' })
+  }
+})
+
 export default router 

@@ -46,23 +46,30 @@ export default function CodeEditor() {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (mode === 'plan') {
-      // Create a blob with the plan content
-      const blob = new Blob([planContent], { type: 'text/markdown' })
-      
-      // Create a temporary link element
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = 'plan.md'
-      
-      // Append link to body, click it, and remove it
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      // Clean up the URL object
-      URL.revokeObjectURL(link.href)
+      try {
+        // Create download
+        const blob = new Blob([planContent], { type: 'text/markdown' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'plan.md'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(link.href)
+
+        // Save to server
+        await fetch('/api/artifacts/plan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ content: planContent })
+        })
+      } catch (err) {
+        console.error('Failed to save plan:', err)
+      }
     }
   }
 

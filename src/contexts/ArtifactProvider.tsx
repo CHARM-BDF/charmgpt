@@ -229,12 +229,20 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [setMode, setEditorContent, runArtifact, addArtifact])
 
-  const handleChat = useCallback(async (message: string | undefined = undefined) => {
+  const handleChat = useCallback(async (message?: string) => {
     if (isRunning) return
 
     let msg = "";
     if (planContent.trim()) {
       msg = planContent
+      // Save to server
+      await fetch('/api/artifacts/plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: planContent })
+      })
     } else {
       msg = await generateSummary()
     }
