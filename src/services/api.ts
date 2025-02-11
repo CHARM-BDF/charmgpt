@@ -34,4 +34,25 @@ export const generateCode = async (prompt: string, config: LLMConfig) => {
   
   const data = await response.json()
   return data.code
+}
+
+interface MarkdownResponse {
+  markdownContent: string
+}
+
+export const convertToMarkdown = async (file: File): Promise<string> => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch('/api/service/charmonator/conversion/file', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to convert file')
+  }
+
+  const data = await response.json() as MarkdownResponse
+  return data.markdownContent
 } 
