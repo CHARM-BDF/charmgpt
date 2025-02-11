@@ -69,6 +69,11 @@ export default function Editor() {
     }
   }, [activeArtifact, mode, setEditorContentContext])
 
+  // Add debug logging
+  useEffect(() => {
+    console.log('Editor activeArtifact changed:', activeArtifact)
+  }, [activeArtifact])
+
   const handleChange: OnChange = (value) => {
     if (value === undefined) return
     
@@ -84,17 +89,34 @@ export default function Editor() {
   const handleEditorDidMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
     
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Period,
-      () => {
+    const commandId = editor.addAction({
+      id: 'insert-artifact',
+      label: 'Insert Artifact',
+      keybindings: [
+        monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Period
+      ],
+      run: () => {
         if (!activeArtifact) {
           console.log('No active artifact');
           return;
         }
         insertArtifactAtCursor(activeArtifact);
       }
-    )
+    });
+
+    // Clean up command when component unmounts or activeArtifact changes
+    return () => {
+      commandId.dispose();
+    }
   }, [activeArtifact, insertArtifactAtCursor])
+
+  // Use effect to handle command lifecycle
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    
+    return handleEditorDidMount(editor);
+  }, [handleEditorDidMount]);
 
   const currentValue = mode === 'code' ? editorContent : planContent
 
