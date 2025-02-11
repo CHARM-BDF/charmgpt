@@ -64,11 +64,11 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       ...artifact,
       id: Date.now(),
       timestamp: Date.now(),
-      pinned: false
+      pinned: true  // Default to pinned
     }
     setArtifacts(prev => [...prev, newArtifact])
-    selectArtifact(newArtifact)
-  }, [selectArtifact])
+    setActiveArtifact(newArtifact)
+  }, [setActiveArtifact])
 
   const runArtifact = useCallback(async (code: string, name: string = 'Run Result', chatInput?: string) => {
     try {
