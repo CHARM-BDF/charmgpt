@@ -15,6 +15,10 @@ export default function DataViewer({ dataFile }: DataViewerProps) {
   const [rows, setRows] = useState<DataRow[]>([])
   const [columns, setColumns] = useState<GridColDef[]>([])
   const [loading, setLoading] = useState(true)
+  const [paginationModel, setPaginationModel] = useState({
+    pageSize: 25,
+    page: 0
+  })
 
   console.log('DataViewer received dataFile:', dataFile)
 
@@ -76,10 +80,17 @@ export default function DataViewer({ dataFile }: DataViewerProps) {
         loading={loading}
         density="compact"
         disableRowSelectionOnClick
+        paginationModel={paginationModel}
+        onPaginationModelChange={setPaginationModel}
+        pageSizeOptions={[10, 25, 50, 100]}
+        paginationMode="client"
         initialState={{
-          pagination: { paginationModel: { pageSize: 100 } },
+          pagination: {
+            paginationModel: {
+              pageSize: 25,
+            },
+          },
         }}
-        pageSizeOptions={[25, 50, 100]}
       />
     </Box>
   )

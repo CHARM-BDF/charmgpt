@@ -3,7 +3,8 @@ import { useArtifact } from '../contexts/useArtifact'
 import { Box } from '@mui/material'
 import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
-import { dataHeader, getDisplayName } from '../contexts/ArtifactContext.types'
+import { dataHeader, getDisplayName, Artifact } from '../contexts/ArtifactContext.types'
+
 export default function Editor() {
   const { 
     activeArtifact, 
@@ -11,8 +12,7 @@ export default function Editor() {
     editorContent, 
     planContent,
     setPlanContent,
-    mode, 
-    artifacts,
+    mode,
     setEditorContent: setEditorContentContext,
     setPlanContent: setPlanContentContext
   } = useArtifact()
@@ -20,7 +20,7 @@ export default function Editor() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const isInitialMount = useRef(true)
 
-  const insertArtifactAtCursor = useCallback((artifact: typeof artifacts[0]) => {
+  const insertArtifactAtCursor = useCallback((artifact: Artifact) => {
     if (!editorRef.current) return
 
     const editor = editorRef.current
@@ -54,7 +54,6 @@ export default function Editor() {
       text: artifactSummary
     }])
     
-    // Update the plan content after insertion
     setPlanContentContext(editor.getValue())
   }, [setPlanContentContext])
 
@@ -85,25 +84,17 @@ export default function Editor() {
   const handleEditorDidMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
     
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
-      const position = editor.getPosition()
-      if (!position) return
-
-      const model = editor.getModel()
-      if (!model) return
-
-      const line = model.getLineContent(position.lineNumber)
-      const artifactMatch = line.match(/\[\[(\d+)\]\]/)
-      
-      if (artifactMatch) {
-        const artifactId = parseInt(artifactMatch[1])
-        const artifact = artifacts.find(a => a.id === artifactId)
-        if (artifact) {
-          insertArtifactAtCursor(artifact)
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Period,
+      () => {
+        if (!activeArtifact) {
+          console.log('No active artifact');
+          return;
         }
+        insertArtifactAtCursor(activeArtifact);
       }
-    })
-  }, [artifacts, insertArtifactAtCursor])
+    )
+  }, [activeArtifact, insertArtifactAtCursor])
 
   const currentValue = mode === 'code' ? editorContent : planContent
 
