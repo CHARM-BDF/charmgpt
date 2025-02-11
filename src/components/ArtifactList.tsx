@@ -6,7 +6,7 @@ import DownloadIcon from '@mui/icons-material/Download'
 import { ViewMode, ArtifactType, getDisplayName, Artifact } from '../contexts/ArtifactContext.types'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
-import { convertToMarkdown } from '../services/api'
+
 
 interface UploadResponse {
   filepath: string
@@ -102,17 +102,28 @@ export default function ArtifactList() {
     try {
       if (file.type === 'application/pdf' || 
           file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        // Convert docx/pdf to markdown
-        const markdown = await convertToMarkdown(file)
-        console.log('Received markdown:', markdown)  // Add logging to debug
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/service/summarize-document', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to process document')
+        }
+
+        const data = await response.json()
+        const { summary } = data
         
-        // Create artifact for the converted document
+        // Create artifact for the processed document
         const now = Date.now()
         const newArtifact = {
           id: now,
           type: 'data' as ArtifactType,
-          name: `Converted: ${file.name}`,
-          output: markdown, // Store the markdown in output too
+          name: `Processed: ${file.name}`,
+          output: summary,
           timestamp: now,
           source: 'upload',
           code: undefined,
@@ -122,8 +133,8 @@ export default function ArtifactList() {
 
         addArtifact(newArtifact)
         setMode('plan')
-        // Trim whitespace and add the markdown content
-        setPlanContent(((planContent || '').trim() + '\n\n' + markdown.trim()).trim())
+        // Add both summary and content to plan
+        setPlanContent(((planContent || '').trim() + '\n\n' + summary.trim()).trim())
         handleArtifactSelect(newArtifact)
       } else {
         // Handle other file types as before
