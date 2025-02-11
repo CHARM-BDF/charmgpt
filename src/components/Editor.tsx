@@ -20,7 +20,7 @@ export default function Editor() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const isInitialMount = useRef(true)
 
-  const insertArtifactAtCursor = useCallback((artifact: Artifact) => {
+  const insertArtifactAtCursor = useCallback((artifact: Artifact, quoted: boolean = false) => {
     if (!editorRef.current) return
 
     const editor = editorRef.current
@@ -42,6 +42,10 @@ export default function Editor() {
     }
     if (artifact.plotFile) {
       artifactSummary += `\n### Plot\n![Plot](${artifact.plotFile})\n`
+    }
+
+    if (quoted) {
+      artifactSummary = `"""\n${artifactSummary}\n"""\n`
     }
 
     editor.executeEdits('', [{
@@ -100,7 +104,7 @@ export default function Editor() {
           console.log('No active artifact');
           return;
         }
-        insertArtifactAtCursor(activeArtifact);
+        insertArtifactAtCursor(activeArtifact, mode=='code');
       }
     });
 
