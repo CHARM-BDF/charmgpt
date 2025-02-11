@@ -198,6 +198,8 @@ export class DockerService {
 import sys
 import json
 import os
+import glob
+import time
 from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -206,8 +208,8 @@ import numpy as np
 # Set the runId for the plot filename
 runId = '${runId}'
 
-# Add data directory to Python path
-sys.path.append('/app/data')
+# Add temp directory to Python path
+sys.path.append('/app/temp')
 
 # Capture print output
 output_buffer = StringIO()
@@ -215,7 +217,13 @@ sys.stdout = output_buffer
 
 # Execute user code
 try:
-    # Execute user code
+    # Execute user code in current directory
+    os.chdir('/app/code')  # Ensure we're in the code directory
+    
+    # Record existing files with their timestamps
+    old_files = {f: os.path.getmtime(f) for f in glob.glob('*.csv')}
+    start_time = time.time()
+    
     import user_code
     
     # Check if there's a plot to save
@@ -224,20 +232,22 @@ try:
         plt.savefig(f'/app/output/{runId}_plot.png')
         print(f"Saved plot as {runId}_plot.png")
     
-    # Check for any CSV files in the current directory
-    import glob
+    # Check for any CSV files in the code directory
     csv_files = glob.glob('*.csv')
-    # Filter out symlinks (which are our data files)
-    csv_files = [f for f in csv_files if not os.path.islink(f)]
     
     if csv_files:
         print(f"\\nFound CSV files: {csv_files}")
         import shutil
         for csv_file in csv_files:
+            # Check if file existed before and wasn't modified
+            if csv_file in old_files and os.path.getmtime(csv_file) <= start_time:
+                print(f"Warning: Cannot overwrite data file {csv_file}. Unpin it and try again.")
+                continue
+                
             # Save with original name in the filename
-            output_path = f'/app/output/{runId}_{csv_file}'
+            output_path = f'/app/output/{runId}_{os.path.basename(csv_file)}'
             shutil.move(csv_file, output_path)
-            print(f"Moved {csv_file} to {output_path}")
+            print(f"Moved {os.path.basename(csv_file)} to {os.path.basename(output_path)}")
     
 except Exception as e:
     print(f"Error: {str(e)}")
