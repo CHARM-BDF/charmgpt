@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ViewMode, EditorMode, getDisplayName } from './ArtifactContext.types'
+import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader } from './ArtifactContext.types'
 
 interface ArtifactProviderProps {
   children: ReactNode
@@ -141,14 +141,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       // Sort by timestamp and get the latest version
       versions.sort((a, b) => b.timestamp - a.timestamp)
       const latest = versions[0].artifact
-      
-      // Get column info for the latest version
-      const response = await fetch(`/api/data/${latest.dataFile}`)
-      if (response.ok) {
-        const text = await response.text()
-        const firstLine = text.split('\n')[0]
-        summaries.push(`- ${displayName} with columns ${firstLine}`)
-      }
+      const firstLine = dataHeader(latest.dataFile);
+      summaries.push(`- ${displayName} with columns ${firstLine}`)
     }
 
     return summaries.length > 0 

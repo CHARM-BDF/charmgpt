@@ -20,6 +20,21 @@ export const getDisplayName = (artifact: Artifact): string => {
   return displayName
 }
 
+export const dataHeader = (dataFile?: string): string|undefined => {
+  if (!dataFile) return undefined;
+  
+  // Use XMLHttpRequest for sync request
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', `/api/header/${dataFile}`, false);  // false makes it synchronous
+  xhr.send(null);
+  
+  if (xhr.status === 200) {
+    return xhr.responseText;
+  }
+  
+  return undefined;
+}
+
 export interface ProcessingJob {
   jobId: string;
   status: 'pending' | 'processing' | 'complete' | 'error';

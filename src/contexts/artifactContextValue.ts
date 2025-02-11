@@ -17,5 +17,6 @@ export const artifactContextValue: ArtifactContextType = {
   isRunning: false,
   setIsRunning: () => undefined,
   generateSummary: async () => '',
-  togglePin: async () => undefined
+  togglePin: async () => undefined,
+  updateArtifact: () => undefined
 } 

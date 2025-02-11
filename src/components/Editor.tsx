@@ -3,7 +3,7 @@ import { useArtifact } from '../contexts/useArtifact'
 import { Box } from '@mui/material'
 import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
-
+import { dataHeader, getDisplayName } from '../contexts/ArtifactContext.types'
 export default function Editor() {
   const { 
     activeArtifact, 
@@ -27,19 +27,23 @@ export default function Editor() {
     const position = editor.getPosition()
     if (!position) return
 
-    const artifactSummary = `
-## Artifact #${artifact.id} - ${artifact.name}
-\`\`\`python
-${artifact.code}
-\`\`\`
+    let artifactSummary = `## Artifact ${getDisplayName(artifact)}`
+    if (artifact.dataFile) {
+      artifactSummary += `\n### Data Columns\n${dataHeader(artifact.dataFile)}`
+    }
+    if (artifact.chatInput) {
+      artifactSummary += `\n### Chat Input\n${artifact.chatInput}`
+    }
+    if (artifact.code) {
+      artifactSummary += `\n### Code\n\`\`\`python\n${artifact.code}\`\`\`\nOutput:\n\`\`\`\n${artifact.output}\`\`\`\n${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}`
+    }
+    if (artifact.output && !artifact.dataFile) {
+      artifactSummary += `\n### Output\n\`\`\`\n${artifact.output}\`\`\`\n`
+    }
+    if (artifact.plotFile) {
+      artifactSummary += `\n### Plot\n![Plot](${artifact.plotFile})\n`
+    }
 
-Output:
-\`\`\`
-${artifact.output}
-\`\`\`
-${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}
----
-`
     editor.executeEdits('', [{
       range: new monaco.Range(
         position.lineNumber,

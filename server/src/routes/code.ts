@@ -3,6 +3,8 @@ import path from 'path'
 import * as fs from 'fs'
 import * as fsPromises from 'fs/promises'  // Promise-based fs for async operations
 import { DockerService } from '../services/docker'
+import { createReadStream } from 'fs'
+import readline from 'readline'
 
 const router: Router = express.Router()
 const docker = new DockerService()
@@ -42,6 +44,39 @@ router.get<FileParams>('/data/:filename', (req, res) => {
     exists: fs.existsSync(dataPath)
   })
   res.sendFile(dataPath)
+})
+
+// Serve just the header for data files
+router.get<FileParams>('/header/:filename', async (req, res) => {
+  const dataPath = path.join(docker.getTempDir(), req.params.filename)
+  
+  if (!fs.existsSync(dataPath)) {
+    console.log('Header request - file not found:', dataPath)
+    res.status(404).send('File not found')
+    return
+  }
+
+  try {
+    const readStream = createReadStream(dataPath)
+    const rl = readline.createInterface({
+      input: readStream,
+      crlfDelay: Infinity
+    })
+
+    // Get just the first line
+    for await (const line of rl) {
+      rl.close()
+      readStream.destroy()
+      res.send(line)
+      return
+    }
+
+    // If we get here, the file was empty
+    res.send('')
+  } catch (error) {
+    console.error('Error reading header:', error)
+    res.status(500).send('Error reading file header')
+  }
 })
 
 // Cleanup endpoint
