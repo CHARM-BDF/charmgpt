@@ -16,27 +16,29 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [mode, setMode] = useState<EditorMode>('code')
   const [isRunning, setIsRunning] = useState(false)
 
-  // Split artifact loading into a separate function
-  const loadPinnedArtifacts = async () => {
-    try {
-      const response = await fetch('/api/artifacts/pinned')
-      if (response.ok) {
-        const pinnedArtifacts = await response.json()
-        
-        // Set initial artifacts to the pinned ones
-        setArtifacts(pinnedArtifacts.map((a: Artifact) => ({
-          ...a,
-          pinned: true  // Ensure they're marked as pinned
-        })))
-      }
-    } catch (error) {
-      console.error('Failed to load pinned artifacts:', error)
-    }
-  }
-
-  // Load pinned artifacts on startup
+  // Load pinned artifacts and plan on mount
   useEffect(() => {
-    loadPinnedArtifacts()
+    const loadInitialData = async () => {
+      try {
+        // Load pinned artifacts
+        const artifactsResponse = await fetch('/api/artifacts/pinned')
+        if (artifactsResponse.ok) {
+          const pinnedArtifacts = await artifactsResponse.json()
+          setArtifacts(pinnedArtifacts)
+        }
+
+        // Load saved plan
+        const planResponse = await fetch('/api/artifacts/plan')
+        if (planResponse.ok) {
+          const { content } = await planResponse.json()
+          setPlanContent(content)
+        }
+      } catch (err) {
+        console.error('Failed to load initial data:', err)
+      }
+    }
+
+    loadInitialData()
   }, [])
 
   const selectArtifact = useCallback((artifact: Artifact | null) => {

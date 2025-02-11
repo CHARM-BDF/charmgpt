@@ -124,4 +124,21 @@ router.post('/plan', async (req, res) => {
   }
 })
 
+router.get('/plan', async (req, res) => {
+  try {
+    const planFile = path.join(docker.getTempDir(), 'plan.md')
+    try {
+      const content = await fs.readFile(planFile, 'utf-8')
+      res.json({ content })
+    } catch (err) {
+      void err
+      // If file doesn't exist, return empty content
+      res.json({ content: '' })
+    }
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to load plan' })
+  }
+})
+
 export default router 
