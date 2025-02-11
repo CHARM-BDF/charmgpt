@@ -59,7 +59,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       ...artifact,
       id: Date.now(),
       timestamp: Date.now(),
-      pinned: true  // Default to pinned
+      pinned: false  // Default to unpinned
     }
     setArtifacts(prev => [...prev, newArtifact])
     selectArtifact(newArtifact)
@@ -73,7 +73,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           code,
-          artifacts
+          artifacts: artifacts.filter(a => a.pinned)  // Only send pinned artifacts
         })
       })
 
