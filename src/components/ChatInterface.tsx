@@ -14,7 +14,7 @@ export default function ChatInterface() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { addArtifact, setEditorContent, setMode, runArtifact, generateSummary } = useArtifact()
+  const { addArtifact, setEditorContent, setMode, runArtifact, generateSummary, handleChat } = useArtifact()
 
  
   const parseCodeFromResponse = async (response: string, input: string) => {
@@ -56,41 +56,8 @@ export default function ChatInterface() {
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
-    
-    let msg = await generateSummary() + '\n' + input
-    msg = msg.trim()
-
-    const userMessage: Message = {
-      role: 'user',
-      content: msg
-    }
-    
-    setMessages(prev => [...prev, userMessage])
     setInput('')
-    setError(null)
-    setIsLoading(true)
-
-    try {
-      const response = await chatWithLLM(msg, {
-        provider: 'ollama',
-        model: 'qwen2.5'
-      })
-
-      // Parse code blocks and create artifacts
-      const processedResponse = await parseCodeFromResponse(response, input)
-
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: processedResponse
-      }
-
-      setMessages(prev => [...prev, assistantMessage])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get response')
-      console.error('Chat error:', err)
-    } finally {
-      setIsLoading(false)
-    }
+    await handleChat(input)
   }
 
   return (

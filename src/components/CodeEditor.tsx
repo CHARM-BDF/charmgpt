@@ -13,7 +13,8 @@ export default function CodeEditor() {
     editorContent, 
     planContent, 
     activeArtifact,
-    isRunning
+    isRunning,
+    handleChat
   } = useArtifact()
 
   // Add debug logging
@@ -30,13 +31,16 @@ export default function CodeEditor() {
   }
 
   const handleRun = async () => {
-    console.log('Run button clicked, content:', editorContent)
-    if (!editorContent) {
-      console.warn('No editor content to run')
+    if (!editorContent && !planContent) {
+      console.warn('No content to run')
       return
     }
     try {
-      await runArtifact(editorContent)
+      if (mode === 'code') {
+        await runArtifact(editorContent)
+      } else {
+        await handleChat(planContent)
+      }
     } catch (error) {
       console.error('Error in handleRun:', error)
     }
@@ -105,7 +109,7 @@ export default function CodeEditor() {
             size="small"
             startIcon={isRunning ? <CircularProgress size={16} color="inherit" /> : <PlayArrowIcon />}
             onClick={handleRun}
-            disabled={mode === 'plan' || !editorContent || isRunning}
+            disabled={isRunning}
           >
             {isRunning ? 'Running...' : 'Run'}
           </Button>

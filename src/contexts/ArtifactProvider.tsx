@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { ArtifactContext } from './createArtifactContext'
 import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader } from './ArtifactContext.types'
+import { chatWithLLM } from '../services/api'
 
 interface ArtifactProviderProps {
   children: ReactNode
@@ -39,17 +40,17 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [])
 
   // Update addArtifact to check for pinned status
-  const addArtifact = (artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
+  const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact = {
       ...artifact,
       id: Date.now(),
       timestamp: Date.now(),
-      pinned: false  // Start unpinned
+      pinned: false
     }
     setArtifacts(prev => [...prev, newArtifact])
-  }
+  }, [])
 
-  const runArtifact = async (code: string, name: string = 'Run Result') => {
+  const runArtifact = useCallback(async (code: string, name: string = 'Run Result', chatInput?: string) => {
     try {
       setIsRunning(true)
       const response = await fetch('/api/run-code', {
@@ -57,19 +58,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           code,
-          artifacts  // Send all artifacts
+          artifacts
         })
       })
 
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(`Failed to run code: ${errorText}`)
-      }
-
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        throw new Error(`Expected JSON response but got: ${text.substring(0, 100)}...`)
       }
 
       const result = await response.json()
@@ -85,27 +80,11 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         output: result.output,
         plotFile,
         dataFile,
-        source: 'assistant'
+        source: 'assistant',
+        chatInput
       }
 
       addArtifact(newArtifact)
-
-      // Set this as the active artifact
-      setActiveArtifact({
-        ...newArtifact,
-        id: artifacts.length,
-        timestamp: Date.now()
-      })
-
-      // Set the most appropriate view mode based on what's available
-      if (plotFile) {
-        setViewMode('plot')
-      } else if (dataFile) {
-        setViewMode('data')
-      } else if (result.output) {
-        setViewMode('output')
-      }
-
       return result
     } catch (error) {
       console.error('Failed to run code:', error)
@@ -113,9 +92,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     } finally {
       setIsRunning(false)
     }
-  }
+  }, [artifacts, addArtifact, setIsRunning])
 
-  const generateSummary = async () => {
+  const generateSummary = useCallback(async () => {
     // Group artifacts by their display name to get latest versions
     const fileGroups = new Map<string, { artifact: Artifact, timestamp: number }[]>()
     
@@ -148,7 +127,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     return summaries.length > 0 
       ? '\nAvailable data files, to be used for plots or tables:\n' + summaries.join('\n')
       : ''
-  }
+  }, [artifacts])
 
   // Update togglePin to handle persistence
   const togglePin = async (artifactId: number) => {
@@ -186,6 +165,72 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     ))
   }, [])
 
+  const parseCodeFromResponse = useCallback(async (response: string, input: string) => {
+    const codeBlockRegex = /```python\n([\s\S]*?)```/g
+    const matches = [...response.matchAll(codeBlockRegex)]
+    
+    if (matches.length > 0) {
+      const artifactName = input.length > 50 ? input.substring(0, 47) + '...' : input
+      
+      // Join all code blocks with newlines between them
+      const combinedCode = matches
+        .map(match => match[1].trim())
+        .join('\n\n')
+      
+      // Add the chat input as a comment at the top of the code
+      const codeWithComment = `"""Query: ${input}\n"""\n\n${combinedCode}`
+      
+      setMode('code')
+      setEditorContent(codeWithComment)
+      try {
+        await runArtifact(codeWithComment, artifactName, input)
+      } catch (err) {
+        console.error('Failed to run code:', err)
+        addArtifact({
+          type: 'code',
+          name: artifactName,
+          code: codeWithComment,
+          output: err instanceof Error ? err.message : 'Failed to run code',
+          plotFile: undefined,
+          dataFile: undefined,
+          source: 'assistant',
+          chatInput: input
+        })
+      }
+    }
+
+    return response.replace(codeBlockRegex, '[Code added to editor and executed]')
+  }, [setMode, setEditorContent, runArtifact, addArtifact])
+
+  const handleChat = useCallback(async (message: string) => {
+    if (!message.trim() || isRunning) return
+    
+    let msg = await generateSummary() + '\n' + message
+    msg = msg.trim()
+
+    try {
+      setIsRunning(true)
+      const response = await chatWithLLM(msg, {
+        provider: 'ollama',
+        model: 'qwen2.5'
+      })
+
+      // Process code blocks and create artifacts
+      const processedResponse = await parseCodeFromResponse(response, message)
+
+      addArtifact({
+        type: 'chat',
+        name: `Chat: ${message.slice(0, 30)}...`,
+        output: processedResponse,
+        chatInput: message
+      })
+    } catch (err) {
+      console.error('Chat error:', err)
+    } finally {
+      setIsRunning(false)
+    }
+  }, [generateSummary, isRunning, addArtifact, parseCodeFromResponse])
+
   const value = {
     artifacts,
     activeArtifact,
@@ -204,7 +249,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     setIsRunning,
     generateSummary,
     togglePin,
-    updateArtifact
+    updateArtifact,
+    handleChat
   }
 
   return (

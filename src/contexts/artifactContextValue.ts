@@ -18,5 +18,6 @@ export const artifactContextValue: ArtifactContextType = {
   setIsRunning: () => undefined,
   generateSummary: async () => '',
   togglePin: async () => undefined,
-  updateArtifact: () => undefined
+  updateArtifact: () => undefined,
+  handleChat: async () => undefined
 } 
