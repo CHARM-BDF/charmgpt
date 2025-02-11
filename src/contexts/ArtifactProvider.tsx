@@ -39,7 +39,26 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     loadPinnedArtifacts()
   }, [])
 
-  // Update addArtifact to check for pinned status
+  const selectArtifact = useCallback((artifact: Artifact | null) => {
+    setActiveArtifact(artifact)
+
+    if (artifact) {  // Only set view mode if we have an artifact
+      // Set appropriate view mode based on artifact type
+      if (artifact.plotFile) {
+        setViewMode('plot')
+      } else if (artifact.dataFile) {
+        setViewMode('data')
+      } else {
+        setViewMode('output')
+      }
+
+      // If it's a code artifact, also set the editor content
+      if (artifact.code && mode === 'code') {
+        setEditorContent(artifact.code)
+      }
+    }
+  }, [mode, setEditorContent, setViewMode])
+
   const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact = {
       ...artifact,
@@ -48,7 +67,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       pinned: false
     }
     setArtifacts(prev => [...prev, newArtifact])
-  }, [])
+    selectArtifact(newArtifact)
+  }, [selectArtifact])
 
   const runArtifact = useCallback(async (code: string, name: string = 'Run Result', chatInput?: string) => {
     try {
@@ -169,6 +189,16 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     const codeBlockRegex = /```python\n([\s\S]*?)```/g
     const matches = [...response.matchAll(codeBlockRegex)]
     
+    // First create the chat artifact with the processed response
+    const processedResponse = response.replace(codeBlockRegex, '[Code added to editor and executed]')
+    addArtifact({
+      type: 'chat',
+      name: `Chat: ${input.slice(0, 30)}...`,
+      output: processedResponse,
+      chatInput: input
+    })
+    
+    // Then handle any code blocks
     if (matches.length > 0) {
       const artifactName = input.length > 50 ? input.substring(0, 47) + '...' : input
       
@@ -198,8 +228,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         })
       }
     }
-
-    return response.replace(codeBlockRegex, '[Code added to editor and executed]')
   }, [setMode, setEditorContent, runArtifact, addArtifact])
 
   const handleChat = useCallback(async (message: string) => {
@@ -215,21 +243,14 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         model: 'qwen2.5'
       })
 
-      // Process code blocks and create artifacts
-      const processedResponse = await parseCodeFromResponse(response, message)
-
-      addArtifact({
-        type: 'chat',
-        name: `Chat: ${message.slice(0, 30)}...`,
-        output: processedResponse,
-        chatInput: message
-      })
+      // Process response and create artifacts in order
+      await parseCodeFromResponse(response, message)
     } catch (err) {
       console.error('Chat error:', err)
     } finally {
       setIsRunning(false)
     }
-  }, [generateSummary, isRunning, addArtifact, parseCodeFromResponse])
+  }, [generateSummary, isRunning, parseCodeFromResponse, setIsRunning])
 
   const value = {
     artifacts,
@@ -238,7 +259,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     mode,
     setMode,
     setViewMode,
-    setActiveArtifact,
+    setActiveArtifact: selectArtifact,
     runArtifact,
     editorContent,
     setEditorContent,
