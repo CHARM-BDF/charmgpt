@@ -31,6 +31,20 @@ export class DockerService {
 
   private async prepareDataFiles(dataDir: string): Promise<void> {
     try {
+      // Remove any existing symlinks in the run directory
+      try {
+        const files = await fsPromises.readdir(dataDir)
+        for (const file of files) {
+          const filePath = path.join(dataDir, file)
+          const stats = await fsPromises.lstat(filePath)
+          if (stats.isSymbolicLink()) {
+            await fsPromises.unlink(filePath)
+          }
+        }
+      } catch (err) {
+        console.error('Error cleaning run directory:', err)
+      }
+
       // Get list of pinned artifacts
       const pinnedArtifactsFile = path.join(this.tempDir, 'artifacts.json')
       const pinnedArtifacts = JSON.parse(await fsPromises.readFile(pinnedArtifactsFile, 'utf-8'))
@@ -84,9 +98,6 @@ export class DockerService {
 
     try {
       const tempDir = this.getTempDir()
-      console.log('Temp directory:', tempDir)
-
-      // Save the code to a temporary file
       const codeDir = path.join(tempDir, runId)
       await fsPromises.mkdir(codeDir, { recursive: true })
       
