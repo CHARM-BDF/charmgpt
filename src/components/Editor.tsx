@@ -29,10 +29,10 @@ export default function Editor() {
 
     let artifactSummary = `## Artifact ${getDisplayName(artifact)}`
     if (artifact.dataFile) {
-      artifactSummary += `\n### Data Columns\n${dataHeader(artifact.dataFile)}`
+      artifactSummary += `\n### Data Columns\n${dataHeader(artifact.dataFile)}\n`
     }
     if (artifact.chatInput) {
-      artifactSummary += `\n### Chat Input\n${artifact.chatInput}`
+      artifactSummary += `\n### Chat Input\n${artifact.chatInput}\n`
     }
     if (artifact.code) {
       artifactSummary += `\n### Code\n\`\`\`python\n${artifact.code}\`\`\`\nOutput:\n\`\`\`\n${artifact.output}\`\`\`\n${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}`
