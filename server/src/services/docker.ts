@@ -50,7 +50,7 @@ export class DockerService {
       const pinnedArtifacts = JSON.parse(await fsPromises.readFile(pinnedArtifactsFile, 'utf-8'))
       const files: Set<string> = new Set(
         pinnedArtifacts
-          .filter((a: { dataFile?: string }) => a.dataFile)
+          .filter((a: { dataFile?: string, pinned?: boolean }) => a.dataFile && a.pinned)  // Only use pinned artifacts
           .map((a: { dataFile: string }) => path.basename(a.dataFile))
       )
 
