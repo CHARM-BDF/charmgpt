@@ -241,7 +241,6 @@ try:
         for csv_file in csv_files:
             # Check if file existed before and wasn't modified
             if csv_file in old_files and os.path.getmtime(csv_file) <= start_time:
-                print(f"Warning: Cannot overwrite data file {csv_file}. Unpin it and try again.")
                 continue
                 
             # Save with original name in the filename
