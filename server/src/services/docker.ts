@@ -30,18 +30,16 @@ export class DockerService {
   }
 
   private async prepareDataFiles(dataDir: string): Promise<void> {
-    //const dataDir = path.join(this.getTempDir(), 'data')
-    //await fsPromises.mkdir(dataDir, { recursive: true })
-
     try {
-      // Clean up old symlinks first
-      const existingLinks = await fsPromises.readdir(dataDir)
-      for (const link of existingLinks) {
-        await fsPromises.unlink(path.join(dataDir, link))
-      }
+      // Get list of pinned artifacts
+      const pinnedArtifactsFile = path.join(this.tempDir, 'artifacts.json')
+      const pinnedArtifacts = JSON.parse(await fsPromises.readFile(pinnedArtifactsFile, 'utf-8'))
+      const files: Set<string> = new Set(
+        pinnedArtifacts
+          .filter((a: { dataFile?: string }) => a.dataFile)
+          .map((a: { dataFile: string }) => path.basename(a.dataFile))
+      )
 
-      // Get all files in temp directory
-      const files = await fsPromises.readdir(this.getTempDir())
       
       // Group files by their original name (removing runId prefix)
       const fileGroups = new Map<string, { file: string, timestamp: number }[]>()
