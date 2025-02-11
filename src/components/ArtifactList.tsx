@@ -3,7 +3,7 @@ import { Box, List, ListItem, ListItemButton, ListItemText, IconButton, ToggleBu
 import { useArtifact } from '../contexts/useArtifact'
 import UploadIcon from '@mui/icons-material/Upload'
 import DownloadIcon from '@mui/icons-material/Download'
-import { ViewMode, ArtifactType, getDisplayName, Artifact } from '../contexts/ArtifactContext.types'
+import { ViewMode, ArtifactType, getDisplayName } from '../contexts/ArtifactContext.types'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 
@@ -20,17 +20,11 @@ export default function ArtifactList() {
   const { 
     artifacts, 
     addArtifact, 
-    activeArtifact, 
-    setActiveArtifact,
-    mode,
+    activeArtifact,
+    setActiveArtifact: selectArtifact,
     viewMode,
     setViewMode,
-    setEditorContent,
     togglePin,
-    setMode,
-    setPlanContent,
-    planContent,
-    updateArtifact
   } = useArtifact()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -78,62 +72,6 @@ export default function ArtifactList() {
     }
   }
 
-  const handleArtifactSelect = async (artifact: Artifact) => {
-    setActiveArtifact(artifact)
-
-    if (artifact.processingJob?.status === 'processing' && artifact.processingJob?.jobId) {
-      // Start polling for status
-      const pollStatus = async () => {
-        try {
-          const response = await fetch(`/api/service/document-status/${artifact.processingJob!.jobId}`)
-          const data = await response.json()
-
-          if (data.summaryJobId) {
-            // Update artifact with summary job ID
-            updateArtifact({
-              ...artifact,
-              processingJob: {
-                jobId: data.summaryJobId,
-                status: 'processing' as const,
-                type: 'summary' as const
-              }
-            })
-          } else if (data.summary) {
-            // Processing complete
-            updateArtifact({
-              ...artifact,
-              name: artifact.name.replace('Processing:', 'Processed:'),
-              output: data.summary,
-              processingJob: undefined
-            })
-            setMode('plan')
-            setPlanContent(((planContent || '').trim() + '\n\n' + data.summary.trim()).trim())
-          }
-        } catch (error) {
-          console.error('Failed to check status:', error)
-        }
-      }
-
-      // Poll every 5 seconds
-      const interval = setInterval(pollStatus, 5000)
-      return () => clearInterval(interval)
-    }
-
-    if (mode === 'code' && artifact.code) {
-      // In code mode, load code into editor
-      setEditorContent(artifact.code)
-    }
-
-    // Set appropriate view mode based on artifact content
-    if (artifact.dataFile) {
-      setViewMode('data')
-    } else if (artifact.plotFile) {
-      setViewMode('plot')
-    } else {
-      setViewMode('output')
-    }
-  }
-
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -172,7 +110,7 @@ export default function ArtifactList() {
         }
 
         addArtifact(newArtifact)
-        handleArtifactSelect(newArtifact)
+        selectArtifact(newArtifact)
       } else {
         // Handle other file types as before
         const formData = new FormData()
@@ -200,7 +138,7 @@ export default function ArtifactList() {
         }
 
         addArtifact(newArtifact)
-        handleArtifactSelect(newArtifact)
+        selectArtifact(newArtifact)
       }
     } catch (error) {
       console.error('Upload failed:', error)
@@ -270,7 +208,7 @@ export default function ArtifactList() {
           >
             <ListItemButton 
               selected={activeArtifact?.id === artifact.id}
-              onClick={() => handleArtifactSelect(artifact)}
+              onClick={() => selectArtifact(artifact)}
             >
               <ListItemText 
                 primary={artifact.name}

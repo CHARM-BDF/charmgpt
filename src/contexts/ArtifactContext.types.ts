@@ -79,4 +79,14 @@ export interface ArtifactContextType {
   handleChat: (message?: string) => Promise<void>
 }
 
-export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined) 
+export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined)
+
+export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
+  if (artifact.dataFile) {
+    return 'data'
+  } else if (artifact.plotFile) {
+    return 'plot'
+  } else {
+    return 'output'
+  }
+} 

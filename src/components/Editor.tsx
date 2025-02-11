@@ -104,7 +104,7 @@ export default function Editor() {
           console.log('No active artifact');
           return;
         }
-        insertArtifactAtCursor(activeArtifact, mode=='code');
+        insertArtifactAtCursor(activeArtifact, mode === 'code');
       }
     });
 
@@ -112,7 +112,7 @@ export default function Editor() {
     return () => {
       commandId.dispose();
     }
-  }, [activeArtifact, insertArtifactAtCursor])
+  }, [activeArtifact, insertArtifactAtCursor, mode])
 
   // Use effect to handle command lifecycle
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader } from './ArtifactContext.types'
+import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader, getDefaultViewMode } from './ArtifactContext.types'
 import { chatWithLLM } from '../services/api'
 
 interface ArtifactProviderProps {
@@ -41,16 +41,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
-
-    if (artifact) {  // Only set view mode if we have an artifact
-      // Set appropriate view mode based on artifact type
-      if (artifact.plotFile) {
-        setViewMode('plot')
-      } else if (artifact.dataFile) {
-        setViewMode('data')
-      } else {
-        setViewMode('output')
-      }
+    
+    if (artifact) {  // Only set view mode and editor content if we have an artifact
+      setViewMode(getDefaultViewMode(artifact))
 
       // If it's a code artifact, also set the editor content
       if (artifact.code && mode === 'code') {
@@ -67,8 +60,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       pinned: true  // Default to pinned
     }
     setArtifacts(prev => [...prev, newArtifact])
-    setActiveArtifact(newArtifact)
-  }, [setActiveArtifact])
+    selectArtifact(newArtifact)
+  }, [selectArtifact])
 
   const runArtifact = useCallback(async (code: string, name: string = 'Run Result', chatInput?: string) => {
     try {
