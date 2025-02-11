@@ -122,6 +122,16 @@ export default function Editor() {
     return handleEditorDidMount(editor);
   }, [handleEditorDidMount]);
 
+  // Add effect to update language when mode changes
+  useEffect(() => {
+    if (!editorRef.current) return
+    
+    const model = editorRef.current.getModel()
+    if (!model) return
+
+    monaco.editor.setModelLanguage(model, mode === 'code' ? 'python' : 'markdown')
+  }, [mode])
+
   const currentValue = mode === 'code' ? editorContent : planContent
 
   return (
@@ -136,7 +146,8 @@ export default function Editor() {
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           fontSize: 14,
-          wordWrap: 'on'
+          wordWrap: 'on',
+          language: mode === 'code' ? 'python' : 'markdown'
         }}
       />
     </Box>
