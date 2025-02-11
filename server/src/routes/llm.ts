@@ -18,6 +18,7 @@ router.post('/chat', async (req, res) => {
   try {
     const { message, config } = req.body
     const llm = getLLMInstance(config)
+    console.log("Chatting with message:", message);
     const response = await llm.chat(message)
     res.json({ response })
   } catch (error) {
@@ -30,6 +31,7 @@ router.post('/generate-code', async (req, res) => {
   try {
     const { prompt, config } = req.body
     const llm = getLLMInstance(config)
+    console.log("Generating code with prompt:", prompt);
     const code = await llm.generateCode(prompt)
     res.json({ code })
   } catch (error) {
