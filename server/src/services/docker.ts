@@ -240,6 +240,13 @@ from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import random
+
+# Set fixed seeds for reproducibility
+np.random.seed(42)
+random.seed(42)
+# Set pandas options for reproducibility
+pd.options.mode.chained_assignment = None  # default='warn'
 
 # Set the runId for the plot filename
 runId = '${runId}'

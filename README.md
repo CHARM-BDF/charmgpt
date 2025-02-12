@@ -97,6 +97,8 @@ The step debugger allows you to inspect variables and their values as they appea
 3. If the variable contains tabular data, it will be displayed in an interactive data grid
 4. For non-tabular data (like immediate values), the value will be shown in a formatted JSON view
 
+> **Note**: For reproducibility, random number generators (numpy, random, pandas) are automatically seeded with a fixed value (42). This ensures consistent results when debugging code with random operations.
+
 Example debugging code:
 ```python
 # The step debugger will track these variables
