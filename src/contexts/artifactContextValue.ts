@@ -1,6 +1,6 @@
 import { ArtifactContextType } from './ArtifactContext.types'
 
-export const defaultContextValue: ArtifactContextType = {
+export const artifactContextValue: ArtifactContextType = {
   artifacts: [],
   activeArtifact: null,
   viewMode: 'plot',
