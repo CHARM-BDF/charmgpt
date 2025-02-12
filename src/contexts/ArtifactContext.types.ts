@@ -93,6 +93,7 @@ export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
   } else {
     return 'output'
   }
+<<<<<<< HEAD
 }
 
 // Add helper to check if artifact has any data
@@ -106,3 +107,6 @@ export const hasData = (artifact: Artifact): boolean => {
   })
   return result
 } 
+=======
+} 
+>>>>>>> main
