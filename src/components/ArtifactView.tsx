@@ -51,10 +51,12 @@ export default function ArtifactView() {
 
   // Set initial selection to last data-producing step
   useEffect(() => {
-    if (dataFiles.length > 0) {
-      setSelectedStep(dataFiles[dataFiles.length - 1].step)
+    if (activeArtifact?.dataFile) {
+      setSelectedStep('data')  // For legacy artifacts
+    } else if (dataFiles.length > 0) {
+      setSelectedStep(dataFiles[dataFiles.length - 1].step)  // For new artifacts
     }
-  }, [dataFiles, setSelectedStep])
+  }, [activeArtifact, dataFiles, setSelectedStep])
 
   if (!activeArtifact) {
     return (
@@ -93,9 +95,12 @@ export default function ArtifactView() {
           )}
           
           <DataViewer 
-            dataFile={selectedStep ? 
-              dataFiles.find(df => df.step === selectedStep)?.file : 
-              activeArtifact.dataFile || dataFiles[dataFiles.length - 1].file
+            dataFile={
+              activeArtifact.dataFile || // Handle legacy case first
+              (selectedStep ? 
+                dataFiles.find(df => df.step === selectedStep)?.file : 
+                dataFiles[dataFiles.length - 1]?.file
+              )
             } 
           />
         </Box>
