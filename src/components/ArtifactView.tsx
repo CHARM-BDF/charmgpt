@@ -101,7 +101,10 @@ export default function ArtifactView() {
         activeArtifact,
         canShowData,
         dataFiles,
-        viewMode
+        selectedStep,
+        currentFile: selectedStep ? 
+          dataFiles.find(df => df.step === selectedStep)?.file : 
+          activeArtifact.dataFile || dataFiles[dataFiles.length - 1].file
       })
       return canShowData ? (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -121,7 +124,7 @@ export default function ArtifactView() {
           <DataViewer 
             dataFile={selectedStep ? 
               dataFiles.find(df => df.step === selectedStep)?.file : 
-              dataFiles[0]?.file  // Fall back to first/only file
+              activeArtifact.dataFile || dataFiles[dataFiles.length - 1].file
             } 
           />
         </Box>
