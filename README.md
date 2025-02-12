@@ -5,7 +5,7 @@ A collaborative data science environment with integrated chat and visualization 
 ## Features
 
 - Interactive Python code execution with matplotlib visualization
-- Real-time chat interface with LLM support (Claude, Ollama)
+- Real-time chat interface with LLM support (Charmonator, Claude, Ollama)
 - History of code artifacts and outputs
 - Support for multiple LLM providers
 - Code execution in isolated Docker containers
