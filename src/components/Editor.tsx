@@ -5,6 +5,7 @@ import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { dataHeader, getDisplayName, Artifact, ViewMode } from '../contexts/ArtifactContext.types'
 import { DataViewer } from './DataViewer'
+import '../styles/editor.css'
 
 export default function Editor() {
   const { 
@@ -17,11 +18,13 @@ export default function Editor() {
     setViewMode,
     setEditorContent: setEditorContentContext,
     setPlanContent: setPlanContentContext,
-    setSelectedStep
+    setSelectedStep,
+    selectedStep
   } = useArtifact()
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const isInitialMount = useRef(true)
+  const decorationIds = useRef<string[]>([])
   
   const insertArtifactAtCursor = useCallback((artifact: Artifact, quoted: boolean = false) => {
     if (!editorRef.current) return
@@ -178,6 +181,33 @@ export default function Editor() {
 
     monaco.editor.setModelLanguage(model, mode === 'code' ? 'python' : 'markdown')
   }, [mode])
+
+  // Add effect to handle line highlighting when selectedStep changes
+  useEffect(() => {
+    if (!editorRef.current || !activeArtifact?.var2line || !activeArtifact?.var2line_end) return
+    
+    const editor = editorRef.current
+    
+    // Clear existing decorations
+    decorationIds.current = editor.deltaDecorations(decorationIds.current, [])
+    
+    if (selectedStep) {
+      const startLine = activeArtifact.var2line[selectedStep]
+      const endLine = activeArtifact.var2line_end?.[selectedStep] || startLine
+      
+      // Add new decoration
+      const newDecorations = [{
+        range: new monaco.Range(startLine, 1, endLine, 1),
+        options: {
+          isWholeLine: true,
+          className: 'highlighted-line',
+          linesDecorationsClassName: 'highlighted-line-gutter'
+        }
+      }]
+      
+      decorationIds.current = editor.deltaDecorations([], newDecorations)
+    }
+  }, [selectedStep, activeArtifact?.var2line, activeArtifact?.var2line_end])
 
   const currentValue = mode === 'code' ? editorContent : planContent
 
