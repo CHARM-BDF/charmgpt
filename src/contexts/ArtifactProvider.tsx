@@ -216,50 +216,64 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     if (matches.length > 0) {
       const artifactName = input.length > 50 ? input.substring(0, 47) + '...' : input
       
-      // Join all code blocks with newlines between them
-      const combinedCode = matches
-        .map(match => match[1].trim())
-        .join('\n\n')
-      
-      // Add the chat input as a comment at the top of the code
-      const codeWithComment = `"""Query: ${input}\n"""\n\n${combinedCode}`
-      
-      setMode('code')
-      setEditorContent(codeWithComment)
-      try {
-        await runArtifact(codeWithComment, artifactName, input)
-      } catch (err) {
-        console.error('Failed to run code:', err)
-        addArtifact({
-          type: 'code',
-          name: artifactName,
-          code: codeWithComment,
-          output: err instanceof Error ? err.message : 'Failed to run code',
-          plotFile: undefined,
-          dataFile: undefined,
-          source: 'assistant',
-          chatInput: input,
-          dataFiles: {},  // Add empty dataFiles
-          lineNumbers: {}  // Add empty lineNumbers
-        })
+      // Process each code block
+      for (let i = 0; i < matches.length; i++) {
+        const code = matches[i][1].trim()
+        
+        // Start new artifact if:
+        // 1. It's the first code block, or
+        // 2. Code starts with import
+        if (i === 0 || code.startsWith('import') || code.startsWith('from ')) {
+          // Add the chat input as a comment at the top of the code
+          const codeWithComment = `"""Query: ${input}\n"""\n\n${code}`
+          
+          setMode('code')
+          setEditorContent(codeWithComment)
+          try {
+            await runArtifact(codeWithComment, artifactName + (i > 0 ? ` (${i+1})` : ''), input)
+          } catch (err) {
+            console.error('Failed to run code:', err)
+            addArtifact({
+              type: 'code',
+              name: artifactName + (i > 0 ? ` (${i+1})` : ''),
+              code: codeWithComment,
+              output: err instanceof Error ? err.message : 'Failed to run code',
+              plotFile: undefined,
+              dataFile: undefined,
+              source: 'assistant',
+              chatInput: input,
+              dataFiles: {},  // Add empty dataFiles
+              lineNumbers: {}  // Add empty lineNumbers
+            })
+          }
+        } else {
+          // Append to existing code
+          const newCode = editorContent + '\n\n' + code
+          setEditorContent(newCode)
+        }
       }
     }
-  }, [setMode, setEditorContent, runArtifact, addArtifact])
+  }, [setMode, setEditorContent, runArtifact, addArtifact, editorContent])
 
-  const handleChat = useCallback(async (message?: string) => {
-    if (isRunning) return
+  const handleChat = useCallback(async (message?: string): Promise<boolean> => {
+    if (isRunning) return false
 
     let msg = "";
     if (planContent.trim()) {
       msg = planContent
       // Save to server
-      await fetch('/api/artifacts/plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ content: planContent })
-      })
+      try {
+        await fetch('/api/artifacts/plan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ content: planContent })
+        })
+      } catch (err) {
+        console.error('Failed to save plan:', err)
+        return false
+      }
     } else {
       msg = await generateSummary()
     }
@@ -277,8 +291,10 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
       // Process response and create artifacts in order
       await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)
+      return true
     } catch (err) {
       console.error('Chat error:', err)
+      return false
     } finally {
       setIsRunning(false)
     }
