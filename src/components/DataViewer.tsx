@@ -1,5 +1,6 @@
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
-import { Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material'
+import { Box, FormControl, InputLabel, Select, MenuItem, IconButton, Dialog, TextField, Button } from '@mui/material'
+import DownloadIcon from '@mui/icons-material/Download'
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { ArtifactContext } from '../contexts/ArtifactContext'
 
@@ -16,7 +17,7 @@ interface DataRow {
 
 
 export function DataViewer({ dataFile, height }: DataViewerProps) {
-  const { activeArtifact, selectedStep, setSelectedStep } = useContext(ArtifactContext)
+  const { activeArtifact, selectedStep, setSelectedStep, addArtifact } = useContext(ArtifactContext)
   const [rows, setRows] = useState<DataRow[]>([])
   const [columns, setColumns] = useState<GridColDef[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,6 +25,8 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
     pageSize: 25,
     page: 0,
   })
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
+  const [filename, setFilename] = useState('')
 
   // Get all variables sorted by line number - only for var2val artifacts
   const variables = useMemo(() => {
@@ -120,9 +123,60 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
     },
   }
 
+  const handleExtractDataFrame = () => {
+    if (!selectedStep) return
+    setFilename(selectedStep)  // Default filename to variable name
+    setSaveDialogOpen(true)
+  }
+
+  const handleSaveDataFrame = async () => {
+    if (!selectedStep || !activeArtifact?.code || (activeArtifact.var2val && !activeArtifact.var2val[selectedStep])) return
+
+    const csvFilename = `${filename}.csv`
+    const sourceFile = activeArtifact.var2val?.[selectedStep]?.value
+    
+    try {
+      // Send copy request
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          copy: sourceFile,
+          filename: csvFilename
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to save DataFrame: ${errorText}`)
+      }
+
+      const result = await response.json()
+
+      // Then create new artifact that will regenerate this file
+      const newCode = `${activeArtifact.code}\n\n# Save DataFrame to CSV\n${selectedStep}.to_csv('${result.filepath}', index=False)`
+      
+      await addArtifact({
+        name: `Save ${selectedStep} to ${csvFilename}`,
+        code: newCode,
+        output: '',
+        type: 'code',
+        pinned: true,
+        dataFile: result.filepath  // Use the full filepath with runId
+      })
+
+      setSaveDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to save DataFrame:', error)
+      // TODO: Add error feedback to UI
+    }
+  }
+
   return (
     <Box sx={{ height: height || '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Only show variables dropdown for var2val artifacts */}
+      {/* Variables dropdown and download button */}
       {activeArtifact?.var2val && variables.length > 0 && (
         <Box sx={{ display: 'flex', gap: 1, p: 1, borderBottom: 1, borderColor: 'divider' }}>
           <FormControl size="small" sx={{ minWidth: 150 }}>
@@ -145,6 +199,17 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
               ))}
             </Select>
           </FormControl>
+
+          {/* Add download button */}
+          {selectedStep && activeArtifact.var2val[selectedStep]?.type === 'file' && (
+            <IconButton 
+              onClick={handleExtractDataFrame}
+              size="small"
+              title="Extract DataFrame to new artifact"
+            >
+              <DownloadIcon />
+            </IconButton>
+          )}
         </Box>
       )}
 
@@ -158,6 +223,30 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
           <DataGrid {...commonDataGridProps} />
         )}
       </Box>
+
+      {/* Add save dialog */}
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}>
+          <TextField
+            label="Filename"
+            value={filename}
+            onChange={(e) => setFilename(e.target.value)}
+            size="small"
+            fullWidth
+            helperText="CSV extension will be added automatically"
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+            <Button 
+              variant="contained" 
+              onClick={handleSaveDataFrame}
+              disabled={!filename.trim()}
+            >
+              Save
+            </Button>
+          </Box>
+        </Box>
+      </Dialog>
     </Box>
   )
 } 

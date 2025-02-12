@@ -3,6 +3,7 @@ import multer from 'multer'
 import { DockerService } from '../services/docker'
 import * as fs from 'fs'
 import { v4 as uuidv4 } from 'uuid'
+import path from 'path'
 
 const router = express.Router()
 const docker = new DockerService()
@@ -27,8 +28,29 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage })
 
-router.post('/upload', upload.single('file'), (req, res, next) => {
+router.post('/upload', upload.single('file'), async (req, res, next) => {
   try {
+    // Handle file copy case
+    if (req.body.copy && req.body.filename) {
+      const sourceFile = path.join(tempDir, req.body.copy)
+      const runId = uuidv4()
+      const targetFile = path.join(tempDir, `${runId}_${req.body.filename}`)
+
+      if (!fs.existsSync(sourceFile)) {
+        res.status(404).json({ error: 'Source file not found' })
+        return
+      }
+
+      await fs.promises.copyFile(sourceFile, targetFile)
+      res.json({
+        filepath: `${runId}_${req.body.filename}`,
+        filename: req.body.filename,
+        viewMode: 'data'
+      })
+      return
+    }
+
+    // Handle regular file upload case
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' })
       return
