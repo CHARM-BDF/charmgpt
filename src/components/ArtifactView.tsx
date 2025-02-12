@@ -1,11 +1,10 @@
 import { Box, Typography, FormControl, Select, MenuItem } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import DataViewer from './DataViewer'
-import { useState, useMemo, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 
 export default function ArtifactView() {
-  const { activeArtifact, viewMode } = useArtifact()
-  const [selectedStep, setSelectedStep] = useState<string>('')
+  const { activeArtifact, viewMode, selectedStep, setSelectedStep } = useArtifact()
   
   // Get all data files for this artifact
   const dataFiles = useMemo(() => {
@@ -39,7 +38,7 @@ export default function ArtifactView() {
     if (dataFiles.length > 0) {
       setSelectedStep(dataFiles[dataFiles.length - 1].step)
     }
-  }, [dataFiles])
+  }, [dataFiles, setSelectedStep])
 
   if (!activeArtifact) {
     return (

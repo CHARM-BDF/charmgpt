@@ -15,6 +15,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [planContent, setPlanContent] = useState('')
   const [mode, setMode] = useState<EditorMode>('code')
   const [isRunning, setIsRunning] = useState(false)
+  const [selectedStep, setSelectedStep] = useState('')
 
   // Load pinned artifacts and plan on mount
   useEffect(() => {
@@ -298,7 +299,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     generateSummary,
     togglePin,
     updateArtifact,
-    handleChat
+    handleChat,
+    selectedStep,
+    setSelectedStep
   }
 
   return (

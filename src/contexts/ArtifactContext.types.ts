@@ -79,6 +79,8 @@ export interface ArtifactContextType {
   togglePin: (artifactId: number) => Promise<void>
   updateArtifact: (artifact: Artifact) => void
   handleChat: (message?: string) => Promise<void>
+  selectedStep: string
+  setSelectedStep: (step: string) => void
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined)
