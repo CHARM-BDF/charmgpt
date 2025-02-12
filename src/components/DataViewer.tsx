@@ -9,8 +9,9 @@ interface DataViewerProps {
 }
 
 interface DataRow {
-  id: number
-  [key: string]: string | number
+  id: string  // Change to string since we're using composite IDs
+  _index?: number
+  [key: string]: string | number | undefined
 }
 
 
@@ -32,7 +33,7 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
       .map(([name, info]) => ({
         name,
         ...info,
-        line_start: activeArtifact.var2line[name]
+        line_start: activeArtifact.var2line?.[name] || 0
       }))
       .sort((a, b) => a.line_start - b.line_start)
   }, [activeArtifact])
@@ -72,7 +73,12 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
         
         const data = lines.slice(1).map((line, index) => {
           const values = line.split(',').map(v => v.trim())
-          const row: DataRow = { id: index }
+          // Create a unique ID using the dataFile and index
+          const uniqueId = `${dataFile}_${index}`
+          const row: DataRow = { 
+            id: uniqueId,  // Use string ID instead of number
+            _index: index  // Keep original index if needed
+          }
           headers.forEach((header, i) => {
             const value = values[i]
             row[header] = isNaN(Number(value)) ? value : Number(value)
@@ -95,8 +101,8 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
   }, [dataFile])
 
   const commonDataGridProps = {
-    rows: rows || [],
-    columns: columns || [],
+    rows,
+    columns,
     loading,
     density: "compact" as const,
     disableRowSelectionOnClick: true,
@@ -143,17 +149,12 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
       )}
 
       <Box sx={{ flexGrow: 1, minHeight: 0 }}>
-        {/* For var2val artifacts */}
-        {activeArtifact?.var2val ? (
-          selectedStep && activeArtifact.var2val[selectedStep]?.type === 'file' ? (
-            <DataGrid {...commonDataGridProps} />
-          ) : selectedStep && activeArtifact.var2val[selectedStep]?.type === 'immediate' ? (
-            <Box sx={{ p: 2, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-              {JSON.stringify(activeArtifact.var2val[selectedStep].value, null, 2)}
-            </Box>
-          ) : null
+        {/* Show DataGrid for files, JSON view for immediate values */}
+        {selectedStep && activeArtifact?.var2val?.[selectedStep]?.type === 'immediate' ? (
+          <Box sx={{ p: 2, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+            {JSON.stringify(activeArtifact.var2val[selectedStep].value, null, 2)}
+          </Box>
         ) : (
-          /* For uploaded files */
           <DataGrid {...commonDataGridProps} />
         )}
       </Box>
