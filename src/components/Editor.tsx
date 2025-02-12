@@ -81,6 +81,9 @@ export default function Editor() {
     editorRef.current = editor
     
     editor.onDidChangeCursorPosition((e) => {
+      // Only track cursor position in code mode
+      if (mode !== 'code') return
+
       // Get word at cursor position
       const model = editor.getModel()
       if (!model) return
@@ -119,6 +122,9 @@ export default function Editor() {
 
   // Update step finding logic for the side panel
   const currentStepData = useMemo(() => {
+    // Don't show step data in plan mode
+    if (mode !== 'code') return null
+    
     if (!activeArtifact?.var2line || !activeArtifact?.var2val) return null
     
     const model = editorRef.current?.getModel()
@@ -140,7 +146,7 @@ export default function Editor() {
       step: varName,
       file: varInfo.type === 'file' ? varInfo.value : undefined
     }
-  }, [activeArtifact])
+  }, [activeArtifact, mode])
 
   // Handle artifact selection
   useEffect(() => {
@@ -184,7 +190,7 @@ export default function Editor() {
 
   // Add effect to handle line highlighting when selectedStep changes
   useEffect(() => {
-    if (!editorRef.current || !activeArtifact?.var2line || !activeArtifact?.var2line_end) return
+    if (mode !== 'code' || !editorRef.current || !activeArtifact?.var2line || !activeArtifact?.var2line_end) return
     
     const editor = editorRef.current
     
@@ -207,7 +213,15 @@ export default function Editor() {
       
       decorationIds.current = editor.deltaDecorations([], newDecorations)
     }
-  }, [selectedStep, activeArtifact?.var2line, activeArtifact?.var2line_end])
+  }, [selectedStep, activeArtifact?.var2line, activeArtifact?.var2line_end, mode])
+
+  // Add effect to clear decorations when switching to plan mode
+  useEffect(() => {
+    if (mode === 'plan' && editorRef.current) {
+      // Clear existing decorations when switching to plan mode
+      decorationIds.current = editorRef.current.deltaDecorations(decorationIds.current, [])
+    }
+  }, [mode])
 
   const currentValue = mode === 'code' ? editorContent : planContent
 
