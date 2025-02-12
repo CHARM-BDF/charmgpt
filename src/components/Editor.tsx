@@ -76,8 +76,6 @@ export default function Editor() {
   const handleChange: OnChange = (value) => {
     if (value === undefined) return
     
-    console.log('Editor change:', { mode, value })
-    
     if (mode === 'code') {
       setEditorContent(value)
     } else {
