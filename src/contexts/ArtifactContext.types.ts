@@ -76,7 +76,7 @@ export interface ArtifactContextType {
   generateSummary: () => Promise<string>
   togglePin: (artifactId: number) => Promise<void>
   updateArtifact: (artifact: Artifact) => void
-  handleChat: (message?: string) => Promise<void>
+  handleChat: (message?: string) => Promise<boolean>
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined)
