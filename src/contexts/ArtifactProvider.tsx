@@ -73,7 +73,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           code,
-          artifacts: artifacts.filter(a => a.pinned)  // Only send pinned artifacts
+          artifacts: artifacts.filter(a => a.pinned)
         })
       })
 
@@ -83,10 +83,10 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       }
 
       const result = await response.json()
+      console.log('Run result from server:', result)
 
       // Add API prefix to plot and data files if they exist
       const plotFile = result.plotFile ? `/api/data/${result.plotFile}` : undefined
-      const dataFile = result.dataFile ? result.dataFile : undefined
 
       const newArtifact = {
         type: 'code' as const,
@@ -94,10 +94,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         code,
         output: result.output,
         plotFile,
-        dataFile,
+        dataFile: result.dataFiles?.['final'] || result.dataFile,
+        dataFiles: result.dataFiles || {},
+        lineNumbers: result.lineNumbers || {},
         source: 'assistant',
         chatInput
       }
+      console.log('Created new artifact:', newArtifact)
 
       addArtifact(newArtifact)
       return result
@@ -196,7 +199,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       type: 'chat',
       name: `Chat: ${input.slice(0, 30)}...`,
       output: processedResponse,
-      chatInput: input
+      chatInput: input,
+      dataFiles: {},  // Add empty dataFiles
+      lineNumbers: {}  // Add empty lineNumbers
     })
     
     // Then handle any code blocks
@@ -225,7 +230,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           plotFile: undefined,
           dataFile: undefined,
           source: 'assistant',
-          chatInput: input
+          chatInput: input,
+          dataFiles: {},  // Add empty dataFiles
+          lineNumbers: {}  // Add empty lineNumbers
         })
       }
     }

@@ -1,9 +1,10 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useState, useMemo } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
-import { Box } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { dataHeader, getDisplayName, Artifact } from '../contexts/ArtifactContext.types'
+import DataViewer from './DataViewer'
 
 export default function Editor() {
   const { 
@@ -13,12 +14,39 @@ export default function Editor() {
     planContent,
     setPlanContent,
     mode,
+    setViewMode,
     setEditorContent: setEditorContentContext,
     setPlanContent: setPlanContentContext
   } = useArtifact()
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const isInitialMount = useRef(true)
+  const [cursorLine, setCursorLine] = useState(1)
+  
+  // Find data for current line
+  const currentStepData = useMemo(() => {
+    if (!activeArtifact?.lineNumbers) {
+      console.log('No lineNumbers in artifact:', activeArtifact)
+      return null
+    }
+    
+    console.log('Looking for line:', cursorLine, 'in lineNumbers:', activeArtifact.lineNumbers)
+    
+    const matchingStep = Object.entries(activeArtifact.lineNumbers)
+      .find(([, line]) => Number(line) === cursorLine)
+    
+    console.log('Found matching step:', matchingStep)
+    
+    if (!matchingStep) return null
+    
+    const [step] = matchingStep
+    const result = {
+      step,
+      file: activeArtifact.dataFiles[step]
+    }
+    console.log('Current step data:', result)
+    return result
+  }, [activeArtifact, cursorLine])
 
   const insertArtifactAtCursor = useCallback((artifact: Artifact, quoted: boolean = false) => {
     if (!editorRef.current) return
@@ -93,6 +121,21 @@ export default function Editor() {
   const handleEditorDidMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
     
+    // Add cursor position listener
+    editor.onDidChangeCursorPosition((e) => {
+      console.log('Cursor moved to line:', e.position.lineNumber)
+      setCursorLine(e.position.lineNumber)
+      
+      // If we have data for this line, switch to data view
+      const line = e.position.lineNumber
+      const hasDataForLine = activeArtifact?.lineNumbers && 
+        Object.values(activeArtifact.lineNumbers).includes(line)
+      
+      if (hasDataForLine) {
+        setViewMode('data')
+      }
+    })
+
     const commandId = editor.addAction({
       id: 'insert-artifact',
       label: 'Insert Artifact',
@@ -112,7 +155,7 @@ export default function Editor() {
     return () => {
       commandId.dispose();
     }
-  }, [activeArtifact, insertArtifactAtCursor, mode])
+  }, [activeArtifact, insertArtifactAtCursor, mode, setViewMode])
 
   // Use effect to handle command lifecycle
   useEffect(() => {
@@ -135,21 +178,35 @@ export default function Editor() {
   const currentValue = mode === 'code' ? editorContent : planContent
 
   return (
-    <Box sx={{ height: '100%' }}>
-      <MonacoEditor
-        height="100%"
-        defaultLanguage={mode === 'code' ? 'python' : 'markdown'}
-        value={currentValue}
-        onChange={handleChange}
-        onMount={handleEditorDidMount}
-        options={{
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          fontSize: 14,
-          wordWrap: 'on',
-          language: mode === 'code' ? 'python' : 'markdown'
-        }}
-      />
+    <Box sx={{ display: 'flex', height: '100%' }}>
+      <Box sx={{ flex: 1 }}>
+        <MonacoEditor
+          height="100%"
+          defaultLanguage={mode === 'code' ? 'python' : 'markdown'}
+          value={currentValue}
+          onChange={handleChange}
+          onMount={handleEditorDidMount}
+          options={{
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            wordWrap: 'on',
+            language: mode === 'code' ? 'python' : 'markdown'
+          }}
+        />
+      </Box>
+      
+      {currentStepData && (
+        <Box sx={{ width: '300px', borderLeft: 1, borderColor: 'divider', p: 1 }}>
+          <Typography variant="subtitle2">
+            Step: {currentStepData.step}
+          </Typography>
+          <DataViewer 
+            dataFile={currentStepData.file}
+            height="calc(100% - 32px)"  // Subtract header height
+          />
+        </Box>
+      )}
     </Box>
   )
 } 

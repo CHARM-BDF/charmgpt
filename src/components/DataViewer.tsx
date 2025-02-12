@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 
 interface DataViewerProps {
   dataFile?: string
+  height?: string | number
 }
 
 interface DataRow {
@@ -11,7 +12,7 @@ interface DataRow {
   [key: string]: string | number
 }
 
-export default function DataViewer({ dataFile }: DataViewerProps) {
+export default function DataViewer({ dataFile, height = '100%' }: DataViewerProps) {
   const [rows, setRows] = useState<DataRow[]>([])
   const [columns, setColumns] = useState<GridColDef[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,7 +74,7 @@ export default function DataViewer({ dataFile }: DataViewerProps) {
   }, [dataFile])
 
   return (
-    <Box sx={{ height: '100%', width: '100%' }}>
+    <Box sx={{ height }}>
       <DataGrid
         rows={rows}
         columns={columns}

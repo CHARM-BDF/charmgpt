@@ -9,7 +9,8 @@ interface DockerRunResult {
   output: string
   visualization?: string  // JSON string for visualization data
   plotFile?: string      // Name of the plot file if generated
-  dataFile?: string      // Name of the CSV file if generated
+  dataFiles: Record<string, string>  // Map of step name to file name
+  lineNumbers: Record<string, number>  // Map of step name to line number
 }
 
 export class DockerService {
@@ -129,17 +130,35 @@ export class DockerService {
       if (hasPlot) console.log('Found plot file:', plotFilename)
       if (hasData) console.log('Found data file:', csvFile)
 
+      // Parse the results from the output
+      const resultsMatch = stdout.match(/__RESULTS__\n(.*)/);
+      let dataFiles = {};
+      let lineNumbers = {};
+      
+      if (resultsMatch) {
+        try {
+          const results = JSON.parse(resultsMatch[1]);
+          dataFiles = results.dataFiles;
+          lineNumbers = results.lineNumbers;
+        } catch (e) {
+          console.error('Failed to parse results:', e);
+        }
+      }
+
       return {
         success: true,
         output: stdout,
         plotFile: hasPlot ? plotFilename : undefined,
-        dataFile: hasData ? csvFile : undefined
+        dataFiles,
+        lineNumbers
       }
     } catch (error) {
       console.error('Error running code:', error)
       return {
         success: false,
-        output: error instanceof Error ? error.message : 'Unknown error occurred'
+        output: error instanceof Error ? error.message : 'Unknown error occurred',
+        dataFiles: {},
+        lineNumbers: {}
       }
     }
   }
@@ -198,8 +217,6 @@ export class DockerService {
 import sys
 import json
 import os
-import glob
-import time
 from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -215,39 +232,84 @@ sys.path.append('/app/temp')
 output_buffer = StringIO()
 sys.stdout = output_buffer
 
-# Execute user code
+# Track intermediate DataFrames
+intermediate_files = {}
+line_numbers = {}
+
+# Function to save DataFrame as CSV
+def save_intermediate_df(df, step_name, line_no):
+    if isinstance(df, pd.DataFrame):
+        filename = f'{runId}_{step_name}.csv'
+        df.to_csv(f'/app/output/{filename}', index=False)
+        print(f"\\nSaved intermediate DataFrame for {step_name}")
+        print(f"Shape: {df.shape}")
+        print(f"First few rows:\\n{df.head()}")
+        intermediate_files[step_name] = filename
+        line_numbers[step_name] = line_no
+        return filename
+    return None
+
+# Execute user code with intermediate saves
 try:
     # Execute user code in current directory
-    os.chdir('/app/code')  # Ensure we're in the code directory
+    os.chdir('/app/code')
     
-    # Record existing files with their timestamps
-    old_files = {f: os.path.getmtime(f) for f in glob.glob('*.csv')}
-    start_time = time.time()
+    # Read the user code
+    with open('user_code.py', 'r') as f:
+        user_code = f.read()
     
-    import user_code
+    # Create a new globals dict to execute in
+    globals_dict = {
+        'pd': pd,
+        'np': np,
+        'plt': plt,
+        '__name__': '__main__'
+    }
     
+    # Split code into lines and execute with intermediate saves
+    code_lines = []
+    in_triple_quotes = False
+    line_no = 0
+    
+    for line in user_code.splitlines():
+        line_no += 1
+        code_lines.append(line)
+        
+        # Skip if we're in a triple-quoted string
+        if '"""' in line:
+            in_triple_quotes = not in_triple_quotes
+            continue
+            
+        if in_triple_quotes:
+            continue
+            
+        if line.strip() and not line.startswith('#'):
+            # Execute up to this point
+            exec('\\n'.join(code_lines), globals_dict)
+            
+            # Check for DataFrame assignments
+            if '=' in line:
+                var_name = line.split('=')[0].strip()
+                if var_name:
+                    try:
+                        df = globals_dict.get(var_name)
+                        save_intermediate_df(df, var_name, line_no)
+                    except:
+                        pass  # Not a DataFrame or not defined yet
+
     # Check if there's a plot to save
     if plt.get_fignums():
         print("\\nFound plot, saving...")
         plt.savefig(f'/app/output/{runId}_plot.png')
         print(f"Saved plot as {runId}_plot.png")
-    
-    # Check for any CSV files in the code directory
-    csv_files = glob.glob('*.csv')
-    
-    if csv_files:
-        print(f"\\nFound CSV files: {csv_files}")
-        import shutil
-        for csv_file in csv_files:
-            # Check if file existed before and wasn't modified
-            if csv_file in old_files and os.path.getmtime(csv_file) <= start_time:
-                continue
-                
-            # Save with original name in the filename
-            output_path = f'/app/output/{runId}_{os.path.basename(csv_file)}'
-            shutil.move(csv_file, output_path)
-            print(f"Moved {os.path.basename(csv_file)} to {os.path.basename(output_path)}")
-    
+
+    # Add results to output
+    print("\\n__RESULTS__")
+    print(json.dumps({
+        'dataFiles': intermediate_files,
+        'lineNumbers': line_numbers
+    }))
+
 except Exception as e:
     print(f"Error: {str(e)}")
 

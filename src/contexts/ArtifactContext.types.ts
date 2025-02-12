@@ -48,6 +48,8 @@ export interface Artifact {
   output: string
   plotFile?: string
   dataFile?: string
+  dataFiles: Record<string, string>  // Map of step name to file name
+  lineNumbers: Record<string, number>  // Map of step name to line number
   type: ArtifactType
   timestamp: number
   code?: string

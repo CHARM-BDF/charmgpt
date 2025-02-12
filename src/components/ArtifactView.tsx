@@ -1,10 +1,46 @@
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, FormControl, Select, MenuItem } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import DataViewer from './DataViewer'
+import { useState, useMemo, useEffect } from 'react'
 
 export default function ArtifactView() {
   const { activeArtifact, viewMode } = useArtifact()
+  const [selectedStep, setSelectedStep] = useState<string>('')
   
+  // Get all data files for this artifact
+  const dataFiles = useMemo(() => {
+    if (!activeArtifact) return []
+    
+    // Handle legacy case with single dataFile
+    if (activeArtifact.dataFile && !activeArtifact.dataFiles) {
+      return [{
+        step: 'data',
+        file: activeArtifact.dataFile,
+        lineNumber: 0
+      }]
+    }
+    
+    // Handle new case with multiple dataFiles
+    if (activeArtifact.dataFiles) {
+      return Object.entries(activeArtifact.dataFiles)
+        .map(([step, file]) => ({ 
+          step, 
+          file,
+          lineNumber: activeArtifact.lineNumbers[step]
+        }))
+        .sort((a, b) => a.lineNumber - b.lineNumber)
+    }
+    
+    return []
+  }, [activeArtifact])
+
+  // Set initial selection to last data-producing step
+  useEffect(() => {
+    if (dataFiles.length > 0) {
+      setSelectedStep(dataFiles[dataFiles.length - 1].step)
+    }
+  }, [dataFiles])
+
   if (!activeArtifact) {
     return (
       <Box sx={{ flex: 1, overflow: 'auto', p: 2}}>
@@ -24,11 +60,29 @@ export default function ArtifactView() {
       ) : null
 
     case 'data':
-      return activeArtifact.dataFile ? (
-        <Box sx={{ height: '100%', width: '100%' }}>
-          <DataViewer dataFile={activeArtifact.dataFile} />
+      return (
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {dataFiles.length > 1 && (
+            <FormControl size="small" sx={{ m: 1 }}>
+              <Select
+                value={selectedStep}
+                onChange={(e) => setSelectedStep(e.target.value)}
+              >
+                {dataFiles.map(({ step }) => (
+                  <MenuItem key={step} value={step}>{step}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          
+          <DataViewer 
+            dataFile={selectedStep ? 
+              dataFiles.find(df => df.step === selectedStep)?.file : 
+              dataFiles[0]?.file  // Fall back to first/only file
+            } 
+          />
         </Box>
-      ) : null
+      )
 
     case 'output':
       return (
