@@ -137,8 +137,7 @@ export default function ArtifactList() {
           dataFile: data.filepath,
           output: `Uploaded file: ${data.filename}\nSize: ${data.size} bytes\nType: ${data.mimetype}`,
           timestamp: now,
-          dataFiles: {},
-          lineNumbers: {}
+          pinned: true
         }
 
         addArtifact(newArtifact)

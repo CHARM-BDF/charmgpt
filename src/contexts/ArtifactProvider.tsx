@@ -328,35 +328,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [generateSummary, parseCodeFromResponse, planContent, addArtifact])
 
-  const handleFileUpload = useCallback(async (file: File) => {
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-      
-      if (!response.ok) {
-        throw new Error('Upload failed')
-      }
-      
-      const result = await response.json()
-      
-      addArtifact({
-        type: 'data',
-        name: file.name,
-        output: '',
-        dataFile: result.filename,  // Changed from dataFiles
-        source: 'upload'
-      })
-      
-    } catch (error) {
-      console.error('Failed to upload file:', error)
-    }
-  }, [addArtifact])
-
   const value = {
     artifacts,
     activeArtifact,
@@ -379,7 +350,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     handleChat,
     selectedStep,
     setSelectedStep,
-    handleFileUpload
   }
 
   return (
