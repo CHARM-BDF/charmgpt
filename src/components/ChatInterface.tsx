@@ -84,14 +84,33 @@ export default function ChatInterface() {
             size="small"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Type your message..."
+            onKeyDown={(e) => {  // Change to onKeyDown for better control
+              if (e.key === 'Enter') {
+                if (e.shiftKey) {
+                  // Let Shift+Enter add a newline
+                  return
+                }
+                // Regular Enter sends the message
+                e.preventDefault()
+                handleSend()
+              }
+            }}
+            placeholder="Type your message... (Shift+Enter for new line)"
             disabled={isLoading}
+            multiline
+            minRows={2}
+            maxRows={8}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                alignItems: 'flex-start'
+              }
+            }}
           />
           <IconButton 
             onClick={handleSend} 
             disabled={!input.trim() || isLoading}
             color="primary"
+            sx={{ mt: 0.5 }}  // Align with first line of text
           >
             {isLoading ? <CircularProgress size={24} /> : <SendIcon />}
           </IconButton>
