@@ -147,18 +147,14 @@ export class DockerService {
       let var2val = {}
       let var2line = {}
       let var2line_end = {}
-      
-      console.log('Docker output:', stdout);
-      console.log('Results match:', resultsMatch);
+
 
       if (resultsMatch) {
         try {
           const results = JSON.parse(resultsMatch[1]);
-          console.log('Parsed results:', results);
           var2val = results.var2val;
           var2line = results.var2line;
           var2line_end = results.var2line_end;
-          console.log('Extracted data:', { var2val, var2line, var2line_end });
         } catch (e) {
           console.error('Failed to parse results:', e);
         }

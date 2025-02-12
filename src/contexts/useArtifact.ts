@@ -8,13 +8,5 @@ export function useArtifact(): ArtifactContextType {
     throw new Error('useArtifact must be used within an ArtifactProvider')
   }
   
-  // Add debug logging
-  /*
-  console.log('useArtifact hook:', { 
-    viewMode: context.viewMode,
-    setViewMode: !!context.setViewMode 
-  })
-  */
-  
   return context
 } 
