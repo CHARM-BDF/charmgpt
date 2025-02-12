@@ -298,22 +298,22 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
 
 def find_assignments(code):
     """Find all assignments and their line numbers using AST"""
-    assignments = []
+    assignments = {}  # Use dict to keep only last occurrence of each variable
     tree = ast.parse(code)
     
     class AssignmentVisitor(ast.NodeVisitor):
         def visit_Assign(self, node):
             for target in node.targets:
                 if isinstance(target, ast.Name):
-                    assignments.append({
+                    assignments[target.id] = {
                         'name': target.id,
                         'line_start': node.lineno,
                         'line_end': node.end_lineno or node.lineno
-                    })
+                    }
             self.generic_visit(node)
     
     AssignmentVisitor().visit(tree)
-    return assignments
+    return list(assignments.values())  # Convert back to list for the rest of the code
 
 try:
     # Read and execute the code first
