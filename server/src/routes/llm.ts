@@ -7,7 +7,7 @@ const router = Router()
 const llmInstances = new Map<string, LLMService>()
 
 function getLLMInstance(config: LLMConfig): LLMService {
-  const key = `${config.provider}-${config.model}`
+  const key = config ? `${config.provider}-${config.model}` : ""
   if (!llmInstances.has(key)) {
     llmInstances.set(key, new LLMService(config))
   }
