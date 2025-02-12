@@ -236,41 +236,40 @@ export class DockerService {
 import sys
 import json
 import os
+import ast
 from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import random
 
-# Set fixed seeds for reproducibility
-np.random.seed(42)
-random.seed(42)
-# Set pandas options for reproducibility
-pd.options.mode.chained_assignment = None  # default='warn'
-
-# Set the runId for the plot filename
-runId = '${runId}'
-
-# Add temp directory to Python path
-sys.path.append('/app/temp')
-
-# Capture print output
-output_buffer = StringIO()
-sys.stdout = output_buffer
-
-# Track intermediate DataFrames
-intermediate_files = {}
-line_numbers = {}
-
-# Track variables and their values
+# Initialize tracking
 var2val = {}
 var2line = {}
 var2line_end = {}
+value_log_buffer = ""
+
+def convert_value(value):
+    """Recursively convert values to JSON-serializable types"""
+    if isinstance(value, (np.integer, np.floating)):
+        return value.item()
+    elif isinstance(value, np.ndarray):
+        return value.tolist()
+    elif isinstance(value, range):
+        return list(value)
+    elif isinstance(value, list):
+        return [convert_value(v) for v in value]
+    elif isinstance(value, tuple):
+        return tuple(convert_value(v) for v in value)
+    elif isinstance(value, dict):
+        return {k: convert_value(v) for k, v in value.items()}
+    return value
 
 def save_intermediate_value(value, var_name: str, line_start: int, line_end: int) -> None:
+    global value_log_buffer
     if isinstance(value, pd.DataFrame):
         # Handle DataFrame by saving to file
-        filename = f'{runId}_{var_name}.csv'
+        filename = f'${runId}_{var_name}.csv'
         value.to_csv(f'/app/output/{filename}', index=False)
         var2val[var_name] = {
             'type': 'file',
@@ -278,97 +277,79 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
         }
         var2line[var_name] = line_start
         var2line_end[var_name] = line_end
-        print(f"\\nSaved DataFrame {var_name} to {filename}")
+        value_log_buffer += f"\\nSaved DataFrame {var_name} to {filename}"
     else:
         # Handle immediate values (numbers, strings, lists, etc)
         try:
-            # Convert numpy types to Python native types
-            if isinstance(value, (np.integer, np.floating)):
-                value = value.item()
-            elif isinstance(value, np.ndarray):
-                value = value.tolist()
-            elif isinstance(value, range):
-                value = list(value)
+            # Convert value and all nested values
+            converted_value = convert_value(value)
             
             # Test if value is JSON serializable
-            json.dumps(value)
+            json.dumps(converted_value)
             var2val[var_name] = {
                 'type': 'immediate',
-                'value': value
+                'value': converted_value
             }
             var2line[var_name] = line_start
             var2line_end[var_name] = line_end
-            print(f"\\nSaved value {var_name} = {value}")
+            value_log_buffer += f"\\nSaved value {var_name} = {converted_value}"
         except:
-            print(f"Could not serialize value for {var_name}")
+            value_log_buffer += f"\\nCould not serialize value for {var_name}"
 
-# Execute user code with intermediate saves
+def find_assignments(code):
+    """Find all assignments and their line numbers using AST"""
+    assignments = []
+    tree = ast.parse(code)
+    
+    class AssignmentVisitor(ast.NodeVisitor):
+        def visit_Assign(self, node):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    assignments.append({
+                        'name': target.id,
+                        'line_start': node.lineno,
+                        'line_end': node.end_lineno or node.lineno
+                    })
+            self.generic_visit(node)
+    
+    AssignmentVisitor().visit(tree)
+    return assignments
+
 try:
-    # Execute user code in current directory
-    os.chdir('/app/code')
-    
-    # Read the user code
+    # Read and execute the code first
     with open('user_code.py', 'r') as f:
-        user_code = f.read()
+        code = f.read()
     
-    # Create a new globals dict to execute in
-    globals_dict = {
-        'pd': pd,
-        'np': np,
-        'plt': plt,
-        '__name__': '__main__'
-    }
+    # Create globals dict
+    globals_dict = {'pd': pd, 'np': np, 'plt': plt, '__name__': '__main__'}
     
-    # Split code into lines and execute with intermediate saves
-    code_lines = []
-    in_triple_quotes = False
-    line_no = 0
-    block_line_nos = []
-    block_error = None
+    # Execute the code once
+    exec(code, globals_dict)
     
-    for line in user_code.splitlines():
-        line_no += 1
-        code_lines.append(line)
-        
-        # Skip if we're in a triple-quoted string
-        if '"""' in line:
-            in_triple_quotes = not in_triple_quotes
-            continue
-            
-        if in_triple_quotes:
-            continue
-            
-        # Execute up to this point
-        line_nos = block_line_nos + [line_no]
+    # Find all assignments
+    assignments = find_assignments(code)
+    
+    # Save values for all assignments found
+    for assign in assignments:
         try:
-            exec('\\n'.join(code_lines), globals_dict)
-            block_line_nos = []
-            block_error = None
-        except Exception as e:
-            block_line_nos = line_nos
-            block_error = str(e)
-            continue
-        block_line_nos = []
-        # Check for DataFrame assignments
-        block = '\\n'.join(code_lines[line_nos[0]-1:])
-        if '=' in block:
-            var_names = block.split('=')[0].strip()
-            for var_name in var_names.split(','):
-                var_name = var_name.strip()
-                try:
-                    value = globals_dict.get(var_name)
-                    if value is not None:
-                        save_intermediate_value(value, var_name, line_nos[0], line_no)
-                except:
-                    pass  # Not defined yet
+            value = globals_dict.get(assign['name'])
+            if value is not None:
+                save_intermediate_value(
+                    value, 
+                    assign['name'],
+                    assign['line_start'],
+                    assign['line_end']
+                )
+        except:
+            pass
 
-    # Check if there's a plot to save
+    # Handle plot if any
     if plt.get_fignums():
-        print("\\nFound plot, saving...")
-        plt.savefig(f'/app/output/{runId}_plot.png')
-        print(f"Saved plot as {runId}_plot.png")
+        plt.savefig(f'/app/output/${runId}_plot.png')
+        value_log_buffer += f"\\nSaved plot as ${runId}_plot.png"
 
-    # Add results to output
+    # Print program output and results
+    print(value_log_buffer)
     print("\\n__RESULTS__")
     print(json.dumps({
         'var2val': var2val,
@@ -378,13 +359,6 @@ try:
 
 except Exception as e:
     print(f"Error: {str(e)}")
-
-if block_error:
-    print(f"Error: {block_error}")
-
-# Restore stdout and get output
-sys.stdout = sys.__stdout__
-print(output_buffer.getvalue())
 `
   }
 
