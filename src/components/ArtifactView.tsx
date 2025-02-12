@@ -1,4 +1,4 @@
-import { Box, Typography, FormControl, Select, MenuItem } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { DataViewer } from './DataViewer'
 import { useMemo, useEffect } from 'react'
@@ -70,27 +70,6 @@ export default function ArtifactView() {
       console.log('Can show data:', canShowData, 'activeArtifact:', activeArtifact)
       return canShowData ? (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {variables.length > 0 && (
-            <FormControl size="small" sx={{ m: 1 }}>
-              <Select
-                value={selectedStep || ''}
-                onChange={(e) => setSelectedStep(e.target.value)}
-              >
-                {variables.map(({ name, type, line_start }) => (
-                  <MenuItem key={name} value={name}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <span>Line {line_start}:</span>
-                      <span>{name}</span>
-                      <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
-                        ({type})
-                      </Box>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-          
           <DataViewer 
             dataFile={
               activeArtifact.dataFile || // Handle uploads first
