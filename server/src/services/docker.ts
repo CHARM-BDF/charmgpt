@@ -311,11 +311,12 @@ try:
         print(f"Saved plot as {runId}_plot.png")
 
     # Add results to output
-    print("\\n__RESULTS__")
-    print(json.dumps({
-        'dataFiles': intermediate_files,
-        'lineNumbers': line_numbers
-    }))
+    if intermediate_files:
+        print("\\n__RESULTS__")
+        print(json.dumps({
+            'dataFiles': intermediate_files,
+            'lineNumbers': line_numbers
+        }))
 
 except Exception as e:
     print(f"Error: {str(e)}")
