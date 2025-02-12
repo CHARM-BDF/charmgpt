@@ -287,6 +287,8 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
                 value = value.item()
             elif isinstance(value, np.ndarray):
                 value = value.tolist()
+            elif isinstance(value, range):
+                value = list(value)
             
             # Test if value is JSON serializable
             json.dumps(value)
