@@ -299,8 +299,9 @@ try:
         # Check for DataFrame assignments
         block = '\\n'.join(code_lines[line_nos[0]-1:])
         if '=' in block:
-            var_name = block.split('=')[0].strip()
-            if var_name:
+            var_names = block.split('=')[0].strip()
+            for var_name in var_names.split(','):
+                var_name = var_name.strip()
                 try:
                     df = globals_dict.get(var_name)
                     save_intermediate_df(df, var_name, line_nos)
