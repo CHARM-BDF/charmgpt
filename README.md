@@ -51,7 +51,8 @@ docker build -t my-python-app .
 PORT=3000
 ANTHROPIC_API_KEY=your_anthropic_api_key
 OLLAMA_BASE_URL=http://localhost:11434
-DEFAULT_LLM_PROVIDER=ollama  # or 'claude'
+CHARMONATOR_BASE_URL=http://localhost:5002/charm/api/charmonator/v1
+DEFAULT_LLM_PROVIDER=ollama  # or 'claude' or 'charmonator'
 ```
 
 2. If using Ollama:
@@ -62,6 +63,7 @@ DEFAULT_LLM_PROVIDER=ollama  # or 'claude'
    - Set DEFAULT_LLM_PROVIDER to 'ollama' for local execution
    - Set DEFAULT_LLM_PROVIDER to 'claude' for Anthropic's Claude
    - When using Claude, make sure ANTHROPIC_API_KEY is set
+   - Use 'charmonator' for the Charmonator API
 
 ### Running the Application
 
