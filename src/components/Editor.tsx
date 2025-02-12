@@ -160,11 +160,6 @@ export default function Editor() {
     }
   }, [activeArtifact, mode, setEditorContentContext])
 
-  // Add debug logging
-  useEffect(() => {
-    console.log('Editor activeArtifact changed:', activeArtifact)
-  }, [activeArtifact])
-
   const handleChange: OnChange = (value) => {
     if (value === undefined) return
     
