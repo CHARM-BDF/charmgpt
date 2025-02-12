@@ -37,11 +37,15 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         const artifactsResponse = await fetch('/api/artifacts/pinned')
         if (artifactsResponse.ok) {
           const pinnedArtifacts = await artifactsResponse.json()
-          setArtifacts(pinnedArtifacts)
           
-          // Set active artifact to last one if none is active
-          if (!activeArtifact && pinnedArtifacts.length > 0) {
-            selectArtifact(pinnedArtifacts[pinnedArtifacts.length - 1])
+          // Only update artifacts if we don't have any yet
+          if (artifacts.length === 0) {
+            setArtifacts(pinnedArtifacts)
+            
+            // Set active artifact to last one if none is active
+            if (!activeArtifact && pinnedArtifacts.length > 0) {
+              selectArtifact(pinnedArtifacts[pinnedArtifacts.length - 1])
+            }
           }
         }
 
@@ -57,7 +61,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
 
     loadInitialData()
-  }, [activeArtifact, selectArtifact])
+  }, [selectArtifact])
 
   const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact = {
