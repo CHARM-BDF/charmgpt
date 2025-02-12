@@ -9,6 +9,7 @@ A collaborative data science environment with integrated chat and visualization 
 - History of code artifacts and outputs
 - Support for multiple LLM providers
 - Code execution in isolated Docker containers
+- Interactive step debugger with variable inspection and line highlighting
 
 ## Setup
 
@@ -85,7 +86,25 @@ npm run dev
 2. Click "Run" to execute the code
 3. View results and plots in the output panels
 
-Example visualization code:
+### Step Debugger
+
+The step debugger allows you to inspect variables and their values as they appear in your code:
+
+1. Click on a variable name in your code or select it from the variables dropdown
+2. The relevant lines of code will be highlighted in yellow
+3. If the variable contains tabular data, it will be displayed in an interactive data grid
+4. For non-tabular data (like immediate values), the value will be shown in a formatted JSON view
+
+Example debugging code:
+```python
+# The step debugger will track these variables
+data = pd.read_csv('example.csv')  # View in data grid
+filtered = data[data['value'] > 100]  # See filtered results
+mean_value = filtered['value'].mean()  # See immediate value
+```
+
+### Example visualization code:
+
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
