@@ -21,8 +21,6 @@ export default function DataViewer({ dataFile, height = '100%' }: DataViewerProp
     page: 0
   })
 
-  console.log('DataViewer received dataFile:', dataFile)
-
   useEffect(() => {
     const loadData = async () => {
       if (!dataFile) return

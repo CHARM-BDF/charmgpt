@@ -14,12 +14,10 @@ export default function ArtifactView() {
   const { activeArtifact, viewMode, selectedStep, setSelectedStep } = useArtifact()
   
   const dataFiles = useMemo<DataFileInfo[]>(() => {
-    console.log('ArtifactView: Processing artifact:', activeArtifact)
     if (!activeArtifact) return []
     
     // Handle legacy case with single dataFile
     if (activeArtifact.dataFile && !activeArtifact.dataFiles) {
-      console.log('ArtifactView: Using legacy dataFile')
       return [{
         step: 'data',
         file: activeArtifact.dataFile,
@@ -29,8 +27,6 @@ export default function ArtifactView() {
     
     // Handle new case with multiple dataFiles
     if (activeArtifact.dataFiles) {
-      console.log('ArtifactView: Using dataFiles:', activeArtifact.dataFiles)
-      console.log('ArtifactView: Line numbers:', activeArtifact.lineNumbers)
       return Object.entries(activeArtifact.dataFiles)
         .map(([step, file]): DataFileInfo => {
           const lineNumbers = activeArtifact.lineNumbers[step] || []
@@ -50,15 +46,8 @@ export default function ArtifactView() {
         })
     }
     
-    console.log('ArtifactView: No data files found')
     return []
   }, [activeArtifact])
-
-  // Log when selection changes
-  useEffect(() => {
-    console.log('ArtifactView: Selected step changed to:', selectedStep)
-    console.log('ArtifactView: Available files:', dataFiles)
-  }, [selectedStep, dataFiles])
 
   // Set initial selection to last data-producing step
   useEffect(() => {
@@ -66,15 +55,6 @@ export default function ArtifactView() {
       setSelectedStep(dataFiles[dataFiles.length - 1].step)
     }
   }, [dataFiles, setSelectedStep])
-
-  // Add debug logging for view mode
-  useEffect(() => {
-    console.log('ArtifactView viewMode:', {
-      viewMode,
-      activeArtifact,
-      hasData: activeArtifact ? hasData(activeArtifact) : false
-    })
-  }, [viewMode, activeArtifact])
 
   if (!activeArtifact) {
     return (
@@ -97,15 +77,6 @@ export default function ArtifactView() {
 
     case 'data': {
       const canShowData = hasData(activeArtifact)
-      console.log('ArtifactView data case:', {
-        activeArtifact,
-        canShowData,
-        dataFiles,
-        selectedStep,
-        currentFile: selectedStep ? 
-          dataFiles.find(df => df.step === selectedStep)?.file : 
-          activeArtifact.dataFile || dataFiles[dataFiles.length - 1].file
-      })
       return canShowData ? (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           {dataFiles.length > 1 && (

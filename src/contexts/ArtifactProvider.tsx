@@ -53,7 +53,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     
     if (artifact) {
       const viewMode = getDefaultViewMode(artifact)
-      console.log('Setting view mode to:', viewMode)
       setViewMode(viewMode)
 
       // If it's a code artifact, also set the editor content
