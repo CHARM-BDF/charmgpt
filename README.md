@@ -60,10 +60,10 @@ DEFAULT_LLM_PROVIDER=ollama  # or 'claude' or 'charmonator'
    - Pull your desired model: `ollama pull qwen2.5`
 
 3. LLM Provider Selection:
-   - Set DEFAULT_LLM_PROVIDER to 'ollama' for local execution
+   - Set DEFAULT_LLM_PROVIDER to 'ollama' for local execution with Ollama
+   - Set DEFAULT_LLM_PROVIDER to 'charmonator' for the CHARMonator REST API
    - Set DEFAULT_LLM_PROVIDER to 'claude' for Anthropic's Claude
    - When using Claude, make sure ANTHROPIC_API_KEY is set
-   - Use 'charmonator' for the Charmonator API
 
 ### Running the Application
 
