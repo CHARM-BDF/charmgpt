@@ -16,6 +16,19 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [mode, setMode] = useState<EditorMode>('code')
   const [isRunning, setIsRunning] = useState(false)
 
+  const selectArtifact = useCallback((artifact: Artifact | null) => {
+    setActiveArtifact(artifact)
+    
+    if (artifact) {  // Only set view mode and editor content if we have an artifact
+      setViewMode(getDefaultViewMode(artifact))
+
+      // If it's a code artifact, also set the editor content
+      if (artifact.code && mode === 'code') {
+        setEditorContent(artifact.code)
+      }
+    }
+  }, [mode, setEditorContent, setViewMode])
+
   // Load pinned artifacts and plan on mount
   useEffect(() => {
     const loadInitialData = async () => {
@@ -25,6 +38,11 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         if (artifactsResponse.ok) {
           const pinnedArtifacts = await artifactsResponse.json()
           setArtifacts(pinnedArtifacts)
+          
+          // Set active artifact to last one if none is active
+          if (!activeArtifact && pinnedArtifacts.length > 0) {
+            selectArtifact(pinnedArtifacts[pinnedArtifacts.length - 1])
+          }
         }
 
         // Load saved plan
@@ -39,20 +57,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
 
     loadInitialData()
-  }, [])
-
-  const selectArtifact = useCallback((artifact: Artifact | null) => {
-    setActiveArtifact(artifact)
-    
-    if (artifact) {  // Only set view mode and editor content if we have an artifact
-      setViewMode(getDefaultViewMode(artifact))
-
-      // If it's a code artifact, also set the editor content
-      if (artifact.code && mode === 'code') {
-        setEditorContent(artifact.code)
-      }
-    }
-  }, [mode, setEditorContent, setViewMode])
+  }, [activeArtifact, selectArtifact])
 
   const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
     const newArtifact = {
