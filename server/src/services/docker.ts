@@ -315,7 +315,6 @@ try:
 
     # Add results to output
     if intermediate_files:
-        print("\\n__RESULTS__")
         print(json.dumps({
             'dataFiles': intermediate_files,
             'lineNumbers': line_numbers
