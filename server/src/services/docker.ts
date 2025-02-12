@@ -10,7 +10,7 @@ interface DockerRunResult {
   visualization?: string  // JSON string for visualization data
   plotFile?: string      // Name of the plot file if generated
   dataFiles: Record<string, string>  // Map of step name to file name
-  lineNumbers: Record<string, number>  // Map of step name to line number
+  lineNumbers: Record<string, number[]>  // Map of step name to array of line numbers
 }
 
 export class DockerService {
@@ -237,7 +237,7 @@ intermediate_files = {}
 line_numbers = {}
 
 # Function to save DataFrame as CSV
-def save_intermediate_df(df, step_name, line_no):
+def save_intermediate_df(df, step_name, line_nos):
     if isinstance(df, pd.DataFrame):
         filename = f'{runId}_{step_name}.csv'
         df.to_csv(f'/app/output/{filename}', index=False)
@@ -245,7 +245,7 @@ def save_intermediate_df(df, step_name, line_no):
         print(f"Shape: {df.shape}")
         print(f"First few rows:\\n{df.head()}")
         intermediate_files[step_name] = filename
-        line_numbers[step_name] = line_no
+        line_numbers[step_name] = line_nos
         return filename
     return None
 
@@ -270,6 +270,7 @@ try:
     code_lines = []
     in_triple_quotes = False
     line_no = 0
+    block_line_nos = []
     
     for line in user_code.splitlines():
         line_no += 1
@@ -283,19 +284,25 @@ try:
         if in_triple_quotes:
             continue
             
-        if line.strip() and not line.startswith('#'):
-            # Execute up to this point
+        # Execute up to this point
+        line_nos = block_line_nos + [line_no]
+        try:
             exec('\\n'.join(code_lines), globals_dict)
-            
-            # Check for DataFrame assignments
-            if '=' in line:
-                var_name = line.split('=')[0].strip()
-                if var_name:
-                    try:
-                        df = globals_dict.get(var_name)
-                        save_intermediate_df(df, var_name, line_no)
-                    except:
-                        pass  # Not a DataFrame or not defined yet
+            block_line_nos = []
+        except Exception as e:
+            block_line_nos = line_nos
+            continue
+        block_line_nos = []
+        # Check for DataFrame assignments
+        block = '\\n'.join(code_lines[line_nos[0]-1:])
+        if '=' in block:
+            var_name = block.split('=')[0].strip()
+            if var_name:
+                try:
+                    df = globals_dict.get(var_name)
+                    save_intermediate_df(df, var_name, line_nos)
+                except:
+                    pass  # Not a DataFrame or not defined yet
 
     # Check if there's a plot to save
     if plt.get_fignums():

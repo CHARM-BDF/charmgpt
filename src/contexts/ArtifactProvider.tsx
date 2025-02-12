@@ -168,7 +168,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         body: JSON.stringify({
           artifactId,
           pinned: newPinnedStatus,
-          artifact: { ...artifact, pinned: newPinnedStatus }
+          artifact  // Send the whole artifact, let server handle defaults
         })
       })
 

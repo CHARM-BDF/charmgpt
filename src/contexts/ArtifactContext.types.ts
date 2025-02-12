@@ -93,4 +93,9 @@ export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
   } else {
     return 'output'
   }
+}
+
+// Add helper to check if artifact has any data
+export const hasData = (artifact: Artifact): boolean => {
+  return !!(artifact.dataFile || Object.keys(artifact.dataFiles || {}).length > 0)
 } 

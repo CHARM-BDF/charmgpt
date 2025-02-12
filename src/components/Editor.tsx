@@ -78,7 +78,6 @@ export default function Editor() {
   const handleEditorDidMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
     
-    // Add cursor position listener
     editor.onDidChangeCursorPosition((e) => {
       const line = e.position.lineNumber
       console.log('Cursor moved to line:', line)
@@ -90,7 +89,7 @@ export default function Editor() {
         // Find step for this line
         const matchingStep = activeArtifact?.lineNumbers && 
           Object.entries(activeArtifact.lineNumbers)
-            .find(([, dataLine]) => Number(dataLine) === line)
+            .find(([, lines]) => lines.includes(line))
         
         if (matchingStep) {
           const [step] = matchingStep

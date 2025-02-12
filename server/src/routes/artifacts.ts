@@ -96,7 +96,10 @@ router.post('/pin', async (req, res) => {
     if (pinned) {
       // Add to pinned artifacts if not already there
       if (!pinnedArtifacts.find((a) => a.id === artifactId)) {
-        pinnedArtifacts.push({ ...artifact, pinned: true })
+        pinnedArtifacts.push({
+          ...artifact,
+          pinned: true
+        })
       }
     } else {
       // Remove from pinned artifacts
@@ -107,7 +110,7 @@ router.post('/pin', async (req, res) => {
     await savePinnedArtifacts(pinnedArtifacts)
     res.json({ success: true })
   } catch (error) {
-    void error
+    console.error('Failed to update pin status:', error)
     res.status(500).json({ error: 'Failed to update pinned status' })
   }
 })

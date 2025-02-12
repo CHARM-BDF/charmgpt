@@ -2,36 +2,63 @@ import { Box, Typography, FormControl, Select, MenuItem } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import DataViewer from './DataViewer'
 import { useMemo, useEffect } from 'react'
+import { hasData } from '../contexts/ArtifactContext.types'
+
+interface DataFileInfo {
+  step: string
+  file: string
+  lineNumbers: number[]
+}
 
 export default function ArtifactView() {
   const { activeArtifact, viewMode, selectedStep, setSelectedStep } = useArtifact()
   
-  // Get all data files for this artifact
-  const dataFiles = useMemo(() => {
+  const dataFiles = useMemo<DataFileInfo[]>(() => {
+    console.log('ArtifactView: Processing artifact:', activeArtifact)
     if (!activeArtifact) return []
     
     // Handle legacy case with single dataFile
     if (activeArtifact.dataFile && !activeArtifact.dataFiles) {
+      console.log('ArtifactView: Using legacy dataFile')
       return [{
         step: 'data',
         file: activeArtifact.dataFile,
-        lineNumber: 0
+        lineNumbers: []
       }]
     }
     
     // Handle new case with multiple dataFiles
     if (activeArtifact.dataFiles) {
+      console.log('ArtifactView: Using dataFiles:', activeArtifact.dataFiles)
+      console.log('ArtifactView: Line numbers:', activeArtifact.lineNumbers)
       return Object.entries(activeArtifact.dataFiles)
-        .map(([step, file]) => ({ 
-          step, 
-          file,
-          lineNumber: activeArtifact.lineNumbers[step]
-        }))
-        .sort((a, b) => a.lineNumber - b.lineNumber)
+        .map(([step, file]): DataFileInfo => {
+          const lineNumbers = activeArtifact.lineNumbers[step] || []
+          return {
+            step,
+            file,
+            lineNumbers: Array.isArray(lineNumbers) ? lineNumbers : []
+          }
+        })
+        .sort((a, b) => {
+          // Now TypeScript knows these are definitely arrays
+          const aLines = a.lineNumbers
+          const bLines = b.lineNumbers
+          const aFirst = aLines.length > 0 ? Math.min(...aLines) : Infinity
+          const bFirst = bLines.length > 0 ? Math.min(...bLines) : Infinity
+          return aFirst - bFirst
+        })
     }
     
+    console.log('ArtifactView: No data files found')
     return []
   }, [activeArtifact])
+
+  // Log when selection changes
+  useEffect(() => {
+    console.log('ArtifactView: Selected step changed to:', selectedStep)
+    console.log('ArtifactView: Available files:', dataFiles)
+  }, [selectedStep, dataFiles])
 
   // Set initial selection to last data-producing step
   useEffect(() => {
@@ -59,7 +86,7 @@ export default function ArtifactView() {
       ) : null
 
     case 'data':
-      return (
+      return hasData(activeArtifact) ? (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           {dataFiles.length > 1 && (
             <FormControl size="small" sx={{ m: 1 }}>
@@ -81,7 +108,7 @@ export default function ArtifactView() {
             } 
           />
         </Box>
-      )
+      ) : null
 
     case 'output':
       return (
