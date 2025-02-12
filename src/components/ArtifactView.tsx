@@ -1,62 +1,50 @@
 import { Box, Typography, FormControl, Select, MenuItem } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
-import DataViewer from './DataViewer'
+import { DataViewer } from './DataViewer'
 import { useMemo, useEffect } from 'react'
-import { hasData } from '../contexts/ArtifactContext.types'
+import { hasData, ImmediateValue, FileValue } from '../contexts/ArtifactContext.types'
 
-interface DataFileInfo {
-  step: string
-  file: string
-  lineNumbers: number[]
+interface VarInfo {
+  name: string
+  type: ImmediateValue['type'] | FileValue['type']
+  value: ImmediateValue['value'] | FileValue['value']
+  line_start: number
 }
 
 export default function ArtifactView() {
   const { activeArtifact, viewMode, selectedStep, setSelectedStep } = useArtifact()
   
-  const dataFiles = useMemo<DataFileInfo[]>(() => {
-    if (!activeArtifact) return []
+  const variables = useMemo<VarInfo[]>(() => {
+    if (!activeArtifact?.var2val) return []
     
-    // Handle legacy case with single dataFile
-    if (activeArtifact.dataFile && !activeArtifact.dataFiles) {
+    // Handle uploads
+    if (activeArtifact.dataFile && !Object.keys(activeArtifact.var2val).length) {
       return [{
-        step: 'data',
-        file: activeArtifact.dataFile,
-        lineNumbers: []
+        name: 'data',
+        type: 'file',
+        value: activeArtifact.dataFile,
+        line_start: 0
       }]
     }
     
-    // Handle new case with multiple dataFiles
-    if (activeArtifact.dataFiles) {
-      return Object.entries(activeArtifact.dataFiles)
-        .map(([step, file]): DataFileInfo => {
-          const lineNumbers = activeArtifact.lineNumbers[step] || []
-          return {
-            step,
-            file,
-            lineNumbers: Array.isArray(lineNumbers) ? lineNumbers : []
-          }
-        })
-        .sort((a, b) => {
-          // Now TypeScript knows these are definitely arrays
-          const aLines = a.lineNumbers
-          const bLines = b.lineNumbers
-          const aFirst = aLines.length > 0 ? Math.min(...aLines) : Infinity
-          const bFirst = bLines.length > 0 ? Math.min(...bLines) : Infinity
-          return aFirst - bFirst
-        })
-    }
-    
-    return []
+    // Handle variables with their values
+    return Object.entries(activeArtifact.var2val || {})
+      .map(([name, info]): VarInfo => ({
+        name,
+        ...info,
+        line_start: activeArtifact.var2line?.[name] || 0
+      }))
+      .sort((a, b) => a.line_start - b.line_start)
   }, [activeArtifact])
 
-  // Set initial selection to last data-producing step
+  // Set initial selection to last variable
   useEffect(() => {
-    if (activeArtifact?.dataFile) {
-      setSelectedStep('data')  // For legacy artifacts
-    } else if (dataFiles.length > 0) {
-      setSelectedStep(dataFiles[dataFiles.length - 1].step)  // For new artifacts
+    if (activeArtifact?.dataFile && !Object.keys(activeArtifact.var2val || {}).length) {
+      setSelectedStep('data')  // For uploads
+    } else if (variables.length > 0) {
+      setSelectedStep(variables[variables.length - 1].name)
     }
-  }, [activeArtifact, dataFiles, setSelectedStep])
+  }, [activeArtifact, variables, setSelectedStep])
 
   if (!activeArtifact) {
     return (
@@ -79,16 +67,25 @@ export default function ArtifactView() {
 
     case 'data': {
       const canShowData = hasData(activeArtifact)
+      console.log('Can show data:', canShowData, 'activeArtifact:', activeArtifact)
       return canShowData ? (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {dataFiles.length > 1 && (
+          {variables.length > 0 && (
             <FormControl size="small" sx={{ m: 1 }}>
               <Select
-                value={selectedStep}
+                value={selectedStep || ''}
                 onChange={(e) => setSelectedStep(e.target.value)}
               >
-                {dataFiles.map(({ step }) => (
-                  <MenuItem key={step} value={step}>{step}</MenuItem>
+                {variables.map(({ name, type, line_start }) => (
+                  <MenuItem key={name} value={name}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>Line {line_start}:</span>
+                      <span>{name}</span>
+                      <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                        ({type})
+                      </Box>
+                    </Box>
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -96,11 +93,10 @@ export default function ArtifactView() {
           
           <DataViewer 
             dataFile={
-              activeArtifact.dataFile || // Handle legacy case first
-              (selectedStep ? 
-                dataFiles.find(df => df.step === selectedStep)?.file : 
-                dataFiles[dataFiles.length - 1]?.file
-              )
+              activeArtifact.dataFile || // Handle uploads first
+              (selectedStep && activeArtifact.var2val?.[selectedStep]?.type === 'file' 
+                ? activeArtifact.var2val?.[selectedStep]?.value 
+                : undefined)
             } 
           />
         </Box>

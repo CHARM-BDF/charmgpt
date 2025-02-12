@@ -1,6 +1,7 @@
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
-import { Box } from '@mui/material'
-import { useState, useEffect } from 'react'
+import { Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material'
+import { useState, useEffect, useContext, useMemo } from 'react'
+import { ArtifactContext } from '../contexts/ArtifactContext'
 
 interface DataViewerProps {
   dataFile?: string
@@ -12,18 +13,38 @@ interface DataRow {
   [key: string]: string | number
 }
 
-export default function DataViewer({ dataFile, height = '100%' }: DataViewerProps) {
+
+export function DataViewer({ dataFile, height }: DataViewerProps) {
+  const { activeArtifact, selectedStep, setSelectedStep } = useContext(ArtifactContext)
   const [rows, setRows] = useState<DataRow[]>([])
   const [columns, setColumns] = useState<GridColDef[]>([])
   const [loading, setLoading] = useState(true)
   const [paginationModel, setPaginationModel] = useState({
     pageSize: 25,
-    page: 0
+    page: 0,
   })
+
+  // Get all variables sorted by line number - only for var2val artifacts
+  const variables = useMemo(() => {
+    if (!activeArtifact?.var2val) return []
+    
+    return Object.entries(activeArtifact.var2val)
+      .map(([name, info]) => ({
+        name,
+        ...info,
+        line_start: activeArtifact.var2line[name]
+      }))
+      .sort((a, b) => a.line_start - b.line_start)
+  }, [activeArtifact])
 
   useEffect(() => {
     const loadData = async () => {
-      if (!dataFile) return
+      if (!dataFile) {
+        setRows([])
+        setColumns([])
+        setLoading(false)
+        return
+      }
       
       try {
         setLoading(true)
@@ -34,11 +55,13 @@ export default function DataViewer({ dataFile, height = '100%' }: DataViewerProp
 
         const text = await response.text()
         const lines = text.split('\n').filter(line => line.trim())
-        if (lines.length === 0) return
+        if (lines.length === 0) {
+          setRows([])
+          setColumns([])
+          return
+        }
 
         const headers = lines[0].split(',').map(h => h.trim())
-        
-        // Create column definitions
         const cols = headers.map(header => ({
           field: header,
           headerName: header,
@@ -47,12 +70,10 @@ export default function DataViewer({ dataFile, height = '100%' }: DataViewerProp
           filterable: true
         }))
         
-        // Parse data rows
         const data = lines.slice(1).map((line, index) => {
           const values = line.split(',').map(v => v.trim())
           const row: DataRow = { id: index }
           headers.forEach((header, i) => {
-            // Try to convert to number if possible
             const value = values[i]
             row[header] = isNaN(Number(value)) ? value : Number(value)
           })
@@ -63,6 +84,8 @@ export default function DataViewer({ dataFile, height = '100%' }: DataViewerProp
         setRows(data)
       } catch (error) {
         console.error('Failed to load data:', error)
+        setRows([])
+        setColumns([])
       } finally {
         setLoading(false)
       }
@@ -71,26 +94,69 @@ export default function DataViewer({ dataFile, height = '100%' }: DataViewerProp
     loadData()
   }, [dataFile])
 
+  const commonDataGridProps = {
+    rows: rows || [],
+    columns: columns || [],
+    loading,
+    density: "compact" as const,
+    disableRowSelectionOnClick: true,
+    pageSizeOptions: [10, 25, 50, 100],
+    paginationModel,
+    onPaginationModelChange: setPaginationModel,
+    getRowId: (row: DataRow) => row.id,
+    autoHeight: true,
+    initialState: {
+      pagination: {
+        paginationModel: {
+          pageSize: 25,
+        },
+      },
+    },
+  }
+
   return (
-    <Box sx={{ height }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        loading={loading}
-        density="compact"
-        disableRowSelectionOnClick
-        paginationModel={paginationModel}
-        onPaginationModelChange={setPaginationModel}
-        pageSizeOptions={[10, 25, 50, 100]}
-        paginationMode="client"
-        initialState={{
-          pagination: {
-            paginationModel: {
-              pageSize: 25,
-            },
-          },
-        }}
-      />
+    <Box sx={{ height: height || '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Only show variables dropdown for var2val artifacts */}
+      {activeArtifact?.var2val && variables.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 1, p: 1, borderBottom: 1, borderColor: 'divider' }}>
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Variables</InputLabel>
+            <Select
+              value={selectedStep || ''}
+              onChange={(e) => setSelectedStep(e.target.value)}
+              label="Variables"
+            >
+              {variables.map(({ name, type, line_start }) => (
+                <MenuItem key={name} value={name}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>Line {line_start}:</span>
+                    <span>{name}</span>
+                    <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                      ({type})
+                    </Box>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
+      <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+        {/* For var2val artifacts */}
+        {activeArtifact?.var2val ? (
+          selectedStep && activeArtifact.var2val[selectedStep]?.type === 'file' ? (
+            <DataGrid {...commonDataGridProps} />
+          ) : selectedStep && activeArtifact.var2val[selectedStep]?.type === 'immediate' ? (
+            <Box sx={{ p: 2, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+              {JSON.stringify(activeArtifact.var2val[selectedStep].value, null, 2)}
+            </Box>
+          ) : null
+        ) : (
+          /* For uploaded files */
+          <DataGrid {...commonDataGridProps} />
+        )}
+      </Box>
     </Box>
   )
 } 

@@ -1,10 +1,10 @@
-import { useCallback, useRef, useEffect, useState, useMemo } from 'react'
+import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { useArtifact } from '../contexts/useArtifact'
 import { Box, Typography } from '@mui/material'
 import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { dataHeader, getDisplayName, Artifact, ViewMode } from '../contexts/ArtifactContext.types'
-import DataViewer from './DataViewer'
+import { DataViewer } from './DataViewer'
 
 export default function Editor() {
   const { 
@@ -22,7 +22,6 @@ export default function Editor() {
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const isInitialMount = useRef(true)
-  const [cursorLine, setCursorLine] = useState(1)
   
   const insertArtifactAtCursor = useCallback((artifact: Artifact, quoted: boolean = false) => {
     if (!editorRef.current) return
@@ -79,23 +78,18 @@ export default function Editor() {
     editorRef.current = editor
     
     editor.onDidChangeCursorPosition((e) => {
-      const line = e.position.lineNumber
-      console.log('Cursor moved to line:', line)
-      
-      // Only update if line actually changed
-      if (line !== cursorLine) {
-        setCursorLine(line)
-        
-        // Find step for this line
-        const matchingStep = activeArtifact?.lineNumbers && 
-          Object.entries(activeArtifact.lineNumbers)
-            .find(([, lines]) => Array.isArray(lines) && lines.includes(line))
-        
-        if (matchingStep) {
-          const [step] = matchingStep
-          setSelectedStep(step)
-          debouncedSetViewMode('data')
-        }
+      // Get word at cursor position
+      const model = editor.getModel()
+      if (!model) return
+
+      const word = model.getWordAtPosition(e.position)
+      if (!word) return
+
+      // Check if this word is a variable we're tracking
+      if (activeArtifact?.var2line && word.word in activeArtifact.var2line) {
+        const varName = word.word
+        setSelectedStep(varName)
+        debouncedSetViewMode('data')
       }
     })
 
@@ -118,35 +112,32 @@ export default function Editor() {
     return () => {
       commandId.dispose();
     }
-  }, [activeArtifact, cursorLine, debouncedSetViewMode, insertArtifactAtCursor, mode, setSelectedStep])
+  }, [activeArtifact, debouncedSetViewMode, insertArtifactAtCursor, mode, setSelectedStep])
 
-  // Update step finding logic
+  // Update step finding logic for the side panel
   const currentStepData = useMemo(() => {
-    if (!activeArtifact?.lineNumbers || !activeArtifact?.dataFiles) {
-      console.log('No lineNumbers or dataFiles in artifact:', activeArtifact)
-      return null
+    if (!activeArtifact?.var2line || !activeArtifact?.var2val) return null
+    
+    const model = editorRef.current?.getModel()
+    if (!model) return null
+
+    const position = editorRef.current?.getPosition()
+    if (!position) return null
+
+    const word = model.getWordAtPosition(position)
+    if (!word) return null
+
+    const varName = word.word
+    if (!(varName in activeArtifact.var2val)) return null
+
+    const varInfo = activeArtifact.var2val[varName]
+    if (!varInfo) return null
+    
+    return {
+      step: varName,
+      file: varInfo.type === 'file' ? varInfo.value : undefined
     }
-    
-    console.log('Looking for line:', cursorLine, 'in lineNumbers:', activeArtifact.lineNumbers)
-    
-    // Find all steps for this line and take the last one
-    const stepsForLine = Object.entries(activeArtifact.lineNumbers)
-      .filter(([, line]) => Number(line) === cursorLine)
-      .sort((a, b) => activeArtifact.lineNumbers[b[0]] - activeArtifact.lineNumbers[a[0]])
-    
-    if (stepsForLine.length === 0) {
-      console.log('No steps found for line:', cursorLine)
-      return null
-    }
-    
-    const [step] = stepsForLine[0]
-    const result = {
-      step,
-      file: activeArtifact.dataFiles[step]
-    }
-    console.log('Current step data:', result)
-    return result
-  }, [activeArtifact, cursorLine])
+  }, [activeArtifact])
 
   // Handle artifact selection
   useEffect(() => {

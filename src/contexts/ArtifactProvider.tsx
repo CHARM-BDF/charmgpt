@@ -62,18 +62,30 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
 
     loadInitialData()
-  }, [selectArtifact])
+  }, [artifacts.length, activeArtifact, selectArtifact])
 
   const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
-    const newArtifact = {
+    const newArtifact: Artifact = {
       ...artifact,
-      id: Date.now(),
+      id: artifacts.length + 1,
       timestamp: Date.now(),
-      pinned: false  // Default to unpinned
+      var2val: artifact.var2val || {},  // Ensure optional fields have defaults
+      var2line: artifact.var2line || {},
+      var2line_end: artifact.var2line_end || {}
     }
-    setArtifacts(prev => [...prev, newArtifact])
-    selectArtifact(newArtifact)
-  }, [selectArtifact])
+
+    setArtifacts(prev => {
+      // Remove any existing artifact with the same name
+      const filtered = prev.filter(a => a.name !== artifact.name)
+      return [...filtered, newArtifact]
+    })
+
+    // Set as active artifact
+    setActiveArtifact(newArtifact)
+    
+    // Set appropriate view mode
+    setViewMode(getDefaultViewMode(newArtifact))
+  }, [artifacts, setActiveArtifact, setViewMode])
 
   const runArtifact = useCallback(async (code: string, name: string = 'Run Result', chatInput?: string) => {
     try {
@@ -98,17 +110,20 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       // Add API prefix to plot and data files if they exist
       const plotFile = result.plotFile ? `/api/data/${result.plotFile}` : undefined
 
-      const newArtifact = {
+      const newArtifact: Artifact = {
+        id: artifacts.length + 1,  // Add id
         type: 'code' as const,
         name,
         code,
         output: result.output,
         plotFile,
-        dataFile: result.dataFiles?.['final'] || result.dataFile,
-        dataFiles: result.dataFiles || {},
-        lineNumbers: result.lineNumbers || {},
+        dataFile: result.dataFile,  // Add comma
         source: 'assistant',
-        chatInput
+        chatInput,
+        var2val: result.var2val,
+        var2line: result.var2line,
+        var2line_end: result.var2line_end,
+        timestamp: Date.now()
       }
       console.log('Created new artifact:', newArtifact)
 
@@ -210,8 +225,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       name: `Chat: ${input.slice(0, 30)}...`,
       output: processedResponse,
       chatInput: input,
-      dataFiles: {},  // Add empty dataFiles
-      lineNumbers: {}  // Add empty lineNumbers
+      var2val: {},
+      var2line: {},
+      var2line_end: {}
     })
     
     // Then handle any code blocks
@@ -244,8 +260,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
               dataFile: undefined,
               source: 'assistant',
               chatInput: input,
-              dataFiles: {},  // Add empty dataFiles
-              lineNumbers: {}  // Add empty lineNumbers
+              var2val: {},
+              var2line: {},
+              var2line_end: {}
             })
           }
         } else {
@@ -291,6 +308,20 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       setIsRunning(true)
       const response = await chatWithLLM(msg)
 
+      // Process the response first to get processedResponse
+      const codeBlockRegex = /```python\n([\s\S]*?)```/g
+      const processedResponse = response.replace(codeBlockRegex, '[Code added to editor and executed]')
+
+      addArtifact({
+        type: 'chat',
+        name: `Chat: ${message?.slice(0, 30) || ''}...`,
+        output: processedResponse,
+        chatInput: message || '(plan only)\n\n'+msg,
+        var2val: {},
+        var2line: {},
+        var2line_end: {}
+      })
+
       // Process response and create artifacts in order
       await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)
       return true
@@ -300,7 +331,36 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     } finally {
       setIsRunning(false)
     }
-  }, [generateSummary, isRunning, parseCodeFromResponse, setIsRunning, planContent])
+  }, [generateSummary, isRunning, parseCodeFromResponse, setIsRunning, planContent, addArtifact])
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+      
+      const result = await response.json()
+      
+      addArtifact({
+        type: 'data',
+        name: file.name,
+        output: '',
+        dataFile: result.filename,  // Changed from dataFiles
+        source: 'upload'
+      })
+      
+    } catch (error) {
+      console.error('Failed to upload file:', error)
+    }
+  }, [addArtifact])
 
   const value = {
     artifacts,
@@ -323,7 +383,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     updateArtifact,
     handleChat,
     selectedStep,
-    setSelectedStep
+    setSelectedStep,
+    handleFileUpload
   }
 
   return (

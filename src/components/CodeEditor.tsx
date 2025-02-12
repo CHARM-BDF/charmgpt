@@ -11,18 +11,10 @@ export default function CodeEditor() {
     setMode, 
     runArtifact, 
     editorContent, 
-    planContent, 
-    activeArtifact,
+    planContent,
     isRunning,
     handleChat
   } = useArtifact()
-
-  // Add debug logging
-  console.log('CodeEditor render:', {
-    activeArtifact,
-    hasPlot: activeArtifact?.plotFile,
-    hasData: activeArtifact?.dataFile,
-  })
 
   const handleModeChange = (_: React.MouseEvent<HTMLElement>, newMode: EditorMode) => {
     if (newMode !== null) {

@@ -4,13 +4,25 @@ import * as fs from 'fs'  // Regular fs for sync operations
 import * as fsPromises from 'fs/promises'  // Promise-based fs for async operations
 import * as path from 'path'
 
+interface ImmediateValue {
+  type: 'immediate'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any
+}
+
+interface FileValue {
+  type: 'file'
+  value: string  // filename
+}
+
 interface DockerRunResult {
   success: boolean
   output: string
   visualization?: string  // JSON string for visualization data
   plotFile?: string      // Name of the plot file if generated
-  dataFiles: Record<string, string>  // Map of step name to file name
-  lineNumbers: Record<string, number[]>  // Map of step name to array of line numbers
+  var2val: Record<string, ImmediateValue | FileValue>
+  var2line: Record<string, number>
+  var2line_end: Record<string, number>
 }
 
 export class DockerService {
@@ -132,33 +144,44 @@ export class DockerService {
 
       // Parse the results from the output
       const resultsMatch = stdout.match(/__RESULTS__\n(.*)/);
-      let dataFiles = {};
-      let lineNumbers = {};
+      let var2val = {}
+      let var2line = {}
+      let var2line_end = {}
       
+      console.log('Docker output:', stdout);
+      console.log('Results match:', resultsMatch);
+
       if (resultsMatch) {
         try {
           const results = JSON.parse(resultsMatch[1]);
-          dataFiles = results.dataFiles;
-          lineNumbers = results.lineNumbers;
+          console.log('Parsed results:', results);
+          var2val = results.var2val;
+          var2line = results.var2line;
+          var2line_end = results.var2line_end;
+          console.log('Extracted data:', { var2val, var2line, var2line_end });
         } catch (e) {
           console.error('Failed to parse results:', e);
         }
       }
 
-      return {
+      const result = {
         success: true,
         output: stdout,
         plotFile: hasPlot ? plotFilename : undefined,
-        dataFiles,
-        lineNumbers
+        var2val,
+        var2line,
+        var2line_end
       }
+      console.log('Returning result:', result);
+      return result
     } catch (error) {
       console.error('Error running code:', error)
       return {
         success: false,
         output: error instanceof Error ? error.message : 'Unknown error occurred',
-        dataFiles: {},
-        lineNumbers: {}
+        var2val: {},
+        var2line: {},
+        var2line_end: {}
       }
     }
   }
@@ -236,18 +259,43 @@ sys.stdout = output_buffer
 intermediate_files = {}
 line_numbers = {}
 
-# Function to save DataFrame as CSV
-def save_intermediate_df(df, step_name, line_nos):
-    if isinstance(df, pd.DataFrame):
-        filename = f'{runId}_{step_name}.csv'
-        df.to_csv(f'/app/output/{filename}', index=False)
-        print(f"\\nSaved intermediate DataFrame for {step_name}")
-        print(f"Shape: {df.shape}")
-        print(f"First few rows:\\n{df.head()}")
-        intermediate_files[step_name] = filename
-        line_numbers[step_name] = line_nos
-        return filename
-    return None
+# Track variables and their values
+var2val = {}
+var2line = {}
+var2line_end = {}
+
+def save_intermediate_value(value, var_name: str, line_start: int, line_end: int) -> None:
+    if isinstance(value, pd.DataFrame):
+        # Handle DataFrame by saving to file
+        filename = f'{runId}_{var_name}.csv'
+        value.to_csv(f'/app/output/{filename}', index=False)
+        var2val[var_name] = {
+            'type': 'file',
+            'value': filename
+        }
+        var2line[var_name] = line_start
+        var2line_end[var_name] = line_end
+        print(f"\\nSaved DataFrame {var_name} to {filename}")
+    else:
+        # Handle immediate values (numbers, strings, lists, etc)
+        try:
+            # Convert numpy types to Python native types
+            if isinstance(value, (np.integer, np.floating)):
+                value = value.item()
+            elif isinstance(value, np.ndarray):
+                value = value.tolist()
+            
+            # Test if value is JSON serializable
+            json.dumps(value)
+            var2val[var_name] = {
+                'type': 'immediate',
+                'value': value
+            }
+            var2line[var_name] = line_start
+            var2line_end[var_name] = line_end
+            print(f"\\nSaved value {var_name} = {value}")
+        except:
+            print(f"Could not serialize value for {var_name}")
 
 # Execute user code with intermediate saves
 try:
@@ -303,10 +351,11 @@ try:
             for var_name in var_names.split(','):
                 var_name = var_name.strip()
                 try:
-                    df = globals_dict.get(var_name)
-                    save_intermediate_df(df, var_name, line_nos)
+                    value = globals_dict.get(var_name)
+                    if value is not None:
+                        save_intermediate_value(value, var_name, line_nos[0], line_no)
                 except:
-                    pass  # Not a DataFrame or not defined yet
+                    pass  # Not defined yet
 
     # Check if there's a plot to save
     if plt.get_fignums():
@@ -315,12 +364,12 @@ try:
         print(f"Saved plot as {runId}_plot.png")
 
     # Add results to output
-    if intermediate_files:
-        print("\\n__RESULTS__")
-        print(json.dumps({
-            'dataFiles': intermediate_files,
-            'lineNumbers': line_numbers
-        }))
+    print("\\n__RESULTS__")
+    print(json.dumps({
+        'var2val': var2val,
+        'var2line': var2line,
+        'var2line_end': var2line_end
+    }))
 
 except Exception as e:
     print(f"Error: {str(e)}")

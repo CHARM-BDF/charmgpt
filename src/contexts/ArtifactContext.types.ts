@@ -42,14 +42,22 @@ export interface ProcessingJob {
   error?: string;
 }
 
+export interface ImmediateValue {
+  type: 'immediate'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any
+}
+
+export interface FileValue {
+  type: 'file'
+  value: string  // filename
+}
+
 export interface Artifact {
   id: number
   name: string
   output: string
   plotFile?: string
-  dataFile?: string
-  dataFiles: Record<string, string>  // Map of step name to file name
-  lineNumbers: Record<string, number>  // Map of step name to line number
   type: ArtifactType
   timestamp: number
   code?: string
@@ -57,6 +65,12 @@ export interface Artifact {
   pinned?: boolean
   chatInput?: string
   processingJob?: ProcessingJob
+  // New structure for variables - make these optional
+  var2val?: Record<string, ImmediateValue | FileValue>
+  var2line?: Record<string, number>
+  var2line_end?: Record<string, number>
+  // Keep for uploads
+  dataFile?: string
 }
 
 export interface ArtifactContextType {
@@ -86,8 +100,14 @@ export interface ArtifactContextType {
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined)
 
 export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
-  if (artifact.dataFile) {
-    return 'data'  // Only default to data view for final data files
+  console.log('getDefaultViewMode:', {
+    hasDataFile: !!artifact.dataFile,
+    hasVar2val: !!artifact.var2val,
+    var2valKeys: artifact.var2val ? Object.keys(artifact.var2val) : [],
+  })
+  
+  if (artifact.dataFile || (artifact.var2val && Object.keys(artifact.var2val).length > 0)) {
+    return 'data'
   } else if (artifact.plotFile) {
     return 'plot'
   } else {
@@ -97,12 +117,16 @@ export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
 
 // Add helper to check if artifact has any data
 export const hasData = (artifact: Artifact): boolean => {
-  const result = !!(artifact.dataFile || Object.keys(artifact.dataFiles).length > 0)
-  console.log('hasData check:', {
-    artifact,
+  if (!artifact) {
+    console.log('hasData: no artifact')
+    return false
+  }
+  const result = !!(artifact.dataFile || (artifact.var2val && Object.keys(artifact.var2val).length > 0))
+  console.log('hasData:', {
+    result,
     hasDataFile: !!artifact.dataFile,
-    hasDataFiles: Object.keys(artifact.dataFiles).length > 0,
-    result
+    hasVar2val: !!artifact.var2val,
+    var2valKeys: artifact.var2val ? Object.keys(artifact.var2val) : [],
   })
   return result
 } 
