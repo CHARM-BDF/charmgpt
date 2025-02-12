@@ -275,8 +275,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [setMode, setEditorContent, runArtifact, addArtifact, editorContent])
 
   const handleChat = useCallback(async (message?: string): Promise<boolean> => {
-    if (isRunning) return false
-
     let msg = "";
     if (planContent.trim()) {
       msg = planContent
@@ -305,7 +303,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
     console.log("Chat message:", msg);
     try {
-      setIsRunning(true)
       const response = await chatWithLLM(msg)
 
       // Process the response first to get processedResponse
@@ -328,10 +325,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     } catch (err) {
       console.error('Chat error:', err)
       return false
-    } finally {
-      setIsRunning(false)
     }
-  }, [generateSummary, isRunning, parseCodeFromResponse, setIsRunning, planContent, addArtifact])
+  }, [generateSummary, parseCodeFromResponse, planContent, addArtifact])
 
   const handleFileUpload = useCallback(async (file: File) => {
     try {
