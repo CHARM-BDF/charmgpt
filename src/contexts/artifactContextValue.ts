@@ -19,5 +19,5 @@ export const artifactContextValue: ArtifactContextType = {
   generateSummary: async () => '',
   togglePin: async () => undefined,
   updateArtifact: () => undefined,
-  handleChat: async () => undefined
+  handleChat: async () => true
 } 

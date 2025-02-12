@@ -3,8 +3,9 @@ import { ChatOllama } from '@langchain/community/chat_models/ollama'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { config } from '../config'
+import { ChatCharmonator } from './llm/charmonator'
 
-export type LLMProvider = 'claude' | 'ollama'
+export type LLMProvider = 'claude' | 'ollama' | 'charmonator'
 
 export interface LLMConfig {
   provider: LLMProvider
@@ -37,6 +38,13 @@ export class LLMService {
           model: initConfig?.model || 'qwen2.5',
           temperature: initConfig?.temperature || 0.7,
         })
+
+      case 'charmonator':
+        return new ChatCharmonator(
+          config.charmonatorBaseUrl,
+          initConfig?.model,
+          initConfig?.temperature
+        )
 
       default:
         throw new Error(`Unsupported LLM provider: ${provider}`)

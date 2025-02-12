@@ -28,12 +28,12 @@ export default function ChatInterface() {
 
     try {
       // Process through artifact system
-      await handleChat(input)
+      const ok = await handleChat(input)
 
       // Add assistant message to chat
       const assistantMessage: Message = {
         role: 'assistant',
-        content: 'Response added to artifacts'
+        content: ok ? 'Response added to artifacts' : 'Error'
       }
       setMessages(prev => [...prev, assistantMessage])
     } catch (err) {

@@ -231,20 +231,25 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [setMode, setEditorContent, runArtifact, addArtifact])
 
-  const handleChat = useCallback(async (message?: string) => {
-    if (isRunning) return
+  const handleChat = useCallback(async (message?: string): Promise<boolean> => {
+    if (isRunning) return false
 
     let msg = "";
     if (planContent.trim()) {
       msg = planContent
       // Save to server
-      await fetch('/api/artifacts/plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ content: planContent })
-      })
+      try {
+        await fetch('/api/artifacts/plan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ content: planContent })
+        })
+      } catch (err) {
+        console.error('Failed to save plan:', err)
+        return false
+      }
     } else {
       msg = await generateSummary()
     }
@@ -262,8 +267,10 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
       // Process response and create artifacts in order
       await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)
+      return true
     } catch (err) {
       console.error('Chat error:', err)
+      return false
     } finally {
       setIsRunning(false)
     }
