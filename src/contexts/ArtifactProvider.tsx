@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader, getDefaultViewMode, hasData } from './ArtifactContext.types'
+import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader, getDefaultViewMode } from './ArtifactContext.types'
 import { chatWithLLM } from '../services/api'
 
 interface ArtifactProviderProps {
