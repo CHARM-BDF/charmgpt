@@ -182,4 +182,4 @@ charmgpt/
 - Backend: Node.js, Express
 - Code Execution: Docker, Python
 - Visualization: Matplotlib
-- LLM Integration: Claude API, Ollama
+- LLM Integration: Charmonator, Claude API, Ollama
