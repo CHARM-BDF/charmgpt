@@ -67,6 +67,15 @@ export default function ArtifactView() {
     }
   }, [dataFiles, setSelectedStep])
 
+  // Add debug logging for view mode
+  useEffect(() => {
+    console.log('ArtifactView viewMode:', {
+      viewMode,
+      activeArtifact,
+      hasData: activeArtifact ? hasData(activeArtifact) : false
+    })
+  }, [viewMode, activeArtifact])
+
   if (!activeArtifact) {
     return (
       <Box sx={{ flex: 1, overflow: 'auto', p: 2}}>
@@ -78,15 +87,23 @@ export default function ArtifactView() {
   }
 
   switch (viewMode) {
-    case 'plot':
+    case 'plot': {
       return activeArtifact.plotFile ? (
         <Box sx={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <img src={activeArtifact.plotFile} alt="Plot" style={{ maxWidth: '100%', maxHeight: '100%' }} />
         </Box>
       ) : null
+    }
 
-    case 'data':
-      return hasData(activeArtifact) ? (
+    case 'data': {
+      const canShowData = hasData(activeArtifact)
+      console.log('ArtifactView data case:', {
+        activeArtifact,
+        canShowData,
+        dataFiles,
+        viewMode
+      })
+      return canShowData ? (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           {dataFiles.length > 1 && (
             <FormControl size="small" sx={{ m: 1 }}>
@@ -109,13 +126,15 @@ export default function ArtifactView() {
           />
         </Box>
       ) : null
+    }
 
-    case 'output':
+    case 'output': {
       return (
         <Box sx={{ p: 2, whiteSpace: 'pre-wrap' }}>
           {activeArtifact.output}
         </Box>
       )
+    }
 
     default:
       return null

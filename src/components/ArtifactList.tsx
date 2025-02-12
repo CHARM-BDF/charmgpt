@@ -3,7 +3,7 @@ import { Box, List, ListItem, ListItemButton, ListItemText, IconButton, ToggleBu
 import { useArtifact } from '../contexts/useArtifact'
 import UploadIcon from '@mui/icons-material/Upload'
 import DownloadIcon from '@mui/icons-material/Download'
-import { ViewMode, ArtifactType, getDisplayName } from '../contexts/ArtifactContext.types'
+import { ViewMode, ArtifactType, getDisplayName, hasData } from '../contexts/ArtifactContext.types'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 
@@ -106,7 +106,9 @@ export default function ArtifactList() {
             jobId: data.conversionJobId,
             status: 'processing' as const,
             type: 'conversion' as const
-          }
+          },
+          dataFiles: {},
+          lineNumbers: {}
         }
 
         addArtifact(newArtifact)
@@ -134,7 +136,9 @@ export default function ArtifactList() {
           name: data.filename,
           dataFile: data.filepath,
           output: `Uploaded file: ${data.filename}\nSize: ${data.size} bytes\nType: ${data.mimetype}`,
-          timestamp: now
+          timestamp: now,
+          dataFiles: {},
+          lineNumbers: {}
         }
 
         addArtifact(newArtifact)
@@ -161,7 +165,7 @@ export default function ArtifactList() {
           {activeArtifact && activeArtifact.plotFile && (
             <ToggleButton value="plot">Plot</ToggleButton>
           )}
-          {activeArtifact && activeArtifact.dataFile && (
+          {activeArtifact && hasData(activeArtifact) && (
             <ToggleButton value="data">Data</ToggleButton>
           )}
           {activeArtifact && activeArtifact.output && (

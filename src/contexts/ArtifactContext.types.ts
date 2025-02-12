@@ -87,7 +87,7 @@ export const ArtifactContext = createContext<ArtifactContextType | undefined>(un
 
 export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
   if (artifact.dataFile) {
-    return 'data'
+    return 'data'  // Only default to data view for final data files
   } else if (artifact.plotFile) {
     return 'plot'
   } else {
@@ -97,5 +97,12 @@ export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
 
 // Add helper to check if artifact has any data
 export const hasData = (artifact: Artifact): boolean => {
-  return !!(artifact.dataFile || Object.keys(artifact.dataFiles || {}).length > 0)
+  const result = !!(artifact.dataFile || Object.keys(artifact.dataFiles).length > 0)
+  console.log('hasData check:', {
+    artifact,
+    hasDataFile: !!artifact.dataFile,
+    hasDataFiles: Object.keys(artifact.dataFiles).length > 0,
+    result
+  })
+  return result
 } 

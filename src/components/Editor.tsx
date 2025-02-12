@@ -89,7 +89,7 @@ export default function Editor() {
         // Find step for this line
         const matchingStep = activeArtifact?.lineNumbers && 
           Object.entries(activeArtifact.lineNumbers)
-            .find(([, lines]) => lines.includes(line))
+            .find(([, lines]) => Array.isArray(lines) && lines.includes(line))
         
         if (matchingStep) {
           const [step] = matchingStep

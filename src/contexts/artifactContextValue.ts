@@ -1,6 +1,6 @@
 import { ArtifactContextType } from './ArtifactContext.types'
 
-export const artifactContextValue: ArtifactContextType = {
+export const defaultContextValue: ArtifactContextType = {
   artifacts: [],
   activeArtifact: null,
   viewMode: 'plot',
@@ -11,13 +11,15 @@ export const artifactContextValue: ArtifactContextType = {
   runArtifact: async () => undefined,
   editorContent: '',
   setEditorContent: () => undefined,
-  addArtifact: () => undefined,
   planContent: '',
   setPlanContent: () => undefined,
+  addArtifact: () => undefined,
   isRunning: false,
   setIsRunning: () => undefined,
   generateSummary: async () => '',
   togglePin: async () => undefined,
   updateArtifact: () => undefined,
-  handleChat: async () => undefined
+  handleChat: async () => undefined,
+  selectedStep: '',
+  setSelectedStep: () => undefined
 } 

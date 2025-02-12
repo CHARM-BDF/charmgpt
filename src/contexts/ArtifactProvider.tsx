@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader, getDefaultViewMode } from './ArtifactContext.types'
+import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader, getDefaultViewMode, hasData } from './ArtifactContext.types'
 import { chatWithLLM } from '../services/api'
 
 interface ArtifactProviderProps {
@@ -43,10 +43,18 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [])
 
   const selectArtifact = useCallback((artifact: Artifact | null) => {
+    console.log('Selecting artifact:', {
+      artifact,
+      hasData: artifact ? hasData(artifact) : false,
+      defaultMode: artifact ? getDefaultViewMode(artifact) : null
+    })
+    
     setActiveArtifact(artifact)
     
-    if (artifact) {  // Only set view mode and editor content if we have an artifact
-      setViewMode(getDefaultViewMode(artifact))
+    if (artifact) {
+      const viewMode = getDefaultViewMode(artifact)
+      console.log('Setting view mode to:', viewMode)
+      setViewMode(viewMode)
 
       // If it's a code artifact, also set the editor content
       if (artifact.code && mode === 'code') {
