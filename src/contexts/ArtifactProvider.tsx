@@ -273,10 +273,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     console.log("Chat message:", msg);
     try {
       setIsRunning(true)
-      const response = await chatWithLLM(msg, {
-        provider: 'ollama',
-        model: 'qwen2.5'
-      })
+      const response = await chatWithLLM(msg)
 
       // Process response and create artifacts in order
       await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)

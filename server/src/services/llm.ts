@@ -2,6 +2,7 @@ import { ChatAnthropic } from '@langchain/anthropic'
 import { ChatOllama } from '@langchain/community/chat_models/ollama'
 import { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
+import { config } from '../config'
 
 export type LLMProvider = 'claude' | 'ollama'
 
@@ -20,24 +21,25 @@ export class LLMService {
     this.systemPrompt = "You are a helpful AI assistant specializing in data science and programming."
   }
 
-  private initializeLLM(config: LLMConfig): BaseChatModel {
-    switch (config.provider) {
+  private initializeLLM(initConfig?: LLMConfig): BaseChatModel {
+    const provider = initConfig?.provider || config.defaultLLMProvider;
+    switch (provider) {
       case 'claude':
         return new ChatAnthropic({
-          anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-          modelName: config.model || 'claude-3-sonnet-20240229',
-          temperature: config.temperature || 0.7,
+          anthropicApiKey: config.anthropicApiKey,
+          modelName: initConfig?.model || 'claude-3-sonnet-20240229',
+          temperature: initConfig?.temperature || 0.7,
         })
       
       case 'ollama':
         return new ChatOllama({
-          baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-          model: config.model || 'qwen2.5',
-          temperature: config.temperature || 0.7,
+          baseUrl: config.ollamaBaseUrl,
+          model: initConfig?.model || 'qwen2.5',
+          temperature: initConfig?.temperature || 0.7,
         })
 
       default:
-        throw new Error(`Unsupported LLM provider: ${config.provider}`)
+        throw new Error(`Unsupported LLM provider: ${provider}`)
     }
   }
 
