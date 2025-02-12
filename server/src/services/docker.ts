@@ -271,6 +271,7 @@ try:
     in_triple_quotes = False
     line_no = 0
     block_line_nos = []
+    block_error = None
     
     for line in user_code.splitlines():
         line_no += 1
@@ -289,8 +290,10 @@ try:
         try:
             exec('\\n'.join(code_lines), globals_dict)
             block_line_nos = []
+            block_error = None
         except Exception as e:
             block_line_nos = line_nos
+            block_error = str(e)
             continue
         block_line_nos = []
         # Check for DataFrame assignments
@@ -320,6 +323,9 @@ try:
 
 except Exception as e:
     print(f"Error: {str(e)}")
+
+if block_error:
+    print(f"Error: {block_error}")
 
 # Restore stdout and get output
 sys.stdout = sys.__stdout__
