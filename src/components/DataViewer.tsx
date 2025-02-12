@@ -156,11 +156,9 @@ export function DataViewer({ dataFile, height }: DataViewerProps) {
       const result = await response.json()
 
       // Then create new artifact that will regenerate this file
-      const newCode = `${activeArtifact.code}\n\n# Save DataFrame to CSV\n${selectedStep}.to_csv('${result.filepath}', index=False)`
-      
       await addArtifact({
-        name: `Save ${selectedStep} to ${csvFilename}`,
-        code: newCode,
+        name: csvFilename,
+        code: `# Save ${selectedStep} to ${csvFilename}\n\n`+activeArtifact.code,
         output: '',
         type: 'code',
         pinned: true,
