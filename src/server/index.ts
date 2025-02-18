@@ -8,16 +8,10 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { Anthropic } from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
-import { parseString } from 'xml2js';
-import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-// Remove the custom MCPServerManager import
-// import MCPServerManager from '../utils/mcpServerManager';
 import { systemPrompt } from './systemPrompt';
-
-// Import the official MCP client and a transport from the MCP SDK
 import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
@@ -26,108 +20,6 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 //   TextContentSchema
 // } from '@modelcontextprotocol/sdk/types.js';
 // import { z } from 'zod';  // Keep Zod import as it's used for type inference
-
-
-const parseXML = promisify(parseString);
-
-// ES Module dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Type Definitions
- * These interfaces define the structure of data flowing through the system
- */
-
-// Structure for parsed XML responses from the model
-interface XMLResponse {
-  response: {
-    error?: string[];         // Optional error messages
-    thinking?: string[];      // Optional internal reasoning process
-    conversation: string[];   // Required conversation elements
-    artifact?: Array<{       // Optional artifacts (code, images, etc.)
-      $: {
-        type: string;        // Type of artifact (code, image, etc.)
-        id: string;          // Unique identifier
-        title: string;       // Display title
-      };
-      _: string;            // Artifact content
-    }>;
-  };
-}
-
-// Definition for tools that can be used with Anthropic's API
-interface AnthropicTool {
-  name: string;               // Tool identifier
-  description: string;        // Tool description
-  input_schema: {            // Schema defining tool inputs
-    type: "object";
-    properties: Record<string, unknown>;
-    required?: string[];
-  };
-}
-
-// Definition for tools provided by MCP servers
-interface ServerTool {
-  name: string;
-  description?: string;
-  inputSchema?: {
-    type: string;
-    properties?: Record<string, unknown>;
-    required?: string[];
-  };
-}
-
-// Structure for formatting model responses
-interface FormatterInput {
-  thinking?: string;          // Optional reasoning process
-  error?: string;            // Optional error message
-  conversation: Array<{
-    type: 'text' | 'artifact';
-    content?: string;
-    artifact?: {
-      type: string;          // Artifact type (markdown, code, etc.)
-      id: string;            // Unique identifier
-      title: string;         // Display title
-      content: string;       // Artifact content
-      language?: string;     // Optional language specification
-    };
-  }>;
-}
-
-// Structure for chat messages in the application
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string | Array<{ type: string; text: string }>;
-}
-
-// Server status tracking interface
-interface ServerStatus {
-    name: string;            // Server identifier
-    isRunning: boolean;      // Operational status
-    tools?: ServerTool[];    // Available tools on this server
-}
-
-// Configuration structure for MCP servers
-interface MCPServerConfig {
-  command: string;           // Command to start the server
-  args: string[];           // Command arguments
-  env?: Record<string, string>; // Optional environment variables
-}
-
-// Overall servers configuration structure
-interface MCPServersConfig {
-  mcpServers: Record<string, MCPServerConfig>;
-}
-
-interface ToolResponse {
-    type: 'tool_use';
-    name: string;
-    input: {
-        thinking?: string;
-        conversation: string | FormatterInput['conversation'];
-    };
-}
 
 dotenv.config();
 
@@ -171,6 +63,10 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
   originalConsoleLog(`Created log directory at: ${logDir}`);
 }
+
+// Add missing ES Module dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Server Initialization
@@ -432,90 +328,142 @@ async function getAllAvailableTools(blockedServers: string[] = []): Promise<Anth
  * Functions for converting between JSON and XML formats for client communication
  */
 
-/**
- * Convert JSON response to XML format
- * Transforms the structured JSON response into an XML string with CDATA sections
- * @param jsonResponse - Structured response data
- * @returns XML string representation of the response
- */
-function convertJsonToXml(jsonResponse: FormatterInput): string {
-  let xml = '<response>\n';
-  
-  // Add error section if present
-  if (jsonResponse.error) {
-    xml += '    <error>\n';
-    xml += `        <![CDATA[${jsonResponse.error}]]>\n`;
-    xml += '    </error>\n';
+// Add validateArtifactType function
+function validateArtifactType(type: string): string {
+  const validTypes = [
+    'code',
+    'html',
+    'image/svg+xml',
+    'image/png',
+    'text',
+    'application/vnd.ant.mermaid',
+    'text/markdown',
+    'application/python',
+    'application/javascript',
+    'application/vnd.react',
+    'application/vnd.bibliography',
+    'application/vnd.ant.python'
+  ];
+
+  // Handle application/vnd.ant.code type
+  if (type?.startsWith('application/vnd.ant.code')) {
+    return 'code';
   }
-  
-  // Add thinking section if present
-  if (jsonResponse.thinking) {
-    xml += '    <thinking>\n';
-    xml += `        <![CDATA[${jsonResponse.thinking}]]>\n`;
-    xml += '    </thinking>\n';
+
+  // Handle code snippets with language attribute
+  if (type?.startsWith('code/')) {
+    return 'code';
   }
-  
-  // Add conversation elements
-  xml += '    <conversation>\n';
-  for (const segment of jsonResponse.conversation) {
-    if (segment.type === 'text' && segment.content) {
-      // Handle text segments
-      xml += `        <![CDATA[${segment.content}]]>\n`;
-    } else if (segment.type === 'artifact' && segment.artifact) {
-      // Handle artifacts with their attributes
-      const artifact = segment.artifact;
-      xml += `        <artifact type="${artifact.type}" id="${artifact.id}" title="${artifact.title}"${artifact.language ? ` language="${artifact.language}"` : ''}>\n`;
-      xml += `            <![CDATA[${artifact.content}]]>\n`;
-      xml += '        </artifact>\n';
-    }
+
+  // Handle binary types explicitly
+  if (type === 'image/png') {
+    return 'image/png';
   }
-  xml += '    </conversation>\n';
-  xml += '</response>';
-  return xml;
+
+  // If no type is specified or type is 'text', default to text/markdown
+  if (!type || type === 'text') {
+    return 'text/markdown';
+  }
+
+  const normalizedType = type;
+
+  if (validTypes.includes(normalizedType)) {
+    return normalizedType;
+  }
+
+  // Default to text/markdown for unknown types
+  return 'text/markdown';
 }
 
-/**
- * XML Response Validation
- * Validates the structure and content of XML responses
- * @param response - XML string to validate
- * @returns Promise<boolean> indicating if the XML is valid
- */
-async function isValidXMLResponse(response: string): Promise<boolean> {
-  try {
-    // Ensure basic XML structure exists
-    if (!response.includes('<response>')) {
-      response = `<response>\n<conversation>\n${response}\n</conversation>\n</response>`;
-    }
+// Update convertToStoreFormat function
+function convertToStoreFormat(toolResponse: ToolResponse): {
+  thinking?: string;
+  conversation: string;
+  artifacts?: Array<{
+    id: string;
+    artifactId?: string;
+    type: string;
+    title: string;
+    content: string;
+    position: number;
+    language?: string;
+  }>;
+} {
+  const conversation: string[] = [];
+  const artifacts: Array<any> = [];
+  let position = 0;
 
-    try {
-      // Parse and validate XML structure
-      const result = (await parseXML(response)) as XMLResponse;
-      
-      // Check for required elements
-      const hasResponse = result && 'response' in result;
-      const hasConversation = hasResponse && Array.isArray(result.response.conversation);
-      
-      // Allow error messages in the response
-      const hasValidError = !result.response.error || Array.isArray(result.response.error);
-      
-      return hasResponse && hasConversation && hasValidError;
-    } catch (parseError) {
-      return false;
-    }
-  } catch (error) {
-    console.error('[SERVER] XML Validation - Error during validation:', error);
-    return false;
+  // Check if conversation is an array before processing
+  if (Array.isArray(toolResponse.input.conversation)) {
+    toolResponse.input.conversation.forEach((item: any) => {
+      if (item.type === 'text' && item.content) {
+        conversation.push(item.content);
+        
+        // Check for binary output metadata in the text content
+        if (item.metadata?.hasBinaryOutput && toolResponse.binaryOutput) {
+          const binaryId = crypto.randomUUID();
+          const sourceCodeId = crypto.randomUUID();
+          
+          // Add the binary artifact (e.g., PNG)
+          artifacts.push({
+            id: binaryId,
+            artifactId: binaryId,
+            type: toolResponse.binaryOutput.type,
+            title: `Generated ${toolResponse.binaryOutput.type.split('/')[1].toUpperCase()}`,
+            content: toolResponse.binaryOutput.data,
+            position: position++,
+          });
+
+          // Add source code as a separate artifact
+          if (toolResponse.binaryOutput.metadata?.sourceCode) {
+            artifacts.push({
+              id: sourceCodeId,
+              artifactId: sourceCodeId,
+              type: 'application/vnd.ant.python',  // Use consistent type for Python code
+              title: 'Source Code',
+              content: toolResponse.binaryOutput.metadata.sourceCode,
+              language: 'python',  // Explicitly set language
+              position: position++
+            });
+          }
+
+          // Add formatted buttons for both artifacts
+          conversation.push(`<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${binaryId}" data-artifact-type="${toolResponse.binaryOutput.type}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 Generated ${toolResponse.binaryOutput.type.split('/')[1].toUpperCase()}</button>`);
+          
+          if (toolResponse.binaryOutput.metadata?.sourceCode) {
+            conversation.push(`<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${sourceCodeId}" data-artifact-type="application/vnd.ant.python" style="cursor: pointer; background: none; border: none; padding: 0;">📎 Source Code</button>`);
+          }
+        }
+      } 
+      else if (item.type === 'artifact' && item.artifact) {
+        const uniqueId = crypto.randomUUID();
+        const validatedType = validateArtifactType(item.artifact.type);
+        
+        // Add artifact to collection
+        artifacts.push({
+          id: uniqueId,
+          artifactId: uniqueId,
+          type: validatedType,
+          title: item.artifact.title,
+          content: item.artifact.content,
+          position: position++,
+          language: item.artifact.language || (validatedType === 'application/vnd.ant.python' ? 'python' : undefined)
+        });
+
+        // Add formatted button HTML to conversation
+        const buttonHtml = `<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${uniqueId}" data-artifact-type="${validatedType}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 ${item.artifact.title}</button>`;
+        conversation.push(buttonHtml);
+      }
+    });
+  } else if (typeof toolResponse.input.conversation === 'string') {
+    conversation.push(toolResponse.input.conversation);
   }
-}
 
-/**
- * CDATA Processing
- * Removes CDATA tags from XML for cleaner processing
- * @param xml - XML string containing CDATA sections
- * @returns XML string with CDATA tags removed
- */
-function stripCDATATags(xml: string): string {
-  return xml.replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1');
+  return {
+    thinking: toolResponse.input.thinking,
+    conversation: conversation.join('\n\n'),
+    artifacts: artifacts
+  };
 }
 
 /**
@@ -568,7 +516,7 @@ app.post('/api/chat', async (req: Request<{}, {}, {
     } catch (error) {
       originalConsoleError('Error writing to log file:', error);
     }
-  }
+  };
 
   console.log = (...args: any[]) => {
     const message = args.map(arg => 
@@ -811,163 +759,89 @@ app.post('/api/chat', async (req: Request<{}, {}, {
 
     // Process and validate response
     try {
-        console.log('\n=== PROCESSING ANTHROPIC RESPONSE ===');
         if (response.content[0].type !== 'tool_use') {
-            console.error('Unexpected response type:', response.content[0].type);
             throw new Error('Expected tool_use response from Claude');
         }
 
         const toolResponse = response.content[0];
-        console.log('Tool response type:', toolResponse.type);
-        console.log('Tool response name:', toolResponse.name);
-        
         if (toolResponse.type !== 'tool_use' || toolResponse.name !== 'response_formatter') {
-            console.error('Invalid tool response:', JSON.stringify(toolResponse, null, 2));
             throw new Error('Expected response_formatter tool response');
         }
 
-        // Format response with bibliography if present
-        console.log('\n=== FORMATTING RESPONSE ===');
-        let jsonResponse: FormatterInput;
+        // Convert to store format
+        const storeResponse = convertToStoreFormat(toolResponse as ToolResponse);
         
-        try {
-            const toolResp = toolResponse as ToolResponse;
-            const input = toolResp.input;
+        // Add bibliography if present
+        if ((messages as any).bibliography) {
+            const bibliographyId = crypto.randomUUID();
+            storeResponse.artifacts = storeResponse.artifacts || [];
+            storeResponse.artifacts.push({
+                id: bibliographyId,
+                artifactId: bibliographyId,
+                type: "application/vnd.bibliography",
+                title: "Article References",
+                content: JSON.stringify((messages as any).bibliography),
+                position: storeResponse.artifacts.length
+            });
+        }
+
+        // Add binary outputs if present
+        if ((messages as any).binaryOutputs) {
+            let additionalButtons: string[] = [];
+            storeResponse.artifacts = storeResponse.artifacts || [];
             
-            // Parse the conversation if it's a string
-            if (typeof input.conversation === 'string') {
-                const parsed = JSON.parse(input.conversation);
-                jsonResponse = {
-                    thinking: input.thinking,
-                    conversation: parsed.conversation || []
-                };
-            } else {
-                jsonResponse = {
-                    thinking: input.thinking,
-                    conversation: input.conversation
-                };
-            }
-
-            // Now we can safely push to the array
-            console.log('Adding bibliography and binary outputs to conversation array');
-            if ((messages as any).bibliography) {
-                const bibliographyId = crypto.randomUUID();
-                jsonResponse.conversation.push({
-                    type: "artifact",
-                    artifact: {
-                        type: "application/vnd.bibliography",
-                        id: bibliographyId,
-                        title: "Article References",
-                        content: JSON.stringify((messages as any).bibliography)
-                    }
+            for (const binaryOutput of (messages as any).binaryOutputs) {
+                const binaryId = crypto.randomUUID();
+                const codeId = crypto.randomUUID();
+                
+                // Add the binary artifact
+                storeResponse.artifacts.push({
+                    id: binaryId,
+                    artifactId: binaryId,
+                    type: binaryOutput.type,
+                    title: `Generated ${binaryOutput.type.split('/')[1].toUpperCase()}`,
+                    content: binaryOutput.data,
+                    position: storeResponse.artifacts.length
                 });
-            }
-
-            // Add binary outputs as artifacts
-            if ((messages as any).binaryOutputs) {
-                for (const binaryOutput of (messages as any).binaryOutputs as Array<{
-                    type: string;
-                    data: string;
-                    metadata: Record<string, any>;
-                }>) {
-                    const binaryId = crypto.randomUUID();
-                    // Add the image artifact
-                    jsonResponse.conversation.push({
-                        type: "artifact",
-                        artifact: {
-                            type: binaryOutput.type,
-                            id: binaryId,
-                            title: `Generated ${binaryOutput.type.split('/')[1].toUpperCase()}`,
-                            content: binaryOutput.data
-                        }
+                
+                // Add source code if present
+                if (binaryOutput.metadata?.sourceCode) {
+                    storeResponse.artifacts.push({
+                        id: codeId,
+                        artifactId: codeId,
+                        type: "application/vnd.ant.python",
+                        title: "Source Code",
+                        content: binaryOutput.metadata.sourceCode,
+                        language: "python",
+                        position: storeResponse.artifacts.length
                     });
+                }
+
+                // Create buttons for artifacts not already in conversation
+                const conversationText = storeResponse.conversation.toLowerCase();
+                if (!conversationText.includes(binaryId.toLowerCase())) {
+                    additionalButtons.push(`<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${binaryId}" data-artifact-type="${binaryOutput.type}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 Generated ${binaryOutput.type.split('/')[1].toUpperCase()}</button>`);
                     
-                    // If source code is present in metadata, add it as a separate artifact
-                    if (binaryOutput.metadata?.sourceCode) {
-                        const codeId = crypto.randomUUID();
-                        jsonResponse.conversation.push({
-                            type: "artifact",
-                            artifact: {
-                                type: "code/python",
-                                id: codeId,
-                                title: "Source Code",
-                                content: binaryOutput.metadata.sourceCode,
-                                language: "python"
-                            }
-                        });
+                    if (binaryOutput.metadata?.sourceCode && !conversationText.includes(codeId.toLowerCase())) {
+                        additionalButtons.push(`<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${codeId}" data-artifact-type="application/vnd.ant.python" style="cursor: pointer; background: none; border: none; padding: 0;">📎 Source Code</button>`);
                     }
                 }
             }
-        } catch (parseError) {
-            console.error('\n=== RESPONSE PARSING ERROR ===');
-            console.error('Failed to parse response:', parseError);
-            console.error('Tool response input:', toolResponse);
-            throw new Error('Failed to parse response format');
-        }
 
-        // Convert to XML and validate
-        console.log('\n=== CONVERTING TO XML ===');
-        let xmlResponseWithCDATA: string;
-        try {
-            xmlResponseWithCDATA = convertJsonToXml(jsonResponse);
-            console.log('XML conversion complete, validating...');
-        } catch (xmlError) {
-            console.error('\n=== XML CONVERSION ERROR ===');
-            console.error('Failed to convert to XML. State at failure:');
-            console.error('JSON Response:', JSON.stringify(jsonResponse, null, 2));
-            console.error('Error details:', xmlError);
-            throw xmlError;
-        }
-        
-        let isValid: boolean;
-        try {
-            isValid = await isValidXMLResponse(xmlResponseWithCDATA);
-            if (!isValid) {
-                console.error('\n=== XML VALIDATION ERROR ===');
-                console.error('XML Validation failed. State at failure:');
-                console.error('XML content:', xmlResponseWithCDATA);
-                console.error('Original JSON:', JSON.stringify(jsonResponse, null, 2));
-                throw new Error('Generated XML response is invalid');
+            // Add any missing artifact buttons to the end of the conversation
+            if (additionalButtons.length > 0) {
+                storeResponse.conversation += '\n\nAdditional outputs:\n' + additionalButtons.join('\n');
             }
-        } catch (validationError) {
-            console.error('\n=== XML VALIDATION ERROR ===');
-            console.error('Failed to validate XML. State at failure:');
-            console.error('XML content:', xmlResponseWithCDATA);
-            console.error('Original JSON:', JSON.stringify(jsonResponse, null, 2));
-            console.error('Error details:', validationError);
-            throw validationError;
         }
 
-        // Strip CDATA tags and send response
-        console.log('\n=== PREPARING FINAL RESPONSE ===');
-        let xmlResponse: string;
-        try {
-            xmlResponse = stripCDATATags(xmlResponseWithCDATA);
-            res.json({ response: xmlResponse });
-            console.log('Response sent successfully');
-        } catch (stripError) {
-            console.error('\n=== CDATA STRIPPING ERROR ===');
-            console.error('Failed to strip CDATA tags. State at failure:');
-            console.error('XML with CDATA:', xmlResponseWithCDATA);
-            console.error('Error details:', stripError);
-            throw stripError;
-        }
+        // Send response directly
+        res.json({ response: storeResponse });
+
     } catch (error) {
-        console.error('\n=== RESPONSE PROCESSING ERROR ===');
-        console.error('Error details:', {
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            responseContent: response.content,
-            toolResponseType: response.content[0]?.type
-        });
+        console.error('Error processing response:', error);
         res.status(500).json({
             error: 'Failed to process response',
-            details: error instanceof Error ? error.message : 'Unknown error',
-            state: {
-                responseType: response.content[0]?.type,
-                toolResponse: response.content[0],
-                bibliography: (messages as any).bibliography ? 'Present' : 'Not present'
-            }
+            details: error instanceof Error ? error.message : 'Unknown error'
         });
     }
 
@@ -1037,3 +911,78 @@ app.get('/api/server-status', async (_req: Request, res: Response) => {
         });
     }
 });
+
+// Keep necessary interfaces
+interface AnthropicTool {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+interface ServerTool {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string | Array<{ type: string; text: string }>;
+}
+
+interface ServerStatus {
+  name: string;
+  isRunning: boolean;
+  tools?: ServerTool[];
+}
+
+interface MCPServerConfig {
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
+interface MCPServersConfig {
+  mcpServers: Record<string, MCPServerConfig>;
+}
+
+interface ToolResponse {
+  type: 'tool_use';
+  name: string;
+  input: {
+    thinking?: string;
+    conversation: Array<{
+      type: 'text' | 'artifact';
+      content?: string;
+      metadata?: {
+        hasBinaryOutput?: boolean;
+        binaryType?: string;
+        [key: string]: any;
+      };
+      artifact?: {
+        type: string;
+        id: string;
+        title: string;
+        content: string;
+        language?: string;
+      };
+    }>;
+  };
+  binaryOutput?: {
+    type: string;
+    data: string;
+    metadata: {
+      size?: number;
+      sourceCode?: string;
+      [key: string]: any;
+    };
+  };
+}

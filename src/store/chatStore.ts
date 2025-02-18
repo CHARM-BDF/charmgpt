@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Message } from '../types/chat';
-import { Artifact } from '../types/artifacts';
+import { Artifact, ArtifactType } from '../types/artifacts';
 import { useMCPStore } from './mcpStore';
-import { parseXMLResponse } from '../utils/xmlParser';
 
 /**
  * Core message interface extension
@@ -164,7 +163,7 @@ export const useChatStore = create<ChatState>()(
        * CRITICAL: Server Communication Function
        * This function handles:
        * 1. Sending messages to the AI server
-       * 2. Processing the XML response
+       * 2. Processing the JSON response
        * 3. Creating artifacts and linking them to messages
        * 
        * DO NOT REMOVE the server communication logic unless explicitly replacing it
@@ -172,18 +171,15 @@ export const useChatStore = create<ChatState>()(
        */
       processMessage: async (content: string) => {
         try {
-          // Reset streaming state at the start
           set({ 
             isLoading: true, 
             error: null,
-            streamingContent: '', // Clear previous streaming content
+            streamingContent: '',
             streamingComplete: false
           });
           
-          // Create a new message ID for streaming
           const messageId = crypto.randomUUID();
           
-          // Add initial empty assistant message
           const newMessage: MessageWithThinking = {
             role: 'assistant',
             content: '',
@@ -194,11 +190,9 @@ export const useChatStore = create<ChatState>()(
           set(state => ({
             messages: [...state.messages, newMessage],
             streamingMessageId: messageId,
-            streamingContent: '' // Ensure streaming content is empty
+            streamingContent: ''
           }));
 
-          // REQUIRED: Server communication
-          console.log('ChatStore: Sending request to server...');
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
             method: 'POST',
             headers: {
@@ -221,74 +215,51 @@ export const useChatStore = create<ChatState>()(
           }
 
           const data = await response.json();
+          const storeResponse = data.response;
           
-          try {
-            console.log('ChatStore: Parsing XML response...');
-            const xmlResponse = await parseXMLResponse(data.response);
+          // Get the full content
+          const fullContent = storeResponse.conversation;
+          
+          if (get().streamingEnabled) {
+            // Stream the content in chunks
+            const chunkSize = 20;
+            let currentPosition = 0;
+            let buffer = '';
+            let accumulatedContent = '';
             
-            // Get the full content
-            const fullContent = xmlResponse.conversation;
-            
-            if (get().streamingEnabled) {
-              // Stream the content in chunks
-              const chunkSize = 20;
-              let currentPosition = 0;
-              let buffer = '';
-              let accumulatedContent = '';
-              
-              const processChunk = (chunk: string): string => {
-                // Combine buffer with new chunk
-                const combined = buffer + chunk;
-                let safeText = combined;
-                let newBuffer = '';
+            const processChunk = (chunk: string): string => {
+              const combined = buffer + chunk;
+              let safeText = combined;
+              let newBuffer = '';
 
-                // Look for incomplete tags
-                const lastOpenIndex = combined.lastIndexOf('<');
-                if (lastOpenIndex !== -1) {
-                  const closeIndex = combined.indexOf('>', lastOpenIndex);
-                  if (closeIndex === -1) {
-                    // We have an incomplete tag, buffer it
-                    safeText = combined.slice(0, lastOpenIndex);
-                    newBuffer = combined.slice(lastOpenIndex);
-                  }
+              const lastOpenIndex = combined.lastIndexOf('<');
+              if (lastOpenIndex !== -1) {
+                const closeIndex = combined.indexOf('>', lastOpenIndex);
+                if (closeIndex === -1) {
+                  safeText = combined.slice(0, lastOpenIndex);
+                  newBuffer = combined.slice(lastOpenIndex);
                 }
-
-                // Also check for incomplete code blocks
-                const backtickCount = (safeText.match(/`/g) || []).length;
-                if (backtickCount % 2 !== 0) {
-                  // We have an incomplete code block
-                  const lastBacktickIndex = safeText.lastIndexOf('`');
-                  newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
-                  safeText = safeText.slice(0, lastBacktickIndex);
-                }
-
-                buffer = newBuffer;
-                return safeText;
-              };
-              
-              while (currentPosition < fullContent.length) {
-                const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
-                const chunk = fullContent.slice(currentPosition, nextPosition);
-                
-                const safeChunk = processChunk(chunk);
-                if (safeChunk) {
-                  accumulatedContent += safeChunk;
-                  
-                  set(state => ({
-                    messages: state.messages.map(msg =>
-                      msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
-                    ),
-                    streamingContent: accumulatedContent
-                  }));
-                }
-                
-                currentPosition = nextPosition;
-                await new Promise(resolve => setTimeout(resolve, .5));
               }
+
+              const backtickCount = (safeText.match(/`/g) || []).length;
+              if (backtickCount % 2 !== 0) {
+                const lastBacktickIndex = safeText.lastIndexOf('`');
+                newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
+                safeText = safeText.slice(0, lastBacktickIndex);
+              }
+
+              buffer = newBuffer;
+              return safeText;
+            };
+            
+            while (currentPosition < fullContent.length) {
+              const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
+              const chunk = fullContent.slice(currentPosition, nextPosition);
               
-              // Flush any remaining buffer at the end
-              if (buffer) {
-                accumulatedContent += buffer;
+              const safeChunk = processChunk(chunk);
+              if (safeChunk) {
+                accumulatedContent += safeChunk;
+                
                 set(state => ({
                   messages: state.messages.map(msg =>
                     msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
@@ -296,64 +267,74 @@ export const useChatStore = create<ChatState>()(
                   streamingContent: accumulatedContent
                 }));
               }
-            } else {
-              // If streaming is disabled, update content immediately
+              
+              currentPosition = nextPosition;
+              await new Promise(resolve => setTimeout(resolve, .5));
+            }
+            
+            if (buffer) {
+              accumulatedContent += buffer;
               set(state => ({
                 messages: state.messages.map(msg =>
-                  msg.id === messageId ? { ...msg, content: fullContent } : msg
+                  msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
                 ),
-                streamingContent: fullContent,
-                streamingComplete: true
+                streamingContent: accumulatedContent
               }));
             }
-
-            // Process artifacts
-            const artifactIds = xmlResponse.artifacts?.map(artifact => {
-              return get().addArtifact({
-                id: artifact.id,
-                artifactId: artifact.artifactId,
-                type: artifact.type,
-                title: artifact.title,
-                content: artifact.content,
-                position: artifact.position,
-                language: artifact.language
-              });
-            }) || [];
-
-            // Update final message state
+          } else {
             set(state => ({
               messages: state.messages.map(msg =>
-                msg.id === messageId ? {
-                  ...msg,
-                  content: fullContent,
-                  thinking: xmlResponse.thinking,
-                  artifactId: artifactIds[0]
-                } : msg
+                msg.id === messageId ? { ...msg, content: fullContent } : msg
               ),
-              streamingMessageId: null,
-              streamingComplete: true
-            }));
-
-          } catch (parseError) {
-            console.error('ChatStore: XML parsing error:', parseError);
-            set(state => ({
-              messages: state.messages.map(msg =>
-                msg.id === messageId ? { ...msg, content: data.response } : msg
-              ),
-              streamingMessageId: null,
-              streamingContent: '', // Clear streaming content
+              streamingContent: fullContent,
               streamingComplete: true
             }));
           }
-          
+
+          // Process artifacts
+          const artifactIds = storeResponse.artifacts?.map((artifact: {
+            id: string;
+            artifactId: string;
+            type: ArtifactType;
+            title: string;
+            content: string;
+            position: number;
+            language?: string;
+          }) => {
+            return get().addArtifact({
+              id: artifact.id,
+              artifactId: artifact.artifactId,
+              type: artifact.type,
+              title: artifact.title,
+              content: artifact.content,
+              position: artifact.position,
+              language: artifact.language
+            });
+          }) || [];
+
+          // Update final message state
+          set(state => ({
+            messages: state.messages.map(msg =>
+              msg.id === messageId ? {
+                ...msg,
+                content: fullContent,
+                thinking: storeResponse.thinking,
+                artifactId: artifactIds[0]
+              } : msg
+            ),
+            streamingMessageId: null,
+            streamingComplete: true
+          }));
+
           set({ isLoading: false });
+          
         } catch (error) {
           console.error('ChatStore: Error processing message:', error);
           set({ 
             error: error instanceof Error ? error.message : 'Unknown error',
             isLoading: false,
             streamingMessageId: null,
-            streamingContent: '', // Clear streaming content
+            streamingContent: '',
             streamingComplete: true
           });
         }
