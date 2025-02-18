@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { Conversation } from '../../types/chat';
 
@@ -6,7 +6,7 @@ interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
   onSelect: () => void;
-  onRename: () => void;
+  onRename: (newName: string) => void;
   onDelete: () => void;
 }
 
@@ -17,6 +17,36 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   onRename,
   onDelete
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(conversation.metadata.name);
+
+  const handleStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (editedName.trim()) {
+        onRename(editedName.trim());
+        setIsEditing(false);
+      }
+    } else if (e.key === 'Escape') {
+      setEditedName(conversation.metadata.name);
+      setIsEditing(false);
+    }
+  };
+
+  const handleBlur = () => {
+    if (editedName.trim() && editedName !== conversation.metadata.name) {
+      onRename(editedName.trim());
+    } else {
+      setEditedName(conversation.metadata.name);
+    }
+    setIsEditing(false);
+  };
+
   return (
     <div 
       className={`p-3 rounded-lg cursor-pointer transition-colors duration-200
@@ -26,15 +56,30 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
       onClick={onSelect}
     >
       <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {conversation.metadata.name}
-        </span>
-        <div className="flex space-x-2">
+        {isEditing ? (
+          <input
+            type="text"
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            className="flex-1 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 
+                     rounded text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 
+                     focus:ring-blue-500 dark:focus:ring-blue-400"
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+          />
+        ) : (
+          <span 
+            className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate flex-1 cursor-text"
+            onClick={handleStartEdit}
+          >
+            {conversation.metadata.name}
+          </span>
+        )}
+        <div className="flex space-x-2 ml-2">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRename();
-            }}
+            onClick={handleStartEdit}
             className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,13 +110,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 export const ConversationList: React.FC = () => {
   const { conversations, currentConversationId, switchConversation, renameConversation, deleteConversation } = useChatStore();
   
-  const handleRename = (id: string) => {
-    const newName = prompt('Enter new conversation name:');
-    if (newName) {
-      renameConversation(id, newName);
-    }
-  };
-
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this conversation?')) {
       deleteConversation(id);
@@ -86,7 +124,7 @@ export const ConversationList: React.FC = () => {
           conversation={conversation}
           isActive={id === currentConversationId}
           onSelect={() => switchConversation(id)}
-          onRename={() => handleRename(id)}
+          onRename={(newName) => renameConversation(id, newName)}
           onDelete={() => handleDelete(id)}
         />
       ))}
