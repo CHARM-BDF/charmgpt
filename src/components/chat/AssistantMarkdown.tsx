@@ -127,26 +127,10 @@ interface CodeBlockAccumulator {
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
   const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
 
-  // Pre-process XML content before rendering
-  const processXMLContent = (rawContent: string): string => {
-    // First process artifact tags
-    const artifactProcessed = rawContent.replace(
-      /<artifact\s+([^>]+)>([\s\S]*?)<\/artifact>/g,
-      (match, attributes, content) => {
-        const languageMatch = attributes.match(/language="([^"]+)"/);
-        const language = languageMatch ? languageMatch[1] : '';
-        if (language) {
-          return `\`\`\`${language}\n${content.trim()}\n\`\`\``;
-        }
-        return match;
-      }
-    );
-    
-    // Remove any quotes around heading markers
-    const headingProcessed = artifactProcessed.replace(/"(#+\s[^"]+)"/g, '$1');
-    
-    // Then split content into sections and wrap each in a div
-    const processedContent = headingProcessed
+  // Process content to properly format buttons and sections
+  const processContent = (rawContent: string): string => {
+    // Split content into sections and wrap each in a div
+    return rawContent
       .split(/(<button.*?<\/button>)/g)
       .map((section, _index) => {
         if (section.startsWith('<button')) {
@@ -162,11 +146,9 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       })
       .filter(Boolean)
       .join('\n');
-
-    return processedContent;
   };
 
-  const cleanContent = processXMLContent(content)
+  const cleanContent = processContent(content)
     // First, replace [BACKTICK] tags with actual backticks
     .replace(/\[BACKTICK\]/g, '`')
     // Handle code blocks and spacing

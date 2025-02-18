@@ -422,6 +422,8 @@ function convertToStoreFormat(toolResponse: ToolResponse): {
   const artifacts: Array<any> = [];
   let position = 0;
 
+  // console.log('DEBUG - toolResponse.input.conversation:', JSON.stringify(toolResponse.input.conversation, null, 2));
+
   // Check if conversation is an array before processing
   if (Array.isArray(toolResponse.input.conversation)) {
     toolResponse.input.conversation.forEach((item: any) => {
