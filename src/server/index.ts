@@ -2,6 +2,38 @@
  * MCP (Model Context Protocol) Server Implementation
  * This server acts as a bridge between the client application and various MCP-compatible model servers.
  * It handles communication with Anthropic's Claude model and manages multiple MCP server instances.
+ * 
+ * Data Type Boundaries:
+ * 1. Input (ServerInputRequest):
+ *    - message: string
+ *    - history: Array<{role: 'user' | 'assistant', content: string}>
+ *    - blockedServers?: string[]
+ *    - modelSettings?: {temperature?: number, maxTokens?: number, [key: string]: any}
+ * 
+ * 2. Internal Processing (ParsedServerRequest):
+ *    - message: {content: string, role: 'user' | 'assistant'}
+ *    - history: ChatMessage[]
+ *    - modelConfig?: ModelConfig
+ *    - blockedServers: string[]
+ * 
+ * 3. Output (ServerResponse):
+ *    - response: {
+ *        thinking?: string
+ *        conversation: string
+ *        artifacts?: Array<{
+ *          id: string
+ *          type: string
+ *          title: string
+ *          content: string
+ *          position: number
+ *          language?: string
+ *        }>
+ *      }
+ *    - error?: {message: string, details?: any}
+ * 
+ * Special Response Types:
+ * - BinaryOutputResponse: Includes base64 encoded data and metadata
+ * - BibliographyResponse: Includes structured reference data
  */
 
 import express, { Request, Response } from 'express';
@@ -323,10 +355,7 @@ async function getAllAvailableTools(blockedServers: string[] = []): Promise<Anth
     return mcpTools;
 }
 
-/**
- * Response Formatting
- * Functions for converting between JSON and XML formats for client communication
- */
+
 
 // Add validateArtifactType function
 function validateArtifactType(type: string): string {
