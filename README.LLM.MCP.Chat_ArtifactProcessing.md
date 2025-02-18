@@ -1,36 +1,84 @@
 # Chat and Artifact Processing Flow
 
 ## Overview
-This document details the complete flow of chat messages and artifacts from the MCP server through the main server to the client store. It covers data transformations, formatting, and the handling of various artifact types.
+This document serves as a comprehensive blueprint for implementing LLM server components that integrate with the MCP (Model Context Protocol) system. It details the complete flow of chat messages and artifacts, data transformations, and integration requirements for new LLM providers.
 
 ## 1. Data Flow Overview
 
 ```mermaid
 graph TD
-    A[MCP Server] --> B[Main Server]
-    B --> C[Chat Store]
-    C --> D[UI Components]
+    A[LLM Provider] --> B[MCP Server Adapter]
+    B --> C[Main Server]
+    C --> D[Chat Store]
+    D --> E[UI Components]
+    
+    subgraph "LLM Adapter Layer"
+        F[Format LLM Request] --> G[Process LLM Response]
+        G --> H[Convert to MCP Format]
+    end
     
     subgraph "MCP Server Processing"
-        E[Execute Tool] --> F[Generate Output]
-        F --> G[Format Response]
+        I[Execute Tool] --> J[Generate Output]
+        J --> K[Format Response]
     end
     
     subgraph "Main Server Processing"
-        H[Process Tool Response] --> I[Convert to Store Format]
-        I --> J[Add Binary Outputs]
-        J --> K[Format Final Response]
+        L[Process Tool Response] --> M[Convert to Store Format]
+        M --> N[Add Binary Outputs]
+        N --> O[Format Final Response]
     end
     
     subgraph "Store Processing"
-        L[Add Message] --> M[Add Artifacts]
-        M --> N[Link Artifacts to Message]
+        P[Add Message] --> Q[Add Artifacts]
+        Q --> R[Link Artifacts to Message]
     end
 ```
 
-## 2. MCP Server Response Format
+## 2. Integration Requirements
 
-### 2.1 Standard Text Response
+### 2.1 LLM Adapter Interface
+```typescript
+interface LLMAdapter {
+  // Required Methods
+  initialize(config: AdapterConfig): Promise<void>;
+  processMessage(message: string, history: ChatMessage[]): Promise<LLMResponse>;
+  
+  // Optional Methods
+  validateResponse?(response: unknown): boolean;
+  handleError?(error: Error): LLMResponse;
+}
+
+interface AdapterConfig {
+  apiKey?: string;
+  model?: string;
+  endpoint?: string;
+  maxTokens?: number;
+  temperature?: number;
+  // Add other LLM-specific configurations
+}
+
+interface LLMResponse {
+  content: Array<{
+    type: "text" | "tool_use";
+    text?: string;
+    name?: string;
+    input?: Record<string, unknown>;
+  }>;
+  metadata?: {
+    usage?: {
+      promptTokens?: number;
+      completionTokens?: number;
+      totalTokens?: number;
+    };
+    model?: string;
+    // Add other LLM-specific metadata
+  };
+}
+```
+
+## 3. Response Format Requirements
+
+### 3.1 Standard Text Response
 ```typescript
 {
   content: [{
@@ -45,7 +93,7 @@ graph TD
 }
 ```
 
-### 2.2 Binary Output Response
+### 3.2 Binary Output Response
 ```typescript
 {
   content: [{
@@ -68,9 +116,45 @@ graph TD
 }
 ```
 
-## 3. Server Processing Steps
+### 3.3 Tool Response Format
+```typescript
+interface ToolResponse {
+  type: 'tool_use';
+  name: string;
+  input: {
+    thinking?: string;
+    conversation: Array<{
+      type: 'text' | 'artifact';
+      content?: string;
+      metadata?: {
+        hasBinaryOutput?: boolean;
+        binaryType?: string;
+        [key: string]: any;
+      };
+      artifact?: {
+        type: string;
+        id: string;
+        title: string;
+        content: string;
+        language?: string;
+      };
+    }>;
+  };
+  binaryOutput?: {
+    type: string;
+    data: string;
+    metadata: {
+      size?: number;
+      sourceCode?: string;
+      [key: string]: any;
+    };
+  };
+}
+```
 
-### 3.1 Tool Response Processing
+## 4. Server Processing Steps
+
+### 4.1 Tool Response Processing
 Location: `src/server/index.ts`
 
 1. **Initial Tool Execution**
@@ -88,7 +172,7 @@ Location: `src/server/index.ts`
      - Source code (if available)
      - Metadata
 
-### 3.2 Store Format Conversion
+### 4.2 Store Format Conversion
 Location: `src/server/index.ts` - `convertToStoreFormat` function
 
 1. **Artifact Creation**
@@ -122,9 +206,9 @@ Location: `src/server/index.ts` - `convertToStoreFormat` function
    </button>
    ```
 
-## 4. Store Processing
+## 5. Store Processing
 
-### 4.1 Message Storage
+### 5.1 Message Storage
 Location: `src/store/chatStore.ts`
 
 1. **Message Format**
@@ -152,7 +236,7 @@ Location: `src/store/chatStore.ts`
    }
    ```
 
-### 4.2 Processing Flow
+### 5.2 Processing Flow
 1. **Message Addition**
    ```typescript
    addMessage: (message) => set((state) => ({
@@ -177,9 +261,9 @@ Location: `src/store/chatStore.ts`
    }
    ```
 
-## 5. Special Cases
+## 6. Special Cases
 
-### 5.1 Binary Outputs
+### 6.1 Binary Outputs
 1. **Collection**
    - Stored in `messages.binaryOutputs` array
    - Includes both binary data and source code
@@ -189,7 +273,7 @@ Location: `src/store/chatStore.ts`
    - Buttons generated for both binary output and source code
    - Linked in conversation if not already present
 
-### 5.2 Bibliography
+### 6.2 Bibliography
 1. **Collection**
    - Stored in `messages.bibliography` array
    - Deduplicated based on PMID
@@ -198,9 +282,9 @@ Location: `src/store/chatStore.ts`
    - Added as special artifact type
    - Linked at end of conversation
 
-## 6. UI Integration
+## 7. UI Integration
 
-### 6.1 Artifact Display
+### 7.1 Artifact Display
 1. **Button Generation**
    - Embedded in conversation text
    - Contains metadata for artifact linking
@@ -209,7 +293,7 @@ Location: `src/store/chatStore.ts`
    - Shows selected artifact
    - Maintains artifact state
 
-### 6.2 State Management
+### 7.2 State Management
 1. **Selection**
    ```typescript
    selectArtifact: (id) => set({ 
@@ -225,9 +309,9 @@ Location: `src/store/chatStore.ts`
    }))
    ```
 
-## 7. Data Flow Example
+## 8. Data Flow Example
 
-### 7.1 Python Code with PNG Output
+### 8.1 Python Code with PNG Output
 ```typescript
 // 1. MCP Server Response
 {
@@ -261,7 +345,7 @@ Location: `src/store/chatStore.ts`
 }
 ```
 
-## 8. Important Notes
+## 9. Important Notes
 
 1. **Artifact ID Management**
    - UUIDs used for unique identification
@@ -283,19 +367,183 @@ Location: `src/store/chatStore.ts`
    - Added inline for referenced artifacts
    - Added at end for unreferenced artifacts
 
-## 9. Common Issues and Solutions
+## 10. Implementation Guide for New LLM Providers
 
-1. **Missing Artifacts**
-   - Check artifact array in store
-   - Verify button generation
-   - Ensure proper ID linking
+### 10.1 Required Components
 
-2. **Type Mismatches**
-   - Use `validateArtifactType`
-   - Check type normalization
-   - Verify UI handling
+1. **Adapter Implementation**
+   ```typescript
+   class NewLLMAdapter implements LLMAdapter {
+     private config: AdapterConfig;
+     
+     async initialize(config: AdapterConfig) {
+       this.config = config;
+       // Initialize LLM client/connection
+     }
+     
+     async processMessage(message: string, history: ChatMessage[]) {
+       // 1. Convert history to LLM's format
+       // 2. Make API call to LLM
+       // 3. Convert response to standard format
+       // 4. Handle any LLM-specific features
+       return convertedResponse;
+     }
+   }
+   ```
 
-3. **Button Placement**
-   - Check conversation text
-   - Verify button generation
-   - Check additional outputs section 
+2. **Message Format Conversion**
+   ```typescript
+   interface LLMSpecificFormat {
+     // Define LLM's native format
+   }
+   
+   function convertToLLMFormat(messages: ChatMessage[]): LLMSpecificFormat {
+     // Convert standard messages to LLM format
+   }
+   
+   function convertFromLLMFormat(response: LLMSpecificFormat): LLMResponse {
+     // Convert LLM response to standard format
+   }
+   ```
+
+### 10.2 Integration Checklist
+
+1. **Message Processing**
+   - [ ] Implement history conversion
+   - [ ] Handle streaming if supported
+   - [ ] Implement token counting
+   - [ ] Handle rate limiting
+
+2. **Response Handling**
+   - [ ] Convert response format
+   - [ ] Handle errors gracefully
+   - [ ] Process binary outputs
+   - [ ] Handle metadata
+
+3. **Tool Integration**
+   - [ ] Implement tool calling format
+   - [ ] Handle tool responses
+   - [ ] Process binary outputs
+   - [ ] Manage tool state
+
+4. **Error Handling**
+   - [ ] API errors
+   - [ ] Rate limits
+   - [ ] Token limits
+   - [ ] Network issues
+
+### 10.3 Configuration Requirements
+
+```typescript
+interface LLMConfig {
+  // Required
+  provider: string;
+  model: string;
+  apiKey: string;
+  
+  // Optional
+  endpoint?: string;
+  maxTokens?: number;
+  temperature?: number;
+  timeout?: number;
+  retries?: number;
+  
+  // Rate Limiting
+  maxRequestsPerMinute?: number;
+  maxTokensPerMinute?: number;
+  
+  // Streaming
+  supportsStreaming?: boolean;
+  streamChunkSize?: number;
+  
+  // Tools
+  supportedTools?: string[];
+  maxToolCalls?: number;
+}
+```
+
+### 10.4 Testing Requirements
+
+1. **Basic Functionality**
+   - Message processing
+   - History handling
+   - Response formatting
+
+2. **Tool Integration**
+   - Tool calling
+   - Tool response processing
+   - Binary output handling
+
+3. **Error Scenarios**
+   - API errors
+   - Rate limiting
+   - Token limits
+   - Network issues
+
+4. **Performance**
+   - Response time
+   - Memory usage
+   - Token usage
+
+## 11. Validation and Testing
+
+### 11.1 Response Validation
+```typescript
+function validateLLMResponse(response: unknown): boolean {
+  // 1. Check response structure
+  // 2. Validate content format
+  // 3. Check required fields
+  // 4. Validate metadata
+  return isValid;
+}
+```
+
+### 11.2 Integration Tests
+```typescript
+async function testLLMIntegration(adapter: LLMAdapter) {
+  // 1. Test basic message processing
+  // 2. Test history handling
+  // 3. Test tool integration
+  // 4. Test error handling
+  // 5. Test binary output processing
+}
+```
+
+## 12. Common Integration Pitfalls
+
+1. **Format Mismatches**
+   - Inconsistent message formats
+   - Missing required fields
+   - Incorrect type conversions
+
+2. **State Management**
+   - Tool state not preserved
+   - History format issues
+   - Metadata loss
+
+3. **Error Handling**
+   - Incomplete error coverage
+   - Missing fallbacks
+   - Incorrect error formats
+
+4. **Performance**
+   - Token counting issues
+   - Rate limit violations
+   - Memory leaks
+
+## 13. Security Considerations
+
+1. **API Key Management**
+   - Secure storage
+   - Key rotation
+   - Access control
+
+2. **Data Processing**
+   - Input sanitization
+   - Output validation
+   - Content filtering
+
+3. **Rate Limiting**
+   - Request throttling
+   - Token usage monitoring
+   - Cost control 
