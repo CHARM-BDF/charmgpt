@@ -249,33 +249,8 @@ export const useChatStore = create<ChatState>()(
               state = get(); // Get updated state
             }
             
-            const newMessage: MessageWithThinking = {
-              role: 'user',
-              content,
-              id: messageId,
-              timestamp: new Date()
-            };
-            
-            // Add user message to current conversation
-            set(state => {
-              const updatedConversation = {
-                ...state.conversations[state.currentConversationId!],
-                messages: [...state.conversations[state.currentConversationId!].messages, newMessage],
-                metadata: {
-                  ...state.conversations[state.currentConversationId!].metadata,
-                  lastUpdated: new Date(),
-                  messageCount: state.conversations[state.currentConversationId!].metadata.messageCount + 1
-                }
-              };
-
-              return {
-                messages: updatedConversation.messages,
-                conversations: {
-                  ...state.conversations,
-                  [state.currentConversationId!]: updatedConversation
-                }
-              };
-            });
+            // Note: We don't need to add the user message here as it's already added via addMessage
+            // before processMessage is called
 
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
               method: 'POST',

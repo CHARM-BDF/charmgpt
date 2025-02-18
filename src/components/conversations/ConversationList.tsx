@@ -71,15 +71,17 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           />
         ) : (
           <span 
-            className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate flex-1 cursor-text"
-            onClick={handleStartEdit}
+            className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate flex-1"
           >
             {conversation.metadata.name}
           </span>
         )}
         <div className="flex space-x-2 ml-2">
           <button
-            onClick={handleStartEdit}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleStartEdit(e);
+            }}
             className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
