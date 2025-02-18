@@ -8,6 +8,7 @@ import { ArtifactDrawer } from '../artifacts/ArtifactDrawer';
 import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
 import { MCPStatusModal } from '../mcp/MCPStatusModal';
+import { ModelSelector } from '../models/ModelSelector';
 import BrainWaveCharmStatic from '../animations/BrainWaveCharmStatic';
 // @ts-ignore - Heroicons type definitions mismatch
 import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon } from '@heroicons/react/24/outline';
@@ -41,6 +42,12 @@ export const ChatInterface: React.FC = () => {
               {/* <MCPServerControl /> */}
             </div>
             <div className="flex items-center space-x-6">
+              {/* Model Selection */}
+              <ModelSelector />
+
+              {/* Divider */}
+              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+
               {/* Files Section */}
               <div className="flex flex-col items-center">
                 <div className="flex items-center">
