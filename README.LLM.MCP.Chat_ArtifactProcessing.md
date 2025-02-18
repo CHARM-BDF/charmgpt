@@ -261,6 +261,105 @@ Location: `src/store/chatStore.ts`
    }
    ```
 
+### 5.3 Server Communication
+Location: `src/store/chatStore.ts` - `processMessage` function
+
+1. **Message Preparation and Sending**
+   ```typescript
+   processMessage: async (content: string) => {
+     try {
+       // Set loading state
+       set({ 
+         isLoading: true, 
+         error: null,
+         streamingContent: '',
+         streamingComplete: false
+       });
+       
+       // Create new message placeholder
+       const messageId = crypto.randomUUID();
+       const newMessage: MessageWithThinking = {
+         role: 'assistant',
+         content: '',
+         id: messageId,
+         timestamp: new Date()
+       };
+       
+       // Add placeholder message to state
+       set(state => ({
+         messages: [...state.messages, newMessage],
+         streamingMessageId: messageId,
+         streamingContent: ''
+       }));
+
+       // Send request to server
+       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({
+           message: content,
+           history: get().messages
+             .filter(msg => msg.content.trim() !== '')
+             .map(msg => ({
+               role: msg.role,
+               content: msg.content
+             })),
+           blockedServers: useMCPStore.getState().getBlockedServers()
+         })
+       });
+
+       // Process response
+       const data = await response.json();
+       const storeResponse = data.response;
+       
+       // Handle streaming or direct content update
+       // [Content processing details...]
+       
+     } catch (error) {
+       console.error('ChatStore: Error processing message:', error);
+       set({ 
+         error: error instanceof Error ? error.message : 'Unknown error',
+         isLoading: false,
+         streamingMessageId: null,
+         streamingContent: '',
+         streamingComplete: true
+       });
+     }
+   }
+   ```
+
+2. **Request Format**
+   ```typescript
+   interface ChatRequest {
+     message: string;              // Current message being sent
+     history: Array<{             // Chat history
+       role: 'user' | 'assistant';
+       content: string;
+     }>;
+     blockedServers?: string[];   // Optional server restrictions
+   }
+   ```
+
+3. **Response Processing**
+   - Handles streaming responses if enabled
+   - Updates message content progressively
+   - Processes artifacts and binary outputs
+   - Manages bibliography data
+   - Updates UI state
+
+4. **State Management During Communication**
+   ```typescript
+   interface CommunicationState {
+     isLoading: boolean;          // Request in progress
+     error: string | null;        // Error state
+     streamingMessageId: string | null;  // Current streaming message
+     streamingContent: string;    // Accumulated content
+     streamingComplete: boolean;  // Stream status
+   }
+   ```
+
 ## 6. Special Cases
 
 ### 6.1 Binary Outputs
@@ -547,3 +646,490 @@ async function testLLMIntegration(adapter: LLMAdapter) {
    - Request throttling
    - Token usage monitoring
    - Cost control 
+
+## 14. Multi-Model Support Implementation
+
+### 14.1 Store Enhancements
+```typescript
+interface ModelConfig {
+  id: string;
+  name: string;
+  type: 'local' | 'remote';
+  endpoint: string;
+  isAvailable: boolean;
+  settings: {
+    temperature?: number;
+    maxTokens?: number;
+    streamingSupported?: boolean;
+    // Model-specific settings
+    [key: string]: any;
+  };
+}
+
+interface ModelState {
+  selectedModel: string;
+  availableModels: ModelConfig[];
+  modelStatus: Record<string, {
+    isLoading: boolean;
+    error: string | null;
+    lastPing: Date;
+  }>;
+}
+
+// Store additions
+interface ChatStore extends /* existing store interface */ {
+  modelState: ModelState;
+  setSelectedModel: (modelId: string) => void;
+  updateModelStatus: (modelId: string, status: Partial<ModelState['modelStatus'][string]>) => void;
+  getModelEndpoint: () => string;
+}
+
+// Modified processMessage
+processMessage: async (content: string) => {
+  const endpoint = get().getModelEndpoint();
+  const selectedModel = get().modelState.selectedModel;
+  const modelConfig = get().modelState.availableModels.find(m => m.id === selectedModel);
+
+  // Add model-specific headers or parameters
+  const requestConfig = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Model-Type': modelConfig.type,
+      // Add other model-specific headers
+    },
+    body: JSON.stringify({
+      message: content,
+      history: get().messages,
+      modelSettings: modelConfig.settings,
+      // ... other request data
+    })
+  };
+
+  // Rest of the implementation
+  // ...
+}
+```
+
+### 14.2 Configuration Management
+```typescript
+// config/models.ts
+export const modelConfigurations: ModelConfig[] = [
+  {
+    id: 'anthropic-claude',
+    name: 'Claude (Remote)',
+    type: 'remote',
+    endpoint: '${import.meta.env.VITE_API_URL}/api/chat',
+    isAvailable: true,
+    settings: {
+      temperature: 0.7,
+      maxTokens: 4000,
+      streamingSupported: true
+    }
+  },
+  {
+    id: 'local-llama',
+    name: 'Llama 2 (Local)',
+    type: 'local',
+    endpoint: 'http://localhost:3001/api/chat',
+    isAvailable: false,  // Dynamically updated
+    settings: {
+      temperature: 0.7,
+      maxTokens: 2000,
+      streamingSupported: true,
+      modelPath: '/path/to/model',
+      quantization: '4bit'
+    }
+  }
+];
+
+// Health check function
+async function checkModelAvailability(config: ModelConfig): Promise<boolean> {
+  try {
+    const response = await fetch(`${config.endpoint}/health`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+```
+
+### 14.3 Error Handling Extensions
+```typescript
+// types/errors.ts
+interface ModelError extends Error {
+  modelId: string;
+  type: 'connection' | 'resource' | 'timeout' | 'validation';
+  retryable: boolean;
+  resourceStats?: {
+    memory?: number;
+    cpu?: number;
+    gpu?: number;
+  };
+}
+
+// error-handler.ts
+class ModelErrorHandler {
+  async handleError(error: ModelError, store: ChatStore): Promise<void> {
+    switch (error.type) {
+      case 'connection':
+        if (error.retryable) {
+          await this.retryConnection(error.modelId);
+        } else {
+          this.switchToFallbackModel(store);
+        }
+        break;
+      
+      case 'resource':
+        await this.handleResourceError(error);
+        break;
+      
+      // ... other error types
+    }
+  }
+
+  private async retryConnection(modelId: string): Promise<void> {
+    // Implement retry logic
+  }
+
+  private switchToFallbackModel(store: ChatStore): void {
+    // Switch to next available model
+  }
+
+  private async handleResourceError(error: ModelError): Promise<void> {
+    // Handle resource constraints
+  }
+}
+```
+
+### 14.4 UI Components
+```typescript
+// components/ModelSelector.tsx
+interface ModelSelectorProps {
+  models: ModelConfig[];
+  selectedModel: string;
+  onModelSelect: (modelId: string) => void;
+}
+
+const ModelSelector: React.FC<ModelSelectorProps> = ({
+  models,
+  selectedModel,
+  onModelSelect
+}) => {
+  return (
+    <div className="model-selector">
+      <select 
+        value={selectedModel}
+        onChange={(e) => onModelSelect(e.target.value)}
+      >
+        {models.map(model => (
+          <option 
+            key={model.id} 
+            value={model.id}
+            disabled={!model.isAvailable}
+          >
+            {model.name} {!model.isAvailable && '(Unavailable)'}
+          </option>
+        ))}
+      </select>
+      
+      {/* Model Status Indicator */}
+      <ModelStatusIndicator modelId={selectedModel} />
+      
+      {/* Model Settings Panel */}
+      <ModelSettings modelId={selectedModel} />
+    </div>
+  );
+};
+
+// components/ModelStatusIndicator.tsx
+interface ModelStatusIndicatorProps {
+  modelId: string;
+}
+
+const ModelStatusIndicator: React.FC<ModelStatusIndicatorProps> = ({
+  modelId
+}) => {
+  const status = useChatStore(state => state.modelState.modelStatus[modelId]);
+  
+  return (
+    <div className="model-status">
+      {status.isLoading && <LoadingSpinner />}
+      {status.error && <ErrorIcon title={status.error} />}
+      {!status.isLoading && !status.error && (
+        <StatusIcon 
+          type="success" 
+          title={`Last successful ping: ${status.lastPing.toLocaleString()}`} 
+        />
+      )}
+    </div>
+  );
+};
+
+// components/ModelSettings.tsx
+interface ModelSettingsProps {
+  modelId: string;
+}
+
+const ModelSettings: React.FC<ModelSettingsProps> = ({
+  modelId
+}) => {
+  const model = useChatStore(state => 
+    state.modelState.availableModels.find(m => m.id === modelId)
+  );
+  
+  if (!model) return null;
+  
+  return (
+    <div className="model-settings">
+      <h3>Model Settings</h3>
+      <form>
+        {Object.entries(model.settings).map(([key, value]) => (
+          <SettingInput
+            key={key}
+            name={key}
+            value={value}
+            onChange={(newValue) => {
+              // Update model settings
+            }}
+          />
+        ))}
+      </form>
+    </div>
+  );
+};
+```
+
+This new section provides:
+1. Store enhancements for model selection and management
+2. Configuration system for different models
+3. Extended error handling specific to different model types
+4. UI components for model selection and status display
+
+The implementation allows for:
+- Seamless switching between local and remote models
+- Model-specific configuration and settings
+- Proper error handling and fallbacks
+- Clear UI feedback about model status and availability
+
+Would you like me to:
+1. Add more details about any specific aspect?
+2. Include more examples of model-specific configurations?
+3. Add sections about performance monitoring or security?
+4. Expand the error handling scenarios? 
+
+## 15. Server Data Type Boundaries
+
+### 15.1 Server Input Types
+```typescript
+// Request body type when entering the server
+interface ServerInputRequest {
+  message: string;
+  history: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+  blockedServers?: string[];
+  modelSettings?: {
+    temperature?: number;
+    maxTokens?: number;
+    [key: string]: any;
+  };
+}
+
+// After parsing in the server
+interface ParsedServerRequest {
+  message: {
+    content: string;
+    role: 'user' | 'assistant';
+  };
+  history: ChatMessage[];
+  modelConfig?: ModelConfig;
+  blockedServers: string[];
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  id?: string;
+  timestamp?: Date;
+  thinking?: string;
+  artifactId?: string;
+}
+```
+
+### 15.2 Server Output Types
+```typescript
+// Response type leaving the server
+interface ServerResponse {
+  response: {
+    thinking?: string;
+    conversation: string;
+    artifacts?: Array<{
+      id: string;
+      artifactId?: string;
+      type: string;
+      title: string;
+      content: string;
+      position: number;
+      language?: string;
+      sourceCode?: string;
+    }>;
+  };
+  error?: {
+    message: string;
+    details?: any;
+  };
+}
+
+// Binary output format
+interface BinaryOutputResponse extends ServerResponse {
+  response: {
+    // ... includes standard response fields ...
+    binaryOutput?: {
+      type: string;
+      data: string;  // Base64 encoded
+      metadata: {
+        size?: number;
+        sourceCode?: string;
+        [key: string]: any;
+      };
+    };
+  };
+}
+
+// Bibliography output format
+interface BibliographyResponse extends ServerResponse {
+  response: {
+    // ... includes standard response fields ...
+    bibliography?: Array<{
+      pmid: string;
+      title: string;
+      authors: string[];
+      journal?: string;
+      year?: number;
+      doi?: string;
+      [key: string]: any;
+    }>;
+  };
+}
+```
+
+### 15.3 Data Flow Type Transformations
+```mermaid
+graph TD
+    A[Client Request] -->|ServerInputRequest| B[Server Parse]
+    B -->|ParsedServerRequest| C[LLM Processing]
+    C -->|ToolResponse| D[Response Format]
+    D -->|ServerResponse| E[Client Processing]
+    
+    subgraph "Type Transformations"
+        F[Input Transform] -->|"JSON -> ParsedServerRequest"| G[Process]
+        G -->|"ToolResponse -> ServerResponse"| H[Output Transform]
+    end
+```
+
+### 15.4 Type Validation Points
+1. **Request Validation**
+   ```typescript
+   function validateServerRequest(req: unknown): ServerInputRequest {
+     // 1. Check structure
+     if (!isObject(req)) throw new Error('Invalid request format');
+     
+     // 2. Validate message
+     if (typeof req.message !== 'string') {
+       throw new Error('Message must be a string');
+     }
+     
+     // 3. Validate history
+     if (!Array.isArray(req.history)) {
+       throw new Error('History must be an array');
+     }
+     
+     // 4. Validate each history item
+     req.history.forEach(item => {
+       if (!isValidHistoryItem(item)) {
+         throw new Error('Invalid history item format');
+       }
+     });
+     
+     return req as ServerInputRequest;
+   }
+   ```
+
+2. **Response Validation**
+   ```typescript
+   function validateServerResponse(res: unknown): ServerResponse {
+     // 1. Check basic structure
+     if (!isObject(res) || !isObject(res.response)) {
+       throw new Error('Invalid response format');
+     }
+     
+     // 2. Validate conversation field
+     if (typeof res.response.conversation !== 'string') {
+       throw new Error('Conversation must be a string');
+     }
+     
+     // 3. Validate artifacts if present
+     if (res.response.artifacts) {
+       if (!Array.isArray(res.response.artifacts)) {
+         throw new Error('Artifacts must be an array');
+       }
+       
+       res.response.artifacts.forEach(validateArtifact);
+     }
+     
+     return res as ServerResponse;
+   }
+   ```
+
+### 15.5 Type Safety Considerations
+1. **Input Boundaries**
+   - All incoming requests are validated against `ServerInputRequest`
+   - History items are checked for required fields
+   - Model settings are validated against allowed values
+
+2. **Processing Boundaries**
+   - Tool responses are validated against `ToolResponse`
+   - Binary outputs are checked for valid encoding
+   - Artifacts are validated for required fields
+
+3. **Output Boundaries**
+   - All responses conform to `ServerResponse`
+   - Binary data is properly encoded
+   - Error responses include required fields
+
+4. **Type Guards**
+   ```typescript
+   function isValidHistoryItem(item: any): item is ChatMessage {
+     return (
+       typeof item === 'object' &&
+       typeof item.role === 'string' &&
+       ['user', 'assistant'].includes(item.role) &&
+       typeof item.content === 'string'
+     );
+   }
+   
+   function isValidArtifact(artifact: any): artifact is ServerResponse['response']['artifacts'][0] {
+     return (
+       typeof artifact === 'object' &&
+       typeof artifact.id === 'string' &&
+       typeof artifact.type === 'string' &&
+       typeof artifact.title === 'string' &&
+       typeof artifact.content === 'string' &&
+       typeof artifact.position === 'number'
+     );
+   }
+   ```
+
+This section ensures that:
+1. All data types at server boundaries are clearly defined
+2. Type transformations are documented
+3. Validation points are specified
+4. Type safety is maintained throughout the process
+
+Would you like me to:
+1. Add more detail about specific type validations?
+2. Include examples of error responses?
+3. Add more about type transformations?
+4. Expand the type guards section? 
