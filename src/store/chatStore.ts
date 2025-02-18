@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Message } from '../types/chat';
+import { Message, ConversationMetadata, Conversation, ConversationState } from '../types/chat';
 import { Artifact, ArtifactType } from '../types/artifacts';
 import { useMCPStore } from './mcpStore';
 
@@ -14,8 +14,8 @@ interface MessageWithThinking extends Message {
   artifactId?: string;  // DO NOT REMOVE: Required for artifact linking
 }
 
-interface ChatState {
-  messages: MessageWithThinking[];
+interface ChatState extends ConversationState {
+  messages: Message[];
   artifacts: Artifact[];
   selectedArtifactId: string | null;
   showArtifactWindow: boolean;
@@ -25,9 +25,10 @@ interface ChatState {
   streamingMessageId: string | null;
   streamingContent: string;
   streamingComplete: boolean;
-  streamingEnabled: boolean;  // New state variable
+  streamingEnabled: boolean;
   
-  addMessage: (message: Omit<MessageWithThinking, 'id' | 'timestamp'>) => void;
+  // Existing message functions
+  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   updateMessage: (id: string, content: string) => void;
   addArtifact: (artifact: Omit<Artifact, 'timestamp'>) => string;
   updateArtifact: (id: string, content: string) => void;
@@ -42,343 +43,589 @@ interface ChatState {
   startStreaming: (messageId: string) => void;
   updateStreamingContent: (content: string) => void;
   completeStreaming: () => void;
-  toggleStreaming: () => void;  // New function to toggle streaming
+  toggleStreaming: () => void;
+  
+  // New conversation management functions
+  startNewConversation: (name?: string) => string;
+  switchConversation: (id: string) => void;
+  renameConversation: (id: string, name: string) => void;
+  deleteConversation: (id: string) => void;
+  migrateExistingMessages: () => void;
 }
 
 export const useChatStore = create<ChatState>()(
   persist(
-    (set, get) => ({
-      messages: [],
-      artifacts: [],
-      selectedArtifactId: null,
-      showArtifactWindow: false,
-      showList: false,
-      isLoading: false,
-      error: null,
-      streamingMessageId: null,
-      streamingContent: '',
-      streamingComplete: true,
-      streamingEnabled: true,
-
-      clearMessages: () => {
-        console.log('ChatStore: Clearing all messages and artifacts');
-        set({ 
-          messages: [],
-          artifacts: [],
-          selectedArtifactId: null
-        });
-      },
-
-      addMessage: (message) => set((state) => {
-        if (!message.content || message.content.trim() === '') {
-          console.warn('ChatStore: Attempted to add empty message, ignoring');
-          return state;
+    (set, get) => {
+      // Run migration immediately
+      setTimeout(() => {
+        const state = get();
+        if (state.messages.length > 0 && Object.keys(state.conversations).length === 0) {
+          console.log('ChatStore: Migrating existing messages to conversation');
+          get().migrateExistingMessages();
         }
+      }, 0);
+
+      return {
+        messages: [],
+        artifacts: [],
+        selectedArtifactId: null,
+        showArtifactWindow: false,
+        showList: false,
+        isLoading: false,
+        error: null,
+        streamingMessageId: null,
+        streamingContent: '',
+        streamingComplete: true,
+        streamingEnabled: true,
         
-        const newMessage = {
-          ...message,
-          id: crypto.randomUUID(),
-          timestamp: new Date(),
-        };
+        // New conversation state
+        currentConversationId: null,
+        conversations: {},
 
-        return {
-          messages: [...state.messages, newMessage],
-        };
-      }),
-
-      updateMessage: (id, content) => {
-        console.log(`ChatStore: Updating message ${id}`);
-        set((state) => ({
-          messages: state.messages.map((msg) =>
-            msg.id === id ? { ...msg, content } : msg
-          ),
-        }));
-      },
-
-      addArtifact: (artifact) => {
-        // Use the existing ID from the XML
-        console.log(`ChatStore: Adding artifact ${artifact.id} at position ${artifact.position}`);
-        set((state) => ({
-          artifacts: [...state.artifacts, {
-            ...artifact,
-            timestamp: new Date(),
-          }].sort((a, b) => a.position - b.position),
-          selectedArtifactId: artifact.id,
-          showArtifactWindow: true,
-        }));
-        return artifact.id;
-      },
-
-      updateArtifact: (id, content) => {
-        console.log(`ChatStore: Updating artifact ${id}`);
-        set((state) => ({
-          artifacts: state.artifacts.map((art) =>
-            art.id === id ? { ...art, content } : art
-          ),
-        }));
-      },
-
-      deleteArtifact: (id: string) => {
-        console.log(`ChatStore: Deleting artifact ${id}`);
-        set((state) => {
-          const newArtifacts = state.artifacts.filter(a => a.id !== id);
-          return {
-            artifacts: newArtifacts,
-            selectedArtifactId: state.selectedArtifactId === id ? 
-              (newArtifacts[0]?.id || null) : state.selectedArtifactId
-          };
-        });
-      },
-
-      clearArtifacts: () => {
-        console.log('ChatStore: Clearing all artifacts');
-        set({ 
-          artifacts: [],
-          selectedArtifactId: null,
-          showArtifactWindow: false
-        });
-      },
-
-      selectArtifact: (id) => {
-        console.log(`ChatStore: Selecting artifact ${id}`);
-        set({ 
-          selectedArtifactId: id,
-          showArtifactWindow: true 
-        });
-      },
-
-      toggleArtifactWindow: () => {
-        console.log('ChatStore: Toggling artifact window visibility');
-        set((state) => ({
-          showArtifactWindow: !state.showArtifactWindow,
-        }));
-      },
-
-      setShowList: (show: boolean) => {
-        console.log('ChatStore: Setting artifact list visibility:', show);
-        set({ showList: show });
-      },
-
-      /**
-       * CRITICAL: Server Communication Function
-       * This function handles:
-       * 1. Sending messages to the AI server
-       * 2. Processing the JSON response
-       * 3. Creating artifacts and linking them to messages
-       * 
-       * DO NOT REMOVE the server communication logic unless explicitly replacing it
-       * with an alternative communication method
-       */
-      processMessage: async (content: string) => {
-        try {
+        clearMessages: () => {
+          console.log('ChatStore: Clearing all messages and artifacts');
           set({ 
-            isLoading: true, 
-            error: null,
-            streamingContent: '',
-            streamingComplete: false
+            messages: [],
+            artifacts: [],
+            selectedArtifactId: null
           });
+        },
+
+        addMessage: (message) => set((state) => {
+          if (!message.content || message.content.trim() === '') {
+            console.warn('ChatStore: Attempted to add empty message, ignoring');
+            return state;
+          }
           
-          const messageId = crypto.randomUUID();
-          
-          const newMessage: MessageWithThinking = {
-            role: 'assistant',
-            content: '',
-            id: messageId,
-            timestamp: new Date()
+          const newMessage = {
+            ...message,
+            id: crypto.randomUUID(),
+            timestamp: new Date(),
           };
-          
-          set(state => ({
-            messages: [...state.messages, newMessage],
-            streamingMessageId: messageId,
-            streamingContent: ''
-          }));
 
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: content,
-              history: get().messages
-                .filter(msg => msg.content.trim() !== '')
-                .map(msg => ({
-                  role: msg.role,
-                  content: msg.content
-                })),
-              blockedServers: useMCPStore.getState().getBlockedServers()
-            })
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to get response from chat API');
+          // Create default conversation if none exists
+          if (!state.currentConversationId) {
+            const conversationId = get().startNewConversation();
+            state = get(); // Get updated state after creating conversation
           }
 
-          const data = await response.json();
-          const storeResponse = data.response;
-          
-          // Get the full content
-          const fullContent = storeResponse.conversation;
-          
-          if (get().streamingEnabled) {
-            // Stream the content in chunks
-            const chunkSize = 20;
-            let currentPosition = 0;
-            let buffer = '';
-            let accumulatedContent = '';
+          const updatedConversation = {
+            ...state.conversations[state.currentConversationId!],
+            messages: [...state.conversations[state.currentConversationId!].messages, newMessage],
+            metadata: {
+              ...state.conversations[state.currentConversationId!].metadata,
+              lastUpdated: new Date(),
+              messageCount: state.conversations[state.currentConversationId!].metadata.messageCount + 1
+            }
+          };
+
+          return {
+            messages: updatedConversation.messages,
+            conversations: {
+              ...state.conversations,
+              [state.currentConversationId!]: updatedConversation
+            }
+          };
+        }),
+
+        updateMessage: (id, content) => {
+          console.log(`ChatStore: Updating message ${id}`);
+          set((state) => ({
+            messages: state.messages.map((msg) =>
+              msg.id === id ? { ...msg, content } : msg
+            ),
+          }));
+        },
+
+        addArtifact: (artifact) => {
+          // Use the existing ID from the XML
+          console.log(`ChatStore: Adding artifact ${artifact.id} at position ${artifact.position}`);
+          set((state) => {
+            const newArtifact = {
+              ...artifact,
+              timestamp: new Date(),
+            };
+
+            // Update both global artifacts and conversation artifacts
+            const updatedConversation = state.currentConversationId ? {
+              ...state.conversations[state.currentConversationId],
+              artifacts: [...state.conversations[state.currentConversationId].artifacts, newArtifact]
+                .sort((a, b) => a.position - b.position)
+            } : null;
+
+            const updates: Partial<ChatState> = {
+              artifacts: [...state.artifacts, newArtifact].sort((a, b) => a.position - b.position),
+              selectedArtifactId: artifact.id,
+              showArtifactWindow: true
+            };
+
+            if (updatedConversation && state.currentConversationId) {
+              updates.conversations = {
+                ...state.conversations,
+                [state.currentConversationId]: updatedConversation
+              };
+            }
+
+            return updates;
+          });
+          return artifact.id;
+        },
+
+        updateArtifact: (id, content) => {
+          console.log(`ChatStore: Updating artifact ${id}`);
+          set((state) => ({
+            artifacts: state.artifacts.map((art) =>
+              art.id === id ? { ...art, content } : art
+            ),
+          }));
+        },
+
+        deleteArtifact: (id: string) => {
+          console.log(`ChatStore: Deleting artifact ${id}`);
+          set((state) => {
+            const newArtifacts = state.artifacts.filter(a => a.id !== id);
+            return {
+              artifacts: newArtifacts,
+              selectedArtifactId: state.selectedArtifactId === id ? 
+                (newArtifacts[0]?.id || null) : state.selectedArtifactId
+            };
+          });
+        },
+
+        clearArtifacts: () => {
+          console.log('ChatStore: Clearing all artifacts');
+          set({ 
+            artifacts: [],
+            selectedArtifactId: null,
+            showArtifactWindow: false
+          });
+        },
+
+        selectArtifact: (id) => {
+          console.log(`ChatStore: Selecting artifact ${id}`);
+          set({ 
+            selectedArtifactId: id,
+            showArtifactWindow: true 
+          });
+        },
+
+        toggleArtifactWindow: () => {
+          console.log('ChatStore: Toggling artifact window visibility');
+          set((state) => ({
+            showArtifactWindow: !state.showArtifactWindow,
+          }));
+        },
+
+        setShowList: (show: boolean) => {
+          console.log('ChatStore: Setting artifact list visibility:', show);
+          set({ showList: show });
+        },
+
+        /**
+         * CRITICAL: Server Communication Function
+         * This function handles:
+         * 1. Sending messages to the AI server
+         * 2. Processing the JSON response
+         * 3. Creating artifacts and linking them to messages
+         * 
+         * DO NOT REMOVE the server communication logic unless explicitly replacing it
+         * with an alternative communication method
+         */
+        processMessage: async (content: string) => {
+          try {
+            set({ 
+              isLoading: true, 
+              error: null,
+              streamingContent: '',
+              streamingComplete: false
+            });
             
-            const processChunk = (chunk: string): string => {
-              const combined = buffer + chunk;
-              let safeText = combined;
-              let newBuffer = '';
-
-              const lastOpenIndex = combined.lastIndexOf('<');
-              if (lastOpenIndex !== -1) {
-                const closeIndex = combined.indexOf('>', lastOpenIndex);
-                if (closeIndex === -1) {
-                  safeText = combined.slice(0, lastOpenIndex);
-                  newBuffer = combined.slice(lastOpenIndex);
-                }
-              }
-
-              const backtickCount = (safeText.match(/`/g) || []).length;
-              if (backtickCount % 2 !== 0) {
-                const lastBacktickIndex = safeText.lastIndexOf('`');
-                newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
-                safeText = safeText.slice(0, lastBacktickIndex);
-              }
-
-              buffer = newBuffer;
-              return safeText;
+            const messageId = crypto.randomUUID();
+            let state = get();
+            
+            // Create a new conversation if none exists
+            if (!state.currentConversationId) {
+              get().startNewConversation();
+              state = get(); // Get updated state
+            }
+            
+            const newMessage: MessageWithThinking = {
+              role: 'user',
+              content,
+              id: messageId,
+              timestamp: new Date()
             };
             
-            while (currentPosition < fullContent.length) {
-              const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
-              const chunk = fullContent.slice(currentPosition, nextPosition);
+            // Add user message to current conversation
+            set(state => {
+              const updatedConversation = {
+                ...state.conversations[state.currentConversationId!],
+                messages: [...state.conversations[state.currentConversationId!].messages, newMessage],
+                metadata: {
+                  ...state.conversations[state.currentConversationId!].metadata,
+                  lastUpdated: new Date(),
+                  messageCount: state.conversations[state.currentConversationId!].metadata.messageCount + 1
+                }
+              };
+
+              return {
+                messages: updatedConversation.messages,
+                conversations: {
+                  ...state.conversations,
+                  [state.currentConversationId!]: updatedConversation
+                }
+              };
+            });
+
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message: content,
+                history: get().messages
+                  .filter(msg => msg.content.trim() !== '')
+                  .map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                  })),
+                blockedServers: useMCPStore.getState().getBlockedServers()
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to get response from chat API');
+            }
+
+            const data = await response.json();
+            const storeResponse = data.response;
+            const fullContent = storeResponse.conversation;
+
+            // Create assistant message
+            const assistantMessageId = crypto.randomUUID();
+            const assistantMessage: MessageWithThinking = {
+              role: 'assistant',
+              content: '',
+              id: assistantMessageId,
+              timestamp: new Date(),
+              thinking: storeResponse.thinking
+            };
+
+            // Add assistant message to current conversation
+            set(state => {
+              const updatedConversation = {
+                ...state.conversations[state.currentConversationId!],
+                messages: [...state.conversations[state.currentConversationId!].messages, assistantMessage],
+                metadata: {
+                  ...state.conversations[state.currentConversationId!].metadata,
+                  lastUpdated: new Date(),
+                  messageCount: state.conversations[state.currentConversationId!].metadata.messageCount + 1
+                }
+              };
+
+              return {
+                messages: updatedConversation.messages,
+                conversations: {
+                  ...state.conversations,
+                  [state.currentConversationId!]: updatedConversation
+                },
+                streamingMessageId: assistantMessageId,
+                streamingContent: ''
+              };
+            });
+
+            if (get().streamingEnabled) {
+              // Stream the content in chunks
+              const chunkSize = 20;
+              let currentPosition = 0;
+              let buffer = '';
+              let accumulatedContent = '';
               
-              const safeChunk = processChunk(chunk);
-              if (safeChunk) {
-                accumulatedContent += safeChunk;
+              const processChunk = (chunk: string): string => {
+                const combined = buffer + chunk;
+                let safeText = combined;
+                let newBuffer = '';
+
+                const lastOpenIndex = combined.lastIndexOf('<');
+                if (lastOpenIndex !== -1) {
+                  const closeIndex = combined.indexOf('>', lastOpenIndex);
+                  if (closeIndex === -1) {
+                    safeText = combined.slice(0, lastOpenIndex);
+                    newBuffer = combined.slice(lastOpenIndex);
+                  }
+                }
+
+                const backtickCount = (safeText.match(/`/g) || []).length;
+                if (backtickCount % 2 !== 0) {
+                  const lastBacktickIndex = safeText.lastIndexOf('`');
+                  newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
+                  safeText = safeText.slice(0, lastBacktickIndex);
+                }
+
+                buffer = newBuffer;
+                return safeText;
+              };
+              
+              while (currentPosition < fullContent.length) {
+                const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
+                const chunk = fullContent.slice(currentPosition, nextPosition);
                 
+                const safeChunk = processChunk(chunk);
+                if (safeChunk) {
+                  accumulatedContent += safeChunk;
+                  
+                  set(state => ({
+                    messages: state.messages.map(msg =>
+                      msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
+                    ),
+                    streamingContent: accumulatedContent
+                  }));
+                }
+                
+                currentPosition = nextPosition;
+                await new Promise(resolve => setTimeout(resolve, .5));
+              }
+              
+              if (buffer) {
+                accumulatedContent += buffer;
                 set(state => ({
                   messages: state.messages.map(msg =>
-                    msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
+                    msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
                   ),
                   streamingContent: accumulatedContent
                 }));
               }
-              
-              currentPosition = nextPosition;
-              await new Promise(resolve => setTimeout(resolve, .5));
-            }
-            
-            if (buffer) {
-              accumulatedContent += buffer;
-              set(state => ({
-                messages: state.messages.map(msg =>
-                  msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
-                ),
-                streamingContent: accumulatedContent
-              }));
-            }
-          } else {
-            set(state => ({
-              messages: state.messages.map(msg =>
-                msg.id === messageId ? { ...msg, content: fullContent } : msg
-              ),
-              streamingContent: fullContent,
-              streamingComplete: true
-            }));
-          }
+            } else {
+              set(state => {
+                const updatedConversation = {
+                  ...state.conversations[state.currentConversationId!],
+                  messages: state.conversations[state.currentConversationId!].messages.map(msg =>
+                    msg.id === assistantMessageId ? { ...msg, content: fullContent } : msg
+                  )
+                };
 
-          // Process artifacts
-          const artifactIds = storeResponse.artifacts?.map((artifact: {
-            id: string;
-            artifactId: string;
-            type: ArtifactType;
-            title: string;
-            content: string;
-            position: number;
-            language?: string;
-          }) => {
-            return get().addArtifact({
-              id: artifact.id,
-              artifactId: artifact.artifactId,
-              type: artifact.type,
-              title: artifact.title,
-              content: artifact.content,
-              position: artifact.position,
-              language: artifact.language
+                return {
+                  messages: updatedConversation.messages,
+                  conversations: {
+                    ...state.conversations,
+                    [state.currentConversationId!]: updatedConversation
+                  },
+                  streamingContent: fullContent,
+                  streamingComplete: true
+                };
+              });
+            }
+
+            // Process artifacts
+            const artifactIds = storeResponse.artifacts?.map((artifact: {
+              id: string;
+              artifactId: string;
+              type: ArtifactType;
+              title: string;
+              content: string;
+              position: number;
+              language?: string;
+            }) => {
+              return get().addArtifact({
+                id: artifact.id,
+                artifactId: artifact.artifactId,
+                type: artifact.type,
+                title: artifact.title,
+                content: artifact.content,
+                position: artifact.position,
+                language: artifact.language
+              });
+            }) || [];
+
+            // Update final message state with artifact reference
+            set(state => {
+              const updatedConversation = {
+                ...state.conversations[state.currentConversationId!],
+                messages: state.conversations[state.currentConversationId!].messages.map(msg =>
+                  msg.id === assistantMessageId ? {
+                    ...msg,
+                    content: fullContent,
+                    thinking: storeResponse.thinking,
+                    artifactId: artifactIds[0]
+                  } : msg
+                )
+              };
+
+              return {
+                messages: updatedConversation.messages,
+                conversations: {
+                  ...state.conversations,
+                  [state.currentConversationId!]: updatedConversation
+                },
+                streamingMessageId: null,
+                streamingComplete: true
+              };
             });
-          }) || [];
 
-          // Update final message state
-          set(state => ({
-            messages: state.messages.map(msg =>
-              msg.id === messageId ? {
-                ...msg,
-                content: fullContent,
-                thinking: storeResponse.thinking,
-                artifactId: artifactIds[0]
-              } : msg
-            ),
-            streamingMessageId: null,
-            streamingComplete: true
-          }));
+            set({ isLoading: false });
+            
+          } catch (error) {
+            console.error('ChatStore: Error processing message:', error);
+            set({ 
+              error: error instanceof Error ? error.message : 'Unknown error',
+              isLoading: false,
+              streamingMessageId: null,
+              streamingContent: '',
+              streamingComplete: true
+            });
+          }
+        },
 
-          set({ isLoading: false });
-          
-        } catch (error) {
-          console.error('ChatStore: Error processing message:', error);
+        clearChat: () => set(_state => ({
+          messages: [],
+          selectedArtifactId: null,
+          artifacts: [],
+          isLoading: false,
+          error: null,
+          showArtifactWindow: false
+        })),
+
+        startStreaming: (messageId: string) => {
           set({ 
-            error: error instanceof Error ? error.message : 'Unknown error',
-            isLoading: false,
-            streamingMessageId: null,
+            streamingMessageId: messageId,
             streamingContent: '',
+            streamingComplete: false
+          });
+        },
+
+        updateStreamingContent: (content: string) => {
+          set({ streamingContent: content });
+        },
+
+        completeStreaming: () => {
+          set({ 
+            streamingMessageId: null,
             streamingComplete: true
           });
-        }
-      },
+        },
 
-      clearChat: () => set(_state => ({
-        messages: [],
-        selectedArtifactId: null,
-        artifacts: [],
-        isLoading: false,
-        error: null,
-        showArtifactWindow: false
-      })),
+        toggleStreaming: () => {
+          set((state) => ({
+            streamingEnabled: !state.streamingEnabled
+          }));
+        },
 
-      startStreaming: (messageId: string) => {
-        set({ 
-          streamingMessageId: messageId,
-          streamingContent: '',
-          streamingComplete: false
-        });
-      },
+        // New conversation management functions
+        startNewConversation: (name?: string) => {
+          const id = crypto.randomUUID();
+          const defaultName = `Conversation ${Object.keys(get().conversations).length + 1}`;
+          
+          set(state => ({
+            conversations: {
+              ...state.conversations,
+              [id]: {
+                metadata: {
+                  id,
+                  name: name || defaultName,
+                  created: new Date(),
+                  lastUpdated: new Date(),
+                  messageCount: 0
+                },
+                messages: [],
+                artifacts: []
+              }
+            },
+            currentConversationId: id
+          }));
+          
+          return id;
+        },
 
-      updateStreamingContent: (content: string) => {
-        set({ streamingContent: content });
-      },
+        switchConversation: (id: string) => {
+          const state = get();
+          const conversation = state.conversations[id];
+          if (!conversation) return;
 
-      completeStreaming: () => {
-        set({ 
-          streamingMessageId: null,
-          streamingComplete: true
-        });
-      },
+          set({
+            currentConversationId: id,
+            messages: conversation.messages,
+            artifacts: conversation.artifacts || [],
+            selectedArtifactId: null,
+            showArtifactWindow: false
+          });
+        },
 
-      toggleStreaming: () => {
-        set((state) => ({
-          streamingEnabled: !state.streamingEnabled
-        }));
-      }
-    }),
+        renameConversation: (id: string, name: string) => {
+          set(state => ({
+            conversations: {
+              ...state.conversations,
+              [id]: {
+                ...state.conversations[id],
+                metadata: {
+                  ...state.conversations[id].metadata,
+                  name,
+                  lastUpdated: new Date()
+                }
+              }
+            }
+          }));
+        },
+
+        deleteConversation: (id: string) => {
+          set(state => {
+            const { [id]: deleted, ...remainingConversations } = state.conversations;
+            const newState: Partial<ChatState> = {
+              conversations: remainingConversations
+            };
+
+            // If deleting current conversation, switch to another one
+            if (state.currentConversationId === id) {
+              const nextConversationId = Object.keys(remainingConversations)[0];
+              if (nextConversationId) {
+                newState.currentConversationId = nextConversationId;
+                newState.messages = remainingConversations[nextConversationId].messages;
+                newState.artifacts = remainingConversations[nextConversationId].artifacts;
+              } else {
+                newState.currentConversationId = null;
+                newState.messages = [];
+                newState.artifacts = [];
+              }
+            }
+
+            return newState;
+          });
+        },
+
+        migrateExistingMessages: () => {
+          const state = get();
+          
+          // Only migrate if there are messages and no conversations
+          if (state.messages.length > 0 && Object.keys(state.conversations).length === 0) {
+            const id = crypto.randomUUID();
+            
+            set(state => ({
+              conversations: {
+                [id]: {
+                  metadata: {
+                    id,
+                    name: 'Previous Chat History',
+                    created: new Date(Math.min(...state.messages.map(m => m.timestamp.getTime()))),
+                    lastUpdated: new Date(Math.max(...state.messages.map(m => m.timestamp.getTime()))),
+                    messageCount: state.messages.length
+                  },
+                  messages: state.messages,
+                  artifacts: state.artifacts
+                }
+              },
+              currentConversationId: id
+            }));
+          }
+        },
+      };
+    },
     {
       name: 'chat-storage',
       partialize: (state) => ({
+        conversations: state.conversations,
+        currentConversationId: state.currentConversationId,
         messages: state.messages,
-        artifacts: state.artifacts,
+        artifacts: state.artifacts
       })
     }
   )

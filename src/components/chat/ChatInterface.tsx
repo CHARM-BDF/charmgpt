@@ -9,6 +9,7 @@ import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
 import { MCPStatusModal } from '../mcp/MCPStatusModal';
 import { ModelSelector } from '../models/ModelSelector';
+import { ConversationDrawer } from '../conversations/ConversationDrawer';
 import BrainWaveCharmStatic from '../animations/BrainWaveCharmStatic';
 // @ts-ignore - Heroicons type definitions mismatch
 import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon } from '@heroicons/react/24/outline';
@@ -144,6 +145,9 @@ export const ChatInterface: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Conversation Drawer */}
+        <ConversationDrawer />
+
         {/* File Manager Modal */}
         {showFileManager && (
           <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-start justify-center pt-16 z-50">

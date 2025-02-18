@@ -1,4 +1,4 @@
-import { ArtifactType } from './artifacts';
+import { Artifact, ArtifactType } from './artifacts';
 
 export interface Message {
   id: string;
@@ -47,18 +47,6 @@ export interface ButtonProps {
   icon?: string;
 }
 
-export interface Artifact {
-  id: string;
-  artifactId: string;
-  type: string;
-  title: string;
-  content: string;
-  position: number;
-  language?: string;
-  sourceCode?: string;
-  buttonProps?: ButtonProps;
-}
-
 export interface ConversationItem {
   type: 'text' | 'artifact';
   content?: string;
@@ -67,4 +55,25 @@ export interface ConversationItem {
 
 export interface FormatterInput {
   conversation: ConversationItem[];
+}
+
+export interface ConversationMetadata {
+  id: string;
+  name: string;
+  lastUpdated: Date;
+  created: Date;
+  messageCount: number;
+}
+
+export interface Conversation {
+  metadata: ConversationMetadata;
+  messages: MessageWithThinking[];
+  artifacts: Artifact[];
+}
+
+export interface ConversationState {
+  currentConversationId: string | null;
+  conversations: {
+    [id: string]: Conversation;
+  };
 }
