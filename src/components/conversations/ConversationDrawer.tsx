@@ -40,7 +40,7 @@ export const ConversationDrawer: React.FC = () => {
         ref={drawerRef}
         className={`fixed left-0 top-[88px] h-[calc(100vh-96px)] bg-white dark:bg-gray-800 shadow-lg 
                    transition-transform duration-300 ease-in-out z-50
-                   ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+                   ${isOpen ? 'translate-x-0' : 'translate-x-[-95%]'}
                    border-r border-gray-200 dark:border-gray-700
                    rounded-tr-xl rounded-br-xl
                    w-72`}
@@ -67,6 +67,14 @@ export const ConversationDrawer: React.FC = () => {
           {/* Conversation list */}
           <div className="h-[calc(100vh-224px)] overflow-y-auto">
             <ConversationList />
+          </div>
+        </div>
+        
+        {/* Hint text when drawer is closed */}
+        <div className={`absolute right-0 top-1/2 -translate-y-1/2 transition-opacity duration-300
+                      ${isOpen ? 'opacity-0' : 'opacity-100'}`}>
+          <div className="rotate-90 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+            Conversations
           </div>
         </div>
       </div>
