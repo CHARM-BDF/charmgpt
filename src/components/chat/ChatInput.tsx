@@ -7,8 +7,8 @@ export const ChatInput: React.FC = () => {
   // const [input, setInput] = useState('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
   // const [input, setInput] = useState('create a bunch of text that will test all of the markdown formats including two different types of code. Include a table.');
   // const [input, setInput] = useState('make a meal plan for a week of lunches that can be packed for a teenager to take to school, describe but make an artifact for the final plan.');
-  // const [input, setInput] = useState('look up 3 papers on the gene DYRK1A and provide a summary.');
-  const [input, setInput] = useState('write python that will simulate rolling 3 7 sided die 1000 times and make a histogram to show the results. ');
+  const [input, setInput] = useState('look up 3 papers on the gene DYRK1A and provide a summary.');
+  // const [input, setInput] = useState('write python that will simulate rolling 3 7 sided die 1000 times and make a histogram to show the results. ');
   const { addMessage, processMessage } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
