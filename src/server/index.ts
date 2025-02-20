@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = 3001; // Explicitly set to 3001
 
 // Initialize services
 const mcpService = new MCPService();

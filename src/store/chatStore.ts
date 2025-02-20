@@ -4,6 +4,7 @@ import { Message, ConversationMetadata, Conversation, ConversationState } from '
 import { Artifact, ArtifactType } from '../types/artifacts';
 import { useMCPStore } from './mcpStore';
 import { useModelStore } from './modelStore';
+import { getApiUrl, API_ENDPOINTS } from '../utils/api';
 
 /**
  * Core message interface extension
@@ -253,16 +254,11 @@ export const useChatStore = create<ChatState>()(
             // Note: We don't need to add the user message here as it's already added via addMessage
             // before processMessage is called
 
-            // Get the base URL and selected model
-            const baseUrl = import.meta.env.VITE_API_URL;
+            // API URL Configuration using utility function
+            const apiUrl = getApiUrl(API_ENDPOINTS.CHAT);
             const selectedModel = useModelStore.getState().selectedModel;
-            
-            // Construct the correct URL based on the selected model
-            const apiUrl = selectedModel === 'ollama' 
-              ? baseUrl.replace(':3000', ':3001')  // Replace default port with Ollama port
-              : baseUrl;                           // Use default URL for Claude
 
-            const response = await fetch(`${apiUrl}/api/chat`, {
+            const response = await fetch(apiUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
