@@ -17,7 +17,306 @@ src/
 │   │   ├── artifact.ts    # Artifact processing
 │   │   └── logging.ts     # Logging utilities
 │   └── index.ts           # Main server entry point
+├── utils/
+│   └── api.ts            # API URL management utilities
+└── store/
+    └── chatStore.ts      # Frontend state management
 ```
+
+## Current Routes Overview
+
+### 1. Chat Route (`/api/chat`)
+**Purpose**: Handles all chat-related interactions with the AI model and MCP tools.
+**Endpoint**: POST `/api/chat`
+**Key Features**:
+- Processes user messages and maintains conversation history
+- Integrates with Anthropic's Claude model
+- Manages sequential thinking process
+- Coordinates MCP tool usage
+- Handles binary outputs and artifacts
+- Supports bibliography generation
+
+**Request Format**:
+```typescript
+{
+  message: string;              // User's input message
+  history: Array<{             // Previous conversation history
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+  blockedServers?: string[];   // Optional list of MCP servers to exclude
+}
+```
+
+**Response Format**:
+```typescript
+{
+  response: {
+    thinking?: string;         // Optional internal reasoning process
+    conversation: string;      // Formatted conversation text
+    artifacts?: Array<{        // Optional artifacts generated during processing
+      id: string;
+      type: string;
+      title: string;
+      content: string;
+      position: number;
+      language?: string;
+    }>;
+  }
+}
+```
+
+**Key Processing Steps**:
+1. Message Reception and Validation
+2. Sequential Thinking Process
+   - Fetches available MCP tools
+   - Makes initial Anthropic API call
+   - Processes tool usage requests
+3. Tool Execution
+   - Calls appropriate MCP servers
+   - Processes tool responses
+   - Handles binary outputs
+4. Response Formatting
+   - Formats conversation text
+   - Processes artifacts
+   - Handles bibliography if present
+5. Response Delivery
+   - Sends formatted response to client
+   - Includes any generated artifacts
+
+**Error Handling**:
+- Validates input message and history
+- Handles MCP tool execution failures
+- Manages Anthropic API errors
+- Provides detailed error messages
+
+[Additional routes will be documented here as they are added to the system]
+
+## API URL Management
+
+### 1. Proxy Configuration (`vite.config.ts`)
+The application uses Vite's proxy configuration as the primary method for API routing:
+
+```typescript
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      }
+    }
+  }
+})
+```
+
+This configuration automatically forwards all `/api/*` requests to the backend server.
+
+### 2. API Utilities (`src/utils/api.ts`)
+We provide utility functions for consistent API URL handling:
+
+```typescript
+export const getApiUrl = (endpoint: string): string => {
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  return import.meta.env.VITE_API_OVERRIDE
+    ? `${import.meta.env.VITE_API_OVERRIDE}/api${normalizedEndpoint}`
+    : `/api${normalizedEndpoint}`;
+};
+
+export const API_ENDPOINTS = {
+  CHAT: '/chat',
+  // Add new endpoints here as they are created
+} as const;
+```
+
+### 3. Environment Configuration
+The system supports an optional override for API URLs:
+
+```env
+# Only set VITE_API_OVERRIDE if you need to bypass the proxy configuration
+# VITE_API_OVERRIDE=http://example.com
+```
+
+## Adding New Routes
+
+### 1. Backend Route Setup
+Create a new route handler in `src/server/routes/`:
+
+```typescript
+import express from 'express';
+const router = express.Router();
+
+router.post('/', async (req, res) => {
+  try {
+    // Implementation
+  } catch (error) {
+    console.error('Error in route:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to process request'
+    });
+  }
+});
+
+export default router;
+```
+
+### 2. Register Route in Server
+Add the route in `src/server/index.ts`:
+
+```typescript
+import newFeatureRouter from './routes/newFeature';
+app.use('/api/newFeature', newFeatureRouter);
+```
+
+### 3. Add API Endpoint
+Update `src/utils/api.ts`:
+
+```typescript
+export const API_ENDPOINTS = {
+  CHAT: '/chat',
+  NEW_FEATURE: '/newFeature',  // Add new endpoint
+} as const;
+```
+
+### 4. Use in Frontend Code
+```typescript
+const apiUrl = getApiUrl(API_ENDPOINTS.NEW_FEATURE);
+const response = await fetch(apiUrl, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(data)
+});
+```
+
+## Route Implementation Best Practices
+
+### 1. URL Management
+- Always use the `getApiUrl` utility for API URLs
+- Add new endpoints to `API_ENDPOINTS` object
+- Never hardcode API URLs in components
+
+### 2. Proxy Usage
+- All API routes should be under `/api/*`
+- The proxy will automatically handle routing to the backend
+- No need for port management in frontend code
+
+### 3. Environment Override
+Only use `VITE_API_OVERRIDE` when you need to:
+- Point to a different API server
+- Test against a staging environment
+- Debug specific API issues
+
+### 4. Error Handling
+```typescript
+try {
+  const response = await fetch(getApiUrl(API_ENDPOINTS.NEW_FEATURE));
+  if (!response.ok) {
+    throw new Error('API request failed');
+  }
+  // Handle response
+} catch (error) {
+  console.error('Error:', error);
+  // Handle error appropriately
+}
+```
+
+## Testing Routes
+
+### 1. Development Testing
+```bash
+# Start backend server
+npm run server
+
+# Start frontend (in new terminal)
+npm run dev
+```
+
+### 2. Testing with Override
+```bash
+# Set override in .env
+VITE_API_OVERRIDE=http://staging-server.com
+
+# Start frontend
+npm run dev
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Connection Refused**
+   - Check if backend server is running
+   - Verify correct port in `src/server/index.ts`
+   - Ensure proxy configuration matches backend port
+
+2. **404 Not Found**
+   - Verify route is registered in `src/server/index.ts`
+   - Check endpoint spelling in `API_ENDPOINTS`
+   - Ensure route handler exists
+
+3. **CORS Issues**
+   - Proxy should handle CORS in development
+   - Check CORS configuration in production
+   - Verify `changeOrigin: true` in proxy config
+
+## Deployment Considerations
+
+### 1. Environment Configuration
+- Remove `VITE_API_OVERRIDE` in production
+- Use proxy configuration for local development
+- Configure production server URLs appropriately
+
+### 2. Security
+- Implement proper authentication
+- Validate all inputs
+- Use HTTPS in production
+
+### 3. Monitoring
+- Add logging for API requests
+- Monitor response times
+- Track error rates
+
+## Maintenance
+
+### 1. Adding Routes
+1. Create route handler
+2. Register in `index.ts`
+3. Add to `API_ENDPOINTS`
+4. Use `getApiUrl` in frontend
+
+### 2. Updating Routes
+1. Update handler logic
+2. Update `API_ENDPOINTS` if needed
+3. Update any dependent frontend code
+
+### 3. Removing Routes
+1. Remove route registration
+2. Remove from `API_ENDPOINTS`
+3. Clean up related frontend code
+
+## Best Practices Summary
+
+1. **Route Organization**
+   - Keep related endpoints grouped
+   - Use clear, descriptive names
+   - Follow RESTful conventions
+
+2. **URL Management**
+   - Use `getApiUrl` utility
+   - Maintain `API_ENDPOINTS` object
+   - Avoid hardcoded URLs
+
+3. **Error Handling**
+   - Implement consistent error responses
+   - Log errors appropriately
+   - Provide meaningful error messages
+
+4. **Testing**
+   - Test with and without override
+   - Verify proxy functionality
+   - Test error conditions
 
 ## Services Layer
 

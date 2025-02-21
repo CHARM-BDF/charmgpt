@@ -224,6 +224,10 @@ router.post('/', async (req: Request<{}, {}, {
       tool_choice: { type: "tool", name: "response_formatter" }
     });
 
+    // Log the response formatting results
+    console.log('\n=== RESPONSE FORMATTING RESULTS ===');
+    console.log('Raw Response:', JSON.stringify(response, null, 2));
+
     // Process and validate response
     if (response.content[0].type !== 'tool_use') {
       throw new Error('Expected tool_use response from Claude');
@@ -234,9 +238,17 @@ router.post('/', async (req: Request<{}, {}, {
       throw new Error('Expected response_formatter tool response');
     }
 
+    // Log the formatted response
+    console.log('\n=== FORMATTED RESPONSE ===');
+    console.log('Tool Response:', JSON.stringify(toolResponse, null, 2));
+
     // Convert to store format
     let storeResponse = messageService.convertToStoreFormat(toolResponse as any);
     
+    // Log the store format
+    console.log('\n=== STORE FORMAT ===');
+    console.log('Store Response:', JSON.stringify(storeResponse, null, 2));
+
     // Add bibliography if present
     if ((messages as any).bibliography) {
       storeResponse = messageService.formatResponseWithBibliography(

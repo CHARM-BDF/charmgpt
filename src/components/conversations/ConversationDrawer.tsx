@@ -8,7 +8,7 @@ export const ConversationDrawer: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const { startNewConversation } = useChatStore();
+  const { startNewConversation, switchConversation } = useChatStore();
   
   // Track mouse position for drawer activation
   useEffect(() => {
@@ -26,6 +26,11 @@ export const ConversationDrawer: React.FC = () => {
     document.addEventListener('mousemove', handleMouseMove);
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [isOpen]);
+
+  const handleNewConversation = () => {
+    const newId = startNewConversation();
+    switchConversation(newId);
+  };
 
   return (
     <>
@@ -51,7 +56,7 @@ export const ConversationDrawer: React.FC = () => {
               Conversations
             </h2>
             <button
-              onClick={() => startNewConversation()}
+              onClick={handleNewConversation}
               className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
                        hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
                        flex items-center gap-1"
