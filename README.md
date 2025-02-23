@@ -46,14 +46,7 @@ docker build -t my-python-app .
 
 ### Configuration
 
-1. Create a `.env` file in the `server` directory:
-```env
-PORT=3000
-ANTHROPIC_API_KEY=your_anthropic_api_key
-OLLAMA_BASE_URL=http://localhost:11434
-CHARMONATOR_BASE_URL=http://localhost:5002/charm/api/charmonator/v1
-DEFAULT_LLM_PROVIDER=ollama  # or 'claude' or 'charmonator'
-```
+1. Create a `.env` file in the `server` directory. Start with `.env.example` as a template.
 
 2. If using Ollama:
    - Install Ollama from https://ollama.ai
