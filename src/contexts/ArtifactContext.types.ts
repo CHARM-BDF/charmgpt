@@ -22,16 +22,16 @@ export const getDisplayName = (artifact: Artifact): string => {
 
 export const dataHeader = (dataFile?: string): string|undefined => {
   if (!dataFile) return undefined;
-  
+
   // Use XMLHttpRequest for sync request
   const xhr = new XMLHttpRequest();
   xhr.open('GET', `/api/header/${dataFile}`, false);  // false makes it synchronous
   xhr.send(null);
-  
+
   if (xhr.status === 200) {
     return xhr.responseText;
   }
-  
+
   return undefined;
 }
 
@@ -105,11 +105,11 @@ export const getDefaultViewMode = (artifact: Artifact): ViewMode => {
     hasVar2val: !!artifact.var2val,
     var2valKeys: artifact.var2val ? Object.keys(artifact.var2val) : [],
   })
-  
-  if (artifact.dataFile || (artifact.var2val && Object.keys(artifact.var2val).length > 0)) {
-    return 'data'
-  } else if (artifact.plotFile) {
+
+  if (artifact.plotFile) {
     return 'plot'
+  } else if (artifact.dataFile || (artifact.var2val && Object.keys(artifact.var2val).length > 0)) {
+    return 'data'
   } else {
     return 'output'
   }
@@ -129,4 +129,4 @@ export const hasData = (artifact: Artifact): boolean => {
     var2valKeys: artifact.var2val ? Object.keys(artifact.var2val) : [],
   })
   return result
-} 
+}
