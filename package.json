@@ -55,6 +55,7 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^3.0.1",
     "tailwindcss": "^3.4.17",
+    "undici": "^7.3.0",
     "uuid": "^11.0.5",
     "xml2js": "^0.6.2",
     "xmldom": "^0.6.0",

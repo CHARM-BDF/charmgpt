@@ -251,12 +251,12 @@ export const useChatStore = create<ChatState>()(
               state = get(); // Get updated state
             }
             
-            // Note: We don't need to add the user message here as it's already added via addMessage
-            // before processMessage is called
-
-            // API URL Configuration using utility function
-            const apiUrl = getApiUrl(API_ENDPOINTS.CHAT);
+            // Get the selected model from modelStore
             const selectedModel = useModelStore.getState().selectedModel;
+            
+            // Choose the appropriate API endpoint based on the model
+            const endpoint = selectedModel === 'ollama' ? API_ENDPOINTS.OLLAMA : API_ENDPOINTS.CHAT;
+            const apiUrl = getApiUrl(endpoint);
 
             const response = await fetch(apiUrl, {
               method: 'POST',

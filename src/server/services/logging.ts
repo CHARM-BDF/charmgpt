@@ -67,7 +67,7 @@ export class LoggingService {
   /**
    * Log message with type and timestamp
    */
-  private log(type: 'info' | 'error' | 'debug', ...args: any[]): void {
+  log(type: 'info' | 'error' | 'debug', ...args: any[]): void {
     const now = new Date();
     const centralTime = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Chicago',

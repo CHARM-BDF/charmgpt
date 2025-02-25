@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import chatRouter from './routes/chat';
+import ollamaRouter from './routes/ollama_mcp';
 import { MCPService } from './services/mcp';
 import { LoggingService } from './services/logging';
 
@@ -59,6 +60,7 @@ app.use(express.json());
 
 // Mount routes
 app.use('/api/chat', chatRouter);
+app.use('/api/ollama', ollamaRouter);
 
 app.listen(port, () => {
   const now = new Date();
