@@ -281,7 +281,7 @@ async function handleResponse(
       // Race between the actual call and the timeout
       currentResponse = await Promise.race([
         ollama.chat({
-          model: 'mistral:latest',
+          model: 'llama3.2:latest',
           messages: messages,
           tools: tools,
           stream: false,
@@ -523,7 +523,7 @@ router.post('/', async (req: Request, res: Response) => {
     try {
       // Using the response_formatter tool
       formattingResponse = await ollama.chat({
-        model: 'mistral:latest',
+        model: 'llama3.2:latest',
         messages: formattingMessages,
         tools: [responseFormatterTool],
         // We removed tool_choice as it's not supported
