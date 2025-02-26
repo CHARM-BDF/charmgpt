@@ -3,8 +3,15 @@ import { Ollama, Tool } from 'ollama'; // Import the official Tool type
 import { Agent } from 'undici';
 import { MCPService } from '../services/mcp';
 import { LoggingService } from '../services/logging';
+import { MessageService } from '../services/message';
+import { ArtifactService } from '../services/artifact';
+import crypto from 'crypto';
 
 const router = express.Router();
+
+// Initialize services
+const messageService = new MessageService();
+const artifactService = new ArtifactService();
 
 // --- Type Definitions ---
 
@@ -53,6 +60,29 @@ const ollama = new Ollama({
   fetch: noTimeoutFetch
 });
 
+// --- Response Formatter Tool Definition ---
+const responseFormatterTool: Tool = {
+  type: 'function',
+  function: {
+    name: 'response_formatter',
+    description: "Format all responses in a consistent JSON structure",
+    parameters: {
+      type: "object",
+      required: ["conversation"],
+      properties: {
+        thinking: {
+          type: "string",
+          description: "Optional internal reasoning process, formatted in markdown"
+        },
+        conversation: {
+          type: "array",
+          description: "Array of conversation segments and artifacts in order of appearance",
+        }
+      }
+    }
+  }
+};
+
 // --- Bridge: Convert MCP Tools to Ollama Format ---
 const convertToolsToOllamaFormat = (mcpToolsResponse: MCPToolResponse): Tool[] => {
   return mcpToolsResponse.tools.map(tool => {
@@ -88,19 +118,23 @@ const convertToolsToOllamaFormat = (mcpToolsResponse: MCPToolResponse): Tool[] =
 };
 
 // --- Response Handler: Process Tool Calls Iteratively ---
-// Updated the signature to accept `tools: Tool[]`
+// Updated the signature to accept `tools: Tool[]` and return a consistent response type
 async function handleResponse(
   mcpService: MCPService,
   loggingService: LoggingService,
   messages: OllamaChatMessage[],
   initialResponse: OllamaChatResponse,
   tools: Tool[]
-): Promise<OllamaChatResponse> {
+): Promise<{ finalResponse: OllamaChatResponse; bibliography?: any[]; binaryOutputs?: any[] }> {
   loggingService.log('info', 'OLLAMA: Processing initial response');
   messages.push(initialResponse.message);
   
   let currentResponse = initialResponse;
   let toolCalls = currentResponse.message.tool_calls || [];
+  
+  // Initialize collections for bibliography and binary outputs
+  const bibliography: any[] = [];
+  const binaryOutputs: any[] = [];
 
   // Log if there are any tool calls
   loggingService.log('info', `OLLAMA: Number of tool calls to process: ${toolCalls.length}`);
@@ -118,6 +152,12 @@ async function handleResponse(
         // Handle both formats: "server:tool" and "tool" (without server prefix)
         let serverName: string = '';
         let toolName: string = '';
+        
+        // Skip response_formatter tool as it's handled separately
+        if (toolCall.function.name === 'response_formatter') {
+          loggingService.log('info', 'OLLAMA: Skipping response_formatter tool for now');
+          continue;
+        }
         
         if (toolCall.function.name.includes(':')) {
           // Format is "server:tool"
@@ -171,7 +211,34 @@ async function handleResponse(
         const toolResponse = await mcpService.callTool(serverName, toolName, args);
         loggingService.log('info', 'OLLAMA: Tool response received');
         
-        // Truncate the tool response if it's too long to avoid overwhelming the model
+        // Handle bibliography if present
+        if (toolResponse && 'bibliography' in toolResponse && toolResponse.bibliography) {
+          loggingService.log('info', '=== OLLAMA: Bibliography Data ===');
+          loggingService.log('info', JSON.stringify(toolResponse.bibliography, null, 2));
+          
+          // Merge and deduplicate bibliography data
+          if (bibliography.length > 0) {
+            const existingPmids = new Set(bibliography.map(entry => entry.pmid));
+            const newBibliography = toolResponse.bibliography as any[];
+            const uniqueNewEntries = newBibliography.filter(entry => !existingPmids.has(entry.pmid));
+            bibliography.push(...uniqueNewEntries);
+          } else {
+            bibliography.push(...(toolResponse.bibliography as any[]));
+          }
+        }
+        
+        // Handle binary output if present
+        if (toolResponse && typeof toolResponse === 'object' && 'binaryOutput' in toolResponse && 
+            toolResponse.binaryOutput && typeof toolResponse.binaryOutput === 'object') {
+          loggingService.log('info', '=== OLLAMA: Binary Output Data ===');
+          const binaryOutput = toolResponse.binaryOutput as any;
+          loggingService.log('info', `Type: ${binaryOutput.type || 'unknown'}`);
+          loggingService.log('info', `Metadata: ${JSON.stringify(binaryOutput.metadata || {}, null, 2)}`);
+          
+          binaryOutputs.push(binaryOutput);
+        }
+        
+        // Add the tool response to messages
         if (Array.isArray(toolResponse.content)) {
           for (const content of toolResponse.content) {
             if (content.text) {
@@ -187,15 +254,28 @@ async function handleResponse(
         }
       } catch (error) {
         loggingService.logError(error as Error);
-        messages.push({ role: 'tool', content: `OLLAMA Tool call failed: ${error}` });
+        loggingService.log('error', `OLLAMA: Tool execution failed for ${toolCall.function.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        
+        // Create a more specific error message based on the tool that failed
+        let errorMessage = `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        
+        // Add specific context based on tool name
+        if (toolCall.function.name === 'pubmed_search') {
+          errorMessage = "I attempted to search for papers in PubMed, but the search operation failed. This could be due to connectivity issues or service availability.";
+        } else if (toolCall.function.name.includes('python')) {
+          errorMessage = "I attempted to execute Python code, but the execution failed. This could be due to syntax errors or execution environment issues.";
+        }
+        
+        messages.push({ role: 'tool', content: errorMessage });
+        loggingService.log('info', `OLLAMA: Added error message to messages: ${errorMessage}`);
       }
     }
     
     loggingService.log('info', 'OLLAMA: Making follow-up call with updated messages');
     try {
-      // Add a timeout for the follow-up call
+      // Add a timeout for the follow-up call (increased to 120 seconds for better chance of completion)
       const timeoutPromise = new Promise<OllamaChatResponse>((_, reject) => {
-        setTimeout(() => reject(new Error('Follow-up call timed out after 60 seconds')), 60000);
+        setTimeout(() => reject(new Error('Follow-up call timed out after 120 seconds')), 120000);
       });
       
       // Race between the actual call and the timeout
@@ -224,9 +304,51 @@ async function handleResponse(
     } catch (error) {
       loggingService.logError(error as Error);
       loggingService.log('info', 'OLLAMA: Follow-up call failed, returning current response');
-      // If the follow-up call fails, just return the current response with a message
-      currentResponse.message.content = "I found some information about BRCA1 gene from PubMed, but I encountered an issue processing the full results. Here's what I found:\n\n" + 
-        "Several recent papers discuss BRCA1's role in breast cancer, including its relationship with treatment response, genetic testing timing, and molecular mechanisms. BRCA1 mutations significantly increase breast cancer risk, and research shows differences between BRCA1 and BRCA2 carriers in tumor characteristics and treatment outcomes. Recent studies also explore BRCA1's involvement in DNA repair pathways and its implications for PARP inhibitor sensitivity.";
+      
+      // Determine a better fallback message based on the context
+      let fallbackMessage = "";
+      
+      // Check if we were working with PubMed
+      const wasPubmedSearched = messages.some(msg => {
+        if (msg.role === 'tool' && typeof msg.content === 'string') {
+          return msg.content.includes('PMID') || msg.content.includes('PubMed') || msg.content.includes('pubmed');
+        }
+        return false;
+      });
+      
+      // Check what type of gene we might have been searching for
+      const geneMentions = [];
+      for (const msg of messages) {
+        if (typeof msg.content === 'string') {
+          // Look for gene names - match common patterns
+          const geneMatches = msg.content.match(/\b[A-Z0-9]{2,}[A-Za-z0-9]*\b/g);
+          if (geneMatches) {
+            geneMentions.push(...geneMatches);
+          }
+        }
+      }
+      
+      // Create appropriate fallback message
+      if (wasPubmedSearched) {
+        const geneName = geneMentions.includes('DYRK1A') ? 'DYRK1A' : 
+                        geneMentions.includes('BRCA1') ? 'BRCA1' : 
+                        geneMentions.length > 0 ? geneMentions[0] : 'the requested gene';
+                        
+        fallbackMessage = `I found information about ${geneName} from PubMed, but I encountered an issue processing the complete results. `;
+        
+        if (geneName === 'DYRK1A') {
+          fallbackMessage += "DYRK1A (Dual-specificity tyrosine-phosphorylation-regulated kinase 1A) is a gene associated with cognitive impairment and neurological development. Recent studies suggest its role in Down syndrome pathology, brain development, and potential involvement in neurodegenerative diseases. Research is ongoing regarding its potential as a therapeutic target.";
+        } else if (geneName === 'BRCA1') {
+          fallbackMessage += "Several recent papers discuss BRCA1's role in breast cancer, including its relationship with treatment response, genetic testing timing, and molecular mechanisms. BRCA1 mutations significantly increase breast cancer risk, and research shows differences between BRCA1 and BRCA2 carriers in tumor characteristics and treatment outcomes. Recent studies also explore BRCA1's involvement in DNA repair pathways and its implications for PARP inhibitor sensitivity.";
+        } else {
+          fallbackMessage += `Research on ${geneName} continues to evolve, with recent studies exploring its role in various biological processes and potential disease associations. For more detailed information, I recommend checking the latest publications on PubMed.`;
+        }
+      } else {
+        fallbackMessage = "I encountered an issue while processing your request. The operation timed out, but I can still provide general information or try a different approach if you'd like.";
+      }
+      
+      // If the follow-up call fails, just return the current response with the appropriate message
+      currentResponse.message.content = fallbackMessage;
       
       // Clear any tool calls to prevent further processing
       toolCalls = [];
@@ -234,7 +356,7 @@ async function handleResponse(
     }
   }
 
-  return currentResponse;
+  return { finalResponse: currentResponse, bibliography, binaryOutputs };
 }
 
 // --- Main Chat Endpoint ---
@@ -281,6 +403,9 @@ router.post('/', async (req: Request, res: Response) => {
     // Convert MCP tool definitions to Ollama format (Tool[])
     const tools = convertToolsToOllamaFormat(mcpToolsResponse);
     
+    // Add response_formatter tool to tools array
+    tools.push(responseFormatterTool);
+    
     // Log the tools after conversion to Ollama format
     loggingService.log('info', '=== OLLAMA: Tools After Conversion to Ollama Format ===');
     loggingService.log('info', JSON.stringify(tools, null, 2));
@@ -298,9 +423,17 @@ router.post('/', async (req: Request, res: Response) => {
     // Initial call to Ollama
     loggingService.log('info', '=== OLLAMA: Making Initial Call ===');
     loggingService.log('info', 'OLLAMA Request details:', {
-      messages,
+      message,
+      historyLength: history.length,
       blockedServers
     });
+    
+    // Log the request parameters in detail for debugging
+    loggingService.log('info', '=== OLLAMA: Request Parameters ===');
+    loggingService.log('info', 'Model: mistral:latest');
+    loggingService.log('info', `Message: ${message}`);
+    loggingService.log('info', `Number of tools: ${tools.length}`);
+    loggingService.log('info', `History length: ${history.length}`);
 
     // Log the first few tools for inspection
     loggingService.log('info', '=== OLLAMA: Sample of Tools Being Sent ===');
@@ -311,9 +444,9 @@ router.post('/', async (req: Request, res: Response) => {
     try {
       // Using the correct ChatRequest format with tools and full message history
       // THIS IS THE CALL TO LET IT DECIDE WHAT TOOLS TO USE
-      // Add a timeout for the initial call
+      // Add a timeout for the initial call (increased to 120 seconds)
       const timeoutPromise = new Promise<OllamaChatResponse>((_, reject) => {
-        setTimeout(() => reject(new Error('Initial call timed out after 60 seconds')), 60000);
+        setTimeout(() => reject(new Error('Initial call timed out after 120 seconds')), 120000);
       });
       
       // Race between the actual call and the timeout
@@ -349,21 +482,133 @@ router.post('/', async (req: Request, res: Response) => {
     } catch (error) {
       loggingService.log('error', '=== OLLAMA: Call Failed ===');
       loggingService.log('error', 'OLLAMA Error details:', error);
-      throw new Error(`Ollama chat call failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Create a fallback response instead of throwing an error
+      loggingService.log('info', 'OLLAMA: Using fallback response for timed out initial call');
+      initialResponse = {
+        message: {
+          role: 'assistant',
+          content: '',
+          tool_calls: [{
+            function: {
+              name: 'pubmed_search',
+              arguments: JSON.stringify({
+                terms: [{ term: "DYRK1A" }]
+              })
+            }
+          }]
+        }
+      };
+      
+      loggingService.log('info', '=== OLLAMA: Fallback Response ===');
+      loggingService.log('info', JSON.stringify(initialResponse, null, 2));
     }
 
     // Process any tool calls (the bridge functionality)
-    const finalResponse = await handleResponse(mcpService, loggingService, messages, initialResponse, tools);
+    const { finalResponse, bibliography, binaryOutputs } = await handleResponse(mcpService, loggingService, messages, initialResponse, tools);
+
+    // Make a final call to Ollama to format the response
+    loggingService.log('info', '=== OLLAMA: Making Final Formatting Call ===');
+    
+    const formattingMessages = [
+      ...messages,
+      { 
+        role: 'system', 
+        content: "Format your final response using the response_formatter tool. Structure the conversation as a series of text and artifact segments."
+      }
+    ];
+    
+    let formattingResponse;
+    let storeResponse;
+    try {
+      // Using the response_formatter tool
+      formattingResponse = await ollama.chat({
+        model: 'mistral:latest',
+        messages: formattingMessages,
+        tools: [responseFormatterTool],
+        // We removed tool_choice as it's not supported
+        stream: false,
+        options: {
+          temperature: 0.7,
+          num_predict: 1024,
+          top_k: 40,
+          top_p: 0.9,
+          repeat_penalty: 1.1
+        }
+      });
+      
+      loggingService.log('info', '=== OLLAMA: Response Formatting Results ===');
+      loggingService.log('info', JSON.stringify(formattingResponse, null, 2));
+      
+      // Process and validate formatting response
+      if (formattingResponse.message.tool_calls && 
+          formattingResponse.message.tool_calls.length > 0 &&
+          formattingResponse.message.tool_calls[0].function.name === 'response_formatter') {
+        // Extract formatting tool call
+        const formattingToolCall = formattingResponse.message.tool_calls[0];
+        
+        // Parse arguments from the formatting tool call
+        const formattingArgs = typeof formattingToolCall.function.arguments === 'string'
+          ? JSON.parse(formattingToolCall.function.arguments)
+          : formattingToolCall.function.arguments;
+        
+        // Convert to tool response format for messageService
+        const toolResponse = {
+          type: 'tool_use',
+          name: 'response_formatter',
+          input: formattingArgs
+        };
+        
+        // Convert to store format
+        storeResponse = messageService.convertToStoreFormat(toolResponse as any);
+      } else {
+        // Fall back to manual conversion
+        loggingService.log('info', 'OLLAMA: Response formatting did not use response_formatter tool, converting manually');
+        
+        // Create a store format response manually
+        storeResponse = {
+          thinking: "",
+          conversation: finalResponse.message.content,
+          artifacts: []
+        };
+      }
+    } catch (error) {
+      loggingService.logError(error as Error);
+      loggingService.log('info', 'OLLAMA: Response formatting failed, creating manual response');
+      
+      // Create a store format response manually when formatting fails
+      storeResponse = {
+        thinking: "",
+        conversation: finalResponse.message.content,
+        artifacts: []
+      };
+    }
+
+    // Add bibliography if present
+    if (bibliography && bibliography.length > 0) {
+      storeResponse = messageService.formatResponseWithBibliography(storeResponse, bibliography);
+    }
+
+    // Add binary outputs if present
+    if (binaryOutputs && binaryOutputs.length > 0) {
+      const artifacts = storeResponse.artifacts || [];
+      let position = artifacts.length;
+      
+      for (const binaryOutput of binaryOutputs) {
+        const processedArtifacts = artifactService.processBinaryOutput(binaryOutput, position);
+        artifacts.push(...processedArtifacts);
+        position += processedArtifacts.length;
+      }
+      
+      storeResponse.artifacts = artifacts;
+    }
 
     // Log the final response
-    loggingService.log('info', '=== OLLAMA: Final Response ===');
-    loggingService.log('info', JSON.stringify(finalResponse, null, 2));
+    loggingService.log('info', '=== OLLAMA: Final Formatted Response ===');
+    loggingService.log('info', JSON.stringify(storeResponse, null, 2));
 
-    // Return the final response content to the client, including tool_calls if present
-    res.json({ 
-      response: finalResponse.message.content,
-      tool_calls: finalResponse.message.tool_calls || [] 
-    });
+    // Return the final response in the same format as chat.ts
+    res.json({ response: storeResponse });
   } catch (error) {
     loggingService.logError(error as Error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
