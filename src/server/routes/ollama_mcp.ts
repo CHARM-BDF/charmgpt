@@ -271,6 +271,13 @@ async function handleResponse(
       }
     }
     
+    // COMMENTING OUT PHASE 2 (FOLLOW-UP CALL)
+    loggingService.log('info', 'OLLAMA: Skipping follow-up call (Phase 2) to test streaming');
+    
+    // Set empty tool calls to exit the loop
+    toolCalls = [];
+    
+    /*
     loggingService.log('info', 'OLLAMA: Making follow-up call with updated messages');
     try {
       // Add a timeout for the follow-up call (increased to 120 seconds for better chance of completion)
@@ -278,12 +285,16 @@ async function handleResponse(
         setTimeout(() => reject(new Error('Follow-up call timed out after 120 seconds')), 120000);
       });
       
+      // Log the time before making the call
+      loggingService.log('info', `OLLAMA: Starting follow-up call at ${new Date().toISOString()}`);
+      
+      // Revert to non-streaming for follow-up call since it needs to handle tool calls
       // Race between the actual call and the timeout
       currentResponse = await Promise.race([
         ollama.chat({
           model: 'llama3.2:latest',
-          messages: messages,
-          tools: tools,
+      messages: messages,
+      tools: tools,
           stream: false,
           options: {
             temperature: 0.7,
@@ -296,8 +307,11 @@ async function handleResponse(
         timeoutPromise
       ]);
       
-      messages.push(currentResponse.message);
-      toolCalls = currentResponse.message.tool_calls || [];
+      // Log when we receive the response
+      loggingService.log('info', `OLLAMA: Received follow-up response at ${new Date().toISOString()}`);
+      
+    messages.push(currentResponse.message);
+    toolCalls = currentResponse.message.tool_calls || [];
       
       loggingService.log('info', '=== OLLAMA: Follow-up Response ===');
       loggingService.log('info', JSON.stringify(currentResponse, null, 2));
@@ -354,6 +368,7 @@ async function handleResponse(
       toolCalls = [];
       break;
     }
+    */
   }
 
   return { finalResponse: currentResponse, bibliography, binaryOutputs };
@@ -452,9 +467,9 @@ router.post('/', async (req: Request, res: Response) => {
       // Race between the actual call and the timeout
       initialResponse = await Promise.race([
         ollama.chat({
-          model: 'mistral:latest',
-          messages: messages,
-          tools: tools,
+        model: 'mistral:latest',
+        messages: messages,
+        tools: tools,
           stream: false,
           options: {
             temperature: 0.7,
@@ -510,68 +525,215 @@ router.post('/', async (req: Request, res: Response) => {
     // Make a final call to Ollama to format the response
     loggingService.log('info', '=== OLLAMA: Making Final Formatting Call ===');
     
+    // Simplified streaming-friendly system prompt
+    const streamingSystemPrompt = `You are an AI assistant that produces responses with both conversation text and code examples. 
+
+When providing code examples, use the following format:
+
+<artifact id="example-code" type="code" language="python" title="Example Code">
+def example_function():
+    print("This is an example")
+</artifact>
+
+For regular conversation, just write normally. Be concise and helpful.`;
+    
     const formattingMessages = [
       ...messages,
       { 
         role: 'system', 
-        content: "Format your final response using the response_formatter tool. Structure the conversation as a series of text and artifact segments."
+        content: streamingSystemPrompt
       }
     ];
     
     let formattingResponse;
     let storeResponse;
     try {
-      // Using the response_formatter tool
-      formattingResponse = await ollama.chat({
-        model: 'llama3.2:latest',
-        messages: formattingMessages,
-        tools: [responseFormatterTool],
-        // We removed tool_choice as it's not supported
-        stream: false,
-        options: {
-          temperature: 0.7,
-          num_predict: 1024,
-          top_k: 40,
-          top_p: 0.9,
-          repeat_penalty: 1.1
+      // Log the time before making the streaming formatting call
+      loggingService.log('info', `OLLAMA: Starting streaming formatting call at ${new Date().toISOString()}`);
+      
+      // STREAMING VERSION
+      // Create a variable to collect the full formatting response
+      let streamedFormattingResponse: OllamaChatResponse = {
+        message: {
+          role: 'assistant',
+          content: '',
+          tool_calls: []
         }
-      });
+      };
+      
+      // Track if we've received any chunks
+      let receivedFirstChunk = false;
+      let chunkCount = 0;
+      
+      try {
+        // Remove any tool_calls from the messages to avoid JSON unmarshalling errors
+        const streamingMessages = formattingMessages.map(msg => {
+          // Create a new message object without tool_calls
+          const { tool_calls, ...rest } = msg;
+          return rest;
+        });
+        
+        loggingService.log('info', `OLLAMA: Prepared ${streamingMessages.length} messages for streaming (removed tool_calls to prevent JSON errors)`);
+        
+        // Make the streaming call for formatting - without forcing the response_formatter tool
+        const streamingResponse = await ollama.chat({
+          model: 'deepseek-r1:1.5b',
+          messages: streamingMessages,
+          // Remove the tools parameter to not force a specific structure
+          stream: true,
+          options: {
+            temperature: 0.7,
+            num_predict: 1024,
+            top_k: 40,
+            top_p: 0.9,
+            repeat_penalty: 1.1
+          }
+        });
+        
+        // Process the streaming response
+        loggingService.log('info', `OLLAMA: Starting to process streaming response at ${new Date().toISOString()}`);
+        
+        for await (const chunk of streamingResponse) {
+          // Get current timestamp
+          const timestamp = new Date().toISOString();
+          
+          // Log when we receive the first chunk
+          if (!receivedFirstChunk) {
+            receivedFirstChunk = true;
+            loggingService.log('info', `OLLAMA: Received first formatting chunk at ${timestamp}`);
+            loggingService.log('info', `OLLAMA: First chunk structure: ${JSON.stringify(chunk)}`);
+          }
+          
+          chunkCount++;
+          
+          // Log each chunk with timestamp and content
+          if (chunk.message && chunk.message.content) {
+            loggingService.log('info', `OLLAMA CHUNK [${timestamp}] #${chunkCount}: ${JSON.stringify(chunk.message.content)}`);
+            streamedFormattingResponse.message.content += chunk.message.content;
+          } else {
+            loggingService.log('info', `OLLAMA CHUNK [${timestamp}] #${chunkCount}: [empty content]`);
+            loggingService.log('info', `OLLAMA CHUNK STRUCTURE [${timestamp}] #${chunkCount}: ${JSON.stringify(chunk)}`);
+          }
+          
+          // If there are tool calls, collect them
+          if (chunk.message && chunk.message.tool_calls) {
+            loggingService.log('info', `OLLAMA CHUNK TOOL CALL [${timestamp}] #${chunkCount}: ${JSON.stringify(chunk.message.tool_calls)}`);
+            streamedFormattingResponse.message.tool_calls = [
+              ...(streamedFormattingResponse.message.tool_calls || []),
+              ...(chunk.message.tool_calls || [])
+            ];
+          }
+        }
+        
+        loggingService.log('info', `OLLAMA: Formatting streaming complete, received ${chunkCount} total chunks at ${new Date().toISOString()}`);
+        
+        // Check if we received any content
+        if (!streamedFormattingResponse.message.content || streamedFormattingResponse.message.content.trim() === '') {
+          loggingService.log('info', 'OLLAMA: Streaming completed but returned empty content');
+          throw new Error('Streaming returned empty content, falling back to non-streaming');
+        }
+        
+        // Use the accumulated response
+        formattingResponse = streamedFormattingResponse;
+      } catch (streamError) {
+        loggingService.log('error', `OLLAMA: Formatting streaming failed: ${streamError instanceof Error ? streamError.message : 'Unknown error'}`);
+        
+        // Add more detailed error logging
+        if (streamError instanceof Error && streamError.stack) {
+          loggingService.log('error', `OLLAMA: Streaming error stack: ${streamError.stack}`);
+        }
+        
+        // Re-enable fallback to non-streaming
+        loggingService.log('info', 'OLLAMA: Falling back to non-streaming due to streaming failure');
+        
+        // Fall back to non-streaming if streaming fails
+        formattingResponse = await ollama.chat({
+          model: 'deepseek-r1:1.5b',
+          messages: formattingMessages,
+          // Remove the tools parameter to not force a specific structure
+          stream: false,
+          options: {
+            temperature: 0.7,
+            num_predict: 1024,
+            top_k: 40,
+            top_p: 0.9,
+            repeat_penalty: 1.1
+          }
+        });
+      }
       
       loggingService.log('info', '=== OLLAMA: Response Formatting Results ===');
       loggingService.log('info', JSON.stringify(formattingResponse, null, 2));
       
-      // Process and validate formatting response
-      if (formattingResponse.message.tool_calls && 
-          formattingResponse.message.tool_calls.length > 0 &&
-          formattingResponse.message.tool_calls[0].function.name === 'response_formatter') {
-        // Extract formatting tool call
-        const formattingToolCall = formattingResponse.message.tool_calls[0];
+      // Parse the streamed content to extract chat and artifact sections
+      const content = formattingResponse.message.content;
+      loggingService.log('info', '=== OLLAMA: Parsing Streamed Content ===');
+      loggingService.log('info', `Total content length: ${content.length} characters`);
+      
+      // Initialize artifacts array
+      const parsedArtifacts: any[] = [];
+      
+      // Extract conversation text (everything not in artifact tags)
+      let conversationText = content;
+      
+      // Find all artifact sections
+      const artifactRegex = /<artifact\s+id="([^"]+)"\s+type="([^"]+)"(?:\s+language="([^"]+)")?\s+title="([^"]+)">([\s\S]*?)<\/artifact>/g;
+      let artifactMatch;
+      let artifactIndex = 0;
+      
+      // Log the number of artifact tags found
+      const artifactTagMatches = content.match(/<artifact/g);
+      const artifactEndTagMatches = content.match(/<\/artifact>/g);
+      loggingService.log('info', `Found ${artifactTagMatches ? artifactTagMatches.length : 0} opening artifact tags and ${artifactEndTagMatches ? artifactEndTagMatches.length : 0} closing artifact tags`);
+      
+      // Log the number of chat tags found
+      const chatTagMatches = content.match(/<chat>/g);
+      const chatEndTagMatches = content.match(/<\/chat>/g);
+      loggingService.log('info', `Found ${chatTagMatches ? chatTagMatches.length : 0} opening chat tags and ${chatEndTagMatches ? chatEndTagMatches.length : 0} closing chat tags`);
+      
+      // Replace artifacts with placeholders and collect them
+      conversationText = content.replace(artifactRegex, (match, id, type, language, title, content) => {
+        const artifactId = crypto.randomUUID();
         
-        // Parse arguments from the formatting tool call
-        const formattingArgs = typeof formattingToolCall.function.arguments === 'string'
-          ? JSON.parse(formattingToolCall.function.arguments)
-          : formattingToolCall.function.arguments;
+        loggingService.log('info', `Processing artifact: id="${id}", type="${type}", language="${language || 'none'}", title="${title}"`);
+        loggingService.log('info', `Artifact content length: ${content.length} characters`);
         
-        // Convert to tool response format for messageService
-        const toolResponse = {
-          type: 'tool_use',
-          name: 'response_formatter',
-          input: formattingArgs
+        // Create artifact object
+        const artifact = {
+          id: artifactId,
+          artifactId: artifactId,
+          type: type === 'code' ? `application/vnd.code.${language || 'text'}` : 
+                type === 'markdown' ? 'application/vnd.markdown' :
+                type === 'data' ? 'application/json' :
+                type === 'html' ? 'text/html' :
+                'text/plain',
+          title: title,
+          content: content.trim(),
+          position: artifactIndex++
         };
         
-        // Convert to store format
-        storeResponse = messageService.convertToStoreFormat(toolResponse as any);
-      } else {
-        // Fall back to manual conversion
-        loggingService.log('info', 'OLLAMA: Response formatting did not use response_formatter tool, converting manually');
+        // Add to artifacts array
+        parsedArtifacts.push(artifact);
         
-        // Create a store format response manually
-        storeResponse = {
-          thinking: "",
-          conversation: finalResponse.message.content,
-          artifacts: []
-        };
-      }
+        loggingService.log('info', `Created artifact with ID: ${artifactId}, type: ${artifact.type}, position: ${artifactIndex - 1}`);
+        
+        // Return a placeholder
+        return `[ARTIFACT: ${title}]`;
+      });
+      
+      // Remove chat tags if present
+      conversationText = conversationText.replace(/<chat>([\s\S]*?)<\/chat>/g, '$1');
+      
+      // Create a store format response from the parsed content
+      storeResponse = {
+        thinking: "",
+        conversation: conversationText.trim(),
+        artifacts: parsedArtifacts
+      };
+      
+      loggingService.log('info', '=== OLLAMA: Parsed Response ===');
+      loggingService.log('info', `Conversation length: ${conversationText.length} chars`);
+      loggingService.log('info', `Artifacts found: ${parsedArtifacts.length}`);
     } catch (error) {
       loggingService.logError(error as Error);
       loggingService.log('info', 'OLLAMA: Response formatting failed, creating manual response');
