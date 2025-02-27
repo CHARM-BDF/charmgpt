@@ -25,7 +25,7 @@ A collaborative data science environment with integrated chat and visualization 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/metareflection/charmgpt.git
+git clone https://github.com/CHARM-BDF/charmgpt.git
 cd charmgpt
 ```
 
