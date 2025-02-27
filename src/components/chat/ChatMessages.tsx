@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MessageWithThinking } from '../../types/chat';
 import { useChatStore } from '../../store/chatStore';
 import { AssistantMarkdown } from './AssistantMarkdown';
-import { ClipboardIcon } from '@heroicons/react/24/solid';
+import { ClipboardIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
+import { BookOpen, FileText, GraduationCap, Library } from 'lucide-react';
 import BrainWaveCharm from '../animations/BrainWaveCharm';
 
 // Remove or set to a past date to enable copy buttons for all messages
@@ -215,6 +216,21 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                       >
                         Debug Info
                       </button>
+                      
+                      {/* Display bibliography link if available */}
+                      {(() => {
+                        const messageArtifacts = getMessageArtifacts(message);
+                        const bibliographyArtifact = messageArtifacts.find(
+                          artifact => artifact.type === 'application/vnd.bibliography'
+                        );
+                        
+                        if (bibliographyArtifact) {
+                          return <BibliographyLinkLucide artifactId={bibliographyArtifact.id} />;
+                        }
+                        
+                        return null;
+                      })()}
+                      
                       {/* {message.artifactId && (
                         <button
                           onClick={() => {
@@ -241,5 +257,35 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
         </div>
       </div>
     </div>
+  );
+};
+
+// Bibliography link component with Heroicons
+export const BibliographyLink: React.FC<{ artifactId: string }> = ({ artifactId }) => {
+  const { selectArtifact } = useChatStore();
+  
+  return (
+    <button
+      onClick={() => selectArtifact(artifactId)}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40 transition-colors"
+    >
+      <DocumentTextIcon className="h-3.5 w-3.5" />
+      <span>View References</span>
+    </button>
+  );
+};
+
+// Bibliography link component with Lucide
+export const BibliographyLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
+  const { selectArtifact } = useChatStore();
+  
+  return (
+    <button
+      onClick={() => selectArtifact(artifactId)}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40 transition-colors"
+    >
+      <Library className="h-3.5 w-3.5" />
+      <span>View Bibliography</span>
+    </button>
   );
 };

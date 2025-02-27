@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight, oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useChatStore } from '../../store/chatStore';
 import rehypeRaw from 'rehype-raw';
+import { Library } from 'lucide-react';
 
 interface AssistantMarkdownProps {
   content: string;
@@ -49,6 +50,8 @@ const ArtifactButton: React.FC<{
 
   const getIcon = () => {
     switch (type) {
+      case 'application/vnd.bibliography':
+        return <Library className="w-6 h-6" />;
       case 'text/markdown':
         return (
           <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
