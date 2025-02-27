@@ -16,6 +16,14 @@ This guide documents the tested configurations for function/tool calling with lo
 | deepseek-r1:32b | 32.8B | ❌ | No tool support |
 | deepscaler:latest | 1.8B | ❌ | No tool support |
 
+### Streaming Support
+| Model | Size | Streaming Performance | Notes |
+|-------|------|----------------------|-------|
+| deepseek-r1:1.5b | 1.5B | ✅ Good | Slow to start, then streams quickly |
+| deepseek-r1:7b | 7B | ✅ Fair | Works but streams slowly |
+| deepseek-r1:70b | 70B | ✅ Poor | Works but very slow streaming |
+| llama3.2:latest | 3.2B | ❌ Unreliable | Inconsistent streaming results |
+
 ## Working Examples
 
 ### 1. Direct API Call Format
@@ -166,6 +174,92 @@ curl -X POST http://localhost:3001/api/ollama -d '{"message": "Find me a recent 
 - Handle tool responses efficiently
 - Process multiple tool calls iteratively
 - Maintain conversation context
+
+## Streaming Implementation
+
+### 1. Model Selection for Streaming
+- **deepseek-r1:1.5b**: Best balance of speed and quality for streaming responses
+- **deepseek-r1:7b**: Better quality but slower streaming performance
+- **deepseek-r1:70b**: Highest quality but significantly slower streaming
+
+### 2. Streaming Configuration
+```typescript
+// Streaming configuration for deepseek models
+const streamingResponse = await ollama.chat({
+  model: 'deepseek-r1:1.5b', // Best performer for streaming
+  messages: streamingMessages,
+  stream: true,  // Enable streaming
+  options: {
+    temperature: 0.7,
+    num_predict: 1024,
+    top_k: 40,
+    top_p: 0.9,
+    repeat_penalty: 1.1
+  }
+});
+
+// Process streaming response
+for await (const chunk of streamingResponse) {
+  if (chunk.message && chunk.message.content) {
+    // Process each chunk as it arrives
+    streamedResponse.message.content += chunk.message.content;
+  }
+}
+```
+
+### 3. Streaming Best Practices
+- Remove `tool_calls` from messages before streaming to prevent JSON unmarshalling errors
+- Use a simplified system prompt for streaming calls
+- Implement fallback to non-streaming if streaming fails
+- Log each chunk with timestamps to monitor performance
+- Track total chunks and processing time for optimization
+
+### 4. Streaming Workflow
+1. Use tool-capable models (mistral:latest) for initial tool selection
+2. Process tool calls and collect results
+3. Use deepseek models for final streaming response formatting
+4. Implement proper error handling for both streaming and non-streaming paths
+
+### 5. Testing Streaming with curl
+```bash
+# Direct streaming test with Ollama API
+curl -X POST http://localhost:11434/api/chat -d '{
+  "model": "deepseek-r1:1.5b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "Explain how to analyze gene expression data"
+    }
+  ],
+  "stream": true,
+  "options": {
+    "temperature": 0.7,
+    "num_predict": 1024
+  }
+}'
+
+# Testing through application endpoint
+# Note: This may show "Empty reply from server" in curl but logs will show streaming is working
+curl -X POST http://localhost:3001/api/ollama -H "Content-Type: application/json" -d '{
+  "message": "Explain how to analyze DYRK1A gene expression data using Python, with code examples",
+  "blockedServers": ["pubmed", "ncbi"]
+}'
+```
+
+### 6. Monitoring Streaming Performance
+To verify streaming is working properly, check server logs:
+```bash
+# Look for log entries with "OLLAMA CHUNK" which indicate streaming chunks
+grep "OLLAMA CHUNK" ./logs/server-*.log | tail -20
+
+# Count total chunks and time to complete
+grep "OLLAMA CHUNK" ./logs/server-*.log | wc -l
+grep "Formatting streaming complete" ./logs/server-*.log
+```
 
 ## Future Considerations
 1. Monitor model updates for improved tool support

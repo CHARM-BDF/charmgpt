@@ -60,6 +60,35 @@ const ollama = new Ollama({
   fetch: noTimeoutFetch
 });
 
+//PREWARM THE MODELS TO REDUCE LATENCY
+async function prewarmModels(ollama: Ollama) {
+  try {
+    // Pre-warm the tool-calling model
+    await ollama.chat({
+      model: 'llama3.2:latest',
+      messages: [{ role: 'system', content: 'ping' }],
+      stream: false,
+      options: { num_predict: 1 }
+    });
+    console.log("Tool-calling model warmed up.");
+
+    // Pre-warm the summarization/formatting model
+    await ollama.chat({
+      model: 'deepseek-coder:latest',
+      messages: [{ role: 'system', content: 'ping' }],
+      stream: false,
+      options: { num_predict: 1 }
+    });
+    console.log("Summarization model warmed up.");
+  } catch (error) {
+    console.error("Error during pre-warming:", error);
+  }
+}
+
+// Then call this function when your server starts:
+prewarmModels(ollama);
+
+
 // --- Response Formatter Tool Definition ---
 const responseFormatterTool: Tool = {
   type: 'function',
@@ -467,7 +496,7 @@ router.post('/', async (req: Request, res: Response) => {
       // Race between the actual call and the timeout
       initialResponse = await Promise.race([
         ollama.chat({
-        model: 'mistral:latest',
+        model: 'llama3.2:latest',
         messages: messages,
         tools: tools,
           stream: false,
@@ -577,7 +606,7 @@ For regular conversation, just write normally. Be concise and helpful.`;
         
         // Make the streaming call for formatting - without forcing the response_formatter tool
         const streamingResponse = await ollama.chat({
-          model: 'deepseek-r1:1.5b',
+          model: 'deepseek-coder:latest',
           messages: streamingMessages,
           // Remove the tools parameter to not force a specific structure
           stream: true,
@@ -648,7 +677,7 @@ For regular conversation, just write normally. Be concise and helpful.`;
         
         // Fall back to non-streaming if streaming fails
         formattingResponse = await ollama.chat({
-          model: 'deepseek-r1:1.5b',
+          model: 'deepseek-coder:latest',
           messages: formattingMessages,
           // Remove the tools parameter to not force a specific structure
           stream: false,

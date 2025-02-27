@@ -5,7 +5,7 @@ import { MCPService } from '../services/mcp';
 import { MessageService, ChatMessage } from '../services/message';
 import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
-import path from 'path';
+// import path from 'path';
 
 const router = express.Router();
 
@@ -164,10 +164,10 @@ router.post('/', async (req: Request<{}, {}, {
       max_tokens: 4000,
       messages: messageService.convertChatMessages(messages) as any,
       system: systemPrompt,
-      temperature: 0.7,
+      temperature: 0.2,
       tools: [{
         name: "response_formatter",
-        description: "Format all responses in a consistent JSON structure",
+        description: "Format all responses in a consistent JSON structure with direct array values, not string-encoded JSON",
         input_schema: {
           type: "object",
           properties: {
@@ -177,7 +177,7 @@ router.post('/', async (req: Request<{}, {}, {
             },
             conversation: {
               type: "array",
-              description: "Array of conversation segments and artifacts in order of appearance",
+              description: "Array of conversation segments and artifacts in order of appearance. Return as a direct array, not as a string-encoded JSON.",
               items: {
                 type: "object",
                 properties: {
@@ -226,7 +226,8 @@ router.post('/', async (req: Request<{}, {}, {
 
     // Log the response formatting results
     console.log('\n=== RESPONSE FORMATTING RESULTS ===');
-    console.log('Raw Response:', JSON.stringify(response, null, 2));
+    console.log('Raw Response:', response);
+    console.log('stringify Raw Response:', JSON.stringify(response, null, 2));
 
     // Process and validate response
     if (response.content[0].type !== 'tool_use') {
