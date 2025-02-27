@@ -53,10 +53,10 @@ docker build -t my-python-app .
    - Pull your desired model: `ollama pull qwen2.5`
 
 3. LLM Provider Selection:
-   - Set DEFAULT_LLM_PROVIDER to 'ollama' for local execution with Ollama
-   - Set DEFAULT_LLM_PROVIDER to 'charmonator' for the CHARMonator REST API
-   - Set DEFAULT_LLM_PROVIDER to 'claude' for Anthropic's Claude
-   - When using Claude, make sure ANTHROPIC_API_KEY is set
+   - Set DEFAULT_LLM_PROVIDER to `ollama` for local execution with Ollama
+   - Set DEFAULT_LLM_PROVIDER to `charmonator` for the CHARMonator REST API, with default model `my-charm-model`
+   - Set DEFAULT_LLM_PROVIDER to `gemini` for Google's Gemini. Make sure GEMINI_API_KEY is set
+   - Set DEFAULT_LLM_PROVIDER to `claude` for Anthropic's Claude. Make sure ANTHROPIC_API_KEY is set
 
 ### Running the Application
 
