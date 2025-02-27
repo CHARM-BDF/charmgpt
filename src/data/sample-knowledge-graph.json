@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    { "id": "node1", "name": "React", "group": 1, "val": 20 },
+    { "id": "node2", "name": "TypeScript", "group": 1, "val": 18 },
+    { "id": "node3", "name": "JavaScript", "group": 1, "val": 15 },
+    { "id": "node4", "name": "HTML", "group": 2, "val": 12 },
+    { "id": "node5", "name": "CSS", "group": 2, "val": 12 },
+    { "id": "node6", "name": "Tailwind", "group": 2, "val": 10 },
+    { "id": "node7", "name": "Redux", "group": 3, "val": 8 },
+    { "id": "node8", "name": "Context API", "group": 3, "val": 8 },
+    { "id": "node9", "name": "React Router", "group": 3, "val": 7 },
+    { "id": "node10", "name": "Next.js", "group": 4, "val": 15 }
+  ],
+  "links": [
+    { "source": "node1", "target": "node2", "value": 5, "label": "uses" },
+    { "source": "node1", "target": "node3", "value": 8, "label": "based on" },
+    { "source": "node1", "target": "node4", "value": 3, "label": "renders" },
+    { "source": "node1", "target": "node7", "value": 5, "label": "works with" },
+    { "source": "node1", "target": "node8", "value": 7, "label": "includes" },
+    { "source": "node1", "target": "node9", "value": 5, "label": "works with" },
+    { "source": "node2", "target": "node3", "value": 6, "label": "superset of" },
+    { "source": "node4", "target": "node5", "value": 7, "label": "styled by" },
+    { "source": "node5", "target": "node6", "value": 6, "label": "abstracted by" },
+    { "source": "node10", "target": "node1", "value": 8, "label": "based on" },
+    { "source": "node10", "target": "node4", "value": 4, "label": "renders" },
+    { "source": "node10", "target": "node5", "value": 4, "label": "styles with" }
+  ]
+} 

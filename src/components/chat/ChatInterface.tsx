@@ -12,10 +12,11 @@ import { ModelSelector } from '../models/ModelSelector';
 import { ConversationDrawer } from '../conversations/ConversationDrawer';
 import BrainWaveCharmStatic from '../animations/BrainWaveCharmStatic';
 // @ts-ignore - Heroicons type definitions mismatch
-import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon } from '@heroicons/react/24/outline';
+import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, BeakerIcon } from '@heroicons/react/24/outline';
 // import { useMCPStore } from '../../store/mcpStore';
 import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
+import KnowledgeGraphTestButton from '../artifacts/KnowledgeGraphTestButton';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
@@ -137,6 +138,28 @@ export const ChatInterface: React.FC = () => {
                   </button>
                 </div>
                 <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Streaming</span>
+              </div>
+
+              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+              
+              {/* Testing Tools Section */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center space-x-3">
+                  <div className="relative group">
+                    <button
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                      title="Testing Tools"
+                    >
+                      <BeakerIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                    </button>
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        <KnowledgeGraphTestButton />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Testing</span>
               </div>
             </div>
           </div>

@@ -10,7 +10,9 @@ export type ArtifactType =
   | 'application/javascript'
   | 'application/vnd.react'
   | 'application/vnd.bibliography'
-  | 'application/vnd.ant.python';
+  | 'application/vnd.ant.python'
+  | 'application/vnd.knowledge-graph'
+  | 'application/vnd.ant.knowledge-graph';
 
 export interface Artifact {
   id: string;           // Unique UUID for internal use

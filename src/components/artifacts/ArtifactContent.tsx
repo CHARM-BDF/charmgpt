@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import KnowledgeGraphViewer from './KnowledgeGraphViewer';
 
 export const ArtifactContent: React.FC<{
   artifact: Artifact;
@@ -81,6 +82,14 @@ export const ArtifactContent: React.FC<{
                 {artifact.content}
               </SyntaxHighlighter>
             </div>
+          </div>
+        );
+      
+      case 'application/vnd.knowledge-graph':
+      case 'application/vnd.ant.knowledge-graph':
+        return (
+          <div className="w-full h-full min-h-[400px]">
+            <KnowledgeGraphViewer data={artifact.content} />
           </div>
         );
       
@@ -304,7 +313,7 @@ export const ArtifactContent: React.FC<{
     }
   };
 
-  const canToggleView = ['html', 'image/svg+xml'].includes(artifact.type);
+  const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type);
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
