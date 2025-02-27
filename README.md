@@ -120,23 +120,6 @@ print(f"Mean: {data.mean():.2f}")
 print(f"Std Dev: {data.std():.2f}")
 ```
 
-### Chat Interface
-
-The chat interface supports two LLM providers:
-
-1. Claude (Anthropic):
-   - Requires API key in `.env`
-   - Higher quality responses
-   - Better code understanding
-
-2. Ollama (Local):
-   - Free and runs locally
-   - No API key needed
-   - Faster responses
-   - Supports multiple models
-
-You can switch between providers in the chat interface.
-
 ### Artifacts
 
 - Code and its output are saved as artifacts
