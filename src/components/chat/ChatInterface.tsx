@@ -22,6 +22,7 @@ export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
+  const [showTestingTools, setShowTestingTools] = useState(false);
   const storageService = useMemo(() => new APIStorageService(), []);
   // const { activeServer } = useMCPStore();
 
@@ -32,6 +33,79 @@ export const ChatInterface: React.FC = () => {
   useEffect(() => {
     console.log('ChatInterface: showArtifactWindow changed to:', showArtifactWindow);
   }, [showArtifactWindow]);
+
+  // Close testing tools dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if the click is on the testing tools button itself (which has its own handler)
+      const isTestingButton = target.closest('button') && 
+        target.closest('button')?.getAttribute('title') === 'Testing Tools';
+      
+      // Check if the click is inside the dropdown menu or any button
+      const isInsideDropdown = target.closest('.testing-tools-dropdown');
+      const isButton = target.tagName === 'BUTTON' || target.closest('button');
+      
+      // Only close if the click is outside both the container and dropdown AND not on any button
+      if (!target.closest('.testing-tools-container') && !isTestingButton && !isInsideDropdown && !isButton) {
+        setShowTestingTools(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Close testing tools dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if the click is on the testing tools button itself
+      const isTestingButton = target.closest('button') && 
+        target.closest('button')?.getAttribute('title') === 'Testing Tools';
+      
+      // Check if the click is inside the dropdown menu
+      const isInsideDropdown = target.closest('.testing-tools-dropdown');
+      
+      // Only close if the click is outside both the button and dropdown
+      if (!isTestingButton && !isInsideDropdown) {
+        setShowTestingTools(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Simple click outside handler for testing tools dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // If testing tools dropdown is not shown, do nothing
+      if (!showTestingTools) return;
+      
+      const target = event.target as HTMLElement;
+      
+      // Check if click is on the testing tools button
+      const isOnButton = target.closest('button')?.getAttribute('title') === 'Testing Tools';
+      
+      // Check if click is inside the dropdown
+      const isInDropdown = target.closest('.testing-tools-dropdown') !== null;
+      
+      // Only close if click is outside both the button and dropdown
+      if (!isOnButton && !isInDropdown) {
+        setShowTestingTools(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showTestingTools]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-200 dark:bg-gray-900">
@@ -143,20 +217,26 @@ export const ChatInterface: React.FC = () => {
               <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
               
               {/* Testing Tools Section */}
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center testing-tools-container">
                 <div className="flex items-center space-x-3">
-                  <div className="relative group">
+                  <div className="relative">
                     <button
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                       title="Testing Tools"
+                      onClick={() => setShowTestingTools(!showTestingTools)}
                     >
                       <BeakerIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                     </button>
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                      <div className="p-2">
-                        <KnowledgeGraphTestButton />
+                    {showTestingTools && (
+                      <div 
+                        className="fixed top-20 right-4 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-[9999] testing-tools-dropdown"
+                      >
+                        <div className="p-3">
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Knowledge Graph Tests</h3>
+                          <KnowledgeGraphTestButton />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
                 <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Testing</span>

@@ -5,6 +5,7 @@ import { Artifact, ArtifactType } from '../types/artifacts';
 import { useMCPStore } from './mcpStore';
 import { useModelStore } from './modelStore';
 import { getApiUrl, API_ENDPOINTS } from '../utils/api';
+import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../types/knowledgeGraph';
 
 /**
  * Core message interface extension
@@ -53,6 +54,17 @@ interface ChatState extends ConversationState {
   renameConversation: (id: string, name: string) => void;
   deleteConversation: (id: string) => void;
   migrateExistingMessages: () => void;
+  
+  // New graph versioning functions
+  updateGraphArtifact: (baseArtifactId: string, updates: {
+    nodes?: KnowledgeGraphNode[] | ((nodes: KnowledgeGraphNode[]) => KnowledgeGraphNode[]);
+    links?: KnowledgeGraphLink[] | ((links: KnowledgeGraphLink[]) => KnowledgeGraphLink[]);
+    commandDescription?: string;
+    commandParams?: Record<string, any>;
+    versionLabel?: string;
+  }) => string | null;
+  getGraphVersionHistory: (artifactId: string) => Artifact[];
+  getLatestGraphVersion: (artifactId: string) => Artifact | null;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -618,6 +630,147 @@ export const useChatStore = create<ChatState>()(
               currentConversationId: id
             }));
           }
+        },
+
+        // New graph versioning functions
+        updateGraphArtifact: (baseArtifactId: string, updates: {
+          nodes?: KnowledgeGraphNode[] | ((nodes: KnowledgeGraphNode[]) => KnowledgeGraphNode[]);
+          links?: KnowledgeGraphLink[] | ((links: KnowledgeGraphLink[]) => KnowledgeGraphLink[]);
+          commandDescription?: string;
+          commandParams?: Record<string, any>;
+          versionLabel?: string;
+        }) => {
+          const state = get();
+          const baseArtifact = state.artifacts.find(a => a.id === baseArtifactId);
+          
+          if (!baseArtifact || baseArtifact.type !== 'application/vnd.ant.knowledge-graph') {
+            console.error('updateGraphArtifact: Base artifact not found or not a knowledge graph');
+            return null;
+          }
+          
+          try {
+            // Parse current content
+            const currentData = JSON.parse(baseArtifact.content) as KnowledgeGraphData;
+            
+            // Apply updates
+            const updatedNodes = typeof updates.nodes === 'function' 
+              ? updates.nodes(currentData.nodes)
+              : updates.nodes || currentData.nodes;
+              
+            const updatedLinks = typeof updates.links === 'function'
+              ? updates.links(currentData.links)
+              : updates.links || currentData.links;
+            
+            // Create new graph data
+            const newData: KnowledgeGraphData = {
+              nodes: updatedNodes,
+              links: updatedLinks,
+              metadata: {
+                version: (baseArtifact.versionNumber || 1) + 1,
+                previousVersion: baseArtifactId,
+                commandHistory: [
+                  ...(currentData.metadata?.commandHistory || []),
+                  {
+                    command: updates.commandDescription || 'Update graph',
+                    params: updates.commandParams || {},
+                    timestamp: new Date().toISOString()
+                  }
+                ]
+              }
+            };
+            
+            // Create new artifact
+            const newArtifactId = crypto.randomUUID();
+            const versionNumber = (baseArtifact.versionNumber || 1) + 1;
+            
+            const newArtifact: Omit<Artifact, 'timestamp'> = {
+              id: newArtifactId,
+              artifactId: baseArtifact.artifactId, // Keep the same artifactId for linking
+              type: baseArtifact.type,
+              title: updates.versionLabel 
+                ? `${baseArtifact.title.split(' (v')[0]} - ${updates.versionLabel}`
+                : `${baseArtifact.title.split(' (v')[0]} (v${versionNumber})`,
+              content: JSON.stringify(newData),
+              position: baseArtifact.position,
+              language: baseArtifact.language,
+              previousVersionId: baseArtifactId,
+              versionNumber: versionNumber,
+              versionLabel: updates.versionLabel,
+              versionTimestamp: new Date(),
+              graphMetadata: {
+                nodeCount: updatedNodes.length,
+                edgeCount: updatedLinks.length,
+                lastCommand: updates.commandDescription,
+                commandParams: updates.commandParams
+              }
+            };
+            
+            // Add new artifact and update reference in previous version
+            set(state => ({
+              artifacts: [
+                ...state.artifacts.map(a => 
+                  a.id === baseArtifactId ? { ...a, nextVersionId: newArtifactId } : a
+                ),
+                {...newArtifact, timestamp: new Date()}
+              ],
+              selectedArtifactId: newArtifactId
+            }));
+            
+            return newArtifactId;
+          } catch (error) {
+            console.error('updateGraphArtifact: Failed to update graph:', error);
+            return null;
+          }
+        },
+        getGraphVersionHistory: (artifactId: string) => {
+          const state = get();
+          const artifact = state.artifacts.find(a => a.id === artifactId);
+          
+          if (!artifact || artifact.type !== 'application/vnd.ant.knowledge-graph') {
+            return [];
+          }
+          
+          // Find the root version
+          let rootArtifact = artifact;
+          while (rootArtifact.previousVersionId) {
+            const prev = state.artifacts.find(a => a.id === rootArtifact.previousVersionId);
+            if (!prev) break;
+            rootArtifact = prev;
+          }
+          
+          // Build the version chain
+          const history: Artifact[] = [rootArtifact];
+          let currentId = rootArtifact.nextVersionId;
+          
+          while (currentId) {
+            const next = state.artifacts.find(a => a.id === currentId);
+            if (!next) break;
+            history.push(next);
+            currentId = next.nextVersionId;
+          }
+          
+          return history;
+        },
+        getLatestGraphVersion: (artifactId: string) => {
+          const state = get();
+          const initialArtifact = state.artifacts.find(a => a.id === artifactId);
+          
+          if (!initialArtifact || initialArtifact.type !== 'application/vnd.ant.knowledge-graph') {
+            return null;
+          }
+          
+          // Follow the chain to the latest version
+          let latestArtifact = initialArtifact;
+          let currentId = initialArtifact.nextVersionId;
+          
+          while (currentId) {
+            const next = state.artifacts.find(a => a.id === currentId);
+            if (!next) break;
+            latestArtifact = next;
+            currentId = next.nextVersionId;
+          }
+          
+          return latestArtifact;
         },
       };
     },

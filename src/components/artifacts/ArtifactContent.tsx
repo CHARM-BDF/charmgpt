@@ -6,6 +6,8 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import KnowledgeGraphViewer from './KnowledgeGraphViewer';
+import { useChatStore } from '../../store/chatStore';
+import { useMCPStore } from '../../store/mcpStore';
 
 export const ArtifactContent: React.FC<{
   artifact: Artifact;
@@ -123,8 +125,95 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.knowledge-graph':
       case 'application/vnd.ant.knowledge-graph':
         return (
-          <div className="w-full h-full min-h-[400px]">
-            <KnowledgeGraphViewer data={artifact.content} />
+          <div className="w-full h-full min-h-[400px] flex flex-col">
+            <div className="mb-4 flex space-x-2 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+              <button 
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition-colors"
+                onClick={() => {
+                  const { addArtifact, selectArtifact } = useChatStore.getState();
+                  // Create a new graph artifact
+                  const artifactId = addArtifact({
+                    id: crypto.randomUUID(),
+                    artifactId: crypto.randomUUID(),
+                    type: 'application/vnd.ant.knowledge-graph',
+                    title: 'Test Knowledge Graph',
+                    content: JSON.stringify({
+                      nodes: [
+                        { id: 'node1', name: 'Node 1', type: 'person', age: 30 },
+                        { id: 'node2', name: 'Node 2', type: 'person', age: 25 },
+                        { id: 'node3', name: 'Node 3', type: 'company', age: null },
+                        { id: 'node4', name: 'Node 4', type: 'company', age: null },
+                        { id: 'node5', name: 'Node 5', type: 'location', age: null },
+                      ],
+                      links: [
+                        { source: 'node1', target: 'node2', label: 'knows' },
+                        { source: 'node1', target: 'node3', label: 'works_at' },
+                        { source: 'node2', target: 'node4', label: 'works_at' },
+                        { source: 'node3', target: 'node5', label: 'located_in' },
+                        { source: 'node4', target: 'node5', label: 'located_in' },
+                      ]
+                    }),
+                    position: 0,
+                    versionNumber: 1
+                  });
+                  selectArtifact(artifactId);
+                }}
+              >
+                Create Test Graph
+              </button>
+              <button 
+                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition-colors"
+                onClick={() => {
+                  const { handleGraphCommand } = useMCPStore.getState();
+                  handleGraphCommand({
+                    type: 'groupByProperty',
+                    targetGraphId: artifact.id,
+                    params: { propertyName: 'type' }
+                  });
+                }}
+              >
+                Group By Type
+              </button>
+              <button 
+                className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm font-medium transition-colors"
+                onClick={() => {
+                  const { handleGraphCommand } = useMCPStore.getState();
+                  handleGraphCommand({
+                    type: 'highlightNodes',
+                    targetGraphId: artifact.id,
+                    params: { 
+                      nodeIds: ['node1', 'node2'],
+                      color: '#ff0000'
+                    }
+                  });
+                }}
+              >
+                Highlight Nodes
+              </button>
+              <button 
+                className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm font-medium transition-colors"
+                onClick={() => {
+                  const { handleGraphCommand } = useMCPStore.getState();
+                  handleGraphCommand({
+                    type: 'filterNodes',
+                    targetGraphId: artifact.id,
+                    params: { 
+                      predicate: 'type',
+                      value: 'person'
+                    }
+                  });
+                }}
+              >
+                Filter Nodes
+              </button>
+            </div>
+            <div className="flex-1">
+              <KnowledgeGraphViewer 
+                data={artifact.content} 
+                artifactId={artifact.id}
+                showVersionControls={true}
+              />
+            </div>
           </div>
         );
       
