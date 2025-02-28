@@ -1,0 +1,30 @@
+{
+  "name": "medik-mcp",
+  "version": "1.0.0",
+  "description": "mediKanren MCP Server",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc -w",
+    "test": "mcp-cli run --server \"node dist/index.js\" --tool run-query --args '{\"e1\":\"Known->X\",\"e2\":\"biolink:treats\",\"e3\":\"MONDO:0005148\"}'"
+  },
+  "keywords": [
+    "mcp",
+    "medikanren"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.1.1",
+    "node-fetch": "^2.6.7",
+    "uuid": "^11.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@types/uuid": "^10.0.0",
+    "typescript": "~5.6.2"
+  }
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import sampleData from '../../data/sample-knowledge-graph.json';
+import sampleData from '../../data/medikanren-knowledge-graph.json';
 import { Artifact } from '../../types/artifacts';
 import { useChatStore } from '../../store/chatStore';
 
@@ -15,7 +15,7 @@ const KnowledgeGraphTestButton: React.FC = () => {
       id: uniqueId,
       artifactId: uniqueId,
       type: 'application/vnd.knowledge-graph',
-      title: 'Sample Knowledge Graph',
+      title: 'MediKanren Knowledge Graph',
       content: JSON.stringify(sampleData),
       position: 1
     };

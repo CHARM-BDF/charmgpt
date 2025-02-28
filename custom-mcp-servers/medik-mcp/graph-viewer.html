@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediKanren Knowledge Graph Viewer</title>
+    <script src="https://unpkg.com/force-graph@1.43.3/dist/force-graph.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        #container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+        #graph {
+            width: 100%;
+            height: 100%;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            z-index: 10;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+        p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .stat {
+            background-color: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="info">
+            <h1>MediKanren Knowledge Graph</h1>
+            <p>Gastrointestinal Stromal Tumor Treatment Relationships</p>
+            <div class="stats">
+                <div class="stat" id="node-count">Nodes: Loading...</div>
+                <div class="stat" id="link-count">Links: Loading...</div>
+            </div>
+        </div>
+        <div id="graph"></div>
+    </div>
+
+    <script>
+        // Load the knowledge graph data
+        fetch('./knowledge-graph-viewer.json')
+            .then(res => res.json())
+            .then(data => {
+                // Update stats
+                document.getElementById('node-count').textContent = `Nodes: ${data.nodes.length}`;
+                document.getElementById('link-count').textContent = `Links: ${data.links.length}`;
+                
+                // Prepare data for the graph
+                const graph = ForceGraph()
+                    .graphData(data)
+                    .nodeId('id')
+                    .nodeLabel(node => node.label || node.id)
+                    .nodeColor(node => {
+                        // Color nodes based on type
+                        if (node.category === 'drug') return '#4CAF50'; // Green for drugs
+                        if (node.category === 'disease') return '#F44336'; // Red for diseases
+                        return '#2196F3'; // Blue default
+                    })
+                    .nodeRelSize(6)
+                    .linkLabel(link => link.label || 'connects to')
+                    .linkDirectionalArrowLength(3.5)
+                    .linkDirectionalArrowRelPos(1)
+                    .linkCurvature(0.25)
+                    .onNodeHover(node => {
+                        // Change cursor on hover
+                        document.getElementById('graph').style.cursor = node ? 'pointer' : null;
+                    })
+                    .onNodeClick(node => {
+                        // Center view on node
+                        graph.centerAt(node.x, node.y, 1000);
+                        graph.zoom(2, 1000);
+                    })
+                    .linkWidth(link => 1)
+                    .linkColor(() => '#999')
+                    (document.getElementById('graph'));
+
+                // Add zoom controls
+                window.addEventListener('wheel', (event) => {
+                    if (event.ctrlKey || event.metaKey) {
+                        event.preventDefault();
+                        const delta = event.deltaY;
+                        graph.zoom(graph.zoom() * (1 - delta * 0.001), 0);
+                    }
+                }, { passive: false });
+            })
+            .catch(error => {
+                console.error("Error loading the knowledge graph data:", error);
+                document.getElementById('info').innerHTML += `<p style="color: red">Error loading data: ${error.message}</p>`;
+            });
+    </script>
+</body>
+</html> 

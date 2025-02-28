@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import KnowledgeGraphViewer from './KnowledgeGraphViewer';
-import sampleData from '../../data/sample-knowledge-graph.json';
+import sampleData from '../../data/medikanren-knowledge-graph.json';
 import { Artifact } from '../../types/artifacts';
 import { ArtifactContent } from './ArtifactContent';
 
