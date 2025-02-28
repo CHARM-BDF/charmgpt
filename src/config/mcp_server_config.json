@@ -68,6 +68,12 @@
       "args": [
         "./custom-mcp-servers/python-mcp/dist/index.js"
       ]
+    },
+    "graph": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/graphManipulate-mcp/dist/index.js"
+      ]
     }
   }
 }

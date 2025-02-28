@@ -2,16 +2,20 @@
 
 ## Overview
 
-This plan outlines the implementation of a versioned Knowledge Graph system that allows the MCP server to manipulate graphs over time across multiple chat interactions. We'll use an "Artifact References with Immutable Versions" approach that preserves each graph state as a separate artifact while maintaining relationships between versions.
+This plan outlines the implementation of a versioned Knowledge Graph system that allows the MCP server to manipulate graphs over time across multiple chat interactions. We use an "Artifact References with Immutable Versions" approach that preserves each graph state as a separate artifact while maintaining relationships between versions.
 
 ## Approach
 
-Rather than creating a completely new data structure, we'll extend the existing artifact system to:
+Rather than creating a completely new data structure, we've extended the existing artifact system to:
 
 1. Track relationships between graph versions
 2. Maintain version history
 3. Allow the MCP to update graphs based on previous versions
 4. Provide UI for navigating between versions
+
+## Implementation Status
+
+All core functionality has been successfully implemented and tested. The system is now operational and can be used for knowledge graph versioning and manipulation.
 
 ## Implementation Phases
 
@@ -46,7 +50,7 @@ Rather than creating a completely new data structure, we'll extend the existing 
 - [x] 4.4 Create command history tracking
 - [x] 4.5 Test MCP-initiated graph updates
 
-### Phase 5: Testing & Refinement ⬜️ → ✅
+### Phase 5: Testing & Refinement ✅
 
 - [x] 5.1 Create comprehensive test suite for graph versioning
 - [x] 5.2 Test performance with large graphs
@@ -54,389 +58,290 @@ Rather than creating a completely new data structure, we'll extend the existing 
 - [x] 5.4 Optimize for common update patterns
 - [x] 5.5 Document the implementation
 
-## Detailed Implementation Notes
+## Usage Guide
 
-### Testing Results (Added)
+### Creating a Knowledge Graph
 
-We've successfully tested the graph versioning system with the following results:
-
-1. **Command Execution**: All graph commands (groupByProperty, highlightNodes, filterNodes, resetView) work correctly
-2. **Version Creation**: Each command creates a new version with proper metadata
-3. **Navigation**: Users can navigate between versions using the UI controls
-4. **Persistence**: Graph versions are maintained correctly in the store
-5. **UI Integration**: The version controls display correctly and allow intuitive navigation
-
-### Lessons Learned (Added)
-
-1. **UI Integration**: Direct integration of test buttons in the context where they're used is more reliable than complex dropdown menus
-2. **Simplicity**: Minimal changes to achieve functionality is the best approach
-3. **Version Controls**: The version navigation UI is intuitive and works well
-
-### Future Enhancements (Added)
-
-1. **Version Comparison**: A side-by-side comparison view of different versions could be valuable
-2. **Advanced Transformations**: Additional graph transformations like path finding, clustering, etc.
-3. **Performance Optimization**: For very large graphs, consider implementing partial updates
-
-## Detailed Implementation Steps
-
-### Phase 1: Data Model Extensions
-
-#### 1.1 Extend the Artifact interface
+To create a new knowledge graph:
 
 ```typescript
-// In src/types/artifacts.ts
+const { addArtifact, selectArtifact } = useChatStore.getState();
 
-export interface Artifact {
-  id: string;
-  artifactId?: string;
-  type: ArtifactType;
-  title: string;
-  content: string;
-  position: number;
-  language?: string;
-  timestamp: Date;
-  
-  // New versioning fields
-  previousVersionId?: string;  // ID of the previous version
-  nextVersionId?: string;      // ID of the next version (if this isn't latest)
-  versionNumber?: number;      // Sequential version number (1-based)
-  versionLabel?: string;       // Optional descriptive label for this version
-  versionTimestamp?: Date;     // When this specific version was created
-  
-  // For graph artifacts specifically
-  graphMetadata?: {
-    nodeCount: number;
-    edgeCount: number;
-    lastCommand?: string;      // Description of command that created this version
-    commandParams?: Record<string, any>; // Parameters of the command
-  };
-}
+// Create a new graph artifact
+const artifactId = addArtifact({
+  id: crypto.randomUUID(),
+  artifactId: crypto.randomUUID(),
+  type: 'application/vnd.ant.knowledge-graph',
+  title: 'My Knowledge Graph',
+  content: JSON.stringify({
+    nodes: [
+      // Define your nodes here
+      { id: 'node1', name: 'Node 1', type: 'person' },
+      { id: 'node2', name: 'Node 2', type: 'company' },
+    ],
+    links: [
+      // Define your links here
+      { source: 'node1', target: 'node2', label: 'works_at' },
+    ]
+  }),
+  position: 0,
+  versionNumber: 1
+});
+
+// Select the artifact to display it
+selectArtifact(artifactId);
 ```
 
-#### 1.2 Update KnowledgeGraphData interface
+### Applying Graph Transformations
+
+To apply transformations to a graph:
 
 ```typescript
-// In src/components/artifacts/KnowledgeGraphViewer.tsx
+const { handleGraphCommand } = useMCPStore.getState();
 
-export interface KnowledgeGraphData {
-  nodes: KnowledgeGraphNode[];
-  links: KnowledgeGraphLink[];
-  
-  // Version tracking (optional, can also be stored in the artifact)
-  metadata?: {
-    version?: number;
-    previousVersion?: string;
-    commandHistory?: Array<{
-      command: string;
-      params: Record<string, any>;
-      timestamp: string;
-    }>;
-  };
-}
-```
+// Group nodes by a property
+await handleGraphCommand({
+  type: 'groupByProperty',
+  targetGraphId: artifactId,
+  params: { propertyName: 'type' }
+});
 
-### Phase 2: Store Functions
-
-#### 2.1 Create updateGraphArtifact function
-
-```typescript
-// Add to chatStore.ts
-
-updateGraphArtifact: (baseArtifactId: string, updates: {
-  nodes?: KnowledgeGraphNode[] | ((nodes: KnowledgeGraphNode[]) => KnowledgeGraphNode[]);
-  links?: KnowledgeGraphLink[] | ((links: KnowledgeGraphLink[]) => KnowledgeGraphLink[]);
-  commandDescription?: string;
-  commandParams?: Record<string, any>;
-  versionLabel?: string;
-}) => {
-  const state = get();
-  const baseArtifact = state.artifacts.find(a => a.id === baseArtifactId);
-  
-  if (!baseArtifact || baseArtifact.type !== 'knowledge-graph') {
-    console.error('updateGraphArtifact: Base artifact not found or not a knowledge graph');
-    return null;
+// Highlight specific nodes
+await handleGraphCommand({
+  type: 'highlightNodes',
+  targetGraphId: artifactId,
+  params: { 
+    nodeIds: ['node1', 'node2'],
+    color: '#ff0000'
   }
-  
-  try {
-    // Parse current content
-    const currentData = JSON.parse(baseArtifact.content) as KnowledgeGraphData;
-    
-    // Apply updates
-    const updatedNodes = typeof updates.nodes === 'function' 
-      ? updates.nodes(currentData.nodes)
-      : updates.nodes || currentData.nodes;
-      
-    const updatedLinks = typeof updates.links === 'function'
-      ? updates.links(currentData.links)
-      : updates.links || currentData.links;
-    
-    // Create new graph data
-    const newData: KnowledgeGraphData = {
-      nodes: updatedNodes,
-      links: updatedLinks,
-      metadata: {
-        version: (baseArtifact.versionNumber || 1) + 1,
-        previousVersion: baseArtifactId,
-        commandHistory: [
-          ...(currentData.metadata?.commandHistory || []),
-          {
-            command: updates.commandDescription || 'Update graph',
-            params: updates.commandParams || {},
-            timestamp: new Date().toISOString()
-          }
-        ]
+});
+
+// Filter nodes by a property
+await handleGraphCommand({
+  type: 'filterNodes',
+  targetGraphId: artifactId,
+  params: { 
+    predicate: 'type',
+    value: 'person'
+  }
+});
+
+// Reset view to original state
+await handleGraphCommand({
+  type: 'resetView',
+  targetGraphId: artifactId,
+  params: {}
+});
+```
+
+### Navigating Version History
+
+The version history navigation is handled automatically by the `KnowledgeGraphViewer` component when the `showVersionControls` prop is set to `true`:
+
+```typescript
+<KnowledgeGraphViewer 
+  data={artifact.content} 
+  artifactId={artifact.id}
+  showVersionControls={true}
+/>
+```
+
+Programmatically, you can navigate versions using:
+
+```typescript
+const { getGraphVersionHistory, selectArtifact } = useChatStore.getState();
+
+// Get all versions of a graph
+const versions = getGraphVersionHistory(artifactId);
+
+// Navigate to a specific version
+selectArtifact(versions[index].id);
+
+// Get the latest version
+const { getLatestGraphVersion } = useChatStore.getState();
+const latestVersion = getLatestGraphVersion(artifactId);
+selectArtifact(latestVersion.id);
+```
+
+## API Documentation
+
+### Store Functions
+
+#### `updateGraphArtifact`
+
+Creates a new version of a knowledge graph with specified updates.
+
+```typescript
+function updateGraphArtifact(
+  baseArtifactId: string, 
+  updates: {
+    nodes?: KnowledgeGraphNode[] | ((nodes: KnowledgeGraphNode[]) => KnowledgeGraphNode[]);
+    links?: KnowledgeGraphLink[] | ((links: KnowledgeGraphLink[]) => KnowledgeGraphLink[]);
+    commandDescription?: string;
+    commandParams?: Record<string, any>;
+    versionLabel?: string;
+  }
+): string | null
+```
+
+**Parameters:**
+- `baseArtifactId`: ID of the graph to update
+- `updates`: Object containing updates to apply
+  - `nodes`: New nodes array or function to transform existing nodes
+  - `links`: New links array or function to transform existing links
+  - `commandDescription`: Description of the update (for history)
+  - `commandParams`: Parameters used for the update
+  - `versionLabel`: Optional label for this version
+
+**Returns:** ID of the new artifact version, or null if update failed
+
+#### `getGraphVersionHistory`
+
+Retrieves the version history of a knowledge graph.
+
+```typescript
+function getGraphVersionHistory(artifactId: string): Artifact[]
+```
+
+**Parameters:**
+- `artifactId`: ID of any version of the graph
+
+**Returns:** Array of artifacts representing the version history, ordered from oldest to newest
+
+#### `getLatestGraphVersion`
+
+Gets the latest version of a knowledge graph.
+
+```typescript
+function getLatestGraphVersion(artifactId: string): Artifact | null
+```
+
+**Parameters:**
+- `artifactId`: ID of any version of the graph
+
+**Returns:** The latest version artifact, or null if not found
+
+### MCP Commands
+
+#### `handleGraphCommand`
+
+Processes a graph manipulation command.
+
+```typescript
+function handleGraphCommand(command: GraphCommand): Promise<boolean>
+```
+
+**Parameters:**
+- `command`: The command to execute
+  - `type`: Command type (e.g., 'groupByProperty', 'highlightNodes')
+  - `targetGraphId`: ID of the graph to manipulate
+  - `params`: Command-specific parameters
+
+**Returns:** Promise resolving to true if successful, false otherwise
+
+### Supported Command Types
+
+1. **groupByProperty**
+   - Groups nodes by a specified property
+   - Params: `{ propertyName: string }`
+
+2. **highlightNodes**
+   - Highlights specific nodes with a color
+   - Params: `{ nodeIds: string[], color?: string }`
+
+3. **filterNodes**
+   - Filters nodes based on a property value
+   - Params: `{ predicate: string, value: any }`
+
+4. **resetView**
+   - Resets node styling to default
+   - Params: `{}`
+
+## MCP Server Integration
+
+### Overview
+
+This section outlines how to implement knowledge graph manipulation through the MCP server instead of direct button interactions. This approach allows users to request graph operations using natural language, which is then processed by Claude and executed through the MCP server.
+
+### Architecture
+
+The flow for MCP-based graph manipulation is as follows:
+
+1. **User sends a message** to the server requesting a graph operation
+2. **Server processes the message** through Claude
+3. **Claude identifies the intent** to manipulate a knowledge graph
+4. **MCP tool is called** to perform the graph operation
+5. **Result is returned** to the client with updated graph data
+6. **Client store is updated** with the new graph version
+
+### MCP Tool Implementation
+
+To enable knowledge graph manipulation through the MCP server, implement a specialized tool:
+
+```typescript
+// Example MCP tool definition for knowledge graph operations
+const knowledgeGraphTool = {
+  name: "knowledge_graph_manipulator",
+  description: "Manipulate knowledge graphs by applying transformations like grouping, filtering, or highlighting",
+  input_schema: {
+    type: "object",
+    properties: {
+      operation: {
+        type: "string",
+        enum: ["groupByProperty", "filterNodes", "highlightNodes", "resetView"],
+        description: "The type of operation to perform on the graph"
+      },
+      targetGraphId: {
+        type: "string",
+        description: "ID of the graph artifact to manipulate"
+      },
+      params: {
+        type: "object",
+        description: "Parameters specific to the operation",
+        properties: {
+          propertyName: { type: "string" },
+          predicate: { type: "string" },
+          value: { type: "string" },
+          nodeIds: { type: "array", items: { type: "string" } },
+          color: { type: "string" }
+        }
       }
-    };
-    
-    // Create new artifact
-    const newArtifactId = crypto.randomUUID();
-    const versionNumber = (baseArtifact.versionNumber || 1) + 1;
-    
-    const newArtifact: Omit<Artifact, 'timestamp'> = {
-      id: newArtifactId,
-      type: 'knowledge-graph',
-      title: updates.versionLabel 
-        ? `${baseArtifact.title.split(' (v')[0]} - ${updates.versionLabel}`
-        : `${baseArtifact.title.split(' (v')[0]} (v${versionNumber})`,
-      content: JSON.stringify(newData),
-      position: baseArtifact.position,
-      language: baseArtifact.language,
-      previousVersionId: baseArtifactId,
-      versionNumber: versionNumber,
-      versionLabel: updates.versionLabel,
-      versionTimestamp: new Date(),
-      graphMetadata: {
-        nodeCount: updatedNodes.length,
-        edgeCount: updatedLinks.length,
-        lastCommand: updates.commandDescription,
-        commandParams: updates.commandParams
-      }
-    };
-    
-    // Add new artifact and update reference in previous version
-    set(state => ({
-      artifacts: [
-        ...state.artifacts.map(a => 
-          a.id === baseArtifactId ? { ...a, nextVersionId: newArtifactId } : a
-        ),
-        {...newArtifact, timestamp: new Date()}
-      ],
-      selectedArtifactId: newArtifactId
-    }));
-    
-    return newArtifactId;
-  } catch (error) {
-    console.error('updateGraphArtifact: Failed to update graph:', error);
-    return null;
+    },
+    required: ["operation", "targetGraphId"]
   }
-}
-```
-
-#### 2.2 Add getGraphVersionHistory helper function
-
-```typescript
-// Add to chatStore.ts
-
-getGraphVersionHistory: (artifactId: string) => {
-  const state = get();
-  const artifact = state.artifacts.find(a => a.id === artifactId);
-  
-  if (!artifact || artifact.type !== 'knowledge-graph') {
-    return [];
-  }
-  
-  // Find the root version
-  let rootArtifact = artifact;
-  while (rootArtifact.previousVersionId) {
-    const prev = state.artifacts.find(a => a.id === rootArtifact.previousVersionId);
-    if (!prev) break;
-    rootArtifact = prev;
-  }
-  
-  // Build the version chain
-  const history: Artifact[] = [rootArtifact];
-  let currentId = rootArtifact.nextVersionId;
-  
-  while (currentId) {
-    const next = state.artifacts.find(a => a.id === currentId);
-    if (!next) break;
-    history.push(next);
-    currentId = next.nextVersionId;
-  }
-  
-  return history;
-}
-```
-
-#### 2.3 Implement getLatestGraphVersion function
-
-```typescript
-// Add to chatStore.ts
-
-getLatestGraphVersion: (artifactId: string) => {
-  const state = get();
-  let artifact = state.artifacts.find(a => a.id === artifactId);
-  
-  if (!artifact || artifact.type !== 'knowledge-graph') {
-    return null;
-  }
-  
-  // Follow the chain to the latest version
-  while (artifact.nextVersionId) {
-    const next = state.artifacts.find(a => a.id === artifact.nextVersionId);
-    if (!next) break;
-    artifact = next;
-  }
-  
-  return artifact;
-}
-```
-
-### Phase 3: UI Components
-
-#### 3.1 Update KnowledgeGraphViewer to display version information
-
-```typescript
-// Modify KnowledgeGraphViewer.tsx to add version info
-
-interface KnowledgeGraphViewerProps {
-  data: string | KnowledgeGraphData;
-  width?: number;
-  height?: number;
-  artifactId?: string; // Add this to track the artifact
-  showVersionControls?: boolean; // Option to show/hide version controls
-}
-
-// Inside component, add:
-const { getGraphVersionHistory, getLatestGraphVersion, updateGraphArtifact } = useChatStore();
-
-// Add version navigation UI
-const VersionControls = () => {
-  if (!artifactId || !showVersionControls) return null;
-  
-  const versions = getGraphVersionHistory(artifactId);
-  const currentIndex = versions.findIndex(v => v.id === artifactId);
-  const isLatest = currentIndex === versions.length - 1;
-  
-  return (
-    <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
-      <span className="text-sm text-gray-600">
-        Version {currentIndex + 1} of {versions.length}
-      </span>
-      
-      <button 
-        disabled={currentIndex === 0}
-        className="px-2 py-1 bg-white rounded border disabled:opacity-50"
-        onClick={() => {
-          if (currentIndex > 0) {
-            selectArtifact(versions[currentIndex - 1].id);
-          }
-        }}
-      >
-        Previous
-      </button>
-      
-      <button
-        disabled={isLatest}
-        className="px-2 py-1 bg-white rounded border disabled:opacity-50"
-        onClick={() => {
-          if (!isLatest) {
-            selectArtifact(versions[currentIndex + 1].id);
-          }
-        }}
-      >
-        Next
-      </button>
-      
-      {!isLatest && (
-        <button
-          className="px-2 py-1 bg-blue-500 text-white rounded"
-          onClick={() => {
-            const latest = getLatestGraphVersion(artifactId);
-            if (latest) selectArtifact(latest.id);
-          }}
-        >
-          Latest
-        </button>
-      )}
-    </div>
-  );
 };
-
-// Add this to the return statement
-return (
-  <div className="flex flex-col w-full h-full">
-    {artifactId && showVersionControls && <VersionControls />}
-    <div ref={containerRef} className="w-full h-full min-h-[400px]">
-      {/* Existing ForceGraph2D component */}
-    </div>
-  </div>
-);
 ```
 
-### Phase 4: MCP Integration
+### Server-Side Processing
 
-#### 4.1 Define graph manipulation command protocol
-
-```typescript
-// New file: src/types/mcp-commands.ts
-
-export type GraphCommandType = 
-  | 'groupByProperty' 
-  | 'filterNodes' 
-  | 'highlightNodes'
-  | 'expandNode'
-  | 'collapseNode'
-  | 'focusSubgraph'
-  | 'resetView';
-
-export interface GraphCommand {
-  type: GraphCommandType;
-  targetGraphId: string;
-  params: Record<string, any>;
-}
-
-// Example commands:
-// {
-//   type: 'groupByProperty',
-//   targetGraphId: 'graph-123',
-//   params: { propertyName: 'category' }
-// }
-// 
-// {
-//   type: 'highlightNodes',
-//   targetGraphId: 'graph-123',
-//   params: { nodeIds: ['node1', 'node2'], color: '#ff0000' }
-// }
-```
-
-#### 4.2 Implement MCP command handler
+Add a handler for the knowledge graph tool in your server's chat route:
 
 ```typescript
-// Add to mcpStore.ts
-
-// Define handler for graph commands
-handleGraphCommand: async (command: GraphCommand) => {
-  const chatStore = useChatStore.getState();
-  const targetArtifact = chatStore.getLatestGraphVersion(command.targetGraphId);
+// Inside the tool processing section of chat.ts
+if (content.name === "knowledge_graph_manipulator") {
+  console.log('\n=== KNOWLEDGE GRAPH MANIPULATION ===');
+  console.log('Operation:', content.input.operation);
+  console.log('Target Graph ID:', content.input.targetGraphId);
+  
+  // Find the target artifact in the conversation history
+  const targetArtifact = findArtifactById(messages, content.input.targetGraphId);
   
   if (!targetArtifact) {
-    console.error('MCP: Target graph not found', command.targetGraphId);
-    return false;
+    return { content: [{ type: 'text', text: "Error: Target graph not found" }] };
   }
   
   try {
-    // Parse current graph data
-    const graphData = JSON.parse(targetArtifact.content) as KnowledgeGraphData;
+    // Parse the current graph data
+    const graphData = JSON.parse(targetArtifact.content);
+    let updatedNodes, updatedLinks;
     
-    // Handler functions for different command types
-    const handlers: Record<GraphCommandType, () => Promise<string | null>> = {
-      groupByProperty: async () => {
-        const { propertyName } = command.params;
+    // Apply the requested operation
+    switch (content.input.operation) {
+      case 'groupByProperty': {
+        const { propertyName } = content.input.params;
         
         // Get unique values for the property
-        const propertyValues = new Set<string>();
+        const propertyValues = new Set();
         graphData.nodes.forEach(node => {
           if (node[propertyName] !== undefined) {
             propertyValues.add(String(node[propertyName]));
@@ -447,132 +352,449 @@ handleGraphCommand: async (command: GraphCommand) => {
         const valueToGroup = Array.from(propertyValues).reduce((acc, val, index) => {
           acc[val] = index + 1;
           return acc;
-        }, {} as Record<string, number>);
+        }, {});
         
         // Update nodes with group information
-        const updatedNodes = graphData.nodes.map(node => ({
+        updatedNodes = graphData.nodes.map(node => ({
           ...node,
           group: node[propertyName] !== undefined ? 
             valueToGroup[String(node[propertyName])] : 0
         }));
         
-        return chatStore.updateGraphArtifact(targetArtifact.id, {
-          nodes: updatedNodes,
-          commandDescription: `Group nodes by ${propertyName}`,
-          commandParams: { propertyName },
-          versionLabel: `Grouped by ${propertyName}`
-        });
-      },
+        break;
+      }
       
-      filterNodes: async () => {
-        const { predicate, value } = command.params;
-        
-        // Filter nodes based on predicate
-        const updatedNodes = graphData.nodes.filter(node => 
-          node[predicate] === value
-        );
-        
-        // Only keep links between remaining nodes
-        const nodeIds = new Set(updatedNodes.map(n => n.id));
-        const updatedLinks = graphData.links.filter(link => 
-          nodeIds.has(link.source as string) && nodeIds.has(link.target as string)
-        );
-        
-        return chatStore.updateGraphArtifact(targetArtifact.id, {
-          nodes: updatedNodes,
-          links: updatedLinks,
-          commandDescription: `Filter nodes where ${predicate} = ${value}`,
-          commandParams: { predicate, value },
-          versionLabel: `Filtered by ${predicate}`
-        });
-      },
-      
-      // Implement other command handlers...
-      highlightNodes: async () => {
-        const { nodeIds, color = '#ff0000' } = command.params;
-        
-        // Highlight specified nodes
-        const updatedNodes = graphData.nodes.map(node => ({
-          ...node,
-          color: nodeIds.includes(node.id) ? color : node.color
-        }));
-        
-        return chatStore.updateGraphArtifact(targetArtifact.id, {
-          nodes: updatedNodes,
-          commandDescription: `Highlight nodes`,
-          commandParams: { nodeIds, color },
-          versionLabel: `Highlighted ${nodeIds.length} nodes`
-        });
-      },
-      
-      expandNode: async () => { 
-        /* Implementation */ 
-        return null;
-      },
-      collapseNode: async () => { 
-        /* Implementation */ 
-        return null;
-      },
-      focusSubgraph: async () => { 
-        /* Implementation */ 
-        return null;
-      },
-      resetView: async () => {
-        // Reset to original appearance but keep the same data
-        const updatedNodes = graphData.nodes.map(node => ({
-          ...node,
-          color: undefined,
-          group: undefined
-        }));
-        
-        return chatStore.updateGraphArtifact(targetArtifact.id, {
-          nodes: updatedNodes,
-          commandDescription: 'Reset view',
-          versionLabel: 'Reset view'
-        });
+      // Add other operation handlers...
+    }
+    
+    // Create a new version of the graph
+    const newGraph = {
+      ...graphData,
+      nodes: updatedNodes || graphData.nodes,
+      links: updatedLinks || graphData.links,
+      metadata: {
+        ...graphData.metadata,
+        version: (graphData.metadata?.version || 0) + 1,
+        previousVersion: targetArtifact.id,
+        commandHistory: [
+          ...(graphData.metadata?.commandHistory || []),
+          {
+            command: content.input.operation,
+            params: content.input.params,
+            timestamp: new Date().toISOString()
+          }
+        ]
       }
     };
     
-    // Execute the appropriate handler
-    if (handlers[command.type]) {
-      const newArtifactId = await handlers[command.type]();
-      return !!newArtifactId;
-    }
+    // Create a new artifact with the updated graph
+    const newArtifactId = crypto.randomUUID();
+    const newArtifact = {
+      id: newArtifactId,
+      artifactId: newArtifactId,
+      type: 'application/vnd.ant.knowledge-graph',
+      title: `${targetArtifact.title} (v${newGraph.metadata.version})`,
+      content: JSON.stringify(newGraph),
+      previousVersionId: targetArtifact.id,
+      versionNumber: newGraph.metadata.version,
+      versionLabel: `Applied ${content.input.operation}`,
+      versionTimestamp: new Date(),
+      graphMetadata: {
+        nodeCount: newGraph.nodes.length,
+        edgeCount: newGraph.links.length,
+        lastCommand: content.input.operation,
+        commandParams: content.input.params
+      }
+    };
     
-    return false;
+    // Add the new artifact to the response
+    return {
+      content: [{ 
+        type: 'text', 
+        text: `Successfully applied ${content.input.operation} to the knowledge graph.` 
+      }],
+      artifacts: [newArtifact]
+    };
   } catch (error) {
-    console.error('MCP: Error handling graph command:', error);
-    return false;
+    console.error('Error manipulating knowledge graph:', error);
+    return { 
+      content: [{ 
+        type: 'text', 
+        text: `Error manipulating knowledge graph: ${error.message}` 
+      }]
+    };
   }
 }
 ```
 
-## Testing Scenarios
+### Client-Side Integration
 
-- [ ] Create a new knowledge graph artifact
-- [ ] Apply several transformations in sequence
-- [ ] Navigate back and forth through version history
-- [ ] Jump to latest version
-- [ ] Test with large graphs (100+ nodes)
-- [ ] Verify persistence across page reloads
-- [ ] Test different command types
-- [ ] Verify UI correctly displays version information
-- [ ] Test error handling for invalid commands
+The client doesn't directly call store functions. Instead:
 
-## Completion Criteria
+1. **User sends a natural language request** like "Group the nodes in the knowledge graph by type"
+2. **Claude interprets this** and calls the `knowledge_graph_manipulator` tool
+3. **Server processes the request** and returns a new artifact
+4. **Client receives the response** with the new artifact
+5. **Chat store automatically updates** with the new artifact
 
-This implementation will be considered complete when:
+### Example User Interactions
 
-1. The MCP can successfully manipulate graphs through commands
-2. Users can navigate through the version history of a graph
-3. Each version is preserved as an immutable artifact
-4. The system maintains proper relationships between versions
-5. All test scenarios pass successfully
-6. Performance remains acceptable with large graphs
+Here are examples of natural language requests that can trigger graph operations:
 
-## Notes and Considerations
+1. **Grouping**: "Can you group the nodes in my knowledge graph by their type property?"
+2. **Filtering**: "Show me only the person nodes in the knowledge graph."
+3. **Highlighting**: "Highlight all the company nodes in red."
+4. **Resetting**: "Reset the knowledge graph to its original state."
 
-- This approach maintains each version as a complete copy, which is simple but may use more storage
-- Consider implementing compression for large graphs if needed
-- For very complex manipulations, consider implementing a more sophisticated diff/patch system
-- Monitor performance impact when dealing with large graphs and many versions 
+### Advantages of MCP Integration
+
+1. **Natural language interface** - Users can request graph operations in plain English
+2. **Consistent versioning** - All changes go through the same pipeline
+3. **Server-side processing** - Complex operations can be handled on the server
+4. **Integration with AI** - Claude can suggest appropriate operations based on context
+5. **Extensibility** - New operations can be added without client-side changes
+
+### Implementation Steps
+
+1. **Create the MCP Tool**: Define a knowledge graph manipulation tool in your MCP server
+2. **Update Server Processing**: Add handling for the tool in your chat.ts route
+3. **Update Client Prompts**: Ensure Claude knows how to use this tool
+4. **Test with Natural Language**: Try various graph manipulation requests
+
+### Prompt Engineering for Graph Operations
+
+To ensure Claude effectively recognizes and processes graph operation requests, include the following in your system prompt:
+
+```
+When the user asks to manipulate a knowledge graph:
+1. Identify the current graph artifact ID from the conversation context
+2. Determine the appropriate operation (groupByProperty, filterNodes, highlightNodes, resetView)
+3. Extract relevant parameters from the user's request
+4. Call the knowledge_graph_manipulator tool with the correct parameters
+5. Explain the changes made to the graph in your response
+
+Example operations:
+- Grouping: "Group nodes by [property]"
+- Filtering: "Show only nodes where [property] equals [value]"
+- Highlighting: "Highlight nodes with IDs [id1, id2, ...] in [color]"
+- Resetting: "Reset the graph view"
+```
+
+## Implementation Examples
+
+### Example 1: Creating and Manipulating a Knowledge Graph via MCP
+
+This example demonstrates how to create a knowledge graph and manipulate it through natural language requests processed by the MCP server:
+
+```typescript
+// Server-side MCP tool registration
+// In your MCP server setup code:
+
+const mcpServer = new MCPServer();
+
+// Register the knowledge graph manipulation tool
+mcpServer.registerTool({
+  name: "knowledge_graph_manipulator",
+  description: "Manipulate knowledge graphs by applying transformations like grouping, filtering, or highlighting",
+  input_schema: {
+    type: "object",
+    properties: {
+      operation: {
+        type: "string",
+        enum: ["groupByProperty", "filterNodes", "highlightNodes", "resetView"],
+        description: "The type of operation to perform on the graph"
+      },
+      targetGraphId: {
+        type: "string",
+        description: "ID of the graph artifact to manipulate"
+      },
+      params: {
+        type: "object",
+        description: "Parameters specific to the operation",
+        properties: {
+          propertyName: { type: "string" },
+          predicate: { type: "string" },
+          value: { type: "string" },
+          nodeIds: { type: "array", items: { type: "string" } },
+          color: { type: "string" }
+        }
+      }
+    },
+    required: ["operation", "targetGraphId"]
+  },
+  handler: async (input) => {
+    // Implementation as shown in the Server-Side Processing section
+    // ...
+  }
+});
+```
+
+### Example 2: Client-Side Integration with Chat Interface
+
+This example shows how to integrate the knowledge graph manipulation with a chat interface:
+
+```typescript
+import React, { useState, useEffect } from 'react';
+import { useChatStore } from '../../store/chatStore';
+import KnowledgeGraphViewer from '../components/artifacts/KnowledgeGraphViewer';
+
+const ChatWithGraphInterface: React.FC = () => {
+  const [message, setMessage] = useState('');
+  const { sendMessage, chatHistory, artifacts, selectedArtifactId, selectArtifact } = useChatStore();
+  
+  // Find the most recent knowledge graph artifact
+  const knowledgeGraphArtifact = artifacts
+    .filter(a => a.type === 'application/vnd.ant.knowledge-graph')
+    .sort((a, b) => (b.position || 0) - (a.position || 0))[0];
+  
+  // Handle sending a message
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    
+    // If the message is about manipulating the graph, include the graph ID in the message
+    // This helps Claude identify which graph to manipulate
+    let enhancedMessage = message;
+    if (
+      knowledgeGraphArtifact && 
+      (message.includes('graph') || message.includes('node') || message.includes('group'))
+    ) {
+      enhancedMessage = `${message} (referring to the knowledge graph with ID: ${knowledgeGraphArtifact.id})`;
+    }
+    
+    await sendMessage(enhancedMessage);
+    setMessage('');
+  };
+  
+  return (
+    <div className="flex flex-col h-screen">
+      {/* Chat history display */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {chatHistory.map((msg, i) => (
+          <div key={i} className={`mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+            <div className={`inline-block p-3 rounded-lg ${
+              msg.role === 'user' ? 'bg-blue-100' : 'bg-gray-100'
+            }`}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Knowledge graph display */}
+      {knowledgeGraphArtifact && (
+        <div className="border-t border-gray-200 h-1/2">
+          <KnowledgeGraphViewer 
+            data={knowledgeGraphArtifact.content}
+            artifactId={knowledgeGraphArtifact.id}
+            showVersionControls={true}
+          />
+        </div>
+      )}
+      
+      {/* Message input */}
+      <div className="border-t border-gray-200 p-4">
+        <div className="flex">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Ask about the graph or request changes..."
+            className="flex-1 p-2 border rounded-l"
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+          />
+          <button 
+            onClick={handleSendMessage}
+            className="bg-blue-500 text-white p-2 rounded-r"
+          >
+            Send
+          </button>
+        </div>
+        
+        {/* Example prompts */}
+        <div className="mt-2 text-sm text-gray-500">
+          <p>Try: "Group the nodes by type" or "Highlight the person nodes in red"</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ChatWithGraphInterface;
+```
+
+### Example 3: System Prompt for Graph Manipulation
+
+This example shows how to enhance the system prompt to handle knowledge graph operations:
+
+```typescript
+// In your systemPrompt.ts file
+
+export const systemPrompt = `
+You are an AI assistant that can help users analyze and manipulate knowledge graphs.
+
+${/* ... other system prompt content ... */}
+
+When the user asks to manipulate a knowledge graph:
+1. Identify the current graph artifact ID from the conversation context
+   - Look for graph IDs mentioned in the message
+   - If no ID is explicitly mentioned, use the most recently displayed graph
+   
+2. Determine the appropriate operation based on the user's request:
+   - groupByProperty: When the user wants to group or cluster nodes by a property
+   - filterNodes: When the user wants to show only certain nodes
+   - highlightNodes: When the user wants to emphasize specific nodes
+   - resetView: When the user wants to return to the original view
+   
+3. Extract relevant parameters from the user's request:
+   - For groupByProperty: Which property to group by (e.g., "type", "category")
+   - For filterNodes: Which property and value to filter on
+   - For highlightNodes: Which nodes to highlight and what color to use
+   
+4. Call the knowledge_graph_manipulator tool with the correct parameters
+   
+5. Explain the changes made to the graph in your response
+
+Example operations:
+- "Group nodes by type" → groupByProperty with propertyName="type"
+- "Show only person nodes" → filterNodes with predicate="type", value="person"
+- "Highlight nodes 1, 2, and 3 in red" → highlightNodes with nodeIds=["1","2","3"], color="#ff0000"
+- "Reset the graph view" → resetView
+`;
+```
+
+### Example 4: Handling Graph Operations in chat.ts
+
+This example shows how to implement the findArtifactById function used in the server-side processing:
+
+```typescript
+// In chat.ts or a utility file
+
+/**
+ * Finds an artifact by ID in the conversation history
+ */
+function findArtifactById(messages: ChatMessage[], artifactId: string): any {
+  // First check if any message has the artifact directly
+  for (const message of messages) {
+    if (message.role === 'assistant' && message.artifacts) {
+      const artifact = message.artifacts.find(a => a.id === artifactId);
+      if (artifact) return artifact;
+    }
+  }
+  
+  // Then check if any message has a knowledgeGraph property
+  // that might contain the artifact
+  for (const message of messages) {
+    if ((message as any).knowledgeGraph) {
+      // If the message has a knowledge graph, check if it's the one we're looking for
+      const graph = (message as any).knowledgeGraph;
+      if (graph.id === artifactId) return {
+        id: artifactId,
+        type: 'application/vnd.ant.knowledge-graph',
+        content: JSON.stringify(graph)
+      };
+    }
+  }
+  
+  // Finally check if any message has artifacts in its content
+  for (const message of messages) {
+    if (message.role === 'assistant' && Array.isArray(message.content)) {
+      for (const content of message.content) {
+        if (content.type === 'tool_use' && content.name === 'response_formatter') {
+          const formatterResponse = content.input;
+          if (formatterResponse.conversation) {
+            for (const item of formatterResponse.conversation) {
+              if (item.type === 'artifact' && item.artifact && item.artifact.id === artifactId) {
+                return item.artifact;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+```
+
+### Example 5: Testing the MCP Integration
+
+This example shows how to test the knowledge graph manipulation through the MCP:
+
+```typescript
+// In a test file
+
+import { MCPService } from '../services/mcp';
+import { MessageService } from '../services/message';
+
+describe('Knowledge Graph MCP Integration', () => {
+  let mcpService: MCPService;
+  let messageService: MessageService;
+  let testGraphId: string;
+  
+  beforeEach(() => {
+    mcpService = new MCPService();
+    messageService = new MessageService();
+    
+    // Create a test graph
+    const testGraph = {
+      nodes: [
+        { id: 'node1', name: 'Node 1', type: 'person' },
+        { id: 'node2', name: 'Node 2', type: 'company' },
+        { id: 'node3', name: 'Node 3', type: 'person' }
+      ],
+      links: [
+        { source: 'node1', target: 'node2', label: 'works_at' }
+      ]
+    };
+    
+    testGraphId = 'test-graph-id';
+    
+    // Mock the messages with the test graph
+    const messages = [
+      {
+        role: 'assistant',
+        artifacts: [
+          {
+            id: testGraphId,
+            type: 'application/vnd.ant.knowledge-graph',
+            content: JSON.stringify(testGraph)
+          }
+        ]
+      }
+    ];
+    
+    // Set up the test environment
+    mcpService.setMessages(messages);
+  });
+  
+  test('Group nodes by type', async () => {
+    const toolInput = {
+      operation: 'groupByProperty',
+      targetGraphId: testGraphId,
+      params: { propertyName: 'type' }
+    };
+    
+    const result = await mcpService.callTool('graph', 'knowledge_graph_manipulator', toolInput);
+    
+    expect(result).toBeDefined();
+    expect(result.artifacts).toHaveLength(1);
+    
+    const newGraph = JSON.parse(result.artifacts[0].content);
+    expect(newGraph.nodes).toHaveLength(3);
+    
+    // Check that nodes have been assigned groups
+    const personNodes = newGraph.nodes.filter(n => n.type === 'person');
+    expect(personNodes[0].group).toBe(personNodes[1].group);
+    
+    const companyNodes = newGraph.nodes.filter(n => n.type === 'company');
+    expect(companyNodes[0].group).not.toBe(personNodes[0].group);
+  });
+  
+  // Additional tests for other operations...
+});
+```
+
+## Integration Guide
+
+// ... existing code ... 

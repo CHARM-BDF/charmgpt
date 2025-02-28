@@ -25,7 +25,6 @@ export const ChatInterface: React.FC = () => {
   const [showTestingTools, setShowTestingTools] = useState(false);
   const storageService = useMemo(() => new APIStorageService(), []);
   // const { activeServer } = useMCPStore();
-
   console.log('ChatInterface: Rendering with showArtifactWindow:', showArtifactWindow);
   console.log('ChatInterface: Current artifacts:', artifacts);
 
