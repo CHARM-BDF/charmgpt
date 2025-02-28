@@ -9,6 +9,7 @@ A Model Context Protocol (MCP) server that interfaces with the mediKanren API, a
 - Generate knowledge graph artifacts for visualization
 - Format query results into human-readable text
 - Comprehensive error handling and logging
+- Interactive knowledge graph visualization
 
 ## Installation
 
@@ -114,6 +115,67 @@ The knowledge graph is formatted as a JSON object with the following structure:
   ]
 }
 ```
+
+## Knowledge Graph Generation and Visualization
+
+### Demo Script
+
+The repository includes a demo script (`demo.js`) that:
+
+1. Starts the mediKanren MCP server
+2. Sends a query for treatments of gastrointestinal stromal tumor (GIST)
+3. Extracts the knowledge graph artifact from the response
+4. Cleans the data by removing publication evidence for simplicity
+5. Saves the knowledge graph in two locations:
+   - `src/data/medikanren-knowledge-graph.json` (for integration with the React app)
+   - `knowledge-graph-viewer.json` (local copy for standalone viewer)
+
+To run the demo script:
+
+```bash
+# Build the server first
+npm run build
+
+# Run the demo script to generate the knowledge graph
+node --experimental-modules demo.js
+```
+
+### Visualization Components
+
+#### React Integration
+
+The project includes React components for integrating the knowledge graph visualization:
+
+1. **KnowledgeGraphViewer**: Core component for rendering the knowledge graph using Force Graph
+2. **KnowledgeGraphTestButton**: UI component that provides buttons to load either:
+   - The original sample knowledge graph data
+   - The mediKanren knowledge graph data (gastrointestinal stromal tumor treatments)
+3. **KnowledgeGraphTest**: Test page showing both knowledge graphs side by side
+
+The React components can be imported and used in your application:
+
+```jsx
+import KnowledgeGraphViewer from './components/artifacts/KnowledgeGraphViewer';
+import medikanrenData from './data/medikanren-knowledge-graph.json';
+
+function MyComponent() {
+  return (
+    <div className="h-[500px]">
+      <KnowledgeGraphViewer data={medikanrenData} />
+    </div>
+  );
+}
+```
+
+#### Standalone HTML Viewer
+
+For quick visualization without the React app, a standalone HTML file (`graph-viewer.html`) is provided that:
+
+1. Loads the knowledge graph data from `knowledge-graph-viewer.json`
+2. Renders an interactive visualization using Force Graph
+3. Displays basic statistics and information about the graph
+
+To use the standalone viewer, open `graph-viewer.html` in a web browser after generating the knowledge graph data.
 
 ## API Endpoints
 
