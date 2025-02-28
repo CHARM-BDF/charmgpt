@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import KnowledgeGraphTestButton from '../components/artifacts/KnowledgeGraphTestButton';
 import { useChatStore } from '../store/chatStore';
-import KnowledgeGraphViewer from '../components/artifacts/KnowledgeGraphViewer';
+import { KnowledgeGraphViewer } from '../components/artifacts/KnowledgeGraphViewer';
+import { ReagraphKnowledgeGraphViewer } from '../components/artifacts/ReagraphKnowledgeGraphViewer';
 
 const GraphTest: React.FC = () => {
   const { artifacts, selectedArtifactId } = useChatStore();
+  const [useReagraph, setUseReagraph] = useState(false);
   
   // Find the selected artifact
   const selectedArtifact = selectedArtifactId 
@@ -15,17 +17,33 @@ const GraphTest: React.FC = () => {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Knowledge Graph Versioning Test</h1>
       
-      <div className="mb-4">
+      <div className="mb-4 flex justify-between items-center">
         <KnowledgeGraphTestButton />
+        <button 
+          className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm font-medium transition-colors"
+          onClick={() => setUseReagraph(!useReagraph)}
+        >
+          {useReagraph ? 'Use Force Graph' : 'Use Reagraph'}
+        </button>
       </div>
       
       <div className="border rounded p-4 bg-gray-50 min-h-[600px]">
         {selectedArtifact && selectedArtifact.type === 'application/vnd.ant.knowledge-graph' ? (
-          <KnowledgeGraphViewer 
-            data={selectedArtifact.content}
-            artifactId={selectedArtifact.id}
-            showVersionControls={true}
-          />
+          useReagraph ? (
+            <div className="w-full h-full overflow-hidden">
+              <ReagraphKnowledgeGraphViewer 
+                data={selectedArtifact.content}
+                artifactId={selectedArtifact.id}
+                showVersionControls={true}
+              />
+            </div>
+          ) : (
+            <KnowledgeGraphViewer 
+              data={selectedArtifact.content}
+              artifactId={selectedArtifact.id}
+              showVersionControls={true}
+            />
+          )
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
             No graph selected. Use the test controls above to create and manipulate a graph.

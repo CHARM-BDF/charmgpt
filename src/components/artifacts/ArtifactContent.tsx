@@ -5,7 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import KnowledgeGraphViewer from './KnowledgeGraphViewer';
+import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
+import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import { useChatStore } from '../../store/chatStore';
 import { useMCPStore } from '../../store/mcpStore';
 
@@ -14,6 +15,7 @@ export const ArtifactContent: React.FC<{
 }> = ({ artifact }) => {
   const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [useReagraph, setUseReagraph] = useState(true);
   
   const sanitizeHTML = (content: string) => {
     return DOMPurify.sanitize(content, {
@@ -162,6 +164,12 @@ export const ArtifactContent: React.FC<{
                 Create Test Graph
               </button>
               <button 
+                className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm font-medium transition-colors"
+                onClick={() => setUseReagraph(!useReagraph)}
+              >
+                {useReagraph ? 'Use Force Graph' : 'Use Reagraph'}
+              </button>
+              <button 
                 className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition-colors"
                 onClick={() => {
                   const { handleGraphCommand } = useMCPStore.getState();
@@ -207,13 +215,20 @@ export const ArtifactContent: React.FC<{
                 Filter Nodes
               </button>
             </div>
-            <div className="flex-1">
+            {useReagraph ? (
+              <div className="w-full h-full overflow-hidden">
+                <ReagraphKnowledgeGraphViewer 
+                  data={artifact.content} 
+                  artifactId={artifact.id}
+                />
+              </div>
+            ) : (
               <KnowledgeGraphViewer 
                 data={artifact.content} 
                 artifactId={artifact.id}
                 showVersionControls={true}
               />
-            </div>
+            )}
           </div>
         );
       

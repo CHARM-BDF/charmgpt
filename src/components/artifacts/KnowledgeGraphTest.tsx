@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import KnowledgeGraphViewer from './KnowledgeGraphViewer';
+import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
+import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import originalSampleData from '../../data/sample-knowledge-graph.json';
 import medikanrenData from '../../data/medikanren-knowledge-graph.json';
 import { Artifact } from '../../types/artifacts';
@@ -13,6 +14,7 @@ const KnowledgeGraphTest: React.FC = () => {
     original: null,
     medikanren: null
   });
+  const [useReagraph, setUseReagraph] = useState(false);
 
   useEffect(() => {
     // Create a unique ID for the sample artifacts
@@ -54,11 +56,26 @@ const KnowledgeGraphTest: React.FC = () => {
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Knowledge Graph Test</h1>
       
+      <div className="mb-4 flex justify-end">
+        <button 
+          className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm font-medium transition-colors"
+          onClick={() => setUseReagraph(!useReagraph)}
+        >
+          {useReagraph ? 'Use Force Graph' : 'Use Reagraph'}
+        </button>
+      </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div>
           <h2 className="text-xl font-semibold mb-2">Original Sample Graph</h2>
           <div className="border border-gray-300 rounded-lg p-4 bg-white h-[400px]">
-            <KnowledgeGraphViewer data={originalSampleData} />
+            {useReagraph ? (
+              <div className="w-full h-full overflow-hidden">
+                <ReagraphKnowledgeGraphViewer data={originalSampleData} />
+              </div>
+            ) : (
+              <KnowledgeGraphViewer data={originalSampleData} />
+            )}
           </div>
           <div className="mt-2 text-sm text-gray-600">
             <p>Nodes: {originalSampleData.nodes.length}</p>
@@ -69,7 +86,13 @@ const KnowledgeGraphTest: React.FC = () => {
         <div>
           <h2 className="text-xl font-semibold mb-2">MediKanren Graph</h2>
           <div className="border border-gray-300 rounded-lg p-4 bg-white h-[400px]">
-            <KnowledgeGraphViewer data={medikanrenData} />
+            {useReagraph ? (
+              <div className="w-full h-full overflow-hidden">
+                <ReagraphKnowledgeGraphViewer data={medikanrenData} />
+              </div>
+            ) : (
+              <KnowledgeGraphViewer data={medikanrenData} />
+            )}
           </div>
           <div className="mt-2 text-sm text-gray-600">
             <p>Nodes: {medikanrenData.nodes.length}</p>

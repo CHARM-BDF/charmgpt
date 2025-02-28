@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import KnowledgeGraphViewer from '../../src/components/artifacts/KnowledgeGraphViewer';
+import { KnowledgeGraphViewer } from '../../src/components/artifacts/KnowledgeGraphViewer';
 
 // This component would be used in the main application to display the mediKanren knowledge graph
 const MediKanrenGraphViewer = () => {

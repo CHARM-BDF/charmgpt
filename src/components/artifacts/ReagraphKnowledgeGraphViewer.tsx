@@ -1,25 +1,25 @@
-import React, { useRef, useEffect, useState } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { GraphCanvas } from 'reagraph';
 import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
 
-interface KnowledgeGraphViewerProps {
+interface ReagraphKnowledgeGraphViewerProps {
   data: string | KnowledgeGraphData; // Accept either JSON string or parsed object
   width?: number;
   height?: number;
   artifactId?: string; // Add this to track the artifact
-  showVersionControls?: boolean; // Whether to show version controls
+  showVersionControls?: boolean; // Option to show/hide version controls
 }
 
-export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
-  data,
-  width = 800,
+export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewerProps> = ({ 
+  data, 
+  width = 800, 
   height = 600,
   artifactId,
-  showVersionControls = false
+  showVersionControls = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [graphData, setGraphData] = useState<KnowledgeGraphData | null>(null);
+  const [parsedData, setParsedData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width, height });
   const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact } = useChatStore();
@@ -28,29 +28,36 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
   useEffect(() => {
     try {
       if (typeof data === 'string') {
-        setGraphData(JSON.parse(data));
+        setParsedData(JSON.parse(data));
       } else {
-        setGraphData(data);
+        setParsedData(data);
       }
       setError(null);
     } catch (err) {
       console.error('Failed to parse knowledge graph data:', err);
       setError('Failed to parse knowledge graph data. Please check the format.');
-      setGraphData(null);
+      setParsedData(null);
     }
   }, [data]);
 
   // Adjust dimensions based on container size
   useEffect(() => {
     if (containerRef.current) {
-      const resizeObserver = new ResizeObserver(entries => {
-        for (const entry of entries) {
-          const { width, height } = entry.contentRect;
+      const updateDimensions = () => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect) {
           setDimensions({
-            width: width || 800,
-            height: height || 600
+            width: rect.width,
+            height: rect.height
           });
         }
+      };
+
+      // Initial update
+      updateDimensions();
+
+      const resizeObserver = new ResizeObserver(() => {
+        updateDimensions();
       });
 
       resizeObserver.observe(containerRef.current);
@@ -61,6 +68,35 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
       };
     }
   }, []);
+
+  // Transform data for Reagraph format
+  const graphData = useMemo(() => {
+    if (!parsedData) return { nodes: [], edges: [] };
+    
+    // Map nodes to Reagraph format
+    const nodes = parsedData.nodes.map(node => ({
+      id: node.id,
+      label: node.name,
+      data: { ...node },
+      // Use node.color if available, otherwise generate from group
+      color: node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4'),
+      // Use node.val for size if available
+      size: node.val || 1
+    }));
+    
+    // Map links to Reagraph edges format
+    const edges = parsedData.links.map(link => ({
+      id: `${link.source}->${link.target}${link.label ? `-${link.label}` : ''}`,
+      source: link.source,
+      target: link.target,
+      label: link.label || '',
+      data: { ...link },
+      color: link.color || '#999',
+      size: link.value || 1
+    }));
+    
+    return { nodes, edges };
+  }, [parsedData]);
 
   // Version navigation UI component
   const VersionControls = () => {
@@ -126,7 +162,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
     );
   }
 
-  if (!graphData) {
+  if (!parsedData) {
     return (
       <div className="p-4 bg-gray-50 text-gray-500 rounded-md border border-gray-300">
         Loading knowledge graph...
@@ -137,18 +173,14 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
   return (
     <div className="flex flex-col w-full h-full">
       {artifactId && showVersionControls && <VersionControls />}
-      <div ref={containerRef} className="w-full h-full min-h-[400px]">
-        <ForceGraph2D
-          graphData={graphData}
-          nodeLabel="name"
-          nodeColor={(node: KnowledgeGraphNode) => node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4')}
-          nodeVal={(node: KnowledgeGraphNode) => node.val || 1}
-          linkLabel="label"
-          linkColor={(link: KnowledgeGraphLink) => link.color || '#999'}
-          linkWidth={(link: KnowledgeGraphLink) => link.value || 1}
-          width={dimensions.width}
-          height={dimensions.height}
-          onNodeClick={(node: KnowledgeGraphNode) => {
+      <div ref={containerRef} className="w-full h-full flex-grow relative">
+        <GraphCanvas
+          nodes={graphData.nodes}
+          edges={graphData.edges}
+          layoutType="forceDirected2d"
+          draggable
+          labelType="all"
+          onNodeClick={(node) => {
             // You can add custom node click behavior here
             console.log('Node clicked:', node);
           }}
