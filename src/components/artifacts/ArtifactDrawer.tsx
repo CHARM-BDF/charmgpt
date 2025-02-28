@@ -13,6 +13,15 @@ const TypeIcon: React.FC<{ type: ArtifactType }> = ({ type }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
         </svg>
       );
+    case 'application/json':
+    case 'application/vnd.ant.json':
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4h14c1 0 2 1 2 2v12c0 1-1 2-2 2H5c-1 0-2-1-2-2V6c0-1 1-2 2-2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8l-2 4 2 4" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 8l2 4-2 4" />
+        </svg>
+      );
     case 'text/markdown':
     case 'text':
       return (

@@ -12,7 +12,9 @@ export type ArtifactType =
   | 'application/vnd.bibliography'
   | 'application/vnd.ant.python'
   | 'application/vnd.knowledge-graph'
-  | 'application/vnd.ant.knowledge-graph';
+  | 'application/vnd.ant.knowledge-graph'
+  | 'application/json'
+  | 'application/vnd.ant.json';
 
 export interface Artifact {
   id: string;           // Unique UUID for internal use

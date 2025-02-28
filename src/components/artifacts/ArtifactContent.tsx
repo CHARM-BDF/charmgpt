@@ -34,6 +34,9 @@ export const ArtifactContent: React.FC<{
         return 'javascript';
       case 'application/vnd.react':
         return 'jsx';
+      case 'application/json':
+      case 'application/vnd.ant.json':
+        return 'json';
       case 'code':
         return 'text';
       default:
@@ -167,12 +170,12 @@ export const ArtifactContent: React.FC<{
                 p: ({node, ...props}: any) => (
                   <p className="font-sans text-[15px] mb-3 leading-relaxed text-gray-700 dark:text-gray-300" {...props} />
                 ),
-                ul: ({node, ...props}: any) => (
-                  <ul className="font-sans list-disc pl-5 mb-3 space-y-1.5" {...props} />
-                ),
-                ol: ({ node, ordered, ...props }: any) => (
-                  <ol className="font-sans list-decimal pl-5 mb-3 space-y-1.5" {...props} />
-                ),
+                ul: ({node, ...props}: any) => {
+                  return <ul className="font-sans list-disc pl-5 mb-3 space-y-1.5" {...props} />;
+                },
+                ol: ({ node, ...props }: any) => {
+                  return <ol className="font-sans list-decimal pl-5 mb-3 space-y-1.5" {...props} />;
+                },
                 
                 li: ({node, checked, ordered, children, ...props}: any) => {
                   // Debug logging for li component props
@@ -189,7 +192,7 @@ export const ArtifactContent: React.FC<{
                   const { ordered: _, checked: __, node: ___, className: ____, ...cleanProps } = props;
                   
                   return (
-                    <li className="font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                    <li className="font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed" {...cleanProps}>
                       {children}
                     </li>
                   );
@@ -297,19 +300,80 @@ export const ArtifactContent: React.FC<{
           return <div className="prose max-w-none whitespace-pre-wrap">{typeof artifact.content === 'string' ? artifact.content : 'Invalid bibliography format'}</div>;
         }
 
-      default:
-        // Try to render as markdown first, fallback to pre-wrapped text
+      case 'application/json':
+      case 'application/vnd.ant.json':
         try {
+          // Try to parse and pretty-print the JSON
+          const jsonObj = typeof artifact.content === 'string' 
+            ? JSON.parse(artifact.content) 
+            : artifact.content;
+          
+          const prettyJson = JSON.stringify(jsonObj, null, 2);
+          
           return (
-            <div className="prose max-w-none dark:prose-invert">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {artifact.content}
-              </ReactMarkdown>
+            <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
+              <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
+                JSON
+              </div>
+              <div className="p-4">
+                <SyntaxHighlighter
+                  language="json"
+                  style={oneLight}
+                  customStyle={{ margin: 0, background: 'transparent' }}
+                >
+                  {prettyJson}
+                </SyntaxHighlighter>
+              </div>
             </div>
           );
-        } catch {
-          return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
+        } catch (error) {
+          console.error('Failed to parse JSON:', error);
+          // If JSON parsing fails, try to render as markdown or plain text
+          return renderFallbackContent(artifact.content);
         }
+
+      default:
+        return renderFallbackContent(artifact.content);
+    }
+  };
+
+  // Helper function to render content when the type is unknown or parsing fails
+  const renderFallbackContent = (content: string) => {
+    // First try to parse as JSON
+    try {
+      const jsonObj = JSON.parse(content);
+      const prettyJson = JSON.stringify(jsonObj, null, 2);
+      
+      return (
+        <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
+          <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
+            JSON (Auto-detected)
+          </div>
+          <div className="p-4">
+            <SyntaxHighlighter
+              language="json"
+              style={oneLight}
+              customStyle={{ margin: 0, background: 'transparent' }}
+            >
+              {prettyJson}
+            </SyntaxHighlighter>
+          </div>
+        </div>
+      );
+    } catch {
+      // Not valid JSON, try markdown
+      try {
+        return (
+          <div className="prose max-w-none dark:prose-invert">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content}
+            </ReactMarkdown>
+          </div>
+        );
+      } catch {
+        // Not valid markdown either, just show as plain text
+        return <div className="prose max-w-none whitespace-pre-wrap">{content}</div>;
+      }
     }
   };
 

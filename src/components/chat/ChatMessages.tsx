@@ -217,18 +217,26 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                         Debug Info
                       </button>
                       
-                      {/* Display bibliography link if available */}
+                      {/* Display artifact links based on type */}
                       {(() => {
                         const messageArtifacts = getMessageArtifacts(message);
+                        
+                        // Bibliography artifact
                         const bibliographyArtifact = messageArtifacts.find(
                           artifact => artifact.type === 'application/vnd.bibliography'
                         );
                         
-                        if (bibliographyArtifact) {
-                          return <BibliographyLinkLucide artifactId={bibliographyArtifact.id} />;
-                        }
+                        // JSON artifact
+                        const jsonArtifact = messageArtifacts.find(
+                          artifact => artifact.type === 'application/json' || artifact.type === 'application/vnd.ant.json'
+                        );
                         
-                        return null;
+                        return (
+                          <>
+                            {bibliographyArtifact && <BibliographyLinkLucide artifactId={bibliographyArtifact.id} />}
+                            {jsonArtifact && <JsonLinkLucide artifactId={jsonArtifact.id} />}
+                          </>
+                        );
                       })()}
                       
                       {/* {message.artifactId && (
@@ -286,6 +294,25 @@ export const BibliographyLinkLucide: React.FC<{ artifactId: string }> = ({ artif
     >
       <Library className="h-3.5 w-3.5" />
       <span>View Bibliography</span>
+    </button>
+  );
+};
+
+// JSON link component with Lucide
+export const JsonLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
+  const { selectArtifact } = useChatStore();
+  
+  return (
+    <button
+      onClick={() => selectArtifact(artifactId)}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40 transition-colors"
+    >
+      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4h14c1 0 2 1 2 2v12c0 1-1 2-2 2H5c-1 0-2-1-2-2V6c0-1 1-2 2-2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8l-2 4 2 4" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 8l2 4-2 4" />
+      </svg>
+      <span>View JSON</span>
     </button>
   );
 };

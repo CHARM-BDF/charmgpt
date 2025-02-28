@@ -8,10 +8,13 @@ const KnowledgeGraphTest: React.FC = () => {
   const [sampleArtifact, setSampleArtifact] = useState<Artifact | null>(null);
 
   useEffect(() => {
+    // Create a unique ID for the sample artifact
+    const uniqueId = `test-knowledge-graph-${crypto.randomUUID()}`;
+    
     // Create a sample artifact for testing
     const artifact: Artifact = {
-      id: 'test-knowledge-graph',
-      artifactId: 'test-knowledge-graph',
+      id: uniqueId,
+      artifactId: uniqueId,
       type: 'application/vnd.knowledge-graph',
       title: 'Sample Knowledge Graph',
       content: JSON.stringify(sampleData),

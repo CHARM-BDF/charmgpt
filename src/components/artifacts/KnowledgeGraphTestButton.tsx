@@ -7,10 +7,13 @@ const KnowledgeGraphTestButton: React.FC = () => {
   const { addArtifact, toggleArtifactWindow, showArtifactWindow } = useChatStore();
   
   const handleTestClick = () => {
+    // Create a unique ID for the test artifact
+    const uniqueId = `test-knowledge-graph-${crypto.randomUUID()}`;
+    
     // Create a test artifact
     const testArtifact: Omit<Artifact, 'timestamp'> = {
-      id: 'test-knowledge-graph',
-      artifactId: 'test-knowledge-graph',
+      id: uniqueId,
+      artifactId: uniqueId,
       type: 'application/vnd.knowledge-graph',
       title: 'Sample Knowledge Graph',
       content: JSON.stringify(sampleData),
