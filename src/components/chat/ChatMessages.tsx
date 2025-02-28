@@ -183,15 +183,17 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
 
   return (
     <div ref={containerRef} className="w-full max-w-3xl mx-auto px-4 pt-6">
-      {/* Debug button */}
-      <div className="flex justify-end mb-2">
-        <button
-          onClick={logAllArtifacts}
-          className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-700"
-        >
-          Debug Artifacts
-        </button>
-      </div>
+      {/* Debug button - only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={logAllArtifacts}
+            className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+          >
+            Debug Artifacts
+          </button>
+        </div>
+      )}
       
       <div className="w-full space-y-6">
         {messages.map((message) => {
@@ -275,80 +277,87 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                         )}
                       </div>
                     </div>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => {
-                          const messageArtifacts = getMessageArtifacts(message);
-                          console.log('Message Debug Data:', {
-                            message,
-                            content: message.content,
-                            thinking: messageWithThinking.thinking,
-                            artifacts: messageArtifacts.map(artifact => ({
-                              id: artifact.id,
-                              artifactId: artifact.artifactId,
-                              type: artifact.type,
-                              title: artifact.title,
-                              content: artifact.content,
-                              position: artifact.position,
-                              language: artifact.language
-                            }))
-                          });
-                        }}
-                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                      >
-                        Debug Info
-                      </button>
+                    
+                    {/* Display artifact links based on type */}
+                    {(() => {
+                      const messageArtifacts = getMessageArtifacts(message);
                       
-                      {/* Display artifact links based on type */}
-                      {(() => {
-                        const messageArtifacts = getMessageArtifacts(message);
-                        
-                        // Bibliography artifact
-                        const bibliographyArtifact = messageArtifacts.find(
-                          artifact => artifact.type === 'application/vnd.bibliography'
-                        );
-                        
-                        // Knowledge Graph artifact
-                        const knowledgeGraphArtifact = messageArtifacts.find(
-                          artifact => artifact.type === 'application/vnd.knowledge-graph'
-                        );
-                        
-                        // JSON artifact
-                        const jsonArtifact = messageArtifacts.find(
-                          artifact => artifact.type === 'application/json' || artifact.type === 'application/vnd.ant.json'
-                        );
-                        
-                        // Log found artifacts for debugging
-                        console.log(`Message ${message.id} artifacts:`, {
-                          total: messageArtifacts.length,
-                          artifactIds: messageArtifacts.map(a => a.id),
-                          types: messageArtifacts.map(a => a.type),
-                          hasBibliography: !!bibliographyArtifact,
-                          hasKnowledgeGraph: !!knowledgeGraphArtifact,
-                          hasJson: !!jsonArtifact,
-                          messageArtifactId: message.artifactId
-                        });
-                        
+                      // Bibliography artifact
+                      const bibliographyArtifact = messageArtifacts.find(
+                        artifact => artifact.type === 'application/vnd.bibliography'
+                      );
+                      
+                      // Knowledge Graph artifact
+                      const knowledgeGraphArtifact = messageArtifacts.find(
+                        artifact => artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph'
+                      );
+                      
+                      // JSON artifact
+                      const jsonArtifact = messageArtifacts.find(
+                        artifact => artifact.type === 'application/json' || artifact.type === 'application/vnd.ant.json'
+                      );
+                      
+                      // Log found artifacts for debugging
+                      console.log(`Message ${message.id} artifacts:`, {
+                        total: messageArtifacts.length,
+                        artifactIds: messageArtifacts.map(a => a.id),
+                        types: messageArtifacts.map(a => a.type),
+                        hasBibliography: !!bibliographyArtifact,
+                        hasKnowledgeGraph: !!knowledgeGraphArtifact,
+                        hasJson: !!jsonArtifact,
+                        messageArtifactId: message.artifactId
+                      });
+                      
+                      if (bibliographyArtifact || knowledgeGraphArtifact || jsonArtifact) {
                         return (
-                          <>
-                            {bibliographyArtifact && <BibliographyLinkLucide artifactId={bibliographyArtifact.id} />}
-                            {knowledgeGraphArtifact && <KnowledgeGraphLinkLucide artifactId={knowledgeGraphArtifact.id} />}
-                            {jsonArtifact && <JsonLinkLucide artifactId={jsonArtifact.id} />}
-                          </>
+                          <div className="flex flex-col gap-3">
+                            {bibliographyArtifact && (
+                              <div className="my-4">
+                                <BibliographyLinkLucide artifactId={bibliographyArtifact.id} />
+                              </div>
+                            )}
+                            {knowledgeGraphArtifact && (
+                              <div className="my-4">
+                                <KnowledgeGraphLinkLucide artifactId={knowledgeGraphArtifact.id} />
+                              </div>
+                            )}
+                            {jsonArtifact && (
+                              <div className="my-4">
+                                <JsonLinkLucide artifactId={jsonArtifact.id} />
+                              </div>
+                            )}
+                          </div>
                         );
-                      })()}
-                      
-                      {/* {message.artifactId && (
+                      }
+                      return null;
+                    })()}
+                    
+                    <div className="mt-2 flex gap-2">
+                      {/* Debug buttons - only show in development */}
+                      {process.env.NODE_ENV === 'development' && (
                         <button
                           onClick={() => {
-                            console.log('ChatMessages: View Artifact clicked with artifactId:', message.artifactId);
-                            selectArtifact(message.artifactId ?? null);
+                            const messageArtifacts = getMessageArtifacts(message);
+                            console.log('Message Debug Data:', {
+                              message,
+                              content: message.content,
+                              thinking: messageWithThinking.thinking,
+                              artifacts: messageArtifacts.map(artifact => ({
+                                id: artifact.id,
+                                artifactId: artifact.artifactId,
+                                type: artifact.type,
+                                title: artifact.title,
+                                content: artifact.content,
+                                position: artifact.position,
+                                language: artifact.language
+                              }))
+                            });
                           }}
-                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                          className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                         >
-                          View Artifact
+                          Debug Info
                         </button>
-                      )} */}
+                      )}
                     </div>
                   </>
                 ) : (
@@ -384,45 +393,90 @@ export const BibliographyLink: React.FC<{ artifactId: string }> = ({ artifactId 
 
 // Bibliography link component with Lucide
 export const BibliographyLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
-  const { selectArtifact } = useChatStore();
+  const { selectArtifact, artifacts } = useChatStore();
+  const artifact = artifacts.find(a => a.id === artifactId);
+  const title = artifact?.title || "Bibliography";
   
   return (
     <button
       onClick={() => selectArtifact(artifactId)}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40 transition-colors"
+      className="inline-flex items-center gap-3 px-3 py-2 
+                bg-blue-100 hover:bg-blue-200
+                text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40
+                rounded-lg border border-blue-200 dark:border-blue-800
+                shadow-[0_2px_4px_rgba(59,130,246,0.1)] hover:shadow-[0_4px_6px_rgba(59,130,246,0.15)]
+                transition-all duration-200
+                min-w-[50%] max-w-full"
+      data-artifact-id={artifactId}
+      data-artifact-type="application/vnd.bibliography"
     >
-      <Library className="h-3.5 w-3.5" />
-      <span>View Bibliography</span>
+      <div className="flex-shrink-0 p-2 border-r border-blue-200 dark:border-blue-800">
+        <Library className="w-6 h-6" />
+      </div>
+      <div className="flex flex-col items-start min-w-0">
+        <span className="text-sm font-medium truncate w-full">{title}</span>
+        <span className="text-xs text-blue-500 dark:text-blue-400">Click to open</span>
+      </div>
     </button>
   );
 };
 
 // Knowledge Graph link component with Lucide
 export const KnowledgeGraphLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
-  const { selectArtifact } = useChatStore();
+  const { selectArtifact, artifacts } = useChatStore();
+  const artifact = artifacts.find(a => a.id === artifactId);
+  const title = artifact?.title || "Knowledge Graph";
   
   return (
     <button
       onClick={() => selectArtifact(artifactId)}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-800/40 transition-colors"
+      className="inline-flex items-center gap-3 px-3 py-2 
+                bg-slate-200 hover:bg-slate-300
+                text-slate-700
+                rounded-lg border border-slate-300
+                shadow-[0_2px_4px_rgba(148,163,184,0.1)] hover:shadow-[0_4px_6px_rgba(148,163,184,0.15)]
+                transition-all duration-200
+                min-w-[50%] max-w-full"
+      data-artifact-id={artifactId}
+      data-artifact-type="application/vnd.knowledge-graph"
     >
-      <Network className="h-3.5 w-3.5" />
-      <span>View Knowledge Graph</span>
+      <div className="flex-shrink-0 p-2 border-r border-slate-300">
+        <Network className="w-6 h-6" />
+      </div>
+      <div className="flex flex-col items-start min-w-0">
+        <span className="text-sm font-medium truncate w-full">{title}</span>
+        <span className="text-xs text-slate-500">Click to open</span>
+      </div>
     </button>
   );
 };
 
 // JSON link component with Lucide
 export const JsonLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
-  const { selectArtifact } = useChatStore();
+  const { selectArtifact, artifacts } = useChatStore();
+  const artifact = artifacts.find(a => a.id === artifactId);
+  const title = artifact?.title || "JSON Data";
   
   return (
     <button
       onClick={() => selectArtifact(artifactId)}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-800/40 transition-colors"
+      className="inline-flex items-center gap-3 px-3 py-2 
+                bg-emerald-100 hover:bg-emerald-200
+                text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-800/40
+                rounded-lg border border-emerald-200 dark:border-emerald-800
+                shadow-[0_2px_4px_rgba(16,185,129,0.1)] hover:shadow-[0_4px_6px_rgba(16,185,129,0.15)]
+                transition-all duration-200
+                min-w-[50%] max-w-full"
+      data-artifact-id={artifactId}
+      data-artifact-type="application/json"
     >
-      <FileText className="h-3.5 w-3.5" />
-      <span>View JSON</span>
+      <div className="flex-shrink-0 p-2 border-r border-emerald-200 dark:border-emerald-800">
+        <FileText className="w-6 h-6" />
+      </div>
+      <div className="flex flex-col items-start min-w-0">
+        <span className="text-sm font-medium truncate w-full">{title}</span>
+        <span className="text-xs text-emerald-500 dark:text-emerald-400">Click to open</span>
+      </div>
     </button>
   );
 };
