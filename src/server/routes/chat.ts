@@ -2,9 +2,10 @@ import express, { Request, Response } from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { systemPrompt } from '../systemPrompt';
 import { MCPService } from '../services/mcp';
-import { MessageService, ChatMessage } from '../services/message';
+import { MessageService, ChatMessage, StoreFormat } from '../services/message';
 import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
+import { isValidKnowledgeGraph, KnowledgeGraph, mergeKnowledgeGraphs } from '../../utils/knowledgeGraphUtils';
 // import path from 'path';
 
 const router = express.Router();
@@ -132,6 +133,58 @@ router.post('/', async (req: Request<{}, {}, {
               }
             }
 
+            // Handle knowledge graph artifacts if present
+            if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
+              // Add this logging
+              console.log('\n=== CHECKING FOR KNOWLEDGE GRAPH ARTIFACTS ===');
+              console.log(`Tool has ${toolResult.artifacts.length} artifacts`);
+              toolResult.artifacts.forEach((a, i) => {
+                console.log(`Artifact ${i+1} type: ${a.type}`);
+              });
+              
+              // Find any knowledge graph artifacts in the response
+              const knowledgeGraphArtifact = toolResult.artifacts.find((a: any) => 
+                a.type === 'application/vnd.knowledge-graph' && typeof a.content === 'string'
+              );
+              
+              if (knowledgeGraphArtifact) {
+                console.log('\n=== KNOWLEDGE GRAPH DATA ===');
+                console.log(`Knowledge graph artifact found with title: ${knowledgeGraphArtifact.title || 'untitled'}`);
+                
+                try {
+                  // Parse the knowledge graph content from string to object
+                  const newGraph = JSON.parse(knowledgeGraphArtifact.content);
+                  
+                  // Validate the knowledge graph structure
+                  if (isValidKnowledgeGraph(newGraph)) {
+                    console.log(`Knowledge graph contains ${newGraph.nodes.length} nodes and ${newGraph.links.length} links`);
+                    
+                    // Check if knowledge graph exists and merge if it does
+                    if ((messages as any).knowledgeGraph) {
+                      console.log('Merging with existing knowledge graph...');
+                      
+                      // Merge the knowledge graphs
+                      const currentGraph = (messages as any).knowledgeGraph as KnowledgeGraph;
+                      const mergedGraph = mergeKnowledgeGraphs(currentGraph, newGraph);
+                      
+                      // Update the merged graph
+                      (messages as any).knowledgeGraph = mergedGraph;
+                      
+                      console.log(`Merged graph now contains ${mergedGraph.nodes.length} nodes and ${mergedGraph.links.length} links`);
+                    } else {
+                      // First knowledge graph, just set it
+                      console.log('Setting initial knowledge graph');
+                      (messages as any).knowledgeGraph = newGraph;
+                    }
+                  } else {
+                    console.error('Invalid knowledge graph structure in artifact');
+                  }
+                } catch (error) {
+                  console.error('Error processing knowledge graph:', error);
+                }
+              }
+            }
+
             // Handle binary output if present
             if ('binaryOutput' in toolResult && toolResult.binaryOutput) {
               console.log('\n=== BINARY OUTPUT DATA ===');
@@ -203,7 +256,8 @@ router.post('/', async (req: Request<{}, {}, {
                           "application/vnd.mermaid",
                           "text/html",
                           "application/vnd.react",
-                          "application/vnd.bibliography"
+                          "application/vnd.bibliography",
+                          "application/vnd.knowledge-graph"
                         ]
                       },
                       id: { type: "string" },
@@ -258,6 +312,33 @@ router.post('/', async (req: Request<{}, {}, {
       );
     }
 
+    // Add knowledge graph if present
+    if ((messages as any).knowledgeGraph) {
+      console.log('\n=== ADDING KNOWLEDGE GRAPH TO RESPONSE ===');
+      console.log(`Knowledge graph has ${(messages as any).knowledgeGraph.nodes.length} nodes and ${(messages as any).knowledgeGraph.links.length} links`);
+      
+      storeResponse = messageService.formatResponseWithKnowledgeGraph(
+        storeResponse, 
+        (messages as any).knowledgeGraph,
+        "Knowledge Graph"
+      );
+      
+      // Add this logging after formatting
+      console.log('Knowledge graph added to response');
+      if (storeResponse.artifacts) {
+        const kgArtifact = storeResponse.artifacts.find(a => a.type === 'application/vnd.knowledge-graph');
+        if (kgArtifact) {
+          console.log(`Knowledge graph artifact ID: ${kgArtifact.id}`);
+          console.log(`Knowledge graph artifact has artifactId: ${!!kgArtifact.artifactId}`);
+        } else {
+          console.log('WARNING: Knowledge graph artifact not found in response after formatting');
+        }
+      }
+    } else {
+      console.log('\n=== NO KNOWLEDGE GRAPH TO ADD ===');
+      console.log('messages.knowledgeGraph is not present');
+    }
+
     // Add binary outputs if present
     if ((messages as any).binaryOutputs) {
       const artifacts = storeResponse.artifacts || [];
@@ -274,6 +355,33 @@ router.post('/', async (req: Request<{}, {}, {
 
     // Log response
     loggingService.logResponse(res);
+
+    // Add this logging before processing tool results
+    console.log('\n=== TOOL RESULTS OVERVIEW ===');
+    console.log(`Tool results available: ${storeResponse.artifacts ? storeResponse.artifacts.length : 0}`);
+    if (storeResponse.artifacts && storeResponse.artifacts.length > 0) {
+      storeResponse.artifacts.forEach((artifact, index) => {
+        console.log(`Artifact ${index + 1}:`);
+        console.log(`- ID: ${artifact.id}`);
+        console.log(`- Type: ${artifact.type}`);
+        console.log(`- Title: ${artifact.title || 'untitled'}`);
+        console.log(`- Has artifactId: ${!!artifact.artifactId}`);
+      });
+    }
+
+    // Find where the final response is being prepared
+    // Add before returning the response:
+    console.log('\n=== FINAL RESPONSE ARTIFACTS ===');
+    if (storeResponse.artifacts) {
+      console.log(`Total artifacts: ${storeResponse.artifacts.length}`);
+      storeResponse.artifacts.forEach((artifact, index) => {
+        console.log(`Artifact ${index + 1}:`);
+        console.log(`- ID: ${artifact.id}`);
+        console.log(`- Type: ${artifact.type}`);
+        console.log(`- Title: ${artifact.title || 'untitled'}`);
+        console.log(`- Has artifactId: ${!!artifact.artifactId}`);
+      });
+    }
 
     // Send response
     res.json({ response: storeResponse });

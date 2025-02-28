@@ -52,9 +52,12 @@
         "./custom-mcp-servers/string-db-mcp/dist/index.js"
       ]
     },
-    "medikanren-api": {
-      "command": "npx",
-      "args": ["openapi-mcp-server", "./custom-mcp-servers/openapi-mcp-input/mediKanrenOpenAPI.yaml"]
+
+    "medik-mcp": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/medik-mcp/dist/index.js"
+      ]
     },
     "mondo-api": {
       "command": "npx",

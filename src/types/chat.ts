@@ -9,7 +9,8 @@ export interface Message {
 
 export interface MessageWithThinking extends Message {
   thinking?: string;
-  artifactId?: string;
+  artifactId?: string;  // Kept for backward compatibility
+  artifactIds?: string[]; // Array of all artifact IDs associated with this message
   isStreaming?: boolean;
 }
 

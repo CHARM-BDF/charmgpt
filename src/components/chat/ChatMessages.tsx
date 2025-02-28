@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MessageWithThinking } from '../../types/chat';
+import { Artifact } from '../../types/artifacts';
 import { useChatStore } from '../../store/chatStore';
 import { AssistantMarkdown } from './AssistantMarkdown';
 import { ClipboardIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
-import { BookOpen, FileText, GraduationCap, Library } from 'lucide-react';
+import { BookOpen, FileText, GraduationCap, Library, Network } from 'lucide-react';
 import BrainWaveCharm from '../animations/BrainWaveCharm';
 
 // Remove or set to a past date to enable copy buttons for all messages
@@ -17,31 +18,102 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   const [showThinkingMap, setShowThinkingMap] = useState<Record<string, boolean>>({});
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
+  // Debug function to log all artifacts
+  const logAllArtifacts = () => {
+    console.log("=== DEBUG: ALL ARTIFACTS ===");
+    console.log(`Total artifacts in store: ${artifacts.length}`);
+    
+    // Log each artifact with full details
+    artifacts.forEach((artifact, index) => {
+      console.log(`Artifact ${index + 1}:`);
+      console.log(`  ID: ${artifact.id}`);
+      console.log(`  ArtifactID: ${artifact.artifactId}`);
+      console.log(`  Type: ${artifact.type}`);
+      console.log(`  Title: ${artifact.title}`);
+      console.log(`  Position: ${artifact.position}`);
+      console.log(`  Timestamp: ${artifact.timestamp}`);
+      
+      // For knowledge graphs, log additional details
+      if (artifact.type === 'application/vnd.knowledge-graph') {
+        try {
+          const graphData = JSON.parse(artifact.content);
+          console.log(`  Knowledge Graph Details:`);
+          console.log(`    Nodes: ${graphData.nodes?.length || 0}`);
+          console.log(`    Links: ${graphData.links?.length || 0}`);
+        } catch (e) {
+          console.log(`  Error parsing knowledge graph content: ${e}`);
+        }
+      }
+    });
+    
+    // Log message-artifact associations
+    console.log("\n=== DEBUG: MESSAGE-ARTIFACT ASSOCIATIONS ===");
+    messages.forEach((message, index) => {
+      console.log(`Message ${index + 1} (ID: ${message.id}):`);
+      console.log(`  ArtifactID: ${message.artifactId || 'none'}`);
+      
+      // Get all artifacts for this message using our function
+      const messageArtifacts = getMessageArtifacts(message);
+      console.log(`  Total artifacts found by getMessageArtifacts: ${messageArtifacts.length}`);
+      messageArtifacts.forEach((artifact, i) => {
+        console.log(`  Artifact ${i + 1}: ${artifact.id} (${artifact.type})`);
+      });
+    });
+  };
+  
   // Function to get all artifacts associated with a message
   const getMessageArtifacts = (message: MessageWithThinking) => {
-    // Step 1: Get directly linked artifacts
-    const linkedArtifacts = message.artifactId ? 
-      artifacts.filter(a => a.id === message.artifactId) : [];
+    const result: Artifact[] = [];
+    
+    // Step 1: Get directly linked artifacts based on artifactId
+    console.log(`Step 1: Checking for linked artifacts for message ${message.id}`);
+    if (message.artifactId) {
+      const artifact = artifacts.find(a => a.id === message.artifactId);
+      if (artifact) {
+        console.log(`  Found linked artifact: ${artifact.id} (${artifact.type})`);
+        result.push(artifact);
+      }
+    }
+    
+    // Check for multiple artifacts using the new artifactIds property
+    if ((message as any).artifactIds && Array.isArray((message as any).artifactIds)) {
+      console.log(`  Message has artifactIds property with ${(message as any).artifactIds.length} artifacts`);
+      (message as any).artifactIds.forEach((id: string) => {
+        if (id !== message.artifactId) { // Avoid duplicates
+          const artifact = artifacts.find(a => a.id === id);
+          if (artifact) {
+            console.log(`  Found additional linked artifact: ${artifact.id} (${artifact.type})`);
+            result.push(artifact);
+          }
+        }
+      });
+    }
     
     // Step 2: Get artifacts that reference this message
-    const referencedArtifacts = artifacts.filter(a => a.artifactId === message.id);
+    console.log(`Step 2: Checking for artifacts that reference message ${message.id}`);
+    const referencingArtifacts = artifacts.filter(a => 
+      a.content.includes(message.id) && !result.some(r => r.id === a.id)
+    );
+    if (referencingArtifacts.length > 0) {
+      console.log(`  Found ${referencingArtifacts.length} artifacts referencing this message`);
+      result.push(...referencingArtifacts);
+    }
     
-    // Step 3: Get artifacts referenced in message content via buttons
-    const contentReferencedArtifacts = (() => {
-      // Extract artifact IDs from button data attributes in content
-      const artifactIdRegex = /data-artifact-id="([^"]+)"/g;
-      const matches = [...message.content.matchAll(artifactIdRegex)];
-      const contentArtifactIds = matches.map(match => match[1]);
-      
-      // Get artifacts with these IDs
-      return artifacts.filter(a => contentArtifactIds.includes(a.id));
-    })();
+    // Step 3: Extract artifact IDs from message content (buttons)
+    console.log(`Step 3: Checking for artifacts referenced in message content`);
+    const buttonMatches = message.content.match(/data-artifact-id="([^"]+)"/g) || [];
+    buttonMatches.forEach(match => {
+      const artifactId = match.replace('data-artifact-id="', '').replace('"', '');
+      const artifact = artifacts.find(a => a.id === artifactId);
+      if (artifact && !result.some(r => r.id === artifact.id)) {
+        console.log(`  Found artifact referenced in content: ${artifact.id} (${artifact.type})`);
+        result.push(artifact);
+      }
+    });
     
-    // Step 4: Combine all unique artifacts and sort by position
-    const allArtifacts = [...new Set([...linkedArtifacts, ...referencedArtifacts, ...contentReferencedArtifacts])]
-      .sort((a, b) => a.position - b.position);
-    
-    return allArtifacts;
+    // Log final result
+    console.log(`Found ${result.length} total artifacts for message ${message.id}`);
+    return result;
   };
 
   // Log messages when they change
@@ -111,6 +183,16 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
 
   return (
     <div ref={containerRef} className="w-full max-w-3xl mx-auto px-4 pt-6">
+      {/* Debug button */}
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={logAllArtifacts}
+          className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-700"
+        >
+          Debug Artifacts
+        </button>
+      </div>
+      
       <div className="w-full space-y-6">
         {messages.map((message) => {
           const messageWithThinking = message as MessageWithThinking;
@@ -226,14 +308,31 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                           artifact => artifact.type === 'application/vnd.bibliography'
                         );
                         
+                        // Knowledge Graph artifact
+                        const knowledgeGraphArtifact = messageArtifacts.find(
+                          artifact => artifact.type === 'application/vnd.knowledge-graph'
+                        );
+                        
                         // JSON artifact
                         const jsonArtifact = messageArtifacts.find(
                           artifact => artifact.type === 'application/json' || artifact.type === 'application/vnd.ant.json'
                         );
                         
+                        // Log found artifacts for debugging
+                        console.log(`Message ${message.id} artifacts:`, {
+                          total: messageArtifacts.length,
+                          artifactIds: messageArtifacts.map(a => a.id),
+                          types: messageArtifacts.map(a => a.type),
+                          hasBibliography: !!bibliographyArtifact,
+                          hasKnowledgeGraph: !!knowledgeGraphArtifact,
+                          hasJson: !!jsonArtifact,
+                          messageArtifactId: message.artifactId
+                        });
+                        
                         return (
                           <>
                             {bibliographyArtifact && <BibliographyLinkLucide artifactId={bibliographyArtifact.id} />}
+                            {knowledgeGraphArtifact && <KnowledgeGraphLinkLucide artifactId={knowledgeGraphArtifact.id} />}
                             {jsonArtifact && <JsonLinkLucide artifactId={jsonArtifact.id} />}
                           </>
                         );
@@ -298,6 +397,21 @@ export const BibliographyLinkLucide: React.FC<{ artifactId: string }> = ({ artif
   );
 };
 
+// Knowledge Graph link component with Lucide
+export const KnowledgeGraphLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
+  const { selectArtifact } = useChatStore();
+  
+  return (
+    <button
+      onClick={() => selectArtifact(artifactId)}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-800/40 transition-colors"
+    >
+      <Network className="h-3.5 w-3.5" />
+      <span>View Knowledge Graph</span>
+    </button>
+  );
+};
+
 // JSON link component with Lucide
 export const JsonLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
   const { selectArtifact } = useChatStore();
@@ -305,13 +419,9 @@ export const JsonLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId })
   return (
     <button
       onClick={() => selectArtifact(artifactId)}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40 transition-colors"
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-800/40 transition-colors"
     >
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4h14c1 0 2 1 2 2v12c0 1-1 2-2 2H5c-1 0-2-1-2-2V6c0-1 1-2 2-2z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8l-2 4 2 4" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 8l2 4-2 4" />
-      </svg>
+      <FileText className="h-3.5 w-3.5" />
       <span>View JSON</span>
     </button>
   );

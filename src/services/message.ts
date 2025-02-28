@@ -1,5 +1,7 @@
 import { Message, MessageWithThinking, ConversationItem } from '../types/chat';
 import { Artifact } from '../types/artifacts';
+import { v4 as uuidv4 } from 'uuid';
+import { KnowledgeGraph } from '../utils/knowledgeGraphUtils';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -30,6 +32,20 @@ export interface ToolResponse {
   };
 }
 
+export interface StoreResponse {
+  thinking?: string;
+  conversation: string;
+  artifacts?: Array<{
+    id: string;
+    artifactId?: string;
+    type: string;
+    title: string;
+    content: string;
+    position: number;
+    language?: string;
+  }>;
+}
+
 export class MessageService {
   convertChatMessages(messages: ChatMessage[]): { role: string; content: string | { type: "text"; text: string }[] }[] {
     return messages.map(m => {
@@ -42,19 +58,7 @@ export class MessageService {
     });
   }
 
-  convertToStoreFormat(toolResponse: ToolResponse): {
-    thinking?: string;
-    conversation: string;
-    artifacts?: Array<{
-      id: string;
-      artifactId?: string;
-      type: string;
-      title: string;
-      content: string;
-      position: number;
-      language?: string;
-    }>;
-  } {
+  convertToStoreFormat(toolResponse: ToolResponse): StoreResponse {
     const conversation: string[] = [];
     const artifacts: Array<any> = [];
     let position = 0;
@@ -126,20 +130,6 @@ export class MessageService {
     };
   }
 
-  formatResponseWithBibliography(response: any, bibliography: any[]): any {
-    const bibliographyId = crypto.randomUUID();
-    response.artifacts = response.artifacts || [];
-    response.artifacts.push({
-      id: bibliographyId,
-      artifactId: bibliographyId,
-      type: "application/vnd.bibliography",
-      title: "Article References",
-      content: JSON.stringify(bibliography),
-      position: response.artifacts.length
-    });
-    return response;
-  }
-
   private validateArtifactType(type: string): string {
     const validTypes = [
       'code',
@@ -153,7 +143,8 @@ export class MessageService {
       'application/javascript',
       'application/vnd.react',
       'application/vnd.bibliography',
-      'application/vnd.ant.python'
+      'application/vnd.ant.python',
+      'application/vnd.knowledge-graph'
     ];
 
     // Handle application/vnd.ant.code type
@@ -171,6 +162,11 @@ export class MessageService {
       return 'image/png';
     }
 
+    // Handle knowledge graph type
+    if (type === 'application/vnd.knowledge-graph') {
+      return 'application/vnd.knowledge-graph';
+    }
+
     // If no type is specified or type is 'text', default to text/markdown
     if (!type || type === 'text') {
       return 'text/markdown';
@@ -184,5 +180,73 @@ export class MessageService {
 
     // Default to text/markdown for unknown types
     return 'text/markdown';
+  }
+
+  /**
+   * Formats a response with bibliography data by adding it as an artifact
+   * 
+   * @param response - The current response object
+   * @param bibliography - The bibliography data to add
+   * @returns The updated response with bibliography artifact
+   */
+  public formatResponseWithBibliography(
+    response: StoreResponse, 
+    bibliography: any[]
+  ): StoreResponse {
+    // Generate a unique ID for the bibliography
+    const bibliographyId = `bib-${uuidv4()}`;
+    
+    // Add bibliography to artifacts
+    const artifacts = response.artifacts || [];
+    
+    artifacts.push({
+      id: bibliographyId,
+      artifactId: bibliographyId,
+      type: 'application/vnd.bibliography',
+      title: 'Bibliography',
+      content: JSON.stringify(bibliography),
+      position: artifacts.length
+    });
+    
+    // Return updated response
+    return {
+      ...response,
+      artifacts
+    };
+  }
+
+  /**
+   * Formats a response with knowledge graph data by adding it as an artifact
+   * 
+   * @param response - The current response object
+   * @param knowledgeGraph - The knowledge graph data to add
+   * @param title - Optional title for the knowledge graph
+   * @returns The updated response with knowledge graph artifact
+   */
+  public formatResponseWithKnowledgeGraph(
+    response: StoreResponse,
+    knowledgeGraph: KnowledgeGraph,
+    title: string = 'Knowledge Graph'
+  ): StoreResponse {
+    // Generate a unique ID for the knowledge graph
+    const graphId = `kg-${uuidv4()}`;
+    
+    // Add knowledge graph to artifacts
+    const artifacts = response.artifacts || [];
+    
+    artifacts.push({
+      id: graphId,
+      artifactId: graphId,
+      type: 'application/vnd.knowledge-graph',
+      title: title,
+      content: JSON.stringify(knowledgeGraph),
+      position: artifacts.length
+    });
+    
+    // Return updated response
+    return {
+      ...response,
+      artifacts
+    };
   }
 } 

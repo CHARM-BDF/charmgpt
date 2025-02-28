@@ -185,4 +185,41 @@ export class MessageService {
       artifacts
     };
   }
+
+  /**
+   * Format final response with knowledge graph
+   */
+  formatResponseWithKnowledgeGraph(storeResponse: StoreFormat, knowledgeGraph?: any, title: string = "Knowledge Graph"): StoreFormat {
+    console.log('\n=== FORMAT RESPONSE WITH KNOWLEDGE GRAPH ===');
+    
+    if (!knowledgeGraph) {
+      console.log('No knowledge graph provided, returning original response');
+      return storeResponse;
+    }
+
+    console.log(`Knowledge graph has ${knowledgeGraph.nodes?.length || 0} nodes and ${knowledgeGraph.links?.length || 0} links`);
+    
+    const graphId = crypto.randomUUID();
+    console.log(`Generated knowledge graph artifact ID: ${graphId}`);
+    
+    const artifacts = storeResponse.artifacts || [];
+    console.log(`Current artifacts count: ${artifacts.length}`);
+    
+    artifacts.push({
+      id: graphId,
+      artifactId: graphId,
+      type: "application/vnd.knowledge-graph",
+      title: title,
+      content: JSON.stringify(knowledgeGraph),
+      position: artifacts.length
+    });
+
+    console.log(`New artifacts count: ${artifacts.length}`);
+    console.log(`Knowledge graph artifact added at position: ${artifacts.length - 1}`);
+
+    return {
+      ...storeResponse,
+      artifacts
+    };
+  }
 } 

@@ -408,6 +408,13 @@ export const useChatStore = create<ChatState>()(
               position: number;
               language?: string;
             }) => {
+              console.log('ChatStore: Processing artifact:', {
+                id: artifact.id,
+                artifactId: artifact.artifactId,
+                type: artifact.type,
+                title: artifact.title
+              });
+              
               return get().addArtifact({
                 id: artifact.id,
                 artifactId: artifact.artifactId,
@@ -418,6 +425,12 @@ export const useChatStore = create<ChatState>()(
                 language: artifact.language
               });
             }) || [];
+            
+            console.log('ChatStore: Processed all artifacts:', {
+              count: artifactIds.length,
+              ids: artifactIds,
+              messageId: assistantMessageId
+            });
 
             // Update final message state with artifact reference
             set(state => {
@@ -428,10 +441,18 @@ export const useChatStore = create<ChatState>()(
                     ...msg,
                     content: fullContent,
                     thinking: storeResponse.thinking,
-                    artifactId: artifactIds[0]
+                    artifactId: artifactIds[0],
+                    artifactIds: artifactIds.length > 0 ? artifactIds : undefined
                   } : msg
                 )
               };
+              
+              console.log('ChatStore: Updated message with artifact references:', {
+                messageId: assistantMessageId,
+                primaryArtifactId: artifactIds[0],
+                allArtifactIds: artifactIds,
+                totalArtifacts: artifactIds.length
+              });
 
               return {
                 messages: updatedConversation.messages,
