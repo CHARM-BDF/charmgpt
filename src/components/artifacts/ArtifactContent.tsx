@@ -56,6 +56,38 @@ export const ArtifactContent: React.FC<{
 
   const renderContent = () => {
     if (viewMode === 'source') {
+      // For knowledge graph artifacts, format as JSON with syntax highlighting
+      if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
+        try {
+          // Parse and pretty-print the JSON
+          const jsonObj = typeof artifact.content === 'string' 
+            ? JSON.parse(artifact.content) 
+            : artifact.content;
+          
+          const prettyJson = JSON.stringify(jsonObj, null, 2);
+          
+          return (
+            <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
+              <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
+                Knowledge Graph JSON
+              </div>
+              <div className="p-4">
+                <SyntaxHighlighter
+                  language="json"
+                  style={oneLight}
+                  customStyle={{ margin: 0, background: 'transparent' }}
+                >
+                  {prettyJson}
+                </SyntaxHighlighter>
+              </div>
+            </div>
+          );
+        } catch (error) {
+          console.error('Failed to parse knowledge graph JSON:', error);
+        }
+      }
+      
+      // Default source view for other types
       return (
         <div className="relative w-full min-w-0 overflow-x-auto">
           <pre className="w-max bg-gray-50 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-md">
