@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
+import { Pin, PinOff } from 'lucide-react';
 
 interface KnowledgeGraphViewerProps {
   data: string | KnowledgeGraphData; // Accept either JSON string or parsed object
@@ -22,7 +23,8 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
   const [graphData, setGraphData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width, height });
-  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact } = useChatStore();
+  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, pinnedGraphId } = useChatStore();
+  const isPinned = artifactId ? pinnedGraphId === artifactId : false;
 
   // Parse the data if it's a string
   useEffect(() => {
@@ -136,7 +138,32 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
 
   return (
     <div className="flex flex-col w-full h-full">
-      {artifactId && showVersionControls && <VersionControls />}
+      {artifactId && (
+        <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-800 rounded mb-2">
+          <div className="flex items-center space-x-2">
+            {showVersionControls && <VersionControls />}
+          </div>
+          
+          {/* If not showing version controls, still show pin button */}
+          {!showVersionControls && (
+            <button
+              onClick={() => {
+                if (artifactId) {
+                  setPinnedGraphId(isPinned ? null : artifactId);
+                }
+              }}
+              className={`p-2 rounded-full ${
+                isPinned 
+                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+              }`}
+              title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
+            >
+              {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+            </button>
+          )}
+        </div>
+      )}
       <div ref={containerRef} className="w-full h-full min-h-[400px]">
         <ForceGraph2D
           graphData={graphData}

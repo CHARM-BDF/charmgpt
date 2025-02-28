@@ -13,6 +13,7 @@ This document provides an overview of the knowledge graph visualization implemen
 7. [Usage Examples](#usage-examples)
 8. [Integration Points](#integration-points)
 9. [Troubleshooting](#troubleshooting)
+10. [Pinned Graph Feature](#pinned-graph-feature)
 
 ## Overview
 
@@ -372,3 +373,54 @@ Potential improvements to consider:
    - Allow natural language commands for graph manipulation
    - Implement automatic graph analysis
    - Support for AI-generated graph suggestions 
+
+## Pinned Graph Feature
+
+The knowledge graph visualization system includes a "pin" feature that allows users to attach a specific graph to their messages. This ensures the graph is included as context for the AI when generating responses.
+
+### How Pinning Works
+
+1. **Pin Button**: Each knowledge graph artifact has a pin button in the header, to the left of the "View Source" button. The pin button toggles between pinned (blue) and unpinned (gray) states.
+
+2. **Visual Indication**: When a graph is pinned, the pin icon changes to a "pin off" icon with a blue background, indicating that the graph is currently pinned.
+
+3. **Data Flow**: 
+   - When a graph is pinned, its ID is stored in the `pinnedGraphId` state in the chat store.
+   - When sending a message, the pinned graph is included in the request to the server.
+   - The server adds the graph data as context for the AI model.
+
+### Implementation Details
+
+The pinned graph feature is implemented across several components:
+
+1. **Chat Store**: 
+   ```typescript
+   // State
+   pinnedGraphId: string | null;
+   
+   // Function
+   setPinnedGraphId: (id: string | null) => void;
+   ```
+
+2. **Graph Viewers**: Both `KnowledgeGraphViewer` and `ReagraphKnowledgeGraphViewer` components include pin buttons that toggle the pinned state.
+
+3. **ArtifactContent**: The main artifact viewer includes a pin button in the header for knowledge graph artifacts.
+
+4. **Server Integration**: The server processes the pinned graph and includes it as context for the AI model.
+
+### Usage Example
+
+```typescript
+// Pin a graph
+const { setPinnedGraphId } = useChatStore();
+setPinnedGraphId('graph-123');
+
+// Unpin a graph
+setPinnedGraphId(null);
+```
+
+### Benefits
+
+- **Contextual Continuity**: Ensures the AI has access to the graph data across multiple messages.
+- **Reference Preservation**: Maintains reference to important graph data without needing to reupload.
+- **Focused Conversations**: Allows conversations to center around a specific knowledge structure. 

@@ -1,39 +1,55 @@
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+    CallToolRequestSchema,
+    ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { v4 as uuidv4 } from 'uuid';
+
+// Add startup timestamp
+console.error(`GraphManipulate MCP Server starting at ${new Date().toISOString()}`);
+
+// Add process info logging
+console.error(`Process ID: ${process.pid}, Node version: ${process.version}`);
+console.error(`Working directory: ${process.cwd()}`);
 
 // Store for conversation context (in a real implementation, this would be a database)
 const conversationStore: Record<string, any[]> = {};
 
-// Knowledge graph manipulation tool
-const knowledgeGraphTool = {
-  name: "knowledge_graph_manipulator",
-  description: "Manipulate knowledge graphs by applying transformations like grouping, filtering, or highlighting",
-  input_schema: {
-    type: "object",
-    properties: {
-      operation: {
-        type: "string",
-        enum: ["groupByProperty", "filterNodes", "highlightNodes", "resetView"],
-        description: "The type of operation to perform on the graph"
-      },
-      targetGraphId: {
-        type: "string",
-        description: "ID of the graph artifact to manipulate"
-      },
-      params: {
-        type: "object",
-        description: "Parameters specific to the operation",
-        properties: {
-          propertyName: { type: "string" },
-          predicate: { type: "string" },
-          value: { type: "string" },
-          nodeIds: { type: "array", items: { type: "string" } },
-          color: { type: "string" }
-        }
-      }
+// Define validation schemas for the graph manipulation tool
+const GraphManipulationSchema = z.object({
+  operation: z.enum(["groupByProperty", "filterNodes", "highlightNodes", "resetView"])
+    .describe("The type of operation to perform on the graph"),
+  targetGraphId: z.string()
+    .describe("ID of the graph artifact to manipulate"),
+  params: z.object({
+    propertyName: z.string().optional()
+      .describe("Property name to group by (for groupByProperty operation)"),
+    predicate: z.string().optional()
+      .describe("Property to filter on (for filterNodes operation)"),
+    value: z.string().optional()
+      .describe("Value to filter by (for filterNodes operation)"),
+    nodeIds: z.array(z.string()).optional()
+      .describe("IDs of nodes to highlight (for highlightNodes operation)"),
+    color: z.string().optional()
+      .describe("Color to use for highlighting (for highlightNodes operation)")
+  }).optional()
+});
+
+// Create server instance
+const server = new Server(
+  {
+    name: "graph-mcp",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+      logging: {}  // Add logging capability
     },
-    required: ["operation", "targetGraphId"]
   }
-};
+);
 
 // Find an artifact by ID in the conversation history
 function findArtifactById(messages: any[], artifactId: string): any {
@@ -80,35 +96,69 @@ function findArtifactById(messages: any[], artifactId: string): any {
 }
 
 // Handle knowledge graph manipulation
-function handleGraphManipulation(input: any, conversationId: string): any {
-  console.error(`Graph operation: ${input.operation}`);
-  console.error(`Target graph ID: ${input.targetGraphId}`);
-  console.error(`Params:`, JSON.stringify(input.params, null, 2));
+async function handleGraphManipulation(input: z.infer<typeof GraphManipulationSchema>, conversationId: string): Promise<any> {
+  console.error(`handleGraphManipulation started at ${new Date().toISOString()}`);
+  console.error(`Operation: ${input.operation}, Target Graph ID: ${input.targetGraphId}`);
+  
+  try {
+    // Only send logging messages if we're connected
+    server.sendLoggingMessage({
+      level: "info",
+      data: {
+        message: "Starting graph manipulation",
+        operation: input.operation,
+        targetGraphId: input.targetGraphId,
+        params: input.params
+      },
+    });
+  } catch (error) {
+    console.error("Failed to send logging message, continuing anyway:", error);
+  }
   
   // Get conversation context
+  console.error(`Retrieving conversation context for ID: ${conversationId}`);
   const messages = conversationStore[conversationId] || [];
+  console.error(`Found ${messages.length} messages in conversation context`);
   
   const { operation, targetGraphId, params } = input;
   
   // Find the target artifact
+  console.error(`Looking for artifact with ID: ${targetGraphId}`);
   const targetArtifact = findArtifactById(messages, targetGraphId);
   
   if (!targetArtifact) {
+    console.error(`Target artifact not found: ${targetGraphId}`);
     return {
-      error: "Target graph not found",
-      content: [{ type: 'text', text: "Error: Target graph not found" }]
+      content: [{ 
+        type: 'text', 
+        text: "Error: Target graph not found" 
+      }]
     };
   }
   
+  console.error(`Found target artifact: ${targetArtifact.id}, type: ${targetArtifact.type}`);
+  
   try {
     // Parse the current graph data
+    console.error(`Parsing graph data from artifact content`);
     const graphData = JSON.parse(targetArtifact.content);
+    console.error(`Graph data parsed successfully. Nodes: ${graphData.nodes?.length || 0}, Links: ${graphData.links?.length || 0}`);
+    
     let updatedNodes, updatedLinks;
     
     // Apply the requested operation
+    console.error(`Applying operation: ${operation}`);
     switch (operation) {
       case 'groupByProperty': {
-        const { propertyName } = params;
+        const propertyName = params?.propertyName;
+        if (!propertyName) {
+          return {
+            content: [{ 
+              type: 'text', 
+              text: "Error: propertyName is required for groupByProperty operation" 
+            }]
+          };
+        }
         
         // Get unique values for the property
         const propertyValues = new Set();
@@ -135,7 +185,8 @@ function handleGraphManipulation(input: any, conversationId: string): any {
       }
       
       case 'highlightNodes': {
-        const { nodeIds, color = '#ff0000' } = params;
+        const nodeIds = params?.nodeIds || [];
+        const color = params?.color || '#ff0000';
         
         // Update nodes with highlighting
         updatedNodes = graphData.nodes.map((node: any) => ({
@@ -147,7 +198,17 @@ function handleGraphManipulation(input: any, conversationId: string): any {
       }
       
       case 'filterNodes': {
-        const { predicate, value } = params;
+        const predicate = params?.predicate;
+        const value = params?.value;
+        
+        if (!predicate || value === undefined) {
+          return {
+            content: [{ 
+              type: 'text', 
+              text: "Error: predicate and value are required for filterNodes operation" 
+            }]
+          };
+        }
         
         // Filter nodes based on the predicate and value
         const filteredNodeIds = new Set(
@@ -188,12 +249,15 @@ function handleGraphManipulation(input: any, conversationId: string): any {
       
       default:
         return {
-          error: `Unsupported operation: ${operation}`,
-          content: [{ type: 'text', text: `Error: Unsupported operation: ${operation}` }]
+          content: [{ 
+            type: 'text', 
+            text: `Error: Unsupported operation: ${operation}` 
+          }]
         };
     }
     
     // Create a new version of the graph
+    console.error(`Creating new version of the graph`);
     const newGraph = {
       ...graphData,
       nodes: updatedNodes || graphData.nodes,
@@ -214,6 +278,7 @@ function handleGraphManipulation(input: any, conversationId: string): any {
     };
     
     // Create a new artifact with the updated graph
+    console.error(`Creating new artifact for the updated graph`);
     const newArtifactId = uuidv4();
     const newArtifact = {
       id: newArtifactId,
@@ -234,6 +299,7 @@ function handleGraphManipulation(input: any, conversationId: string): any {
     };
     
     // Store the new artifact in the conversation context
+    console.error(`Storing new artifact in conversation context`);
     if (!conversationStore[conversationId]) {
       conversationStore[conversationId] = [];
     }
@@ -243,6 +309,8 @@ function handleGraphManipulation(input: any, conversationId: string): any {
       role: 'assistant',
       artifacts: [newArtifact]
     });
+    
+    console.error(`Graph manipulation completed successfully at ${new Date().toISOString()}`);
     
     // Return the result
     return {
@@ -254,9 +322,25 @@ function handleGraphManipulation(input: any, conversationId: string): any {
     };
     
   } catch (error: any) {
-    console.error('Error manipulating knowledge graph:', error);
+    console.error(`Error in handleGraphManipulation: ${error.message}`);
+    if (error.stack) {
+      console.error(`Stack trace: ${error.stack}`);
+    }
+    
+    try {
+      server.sendLoggingMessage({
+        level: "error",
+        data: {
+          message: "Error manipulating knowledge graph",
+          error: error.message,
+          stack: error.stack
+        },
+      });
+    } catch (loggingError) {
+      console.error("Failed to send error logging message:", loggingError);
+    }
+    
     return { 
-      error: `Error manipulating knowledge graph: ${error.message}`,
       content: [{ 
         type: 'text', 
         text: `Error manipulating knowledge graph: ${error.message}` 
@@ -271,72 +355,193 @@ function storeConversation(conversationId: string, messages: any[]): any {
   return { success: true };
 }
 
-// Handle incoming messages from stdin
-process.stdin.setEncoding('utf-8');
-let inputBuffer = '';
-
-process.stdin.on('data', (chunk) => {
-  inputBuffer += chunk;
-  
-  // Try to parse complete JSON messages
-  try {
-    const message = JSON.parse(inputBuffer);
-    inputBuffer = ''; // Clear buffer after successful parse
-    
-    // Process the message
-    if (message.type === 'list_tools') {
-      // Return available tools
-      const response = {
-        id: message.id,
-        tools: [knowledgeGraphTool]
-      };
-      process.stdout.write(JSON.stringify(response) + '\n');
-    } 
-    else if (message.type === 'execute_tool') {
-      // Execute the requested tool
-      if (message.tool === 'knowledge_graph_manipulator') {
-        const result = handleGraphManipulation(message.input, message.conversation_id || 'default');
-        const response = {
-          id: message.id,
-          ...result
-        };
-        process.stdout.write(JSON.stringify(response) + '\n');
-      } 
-      else {
-        // Unknown tool
-        const response = {
-          id: message.id,
-          error: `Unknown tool: ${message.tool}`,
-          content: [{ type: 'text', text: `Error: Unknown tool: ${message.tool}` }]
-        };
-        process.stdout.write(JSON.stringify(response) + '\n');
+// List available tools
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [
+      {
+        name: "knowledge_graph_manipulator",
+        description: "Manipulate knowledge graphs by applying transformations like grouping, filtering, or highlighting",
+        inputSchema: {
+          type: "object",
+          properties: {
+            operation: {
+              type: "string",
+              enum: ["groupByProperty", "filterNodes", "highlightNodes", "resetView"],
+              description: "The type of operation to perform on the graph"
+            },
+            targetGraphId: {
+              type: "string",
+              description: "ID of the graph artifact to manipulate"
+            },
+            params: {
+              type: "object",
+              description: "Parameters specific to the operation",
+              properties: {
+                propertyName: { 
+                  type: "string",
+                  description: "Property name to group by (for groupByProperty operation)"
+                },
+                predicate: { 
+                  type: "string",
+                  description: "Property to filter on (for filterNodes operation)"
+                },
+                value: { 
+                  type: "string",
+                  description: "Value to filter by (for filterNodes operation)"
+                },
+                nodeIds: { 
+                  type: "array", 
+                  items: { type: "string" },
+                  description: "IDs of nodes to highlight (for highlightNodes operation)"
+                },
+                color: { 
+                  type: "string",
+                  description: "Color to use for highlighting (for highlightNodes operation)"
+                }
+              }
+            }
+          },
+          required: ["operation", "targetGraphId"]
+        }
       }
+    ]
+  };
+});
+
+// Handle tool execution
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  console.error(`Tool request received at ${new Date().toISOString()}`);
+  console.error(`Request params: ${JSON.stringify(request.params)}`);
+  
+  try {
+    // Extract the actual tool name and arguments from the request
+    const toolName = request.params.name;
+    const toolArgs = request.params.arguments || {};
+    const conversationId = request.params.conversation_id || 'default';
+
+    console.error(`Processing tool: ${toolName}, conversation ID: ${conversationId}`);
+    
+    try {
+      server.sendLoggingMessage({
+        level: "info",
+        data: {
+          message: "Tool request received",
+          toolName,
+          conversationId
+        },
+      });
+    } catch (loggingError) {
+      console.error("Failed to send logging message, continuing anyway:", loggingError);
     }
-    else if (message.type === 'store_conversation') {
-      // Store conversation context
-      const result = storeConversation(message.conversation_id, message.messages);
-      const response = {
-        id: message.id,
-        ...result
+
+    if (toolName === "knowledge_graph_manipulator") {
+      console.error("Validating graph manipulation arguments...");
+      const validatedArgs = GraphManipulationSchema.parse(toolArgs);
+      console.error(`Calling handleGraphManipulation with operation: ${validatedArgs.operation}`);
+      return await handleGraphManipulation(validatedArgs, conversationId.toString());
+    } else if (toolName === "store_conversation") {
+      console.error("Processing store_conversation request");
+      // Ensure messages is an array
+      const messages = Array.isArray(toolArgs.messages) ? toolArgs.messages : [];
+      console.error(`Storing ${messages.length} messages for conversation: ${conversationId}`);
+      const result = storeConversation(conversationId.toString(), messages);
+      return {
+        content: [{ 
+          type: 'text', 
+          text: result.success ? "Conversation stored successfully" : "Failed to store conversation" 
+        }]
       };
-      process.stdout.write(JSON.stringify(response) + '\n');
     }
-    else {
-      // Unknown message type
-      const response = {
-        id: message.id,
-        error: `Unknown message type: ${message.type}`,
-        content: [{ type: 'text', text: `Error: Unknown message type: ${message.type}` }]
-      };
-      process.stdout.write(JSON.stringify(response) + '\n');
-    }
+
+    console.error(`Unknown tool requested: ${toolName}`);
+    // Default return for unknown tool
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Unknown tool: ${toolName}`,
+        },
+      ],
+    };
   } catch (error) {
-    // If we can't parse the message yet, wait for more data
-    if (!(error instanceof SyntaxError)) {
-      console.error('Error processing message:', error);
+    console.error(`Error processing tool request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error && error.stack) {
+      console.error(`Stack trace: ${error.stack}`);
     }
+    
+    if (error instanceof z.ZodError) {
+      console.error(`Validation error: ${JSON.stringify(error.errors)}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Invalid arguments: ${error.errors
+              .map((e) => `${e.path.join(".")}: ${e.message}`)
+              .join(", ")}`,
+          },
+        ],
+      };
+    }
+    
+    // Return error message for any other errors
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error: ${errorMessage}`,
+        },
+      ],
+    };
   }
 });
 
-// Log startup message
-console.error('GraphManipulate MCP Server running on stdio'); 
+// Start the server
+async function main() {
+  try {
+    console.error(`Main function started at ${new Date().toISOString()}`);
+    
+    console.error("Creating StdioServerTransport...");
+    const transport = new StdioServerTransport();
+    
+    console.error("Connecting to transport...");
+    await server.connect(transport);
+    
+    console.error("Server connected, now sending logging message...");
+    
+    // Only send logging messages after the server is connected
+    server.sendLoggingMessage({
+      level: "info",
+      data: {
+        message: "GraphManipulate MCP Server running on stdio"
+      },
+    });
+    
+    console.error("GraphManipulate MCP Server running on stdio");
+    console.error(`Server initialization completed at ${new Date().toISOString()}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error("Fatal error in main():", errorMessage);
+    if (error instanceof Error && error.stack) {
+      console.error("Stack trace:", error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+// Add process error handlers
+process.on('uncaughtException', (error) => {
+  console.error(`Uncaught exception: ${error.message}`);
+  console.error(error.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+  process.exit(1);
+});
+
+console.error("About to call main() function...");
+main(); 

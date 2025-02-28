@@ -9,6 +9,7 @@ import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import { useChatStore } from '../../store/chatStore';
 import { useMCPStore } from '../../store/mcpStore';
+import { Pin, PinOff } from 'lucide-react';
 
 export const ArtifactContent: React.FC<{
   artifact: Artifact;
@@ -16,6 +17,9 @@ export const ArtifactContent: React.FC<{
   const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph, setUseReagraph] = useState(true);
+  const { setPinnedGraphId, pinnedGraphId } = useChatStore();
+  const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
+  const isPinned = isKnowledgeGraph ? pinnedGraphId === artifact.id : false;
   
   const sanitizeHTML = (content: string) => {
     return DOMPurify.sanitize(content, {
@@ -524,14 +528,29 @@ export const ArtifactContent: React.FC<{
             Type: {artifact.type === 'code' && artifact.language ? `${artifact.type} (${artifact.language})` : artifact.type}
           </p>
         </div>
-        {canToggleView && (
-          <button
-            onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
-            className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
-          >
-            {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
-          </button>
-        )}
+        <div className="flex items-center space-x-2">
+          {isKnowledgeGraph && (
+            <button
+              onClick={() => setPinnedGraphId(isPinned ? null : artifact.id)}
+              className={`p-2 rounded-full ${
+                isPinned 
+                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+              }`}
+              title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
+            >
+              {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+            </button>
+          )}
+          {canToggleView && (
+            <button
+              onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
+              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
+            >
+              {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0 p-4">
         {renderContent()}

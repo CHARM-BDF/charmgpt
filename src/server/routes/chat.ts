@@ -24,6 +24,12 @@ router.post('/', async (req: Request<{}, {}, {
   message: string; 
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
   blockedServers?: string[];
+  pinnedGraph?: {
+    id: string;
+    type: string;
+    title: string;
+    content: string;
+  };
 }>, res: Response) => {
   const loggingService = req.app.locals.loggingService as LoggingService;
   
@@ -31,9 +37,32 @@ router.post('/', async (req: Request<{}, {}, {
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
-    const { message, history, blockedServers = [] } = req.body;
+    const { message, history, blockedServers = [], pinnedGraph } = req.body;
     let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
+
+    // If there's a pinned graph, add it to the context
+    if (pinnedGraph) {
+      console.log('\n=== PINNED GRAPH DETECTED ===');
+      console.log('Graph ID:', pinnedGraph.id);
+      console.log('Graph Title:', pinnedGraph.title);
+      
+      // Add a system message about the pinned graph
+      messages.push({
+        role: 'system',
+        content: `The user has pinned a knowledge graph that should be referenced in your response. Graph title: "${pinnedGraph.title}". Please use this graph as context for your response.`
+      });
+      
+      // Add the graph content as a user message
+      messages.push({
+        role: 'user',
+        content: `Here is the knowledge graph I've pinned for reference:\n\`\`\`json\n${
+          typeof pinnedGraph.content === 'string' 
+            ? pinnedGraph.content 
+            : JSON.stringify(pinnedGraph.content, null, 2)
+        }\n\`\`\``
+      });
+    }
 
     // First phase: Sequential thinking and tool usage
     while (!isSequentialThinkingComplete) {

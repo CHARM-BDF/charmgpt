@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 // Types
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string | Array<{ type: string; text: string }>;
 }
 

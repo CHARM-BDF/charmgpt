@@ -73,8 +73,7 @@
       "command": "node",
       "args": [
         "./custom-mcp-servers/graphManipulate-mcp/dist/index.js"
-      ],
-      "timeout": 120000
+      ]
     }
   }
 }

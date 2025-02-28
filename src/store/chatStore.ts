@@ -29,6 +29,7 @@ interface ChatState extends ConversationState {
   streamingContent: string;
   streamingComplete: boolean;
   streamingEnabled: boolean;
+  pinnedGraphId: string | null;
   
   // Existing message functions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
@@ -47,6 +48,7 @@ interface ChatState extends ConversationState {
   updateStreamingContent: (content: string) => void;
   completeStreaming: () => void;
   toggleStreaming: () => void;
+  setPinnedGraphId: (id: string | null) => void;
   
   // New conversation management functions
   startNewConversation: (name?: string) => string;
@@ -91,6 +93,7 @@ export const useChatStore = create<ChatState>()(
         streamingContent: '',
         streamingComplete: true,
         streamingEnabled: true,
+        pinnedGraphId: null,
         
         // New conversation state
         currentConversationId: null,
@@ -270,6 +273,18 @@ export const useChatStore = create<ChatState>()(
             const endpoint = selectedModel === 'ollama' ? API_ENDPOINTS.OLLAMA : API_ENDPOINTS.CHAT;
             const apiUrl = getApiUrl(endpoint);
 
+            // Get pinned graph if available
+            const pinnedGraphId = get().pinnedGraphId;
+            let pinnedGraph = null;
+            
+            if (pinnedGraphId) {
+              const pinnedArtifact = get().artifacts.find(a => a.id === pinnedGraphId);
+              if (pinnedArtifact) {
+                console.log('ChatStore: Including pinned graph in message:', pinnedGraphId);
+                pinnedGraph = pinnedArtifact;
+              }
+            }
+
             const response = await fetch(apiUrl, {
               method: 'POST',
               headers: {
@@ -283,7 +298,13 @@ export const useChatStore = create<ChatState>()(
                     role: msg.role,
                     content: msg.content
                   })),
-                blockedServers: useMCPStore.getState().getBlockedServers()
+                blockedServers: useMCPStore.getState().getBlockedServers(),
+                pinnedGraph: pinnedGraph ? {
+                  id: pinnedGraph.id,
+                  type: pinnedGraph.type,
+                  title: pinnedGraph.title,
+                  content: pinnedGraph.content
+                } : undefined
               })
             });
 
@@ -771,6 +792,10 @@ export const useChatStore = create<ChatState>()(
           }
           
           return latestArtifact;
+        },
+        setPinnedGraphId: (id: string | null) => {
+          console.log('ChatStore: Setting pinned graph ID to', id);
+          set({ pinnedGraphId: id });
         },
       };
     },
