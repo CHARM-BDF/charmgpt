@@ -175,35 +175,61 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                 
                 console.error(`MEDIK: Starting CAID node filtering process on ${queryResult.length} results`);
                 
-                // Format the query results into a knowledge graph artifact
-                const formattedResult = formatKnowledgeGraphArtifact(queryResult, { e1, e2, e3 });
-                
-                // Log the filtering results
-                if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
-                    console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
-                    server.sendLoggingMessage({
-                        level: "info",
-                        data: {
-                            message: `MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique nodes with CAID: prefix`,
-                            filteredCount: formattedResult.filteredCount,
-                            filteredNodeCount: formattedResult.filteredNodeCount,
-                            remainingCount: queryResult.length - formattedResult.filteredCount
-                        },
-                    });
-                } else {
-                    console.error(`MEDIK: No CAID nodes found in the results`);
+                try {
+                    console.error(`MEDIK: Calling formatKnowledgeGraphArtifact with ${queryResult.length} results`);
+                    
+                    // Format the query results into a knowledge graph artifact
+                    const formattingPromise = formatKnowledgeGraphArtifact(queryResult, { e1, e2, e3 });
+                    console.error(`MEDIK: Got Promise from formatKnowledgeGraphArtifact, waiting for resolution...`);
+                    
+                    // Wait for the Promise to resolve
+                    const formattedResult = await formattingPromise;
+                    console.error(`MEDIK: Promise resolved successfully, got formatted result`);
+                    
+                    // Log the filtering results
+                    if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
+                        console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
+                        server.sendLoggingMessage({
+                            level: "info",
+                            data: {
+                                message: `MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique nodes with CAID: prefix`,
+                                filteredCount: formattedResult.filteredCount,
+                                filteredNodeCount: formattedResult.filteredNodeCount,
+                                remainingCount: queryResult.length - formattedResult.filteredCount
+                            },
+                        });
+                    } else {
+                        console.error(`MEDIK: No CAID nodes found in the results`);
+                    }
+                    
+                    // Log the content and artifacts
+                    console.error(`MEDIK: Formatted result has ${formattedResult.content.length} content items and ${formattedResult.artifacts?.length || 0} artifacts`);
+                    
+                    // Add a clear boundary marker for the end of a successful query
+                    console.error("\n========================================");
+                    console.error(`MEDIK: QUERY COMPLETED SUCCESSFULLY AT ${new Date().toISOString()}`);
+                    console.error("========================================\n");
+                    
+                    // Return the formatted result as a ServerResult
+                    return {
+                        content: formattedResult.content,
+                        artifacts: formattedResult.artifacts
+                    };
+                } catch (error) {
+                    console.error(`MEDIK: Error formatting results: ${error instanceof Error ? error.message : String(error)}`);
+                    console.error(`MEDIK: Error stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
+                    console.error("========================================");
+                    console.error(`MEDIK: QUERY ERROR AT ${new Date().toISOString()}: Error formatting results`);
+                    console.error("========================================\n");
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error formatting results: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                            },
+                        ],
+                    };
                 }
-                
-                // Add a clear boundary marker for the end of a successful query
-                console.error("\n========================================");
-                console.error(`MEDIK: QUERY COMPLETED SUCCESSFULLY AT ${new Date().toISOString()}`);
-                console.error("========================================\n");
-                
-                // Return the formatted result as a ServerResult
-                return {
-                    content: formattedResult.content,
-                    artifacts: formattedResult.artifacts
-                };
             } else if ('error' in queryResult) {
                 console.error("========================================");
                 console.error(`MEDIK: QUERY ERROR AT ${new Date().toISOString()}: ${queryResult.error}`);
