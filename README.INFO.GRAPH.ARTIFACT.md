@@ -387,7 +387,9 @@ The knowledge graph visualization system includes a "pin" feature that allows us
 3. **Data Flow**: 
    - When a graph is pinned, its ID is stored in the `pinnedGraphId` state in the chat store.
    - When sending a message, the pinned graph is included in the request to the server.
-   - The server adds the graph data as context for the AI model.
+   - The server parses the pinned graph and stores it in the `knowledgeGraph` property.
+   - When tools (like STRING-DB MCP server) generate new knowledge graphs, they are automatically merged with the pinned graph.
+   - The final response includes the merged knowledge graph.
 
 ### Implementation Details
 
@@ -406,7 +408,24 @@ The pinned graph feature is implemented across several components:
 
 3. **ArtifactContent**: The main artifact viewer includes a pin button in the header for knowledge graph artifacts.
 
-4. **Server Integration**: The server processes the pinned graph and includes it as context for the AI model.
+4. **Server Integration**: 
+   - The server processes the pinned graph and validates its structure
+   - If valid, it stores the graph in the `knowledgeGraph` property
+   - The server notifies the AI about the pinned graph without including the full content in the messages
+   - When tools generate new knowledge graphs, they are merged with the pinned graph using `mergeKnowledgeGraphs`
+
+### Graph Merging Behavior
+
+When a pinned graph is present and a tool generates a new knowledge graph:
+
+1. The system detects the existing pinned graph in the `knowledgeGraph` property
+2. It merges the new graph with the pinned graph using the `mergeKnowledgeGraphs` utility
+3. The merged graph contains:
+   - All unique nodes from both graphs (deduplicated by node ID)
+   - All unique links from both graphs (deduplicated by source-target-label combination)
+   - Combined metadata from both graphs
+4. The merged graph is stored back in the `knowledgeGraph` property
+5. The final response includes this merged graph as an artifact
 
 ### Usage Example
 
@@ -423,4 +442,6 @@ setPinnedGraphId(null);
 
 - **Contextual Continuity**: Ensures the AI has access to the graph data across multiple messages.
 - **Reference Preservation**: Maintains reference to important graph data without needing to reupload.
-- **Focused Conversations**: Allows conversations to center around a specific knowledge structure. 
+- **Focused Conversations**: Allows conversations to center around a specific knowledge structure.
+- **Progressive Graph Building**: Enables building more complex knowledge graphs by merging tool-generated graphs with pinned ones.
+- **Reduced Token Usage**: Only mentions the pinned graph to the AI without including the full content in the messages. 

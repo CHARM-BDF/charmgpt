@@ -17,7 +17,9 @@
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.1.1",
+    "@types/uuid": "^10.0.0",
     "node-fetch": "^2.6.7",
+    "uuid": "^11.1.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

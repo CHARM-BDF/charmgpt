@@ -5,6 +5,7 @@ import {
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { formatProteinInteractionsGraph, formatPathwayEnrichmentGraph, formatEvidenceScores } from "./formatters.js";
 
 // STRING-db API configuration
 const STRING_API_BASE = "https://string-db.org/api/json";
@@ -96,31 +97,6 @@ async function makeStringDBRequest<T>(endpoint: string, params: Record<string, a
         return null;
     }
 }
-
-// Helper function to format evidence scores
-function formatEvidenceScores(interaction: InteractionResponseWithEvidence): string {
-    const scores = [
-        `Total combined score: ${interaction.score}`,
-        `- Neighborhood score: ${interaction.nscore}`,
-        `- Gene Fusion score: ${interaction.fscore}`,
-        `- Co-occurrence score: ${interaction.pscore}`,
-        `- Co-expression score: ${interaction.ascore}`,
-        `- Experimental score: ${interaction.escore}`,
-        `- Database score: ${interaction.dscore}`,
-        `- Text-mining score: ${interaction.tscore}`
-    ];
-    
-    const publications = interaction.detailedEvidence?.text_mining?.publications;
-    if (publications && publications.length > 0) {
-        scores.push(
-            `\nSupporting Publications (PubMed IDs):`,
-            publications.map(pubmed => `  - PMID: ${pubmed}`).join('\n')
-        );
-    }
-    
-    return scores.join('\n');
-}
-
 
 // Get STRING ID for a gene symbol
 async function getStringId(geneSymbol: string, species: number = 9606): Promise<string | null> {
@@ -360,23 +336,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                 };
             }
         
-            const formattedInteractions = interactionData
-                .map((interaction: InteractionResponseWithEvidence) => {
-                    return [
-                        `\n### ${interaction.preferredName_A} <-> ${interaction.preferredName_B}`,
-                        formatEvidenceScores(interaction),
-                        '---'
-                    ].join('\n');
-                })
-                .join('\n');
-        
+            // Format the interaction data into a knowledge graph
+            const formattedResult = formatProteinInteractionsGraph(interactionData, protein);
+            
+            // Return the formatted result with both text content and graph artifact
             return {
-                content: [
-                    {
-                        type: "text",
-                        text: `Protein interactions for ${protein}:\n${formattedInteractions}`,
-                    },
-                ],
+                content: formattedResult.content,
+                artifacts: formattedResult.artifacts
             };
         }else if (toolName === "get-pathway-enrichment") {
             const { proteins, species } = PathwayEnrichmentSchema.parse(toolArgs);
@@ -402,24 +368,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                 };
             }
 
-            const formattedPathways = enrichmentData
-                .map(pathway => {
-                    return [
-                        `Pathway: ${pathway.description}`,
-                        `P-value: ${pathway.p_value.toExponential(2)}`,
-                        `Genes: ${pathway.genes.join(', ')}`,
-                        '---'
-                    ].join('\n');
-                })
-                .join('\n');
-
+            // Format the pathway enrichment data into a knowledge graph
+            const formattedResult = formatPathwayEnrichmentGraph(enrichmentData, proteins);
+            
+            // Return the formatted result with both text content and graph artifact
             return {
-                content: [
-                    {
-                        type: "text",
-                        text: `Enriched pathways:\n\n${formattedPathways}`,
-                    },
-                ],
+                content: formattedResult.content,
+                artifacts: formattedResult.artifacts
             };
         }
 

@@ -53,15 +53,22 @@ router.post('/', async (req: Request<{}, {}, {
         content: `I notice you've pinned a knowledge graph titled "${pinnedGraph.title}". I'll reference this graph in my responses.`
       });
       
-      // Add the graph content as a user message
-      messages.push({
-        role: 'user',
-        content: `Here is the knowledge graph I've pinned for reference:\n\`\`\`json\n${
-          typeof pinnedGraph.content === 'string' 
-            ? pinnedGraph.content 
-            : JSON.stringify(pinnedGraph.content, null, 2)
-        }\n\`\`\``
-      });
+      // Parse and store the pinned graph in the knowledgeGraph property
+      try {
+        const graphContent = typeof pinnedGraph.content === 'string' 
+          ? JSON.parse(pinnedGraph.content) 
+          : pinnedGraph.content;
+        
+        if (isValidKnowledgeGraph(graphContent)) {
+          console.log(`Pinned knowledge graph contains ${graphContent.nodes.length} nodes and ${graphContent.links.length} links`);
+          (messages as any).knowledgeGraph = graphContent;
+          console.log('Stored pinned knowledge graph for merging with future graphs');
+        } else {
+          console.error('Invalid knowledge graph structure in pinned graph');
+        }
+      } catch (error) {
+        console.error('Error processing pinned knowledge graph:', error);
+      }
     }
 
     // First phase: Sequential thinking and tool usage

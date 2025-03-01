@@ -9,7 +9,7 @@ import { createInterface } from 'readline';
 import { formatKnowledgeGraphArtifact } from "./formatters.js";
 
 // mediKanren API configuration
-const MEDIKANREN_API_BASE = "https://medikanren-gpt-edu.livecode.ch";
+const MEDIKANREN_API_BASE = "https://medikanren.metareflective.app";
 const DEBUG = true;
 
 // Define interface types for API responses
@@ -17,27 +17,13 @@ interface QueryErrorResponse {
     error: string;
 }
 
-interface PubmedSuccessResponse {
-    title: string;
-    abstract: string;
-}
-
-interface PubmedErrorResponse {
-    error: string;
-}
-
 type QueryResponse = any[] | QueryErrorResponse;
-type PubmedResponse = PubmedSuccessResponse | PubmedErrorResponse;
 
 // Define validation schemas based on the OpenAPI spec
 const QueryRequestSchema = z.object({
     e1: z.string().describe("X->Known or Known->X, for subject unknown or object unknown respectively."),
     e2: z.string().describe("A biolink predicate such as biolink:treats, from the biolink list."),
     e3: z.string().describe("A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.")
-});
-
-const PubmedRequestSchema = z.object({
-    pubmed_id: z.string().describe("The PubMed (or PubMed Central ID) for the article.")
 });
 
 // Create server instance
@@ -55,18 +41,23 @@ const server = new Server(
 );
 
 // Helper function for API requests
-async function makeMediKanrenRequest<T>(endpoint: string, body: Record<string, any>): Promise<T | null> {
-    const url = `${MEDIKANREN_API_BASE}/${endpoint}`;
+async function makeMediKanrenRequest<T>(params: Record<string, any>): Promise<T | null> {
+    const url = `${MEDIKANREN_API_BASE}/query`;
     
     console.error(`DEBUG: Making request to: ${url}`);
 
     try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
+        // Construct the URL with query parameters
+        const queryParams = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+            queryParams.append(key, value);
+        }
+        
+        const fullUrl = `${url}?${queryParams.toString()}`;
+        console.error(`DEBUG: Full URL: ${fullUrl}`);
+        
+        const response = await fetch(fullUrl, {
+            method: 'GET'
         });
         
         if (!response.ok) {
@@ -76,10 +67,10 @@ async function makeMediKanrenRequest<T>(endpoint: string, body: Record<string, a
         }
         
         const data = await response.json();
-        console.error(`DEBUG: Response for ${endpoint}:`, JSON.stringify(data, null, 2));
+        console.error(`DEBUG: Response:`, JSON.stringify(data, null, 2));
         return data as T;
     } catch (error) {
-        console.error(`DEBUG: Error in ${endpoint}:`, error);
+        console.error(`DEBUG: Error in request:`, error);
         return null;
     }
 }
@@ -98,22 +89,7 @@ export async function runQuery(params: {
         },
     });
     
-    return await makeMediKanrenRequest<QueryResponse>('query', params);
-}
-
-// Function to get PubMed abstract
-export async function getPubmedAbstract(params: {
-    pubmed_id: string
-}): Promise<PubmedResponse | null> {
-    server.sendLoggingMessage({
-        level: "info",
-        data: {
-            message: "Starting getPubmedAbstract",
-            params: params
-        },
-    });
-    
-    return await makeMediKanrenRequest<PubmedResponse>('pubmed', params);
+    return await makeMediKanrenRequest<QueryResponse>(params);
 }
 
 // List available tools
@@ -141,21 +117,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     },
                     required: ["e1", "e2", "e3"],
                 },
-            },
-            {
-                name: "get-pubmed-abstract",
-                description: "Retrieve a PubMed abstract",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        pubmed_id: {
-                            type: "string",
-                            description: "The PubMed (or PubMed Central ID) for the article.",
-                        }
-                    },
-                    required: ["pubmed_id"],
-                },
-            },
+            }
         ],
     };
 });
@@ -221,38 +183,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     ],
                 };
             }
-        } else if (toolName === "get-pubmed-abstract") {
-            const { pubmed_id } = PubmedRequestSchema.parse(toolArgs);
-
-            const abstractResult = await getPubmedAbstract({ pubmed_id });
-
-            if (!abstractResult) {
-                return {
-                    content: [
-                        {
-                            type: "text",
-                            text: "Failed to retrieve PubMed abstract. Please check the server logs for details.",
-                        },
-                    ],
-                };
-            }
-
-            // Format the abstract result
-            let formattedResult;
-            if ('error' in abstractResult) {
-                formattedResult = `Error: ${abstractResult.error}`;
-            } else {
-                formattedResult = `Title: ${abstractResult.title}\n\nAbstract: ${abstractResult.abstract}`;
-            }
-
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: formattedResult,
-                    },
-                ],
-            };
         }
 
         // Default return for unknown tool
