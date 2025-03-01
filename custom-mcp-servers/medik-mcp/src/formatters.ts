@@ -38,6 +38,11 @@ interface FormattedResult {
   artifacts?: KnowledgeGraphArtifact[];
 }
 
+// Helper function to check if a node ID should be filtered out
+function shouldFilterNode(id: string): boolean {
+  return id.startsWith('CAID:');
+}
+
 // Helper function to determine entity type and group from ID
 function getEntityTypeAndGroup(id: string): { type: string; group: number } {
   if (id.startsWith('DRUGBANK:')) {
@@ -78,7 +83,41 @@ function formatPredicate(predicate: string): string {
 export function formatKnowledgeGraphArtifact(
   queryResults: any[],
   queryParams: { e1: string; e2: string; e3: string }
-): FormattedResult {
+): FormattedResult & { filteredCount?: number; filteredNodeCount?: number } {
+  // Log the raw data before processing
+  console.error(`MEDIK FORMATTER: Processing ${queryResults.length} raw results`);
+  console.error(`MEDIK FORMATTER: Query params:`, JSON.stringify(queryParams, null, 2));
+  
+  // Sample the first few results to avoid excessive logging
+  if (queryResults.length > 0) {
+    console.error(`MEDIK FORMATTER: Sample of first result:`, JSON.stringify(queryResults[0], null, 2));
+  }
+  
+  // Track unique CAID nodes that will be filtered out
+  const caidNodes = new Set<string>();
+  
+  // First pass: identify all CAID nodes
+  queryResults.forEach(result => {
+    const [sourceId, , , targetId] = result;
+    if (sourceId && shouldFilterNode(sourceId)) {
+      caidNodes.add(sourceId);
+    }
+    if (targetId && shouldFilterNode(targetId)) {
+      caidNodes.add(targetId);
+    }
+  });
+  
+  // Filter out results containing CAID: prefixed nodes
+  const originalCount = queryResults.length;
+  const filteredResults = queryResults.filter(result => {
+    const [sourceId, , , targetId] = result;
+    return !shouldFilterNode(sourceId) && !shouldFilterNode(targetId);
+  });
+  const filteredCount = originalCount - filteredResults.length;
+  const filteredNodeCount = caidNodes.size;
+  
+  console.error(`MEDIK FORMATTER: After filtering: ${filteredResults.length} results remain (removed ${filteredCount} results with ${filteredNodeCount} unique CAID nodes)`);
+  
   // Initialize the knowledge graph structure
   const graph: KnowledgeGraph = {
     nodes: [],
@@ -94,7 +133,7 @@ export function formatKnowledgeGraphArtifact(
   // Process each result triple
   const relationships: string[] = [];
   
-  queryResults.forEach(result => {
+  filteredResults.forEach(result => {
     // Extract the relevant parts of the triple
     const [sourceId, sourceName, predicate, targetId, targetName, _, evidence] = result;
     
@@ -152,6 +191,8 @@ export function formatKnowledgeGraphArtifact(
   // Convert node map to array
   graph.nodes = Array.from(nodeMap.values());
   
+  console.error(`MEDIK FORMATTER: Created knowledge graph with ${graph.nodes.length} nodes and ${graph.links.length} links`);
+  
   // Create human-readable text
   const queryType = queryParams.e1 === 'X->Known' ? 'entities related to' : 'entities that relate to';
   const entityName = queryParams.e1 === 'X->Known' ? queryParams.e3 : queryParams.e1;
@@ -175,7 +216,7 @@ export function formatKnowledgeGraphArtifact(
     })
     .join('\n');
   
-  const humanReadableText = `
+  let humanReadableText = `
 # Knowledge Graph: ${queryType} ${entityName} via ${relationshipType}
 
 The graph includes the following relationships:
@@ -184,12 +225,28 @@ ${formattedRelationships}
 Identify any patterns or insights based solely on what the graph shows, and then offer your own insights such as other concepts that may be interesting to pursue based on the data and why.
 `;
 
+  // Add information about filtered nodes if any were filtered
+  if (filteredCount > 0) {
+    humanReadableText = `
+# Knowledge Graph: ${queryType} ${entityName} via ${relationshipType}
+
+Note: ${filteredCount} relationships involving ${filteredNodeCount} unique nodes with CAID: prefix were filtered out from the results. These CAID variants are typically less reliable or less established in the literature.
+
+The graph includes the following relationships:
+${formattedRelationships}
+
+Identify any patterns or insights based solely on what the graph shows, and then offer your own insights such as other concepts that may be interesting to pursue based on the data and why.
+`;
+  }
+
   // Create the knowledge graph artifact
   const artifact: KnowledgeGraphArtifact = {
     type: 'application/vnd.knowledge-graph',
     title: `Knowledge Graph: ${queryType} ${entityName}`,
     content: JSON.stringify(graph)
   };
+  
+  console.error(`MEDIK FORMATTER: Completed formatting with ${relationships.length} relationships`);
   
   return {
     content: [
@@ -198,6 +255,8 @@ Identify any patterns or insights based solely on what the graph shows, and then
         text: humanReadableText
       }
     ],
-    artifacts: [artifact]
+    artifacts: [artifact],
+    filteredCount,
+    filteredNodeCount
   };
 } 

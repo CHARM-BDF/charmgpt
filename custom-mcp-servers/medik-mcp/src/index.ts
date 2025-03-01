@@ -44,7 +44,7 @@ const server = new Server(
 async function makeMediKanrenRequest<T>(params: Record<string, any>): Promise<T | null> {
     const url = `${MEDIKANREN_API_BASE}/query`;
     
-    console.error(`DEBUG: Making request to: ${url}`);
+    console.error(`MEDIK: Making request to: ${url}`);
 
     try {
         // Construct the URL with query parameters
@@ -54,7 +54,7 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>): Promise<T 
         }
         
         const fullUrl = `${url}?${queryParams.toString()}`;
-        console.error(`DEBUG: Full URL: ${fullUrl}`);
+        console.error(`MEDIK: Full URL: ${fullUrl}`);
         
         const response = await fetch(fullUrl, {
             method: 'GET'
@@ -62,15 +62,15 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>): Promise<T 
         
         if (!response.ok) {
             const text = await response.text();
-            console.error(`DEBUG: Error response body: ${text}`);
+            console.error(`MEDIK: Error response body: ${text}`);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.error(`DEBUG: Response:`, JSON.stringify(data, null, 2));
+        console.error(`MEDIK: Response:`, JSON.stringify(data, null, 2));
         return data as T;
     } catch (error) {
-        console.error(`DEBUG: Error in request:`, error);
+        console.error(`MEDIK: Error in request:`, error);
         return null;
     }
 }
@@ -84,7 +84,7 @@ export async function runQuery(params: {
     server.sendLoggingMessage({
         level: "info",
         data: {
-            message: "Starting runQuery",
+            message: "MEDIK: Starting runQuery",
             params: params
         },
     });
@@ -130,19 +130,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
         const toolArgs = request.params.arguments || {};
 
         if (DEBUG) {
-            console.error('Tool request:', { toolName, toolArgs });
+            console.error('MEDIK: Tool request:', { toolName, toolArgs });
         }
 
         if (toolName === "run-query") {
             const { e1, e2, e3 } = QueryRequestSchema.parse(toolArgs);
             
+            // Add a clear boundary marker for the start of a new query
+            console.error("\n\n========================================");
+            console.error(`MEDIK: NEW QUERY STARTED AT ${new Date().toISOString()}`);
+            console.error(`MEDIK: Query: ${e1} ${e2} ${e3}`);
+            console.error("========================================\n");
+            
             if (DEBUG) {
-                console.error('Parsed arguments:', { e1, e2, e3 });
+                console.error('MEDIK: Parsed arguments:', { e1, e2, e3 });
             }
         
             const queryResult = await runQuery({ e1, e2, e3 });
         
             if (!queryResult) {
+                console.error("========================================");
+                console.error(`MEDIK: QUERY FAILED AT ${new Date().toISOString()}`);
+                console.error("========================================\n");
                 return {
                     content: [
                         {
@@ -155,8 +164,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
             
             // Check if the result is an array (successful query) or an error
             if (Array.isArray(queryResult)) {
+                // Log that we're filtering CAID nodes
+                server.sendLoggingMessage({
+                    level: "info",
+                    data: {
+                        message: "MEDIK: Filtering out nodes with CAID: prefix from query results",
+                        originalResultCount: queryResult.length
+                    },
+                });
+                
+                console.error(`MEDIK: Starting CAID node filtering process on ${queryResult.length} results`);
+                
                 // Format the query results into a knowledge graph artifact
                 const formattedResult = formatKnowledgeGraphArtifact(queryResult, { e1, e2, e3 });
+                
+                // Log the filtering results
+                if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
+                    console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
+                    server.sendLoggingMessage({
+                        level: "info",
+                        data: {
+                            message: `MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique nodes with CAID: prefix`,
+                            filteredCount: formattedResult.filteredCount,
+                            filteredNodeCount: formattedResult.filteredNodeCount,
+                            remainingCount: queryResult.length - formattedResult.filteredCount
+                        },
+                    });
+                } else {
+                    console.error(`MEDIK: No CAID nodes found in the results`);
+                }
+                
+                // Add a clear boundary marker for the end of a successful query
+                console.error("\n========================================");
+                console.error(`MEDIK: QUERY COMPLETED SUCCESSFULLY AT ${new Date().toISOString()}`);
+                console.error("========================================\n");
                 
                 // Return the formatted result as a ServerResult
                 return {
@@ -164,6 +205,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     artifacts: formattedResult.artifacts
                 };
             } else if ('error' in queryResult) {
+                console.error("========================================");
+                console.error(`MEDIK: QUERY ERROR AT ${new Date().toISOString()}: ${queryResult.error}`);
+                console.error("========================================\n");
                 return {
                     content: [
                         {
@@ -173,6 +217,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     ],
                 };
             } else {
+                console.error("========================================");
+                console.error(`MEDIK: QUERY COMPLETED WITH UNKNOWN RESULT TYPE AT ${new Date().toISOString()}`);
+                console.error("========================================\n");
                 const formattedResult = JSON.stringify(queryResult, null, 2);
                 return {
                     content: [

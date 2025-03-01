@@ -10,6 +10,7 @@ A Model Context Protocol (MCP) server that interfaces with the mediKanren API, a
 - Format query results into human-readable text
 - Comprehensive error handling and logging
 - Interactive knowledge graph visualization
+- Automatic filtering of CAID-prefixed nodes
 
 ## Installation
 
@@ -115,6 +116,22 @@ The knowledge graph is formatted as a JSON object with the following structure:
   ]
 }
 ```
+
+## Node Filtering
+
+The server automatically filters out nodes with certain prefixes to improve data quality:
+
+### CAID Node Filtering
+
+Nodes with the `CAID:` prefix are automatically removed from query results. This filtering:
+
+- Removes any node with a CAID prefix identifier
+- Removes any edge (relationship) that references a CAID-prefixed node
+- Counts and logs the number of unique CAID nodes that were filtered
+- Counts and logs the total number of relationships affected by filtering
+- Adds a detailed note in the human-readable output about filtered nodes and relationships
+
+CAID (Confidence Assertion ID) nodes often represent less reliable or less established relationships in the literature. Filtering these nodes helps ensure that only high-quality, well-established relationships are included in the knowledge graph. The filtering process is transparent, with detailed information about filtered nodes included in both the server logs and the response text.
 
 ## Knowledge Graph Generation and Visualization
 
