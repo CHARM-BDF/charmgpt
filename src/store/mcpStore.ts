@@ -153,25 +153,41 @@ export const useMCPStore = create<MCPStoreState>()(
                         }
                         
                         case 'filterNodes': {
-                            const { predicate, value } = command.params;
+                            const { predicate, value, customNodes, customLinks } = command.params;
                             
-                            // Filter nodes based on predicate
-                            const updatedNodes = graphData.nodes.filter((node: any) => 
-                                node[predicate] === value
-                            );
+                            let updatedNodes, updatedLinks;
                             
-                            // Only keep links between remaining nodes
-                            const nodeIds = new Set(updatedNodes.map((n: any) => n.id));
-                            const updatedLinks = graphData.links.filter((link: any) => 
-                                nodeIds.has(link.source) && nodeIds.has(link.target)
-                            );
+                            // If customNodes and customLinks are provided, use them directly
+                            if (customNodes && customLinks) {
+                                updatedNodes = customNodes;
+                                updatedLinks = customLinks;
+                            } else {
+                                // Otherwise filter nodes based on predicate
+                                updatedNodes = graphData.nodes.filter((node: any) => 
+                                    node[predicate] === value
+                                );
+                                
+                                // Only keep links between remaining nodes
+                                const nodeIds = new Set(updatedNodes.map((n: any) => n.id));
+                                updatedLinks = graphData.links.filter((link: any) => 
+                                    nodeIds.has(link.source) && nodeIds.has(link.target)
+                                );
+                            }
+                            
+                            const commandDescription = customNodes 
+                                ? 'Filter by ID prefix'
+                                : `Filter nodes where ${predicate} = ${value}`;
+                                
+                            const versionLabel = customNodes
+                                ? 'Filtered View'
+                                : `Filtered by ${predicate}`;
                             
                             const newArtifactId = chatStore.updateGraphArtifact(targetArtifact.id, {
                                 nodes: updatedNodes,
                                 links: updatedLinks,
-                                commandDescription: `Filter nodes where ${predicate} = ${value}`,
-                                commandParams: { predicate, value },
-                                versionLabel: `Filtered by ${predicate}`
+                                commandDescription,
+                                commandParams: command.params,
+                                versionLabel
                             });
                             
                             return !!newArtifactId;

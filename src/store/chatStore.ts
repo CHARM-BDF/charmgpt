@@ -664,7 +664,7 @@ export const useChatStore = create<ChatState>()(
           const state = get();
           const baseArtifact = state.artifacts.find(a => a.id === baseArtifactId);
           
-          if (!baseArtifact || baseArtifact.type !== 'application/vnd.ant.knowledge-graph') {
+          if (!baseArtifact || (baseArtifact.type !== 'application/vnd.ant.knowledge-graph' && baseArtifact.type !== 'application/vnd.knowledge-graph')) {
             console.error('updateGraphArtifact: Base artifact not found or not a knowledge graph');
             return null;
           }
@@ -747,7 +747,7 @@ export const useChatStore = create<ChatState>()(
           const state = get();
           const artifact = state.artifacts.find(a => a.id === artifactId);
           
-          if (!artifact || artifact.type !== 'application/vnd.ant.knowledge-graph') {
+          if (!artifact || (artifact.type !== 'application/vnd.ant.knowledge-graph' && artifact.type !== 'application/vnd.knowledge-graph')) {
             return [];
           }
           
@@ -776,7 +776,7 @@ export const useChatStore = create<ChatState>()(
           const state = get();
           const initialArtifact = state.artifacts.find(a => a.id === artifactId);
           
-          if (!initialArtifact || initialArtifact.type !== 'application/vnd.ant.knowledge-graph') {
+          if (!initialArtifact || (initialArtifact.type !== 'application/vnd.ant.knowledge-graph' && initialArtifact.type !== 'application/vnd.knowledge-graph')) {
             return null;
           }
           

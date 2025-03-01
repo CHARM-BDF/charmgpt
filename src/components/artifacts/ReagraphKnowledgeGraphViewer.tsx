@@ -2,7 +2,8 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { GraphCanvas } from 'reagraph';
 import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
-import { Pin, PinOff } from 'lucide-react';
+import { Pin, PinOff, ChevronDown, ChevronUp, Filter, Save } from 'lucide-react';
+import { useMCPStore } from '../../store/mcpStore';
 
 interface ReagraphKnowledgeGraphViewerProps {
   data: string | KnowledgeGraphData; // Accept either JSON string or parsed object
@@ -23,8 +24,14 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const [parsedData, setParsedData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width, height });
-  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, pinnedGraphId } = useChatStore();
+  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, pinnedGraphId, updateGraphArtifact } = useChatStore();
   const isPinned = artifactId ? pinnedGraphId === artifactId : false;
+  
+  // New states for ID prefix filtering
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedPrefixes, setSelectedPrefixes] = useState<Record<string, boolean>>({});
+  const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
+  const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
 
   // Parse the data if it's a string
   useEffect(() => {
@@ -71,6 +78,35 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     }
   }, []);
 
+  // Extract unique ID prefixes from nodes
+  const idPrefixes = useMemo(() => {
+    if (!parsedData) return [];
+    
+    const prefixes = new Set<string>();
+    
+    parsedData.nodes.forEach(node => {
+      const parts = node.id.split(':');
+      if (parts.length > 1) {
+        prefixes.add(parts[0]);
+      } else {
+        prefixes.add('NO_PREFIX');
+      }
+    });
+    
+    return Array.from(prefixes).sort();
+  }, [parsedData]);
+
+  // Initialize selected prefixes when prefixes are extracted
+  useEffect(() => {
+    if (idPrefixes.length > 0) {
+      const initialSelectedPrefixes: Record<string, boolean> = {};
+      idPrefixes.forEach(prefix => {
+        initialSelectedPrefixes[prefix] = true;
+      });
+      setSelectedPrefixes(initialSelectedPrefixes);
+    }
+  }, [idPrefixes]);
+
   // Transform data for Reagraph format
   const graphData = useMemo(() => {
     if (!parsedData) return { nodes: [], edges: [] };
@@ -99,6 +135,97 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     
     return { nodes, edges };
   }, [parsedData]);
+
+  // Filter nodes based on selected prefixes
+  useEffect(() => {
+    if (!graphData.nodes.length) return;
+    
+    // Filter nodes based on selected prefixes
+    const nodes = graphData.nodes.filter(node => {
+      const parts = node.id.split(':');
+      const prefix = parts.length > 1 ? parts[0] : 'NO_PREFIX';
+      return selectedPrefixes[prefix];
+    });
+    
+    // Get IDs of filtered nodes
+    const nodeIds = new Set(nodes.map(node => node.id));
+    
+    // Filter edges to only include those connecting filtered nodes
+    const edges = graphData.edges.filter(edge => 
+      nodeIds.has(edge.source) && nodeIds.has(edge.target)
+    );
+    
+    setFilteredNodes(nodes);
+    setFilteredEdges(edges);
+  }, [graphData, selectedPrefixes]);
+
+  // Toggle all prefixes
+  const toggleAllPrefixes = (value: boolean) => {
+    const updatedPrefixes = { ...selectedPrefixes };
+    Object.keys(updatedPrefixes).forEach(prefix => {
+      updatedPrefixes[prefix] = value;
+    });
+    setSelectedPrefixes(updatedPrefixes);
+  };
+
+  // Save filtered view as a new version
+  const saveFilteredView = () => {
+    if (!artifactId || !filteredNodes.length) return;
+    
+    try {
+      console.log('Saving filtered view for artifact:', artifactId);
+      
+      // Get the latest version of the graph artifact
+      const latestVersion = getLatestGraphVersion(artifactId);
+      
+      if (!latestVersion) {
+        console.error('Cannot find latest version of graph:', artifactId);
+        return;
+      }
+      
+      const latestArtifactId = latestVersion.id;
+      console.log('Using latest version ID:', latestArtifactId);
+      
+      // Convert Reagraph nodes back to KnowledgeGraph nodes
+      const nodes = filteredNodes.map(node => ({
+        id: node.id,
+        name: node.label,
+        ...node.data,
+        color: node.color
+      }));
+      
+      // Convert Reagraph edges back to KnowledgeGraph links
+      const links = filteredEdges.map(edge => ({
+        source: edge.source,
+        target: edge.target,
+        label: edge.label,
+        ...edge.data,
+        color: edge.color
+      }));
+      
+      // Use the MCPStore's handleGraphCommand which handles both types of knowledge graph artifacts
+      const { handleGraphCommand } = useMCPStore.getState();
+      
+      handleGraphCommand({
+        type: 'filterNodes',
+        targetGraphId: latestArtifactId,
+        params: { 
+          customNodes: nodes,
+          customLinks: links,
+          selectedPrefixes
+        }
+      }).then(success => {
+        if (success) {
+          console.log('Successfully saved filtered view');
+        } else {
+          console.error('Failed to save filtered view');
+          // Could add UI feedback here
+        }
+      });
+    } catch (error) {
+      console.error('Error saving filtered view:', error);
+    }
+  };
 
   // Version navigation UI component
   const VersionControls = () => {
@@ -155,6 +282,61 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     );
   };
 
+  // ID Prefix Filter component
+  const PrefixFilter = () => {
+    if (!idPrefixes.length) return null;
+    
+    const allSelected = Object.values(selectedPrefixes).every(value => value);
+    const someSelected = Object.values(selectedPrefixes).some(value => value);
+    
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+          className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          <Filter size={16} />
+          <span className="text-sm">Filter by ID Prefix</span>
+          {isFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        
+        {isFilterOpen && (
+          <div className="absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={() => toggleAllPrefixes(!allSelected)}
+                  className="rounded text-blue-500 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium">Select All</span>
+              </label>
+            </div>
+            <div className="max-h-60 overflow-y-auto p-2">
+              {idPrefixes.map(prefix => (
+                <label key={prefix} className="flex items-center space-x-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedPrefixes[prefix] || false}
+                    onChange={() => {
+                      setSelectedPrefixes({
+                        ...selectedPrefixes,
+                        [prefix]: !selectedPrefixes[prefix]
+                      });
+                    }}
+                    className="rounded text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm">{prefix === 'NO_PREFIX' ? '(No Prefix)' : prefix}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-300">
@@ -174,36 +356,46 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   return (
     <div className="flex flex-col w-full h-full">
-      {artifactId && (
-        <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-800 rounded mb-2">
-          <div className="flex items-center space-x-2">
-            {showVersionControls && <VersionControls />}
-          </div>
+      <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-800 rounded mb-2">
+        <div className="flex items-center space-x-2">
+          {showVersionControls && <VersionControls />}
+          <PrefixFilter />
           
-          {/* If not showing version controls, still show pin button */}
-          {!showVersionControls && (
+          {/* Save Filtered View button */}
+          {artifactId && filteredNodes.length > 0 && filteredNodes.length !== graphData.nodes.length && (
             <button
-              onClick={() => {
-                if (artifactId) {
-                  setPinnedGraphId(isPinned ? null : artifactId);
-                }
-              }}
-              className={`p-2 rounded-full ${
-                isPinned 
-                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-              }`}
-              title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
+              onClick={saveFilteredView}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
+              title="Save current filtered view as a new version"
             >
-              {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+              <Save size={16} />
+              <span className="text-sm">Save Filtered View</span>
             </button>
           )}
         </div>
-      )}
+        
+        {artifactId && (
+          <button
+            onClick={() => {
+              if (artifactId) {
+                setPinnedGraphId(isPinned ? null : artifactId);
+              }
+            }}
+            className={`p-2 rounded-full ${
+              isPinned 
+                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+            title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
+          >
+            {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+          </button>
+        )}
+      </div>
       <div ref={containerRef} className="w-full h-full flex-grow relative">
         <GraphCanvas
-          nodes={graphData.nodes}
-          edges={graphData.edges}
+          nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
+          edges={filteredEdges.length ? filteredEdges : graphData.edges}
           layoutType="forceDirected2d"
           draggable
           labelType="all"
