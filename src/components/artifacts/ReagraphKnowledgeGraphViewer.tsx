@@ -232,9 +232,23 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     if (!artifactId || !showVersionControls) return null;
     
     const versions = getGraphVersionHistory(artifactId);
+    console.log('Version history for artifact:', {
+      artifactId,
+      versionsCount: versions.length,
+      versions: versions.map(v => ({
+        id: v.id,
+        title: v.title,
+        versionNumber: v.versionNumber,
+        previousVersionId: v.previousVersionId,
+        nextVersionId: v.nextVersionId
+      }))
+    });
+    
     if (versions.length <= 1) return null;
     
     const currentIndex = versions.findIndex(v => v.id === artifactId);
+    console.log('Current version index:', currentIndex, 'out of', versions.length);
+    
     const isLatest = currentIndex === versions.length - 1;
     
     return (

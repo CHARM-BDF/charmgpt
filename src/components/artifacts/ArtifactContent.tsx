@@ -130,6 +130,14 @@ export const ArtifactContent: React.FC<{
       
       case 'application/vnd.knowledge-graph':
       case 'application/vnd.ant.knowledge-graph':
+        console.log('Rendering knowledge graph artifact:', {
+          id: artifact.id,
+          title: artifact.title,
+          versionNumber: artifact.versionNumber,
+          previousVersionId: artifact.previousVersionId,
+          nextVersionId: artifact.nextVersionId
+        });
+        
         return (
           <div className="w-full h-full min-h-[400px] flex flex-col">
             <div className="mb-4 flex space-x-2 p-2 bg-gray-100 dark:bg-gray-800 rounded">
