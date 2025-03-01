@@ -47,10 +47,10 @@ router.post('/', async (req: Request<{}, {}, {
       console.log('Graph ID:', pinnedGraph.id);
       console.log('Graph Title:', pinnedGraph.title);
       
-      // Add a system message about the pinned graph
+      // Add an assistant message about the pinned graph instead of a system message
       messages.push({
-        role: 'system',
-        content: `The user has pinned a knowledge graph that should be referenced in your response. Graph title: "${pinnedGraph.title}". Please use this graph as context for your response.`
+        role: 'assistant',
+        content: `I notice you've pinned a knowledge graph titled "${pinnedGraph.title}". I'll reference this graph in my responses.`
       });
       
       // Add the graph content as a user message
@@ -90,15 +90,15 @@ router.post('/', async (req: Request<{}, {}, {
 
           const [serverName, toolName] = originalToolName.split(':');
           
-          console.log('\n=== TOOL EXECUTION DETAILS ===');
-          console.log(`Tool Selected: ${content.name} (Original name: ${originalToolName})`);
-          console.log('Tool Input:', JSON.stringify(content.input, null, 2));
+          // console.log('\n=== TOOL EXECUTION DETAILS ===');
+          // console.log(`Tool Selected: ${content.name} (Original name: ${originalToolName})`);
+          // console.log('Tool Input:', JSON.stringify(content.input, null, 2));
 
           // Execute tool
           const toolResult = await mcpService.callTool(serverName, toolName, content.input as Record<string, unknown>);
 
-          console.log('\n=== TOOL EXECUTION RESPONSE ===');
-          console.log('Raw Tool Result:', JSON.stringify(toolResult, null, 2));
+          // console.log('\n=== TOOL EXECUTION RESPONSE ===');
+          // console.log('Raw Tool Result:', JSON.stringify(toolResult, null, 2));
 
           // Add tool usage to conversation
           messages.push({
@@ -113,8 +113,8 @@ router.post('/', async (req: Request<{}, {}, {
             );
 
             if (textContent) {
-              console.log('\n=== PROCESSED TOOL RESULT ===');
-              console.log('Text Content Found:', textContent.text);
+              // console.log('\n=== PROCESSED TOOL RESULT ===');
+              // console.log('Text Content Found:', textContent.text);
 
               messages.push({
                 role: 'user',
@@ -126,10 +126,10 @@ router.post('/', async (req: Request<{}, {}, {
                 try {
                   const result = JSON.parse(textContent.text);
                   isSequentialThinkingComplete = !result.nextThoughtNeeded;
-                  console.log('\n=== SEQUENTIAL THINKING STATUS ===');
-                  console.log('Next thought needed:', result.nextThoughtNeeded);
-                  console.log('Current thought number:', result.thoughtNumber);
-                  console.log('Total thoughts planned:', result.totalThoughts);
+                  // console.log('\n=== SEQUENTIAL THINKING STATUS ===');
+                  // console.log('Next thought needed:', result.nextThoughtNeeded);
+                  // console.log('Current thought number:', result.thoughtNumber);
+                  // console.log('Total thoughts planned:', result.totalThoughts);
                 } catch (error) {
                   console.error('Error parsing sequential thinking result:', error);
                   isSequentialThinkingComplete = true;
@@ -139,8 +139,8 @@ router.post('/', async (req: Request<{}, {}, {
 
             // Handle bibliography if present
             if ('bibliography' in toolResult && toolResult.bibliography) {
-              console.log('\n=== BIBLIOGRAPHY DATA ===');
-              console.log(JSON.stringify(toolResult.bibliography, null, 2));
+              // console.log('\n=== BIBLIOGRAPHY DATA ===');
+              // console.log(JSON.stringify(toolResult.bibliography, null, 2));
               
               // Check if bibliography exists and merge if it does
               if ((messages as any).bibliography) {
@@ -165,11 +165,11 @@ router.post('/', async (req: Request<{}, {}, {
             // Handle knowledge graph artifacts if present
             if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
               // Add this logging
-              console.log('\n=== CHECKING FOR KNOWLEDGE GRAPH ARTIFACTS ===');
-              console.log(`Tool has ${toolResult.artifacts.length} artifacts`);
-              toolResult.artifacts.forEach((a, i) => {
-                console.log(`Artifact ${i+1} type: ${a.type}`);
-              });
+              // console.log('\n=== CHECKING FOR KNOWLEDGE GRAPH ARTIFACTS ===');
+              // console.log(`Tool has ${toolResult.artifacts.length} artifacts`);
+              // toolResult.artifacts.forEach((a, i) => {
+              //   console.log(`Artifact ${i+1} type: ${a.type}`);
+              // });
               
               // Find any knowledge graph artifacts in the response
               const knowledgeGraphArtifact = toolResult.artifacts.find((a: any) => 
@@ -216,10 +216,10 @@ router.post('/', async (req: Request<{}, {}, {
 
             // Handle binary output if present
             if ('binaryOutput' in toolResult && toolResult.binaryOutput) {
-              console.log('\n=== BINARY OUTPUT DATA ===');
+              // console.log('\n=== BINARY OUTPUT DATA ===');
               const binaryOutput = toolResult.binaryOutput as BinaryOutput;
-              console.log('Type:', binaryOutput.type);
-              console.log('Metadata:', JSON.stringify(binaryOutput.metadata, null, 2));
+              // console.log('Type:', binaryOutput.type);
+              // console.log('Metadata:', JSON.stringify(binaryOutput.metadata, null, 2));
               
               // Initialize binaryOutputs array if it doesn't exist
               if (!(messages as any).binaryOutputs) {
@@ -240,7 +240,7 @@ router.post('/', async (req: Request<{}, {}, {
     }
 
     // Final phase: Response formatting
-    console.log('\n=== PREPARING FINAL RESPONSE ===');
+    // console.log('\n=== PREPARING FINAL RESPONSE ===');
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
@@ -308,9 +308,9 @@ router.post('/', async (req: Request<{}, {}, {
     });
 
     // Log the response formatting results
-    console.log('\n=== RESPONSE FORMATTING RESULTS ===');
-    console.log('Raw Response:', response);
-    console.log('stringify Raw Response:', JSON.stringify(response, null, 2));
+    // console.log('\n=== RESPONSE FORMATTING RESULTS ===');
+    // console.log('Raw Response:', response);
+    // console.log('stringify Raw Response:', JSON.stringify(response, null, 2));
 
     // Process and validate response
     if (response.content[0].type !== 'tool_use') {
@@ -323,15 +323,15 @@ router.post('/', async (req: Request<{}, {}, {
     }
 
     // Log the formatted response
-    console.log('\n=== FORMATTED RESPONSE ===');
-    console.log('Tool Response:', JSON.stringify(toolResponse, null, 2));
+    // console.log('\n=== FORMATTED RESPONSE ===');
+    // console.log('Tool Response:', JSON.stringify(toolResponse, null, 2));
 
     // Convert to store format
     let storeResponse = messageService.convertToStoreFormat(toolResponse as any);
     
     // Log the store format
-    console.log('\n=== STORE FORMAT ===');
-    console.log('Store Response:', JSON.stringify(storeResponse, null, 2));
+    // console.log('\n=== STORE FORMAT ===');
+    // console.log('Store Response:', JSON.stringify(storeResponse, null, 2));
 
     // Add bibliography if present
     if ((messages as any).bibliography) {
@@ -364,8 +364,8 @@ router.post('/', async (req: Request<{}, {}, {
         }
       }
     } else {
-      console.log('\n=== NO KNOWLEDGE GRAPH TO ADD ===');
-      console.log('messages.knowledgeGraph is not present');
+      // console.log('\n=== NO KNOWLEDGE GRAPH TO ADD ===');
+      // console.log('messages.knowledgeGraph is not present');
     }
 
     // Add binary outputs if present
@@ -386,31 +386,31 @@ router.post('/', async (req: Request<{}, {}, {
     loggingService.logResponse(res);
 
     // Add this logging before processing tool results
-    console.log('\n=== TOOL RESULTS OVERVIEW ===');
-    console.log(`Tool results available: ${storeResponse.artifacts ? storeResponse.artifacts.length : 0}`);
-    if (storeResponse.artifacts && storeResponse.artifacts.length > 0) {
-      storeResponse.artifacts.forEach((artifact, index) => {
-        console.log(`Artifact ${index + 1}:`);
-        console.log(`- ID: ${artifact.id}`);
-        console.log(`- Type: ${artifact.type}`);
-        console.log(`- Title: ${artifact.title || 'untitled'}`);
-        console.log(`- Has artifactId: ${!!artifact.artifactId}`);
-      });
-    }
+    // console.log('\n=== TOOL RESULTS OVERVIEW ===');
+    // console.log(`Tool results available: ${storeResponse.artifacts ? storeResponse.artifacts.length : 0}`);
+    // if (storeResponse.artifacts && storeResponse.artifacts.length > 0) {
+    //   storeResponse.artifacts.forEach((artifact, index) => {
+    //     console.log(`Artifact ${index + 1}:`);
+    //     console.log(`- ID: ${artifact.id}`);
+    //     console.log(`- Type: ${artifact.type}`);
+    //     console.log(`- Title: ${artifact.title || 'untitled'}`);
+    //     console.log(`- Has artifactId: ${!!artifact.artifactId}`);
+    //   });
+    // }
 
     // Find where the final response is being prepared
     // Add before returning the response:
-    console.log('\n=== FINAL RESPONSE ARTIFACTS ===');
-    if (storeResponse.artifacts) {
-      console.log(`Total artifacts: ${storeResponse.artifacts.length}`);
-      storeResponse.artifacts.forEach((artifact, index) => {
-        console.log(`Artifact ${index + 1}:`);
-        console.log(`- ID: ${artifact.id}`);
-        console.log(`- Type: ${artifact.type}`);
-        console.log(`- Title: ${artifact.title || 'untitled'}`);
-        console.log(`- Has artifactId: ${!!artifact.artifactId}`);
-      });
-    }
+    // console.log('\n=== FINAL RESPONSE ARTIFACTS ===');
+    // if (storeResponse.artifacts) {
+    //   console.log(`Total artifacts: ${storeResponse.artifacts.length}`);
+    //   storeResponse.artifacts.forEach((artifact, index) => {
+    //     console.log(`Artifact ${index + 1}:`);
+    //     console.log(`- ID: ${artifact.id}`);
+    //     console.log(`- Type: ${artifact.type}`);
+    //     console.log(`- Title: ${artifact.title || 'untitled'}`);
+    //     console.log(`- Has artifactId: ${!!artifact.artifactId}`);
+    //   });
+    // }
 
     // Send response
     res.json({ response: storeResponse });

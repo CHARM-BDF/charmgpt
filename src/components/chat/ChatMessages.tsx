@@ -21,44 +21,44 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   // Debug function to log all artifacts
   const logAllArtifacts = () => {
     console.log("=== DEBUG: ALL ARTIFACTS ===");
-    console.log(`Total artifacts in store: ${artifacts.length}`);
+    // console.log(`Total artifacts in store: ${artifacts.length}`);
     
-    // Log each artifact with full details
-    artifacts.forEach((artifact, index) => {
-      console.log(`Artifact ${index + 1}:`);
-      console.log(`  ID: ${artifact.id}`);
-      console.log(`  ArtifactID: ${artifact.artifactId}`);
-      console.log(`  Type: ${artifact.type}`);
-      console.log(`  Title: ${artifact.title}`);
-      console.log(`  Position: ${artifact.position}`);
-      console.log(`  Timestamp: ${artifact.timestamp}`);
+    // // Log each artifact with full details
+    // artifacts.forEach((artifact, index) => {
+    //   console.log(`Artifact ${index + 1}:`);
+    //   console.log(`  ID: ${artifact.id}`);
+    //   console.log(`  ArtifactID: ${artifact.artifactId}`);
+    //   console.log(`  Type: ${artifact.type}`);
+    //   console.log(`  Title: ${artifact.title}`);
+    //   console.log(`  Position: ${artifact.position}`);
+    //   console.log(`  Timestamp: ${artifact.timestamp}`);
       
-      // For knowledge graphs, log additional details
-      if (artifact.type === 'application/vnd.knowledge-graph') {
-        try {
-          const graphData = JSON.parse(artifact.content);
-          console.log(`  Knowledge Graph Details:`);
-          console.log(`    Nodes: ${graphData.nodes?.length || 0}`);
-          console.log(`    Links: ${graphData.links?.length || 0}`);
-        } catch (e) {
-          console.log(`  Error parsing knowledge graph content: ${e}`);
-        }
-      }
-    });
+    //   // For knowledge graphs, log additional details
+    //   if (artifact.type === 'application/vnd.knowledge-graph') {
+    //     try {
+    //       const graphData = JSON.parse(artifact.content);
+    //       console.log(`  Knowledge Graph Details:`);
+    //       console.log(`    Nodes: ${graphData.nodes?.length || 0}`);
+    //       console.log(`    Links: ${graphData.links?.length || 0}`);
+    //     } catch (e) {
+    //       console.log(`  Error parsing knowledge graph content: ${e}`);
+    //     }
+    //   }
+    // });
     
-    // Log message-artifact associations
-    console.log("\n=== DEBUG: MESSAGE-ARTIFACT ASSOCIATIONS ===");
-    messages.forEach((message, index) => {
-      console.log(`Message ${index + 1} (ID: ${message.id}):`);
-      console.log(`  ArtifactID: ${message.artifactId || 'none'}`);
+    // // Log message-artifact associations
+    // console.log("\n=== DEBUG: MESSAGE-ARTIFACT ASSOCIATIONS ===");
+    // messages.forEach((message, index) => {
+    //   console.log(`Message ${index + 1} (ID: ${message.id}):`);
+    //   console.log(`  ArtifactID: ${message.artifactId || 'none'}`);
       
-      // Get all artifacts for this message using our function
-      const messageArtifacts = getMessageArtifacts(message);
-      console.log(`  Total artifacts found by getMessageArtifacts: ${messageArtifacts.length}`);
-      messageArtifacts.forEach((artifact, i) => {
-        console.log(`  Artifact ${i + 1}: ${artifact.id} (${artifact.type})`);
-      });
-    });
+    //   // Get all artifacts for this message using our function
+    //   const messageArtifacts = getMessageArtifacts(message);
+    //   console.log(`  Total artifacts found by getMessageArtifacts: ${messageArtifacts.length}`);
+    //   messageArtifacts.forEach((artifact, i) => {
+    //     console.log(`  Artifact ${i + 1}: ${artifact.id} (${artifact.type})`);
+    //   });
+    // });
   };
   
   // Function to get all artifacts associated with a message
@@ -66,18 +66,18 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     const result: Artifact[] = [];
     
     // Step 1: Get directly linked artifacts based on artifactId
-    console.log(`Step 1: Checking for linked artifacts for message ${message.id}`);
+    // console.log(`Step 1: Checking for linked artifacts for message ${message.id}`);
     if (message.artifactId) {
       const artifact = artifacts.find(a => a.id === message.artifactId);
       if (artifact) {
-        console.log(`  Found linked artifact: ${artifact.id} (${artifact.type})`);
+        // console.log(`  Found linked artifact: ${artifact.id} (${artifact.type})`);
         result.push(artifact);
       }
     }
     
     // Check for multiple artifacts using the new artifactIds property
     if ((message as any).artifactIds && Array.isArray((message as any).artifactIds)) {
-      console.log(`  Message has artifactIds property with ${(message as any).artifactIds.length} artifacts`);
+      // console.log(`  Message has artifactIds property with ${(message as any).artifactIds.length} artifacts`);
       (message as any).artifactIds.forEach((id: string) => {
         if (id !== message.artifactId) { // Avoid duplicates
           const artifact = artifacts.find(a => a.id === id);
@@ -90,29 +90,29 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     }
     
     // Step 2: Get artifacts that reference this message
-    console.log(`Step 2: Checking for artifacts that reference message ${message.id}`);
+    // console.log(`Step 2: Checking for artifacts that reference message ${message.id}`);
     const referencingArtifacts = artifacts.filter(a => 
       a.content.includes(message.id) && !result.some(r => r.id === a.id)
     );
     if (referencingArtifacts.length > 0) {
-      console.log(`  Found ${referencingArtifacts.length} artifacts referencing this message`);
+      // console.log(`  Found ${referencingArtifacts.length} artifacts referencing this message`);
       result.push(...referencingArtifacts);
     }
     
     // Step 3: Extract artifact IDs from message content (buttons)
-    console.log(`Step 3: Checking for artifacts referenced in message content`);
+    // console.log(`Step 3: Checking for artifacts referenced in message content`);
     const buttonMatches = message.content.match(/data-artifact-id="([^"]+)"/g) || [];
     buttonMatches.forEach(match => {
       const artifactId = match.replace('data-artifact-id="', '').replace('"', '');
       const artifact = artifacts.find(a => a.id === artifactId);
       if (artifact && !result.some(r => r.id === artifact.id)) {
-        console.log(`  Found artifact referenced in content: ${artifact.id} (${artifact.type})`);
+        // console.log(`  Found artifact referenced in content: ${artifact.id} (${artifact.type})`);
         result.push(artifact);
       }
     });
     
     // Log final result
-    console.log(`Found ${result.length} total artifacts for message ${message.id}`);
+    // console.log(`Found ${result.length} total artifacts for message ${message.id}`);
     return result;
   };
 
@@ -175,7 +175,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
       setTimeout(() => setCopiedMessageId(null), 2000); // Hide after 2 seconds
-      console.log('Successfully copied to clipboard');
+      // console.log('Successfully copied to clipboard');
     } catch (err) {
       console.error('Failed to copy text:', err);
     }
@@ -298,15 +298,15 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                       );
                       
                       // Log found artifacts for debugging
-                      console.log(`Message ${message.id} artifacts:`, {
-                        total: messageArtifacts.length,
-                        artifactIds: messageArtifacts.map(a => a.id),
-                        types: messageArtifacts.map(a => a.type),
-                        hasBibliography: !!bibliographyArtifact,
-                        hasKnowledgeGraph: !!knowledgeGraphArtifact,
-                        hasJson: !!jsonArtifact,
-                        messageArtifactId: message.artifactId
-                      });
+                      // console.log(`Message ${message.id} artifacts:`, {
+                      //   total: messageArtifacts.length,
+                      //   artifactIds: messageArtifacts.map(a => a.id),
+                      //   types: messageArtifacts.map(a => a.type),
+                      //   hasBibliography: !!bibliographyArtifact,
+                      //   hasKnowledgeGraph: !!knowledgeGraphArtifact,
+                      //   hasJson: !!jsonArtifact,
+                      //   messageArtifactId: message.artifactId
+                      // });
                       
                       if (bibliographyArtifact || knowledgeGraphArtifact || jsonArtifact) {
                         return (
