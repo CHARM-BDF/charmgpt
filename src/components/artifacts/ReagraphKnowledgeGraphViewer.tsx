@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { GraphCanvas } from 'reagraph';
 import { KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
@@ -12,6 +12,66 @@ interface ReagraphKnowledgeGraphViewerProps {
   artifactId?: string; // Add this to track the artifact
   showVersionControls?: boolean; // Option to show/hide version controls
 }
+
+// Custom hook for managing search inputs
+const useSearchInput = (initialValue = '') => {
+  const [searchTerm, setSearchTerm] = useState(initialValue);
+  const [inputKey, setInputKey] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Use a more direct approach to maintain focus
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const currentTarget = e.currentTarget;
+    const cursorPosition = currentTarget.selectionStart;
+    const newValue = e.target.value;
+    
+    console.log('Search input changed:', newValue, 'Cursor at:', cursorPosition);
+    
+    // Update the state
+    setSearchTerm(newValue);
+    
+    // Force focus to remain on the input and restore cursor position
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        if (cursorPosition !== null) {
+          inputRef.current.setSelectionRange(cursorPosition, cursorPosition);
+        }
+      }
+    });
+  }, []);
+  
+  const clearSearch = useCallback(() => {
+    console.log('Clearing search term');
+    setSearchTerm('');
+    // Force re-render of input by changing key
+    setInputKey(prev => prev + 1);
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    });
+  }, []);
+  
+  const focusInput = useCallback(() => {
+    console.log('Focusing input');
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    });
+  }, []);
+  
+  return {
+    searchTerm,
+    setSearchTerm,
+    inputRef,
+    inputKey,
+    handleChange,
+    clearSearch,
+    focusInput
+  };
+};
 
 export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewerProps> = ({ 
   data, 
@@ -33,11 +93,28 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     message: '' 
   });
   
-  // New states for entity type filtering (replacing ID prefix filtering)
+  // Entity type filter states
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedEntityTypes, setSelectedEntityTypes] = useState<Record<string, boolean>>({});
   const [entityTypeCounts, setEntityTypeCounts] = useState<Record<string, number>>({});
   const [entityTypeColors, setEntityTypeColors] = useState<Record<string, string>>({});
+  const typeSearchInput = useSearchInput();
+  const typeFilterRef = useRef<HTMLDivElement>(null);
+  
+  // Node name filter states
+  const [isNodeFilterOpen, setIsNodeFilterOpen] = useState(false);
+  const [selectedNodes, setSelectedNodes] = useState<Record<string, boolean>>({});
+  const [nodeNameCounts, setNodeNameCounts] = useState<Record<string, number>>({});
+  const nodeSearchInput = useSearchInput();
+  const nodeFilterRef = useRef<HTMLDivElement>(null);
+  
+  // Edge label filter states
+  const [isEdgeFilterOpen, setIsEdgeFilterOpen] = useState(false);
+  const [selectedEdgeLabels, setSelectedEdgeLabels] = useState<Record<string, boolean>>({});
+  const [edgeLabelCounts, setEdgeLabelCounts] = useState<Record<string, number>>({});
+  const edgeSearchInput = useSearchInput();
+  const edgeFilterRef = useRef<HTMLDivElement>(null);
+  
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
   const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
 
@@ -114,6 +191,40 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       .map(([type, { count, color }]) => ({ type, count, color }));
   }, [parsedData]);
 
+  // Extract unique node names
+  const nodeNames = useMemo(() => {
+    if (!parsedData) return [];
+    
+    const names = new Map<string, number>();
+    
+    parsedData.nodes.forEach(node => {
+      const name = node.name;
+      names.set(name, (names.get(name) || 0) + 1);
+    });
+    
+    // Convert to array and sort alphabetically
+    return Array.from(names.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, count]) => ({ name, count }));
+  }, [parsedData]);
+
+  // Extract unique edge labels
+  const edgeLabels = useMemo(() => {
+    if (!parsedData) return [];
+    
+    const labels = new Map<string, number>();
+    
+    parsedData.links.forEach(link => {
+      const label = link.label || 'No Label';
+      labels.set(label, (labels.get(label) || 0) + 1);
+    });
+    
+    // Convert to array and sort by count (descending)
+    return Array.from(labels.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({ label, count }));
+  }, [parsedData]);
+
   // Initialize selected entity types when entity types are extracted
   useEffect(() => {
     if (entityTypes.length > 0) {
@@ -132,6 +243,38 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       setEntityTypeColors(typeColors);
     }
   }, [entityTypes]);
+
+  // Initialize selected node names when node names are extracted
+  useEffect(() => {
+    if (nodeNames.length > 0) {
+      const initialSelectedNodes: Record<string, boolean> = {};
+      const counts: Record<string, number> = {};
+      
+      nodeNames.forEach(({ name, count }) => {
+        initialSelectedNodes[name] = true;
+        counts[name] = count;
+      });
+      
+      setSelectedNodes(initialSelectedNodes);
+      setNodeNameCounts(counts);
+    }
+  }, [nodeNames]);
+
+  // Initialize selected edge labels when edge labels are extracted
+  useEffect(() => {
+    if (edgeLabels.length > 0) {
+      const initialSelectedLabels: Record<string, boolean> = {};
+      const counts: Record<string, number> = {};
+      
+      edgeLabels.forEach(({ label, count }) => {
+        initialSelectedLabels[label] = true;
+        counts[label] = count;
+      });
+      
+      setSelectedEdgeLabels(initialSelectedLabels);
+      setEdgeLabelCounts(counts);
+    }
+  }, [edgeLabels]);
 
   // Transform data for Reagraph format
   const graphData = useMemo(() => {
@@ -176,27 +319,40 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     return { nodes, edges };
   }, [parsedData]);
 
-  // Filter nodes based on selected entity types
+  // Apply filters when selections change
   useEffect(() => {
-    if (!graphData.nodes.length) return;
+    if (!parsedData) return;
     
-    // Filter nodes based on selected entity types
+    // Filter nodes based on selected entity types and node names
     const nodes = graphData.nodes.filter(node => {
       const entityType = node.entityType || 'Other';
-      return selectedEntityTypes[entityType];
+      const nodeName = node.label;
+      
+      // Check if both entity type and node name are selected
+      return (
+        (selectedEntityTypes[entityType] || false) && 
+        (selectedNodes[nodeName] || false)
+      );
     });
     
-    // Get IDs of filtered nodes
+    // Get the IDs of filtered nodes
     const nodeIds = new Set(nodes.map(node => node.id));
     
-    // Filter edges to only include those connecting filtered nodes
-    const edges = graphData.edges.filter(edge => 
-      nodeIds.has(edge.source) && nodeIds.has(edge.target)
-    );
+    // Filter edges based on selected edge labels and filtered nodes
+    const edges = graphData.edges.filter(edge => {
+      const edgeLabel = edge.label || 'No Label';
+      
+      // Check if edge label is selected and both source and target nodes are in the filtered nodes
+      return (
+        (selectedEdgeLabels[edgeLabel] || false) &&
+        nodeIds.has(edge.source) && 
+        nodeIds.has(edge.target)
+      );
+    });
     
     setFilteredNodes(nodes);
     setFilteredEdges(edges);
-  }, [graphData, selectedEntityTypes]);
+  }, [parsedData, graphData, selectedEntityTypes, selectedNodes, selectedEdgeLabels]);
 
   // Toggle all entity types
   const toggleAllEntityTypes = (value: boolean) => {
@@ -205,6 +361,75 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       updatedTypes[type] = value;
     });
     setSelectedEntityTypes(updatedTypes);
+  };
+  
+  // Toggle all node names
+  const toggleAllNodes = (value: boolean) => {
+    const updatedNodes = { ...selectedNodes };
+    Object.keys(updatedNodes).forEach(name => {
+      updatedNodes[name] = value;
+    });
+    setSelectedNodes(updatedNodes);
+  };
+  
+  // Toggle all edge labels
+  const toggleAllEdgeLabels = (value: boolean) => {
+    const updatedLabels = { ...selectedEdgeLabels };
+    Object.keys(updatedLabels).forEach(label => {
+      updatedLabels[label] = value;
+    });
+    setSelectedEdgeLabels(updatedLabels);
+  };
+
+  // Toggle filtered entity types
+  const toggleFilteredEntityTypes = (value: boolean) => {
+    if (!typeSearchInput.searchTerm) {
+      toggleAllEntityTypes(value);
+      return;
+    }
+    
+    const updatedTypes = { ...selectedEntityTypes };
+    entityTypes
+      .filter(({ type }) => type.toLowerCase().includes(typeSearchInput.searchTerm.toLowerCase()))
+      .forEach(({ type }) => {
+        updatedTypes[type] = value;
+      });
+    
+    setSelectedEntityTypes(updatedTypes);
+  };
+  
+  // Toggle filtered node names
+  const toggleFilteredNodes = (value: boolean) => {
+    if (!nodeSearchInput.searchTerm) {
+      toggleAllNodes(value);
+      return;
+    }
+    
+    const updatedNodes = { ...selectedNodes };
+    nodeNames
+      .filter(({ name }) => name.toLowerCase().includes(nodeSearchInput.searchTerm.toLowerCase()))
+      .forEach(({ name }) => {
+        updatedNodes[name] = value;
+      });
+    
+    setSelectedNodes(updatedNodes);
+  };
+  
+  // Toggle filtered edge labels
+  const toggleFilteredEdgeLabels = (value: boolean) => {
+    if (!edgeSearchInput.searchTerm) {
+      toggleAllEdgeLabels(value);
+      return;
+    }
+    
+    const updatedLabels = { ...selectedEdgeLabels };
+    edgeLabels
+      .filter(({ label }) => label.toLowerCase().includes(edgeSearchInput.searchTerm.toLowerCase()))
+      .forEach(({ label }) => {
+        updatedLabels[label] = value;
+      });
+    
+    setSelectedEdgeLabels(updatedLabels);
   };
 
   // Save filtered view as a new version
@@ -251,7 +476,9 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         params: { 
           customNodes: nodes,
           customLinks: links,
-          selectedEntityTypes
+          selectedEntityTypes,
+          selectedNodes,
+          selectedEdgeLabels
         }
       }).then(success => {
         if (success) {
@@ -345,34 +572,89 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     return (
       <div className="relative">
         <button
-          onClick={() => setIsFilterOpen(!isFilterOpen)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsFilterOpen(!isFilterOpen);
+          }}
           className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           <Filter size={16} />
           <span className="text-sm">Filter by Entity Type</span>
+          {Object.values(selectedEntityTypes).filter(Boolean).length !== entityTypes.length && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+              {Object.values(selectedEntityTypes).filter(Boolean).length}/{entityTypes.length}
+            </span>
+          )}
           {isFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         
         {isFilterOpen && (
-          <div className="absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+          <div ref={typeFilterRef} className="absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
             <div className="p-2 border-b border-gray-200 dark:border-gray-700">
-              <label className="flex items-center space-x-2">
+              <div className="relative mb-2">
                 <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={() => toggleAllEntityTypes(!allSelected)}
-                  className="rounded text-blue-500 focus:ring-blue-500"
+                  key={typeSearchInput.inputKey}
+                  type="text"
+                  placeholder="Search entity types..."
+                  value={typeSearchInput.searchTerm}
+                  onChange={typeSearchInput.handleChange}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white pr-8"
+                  ref={typeSearchInput.inputRef}
+                  autoFocus
                 />
-                <span className="text-sm font-medium">Select All</span>
-              </label>
+                {typeSearchInput.searchTerm && (
+                  <button
+                    onClick={typeSearchInput.clearSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleAllEntityTypes(!allSelected);
+                    }}
+                    className="rounded text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium">Select All</span>
+                </label>
+                <div className="flex space-x-2">
+                  {typeSearchInput.searchTerm && (
+                    <button
+                      onClick={() => toggleFilteredEntityTypes(true)}
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      Select Filtered
+                    </button>
+                  )}
+                  <button
+                    onClick={() => toggleAllEntityTypes(false)}
+                    className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="max-h-60 overflow-y-auto p-2">
-              {entityTypes.map(({ type, count, color }) => (
+              {entityTypes
+                .filter(({ type }) => 
+                  type.toLowerCase().includes(typeSearchInput.searchTerm.toLowerCase())
+                )
+                .map(({ type, count, color }) => (
                 <label key={type} className="flex items-center space-x-2 py-1">
                   <input
                     type="checkbox"
                     checked={selectedEntityTypes[type] || false}
-                    onChange={() => {
+                    onChange={(e) => {
+                      e.stopPropagation();
                       setSelectedEntityTypes({
                         ...selectedEntityTypes,
                         [type]: !selectedEntityTypes[type]
@@ -385,6 +667,228 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
                     style={{ backgroundColor: color }}
                   />
                   <span className="text-sm">{type === 'Other' ? '(Other)' : type}</span>
+                  <span className="text-xs text-gray-500 ml-auto">({count})</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Node Name Filter component
+  const NodeNameFilter = () => {
+    if (!nodeNames.length) return null;
+    
+    const allSelected = Object.values(selectedNodes).every(value => value);
+    const someSelected = Object.values(selectedNodes).some(value => value);
+    
+    return (
+      <div className="relative">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsNodeFilterOpen(!isNodeFilterOpen);
+          }}
+          className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          <Filter size={16} />
+          <span className="text-sm">Filter by Node Name</span>
+          {Object.values(selectedNodes).filter(Boolean).length !== nodeNames.length && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+              {Object.values(selectedNodes).filter(Boolean).length}/{nodeNames.length}
+            </span>
+          )}
+          {isNodeFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        
+        {isNodeFilterOpen && (
+          <div ref={nodeFilterRef} className="absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="relative mb-2">
+                <input
+                  key={nodeSearchInput.inputKey}
+                  type="text"
+                  placeholder="Search node names..."
+                  value={nodeSearchInput.searchTerm}
+                  onChange={nodeSearchInput.handleChange}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white pr-8"
+                  ref={nodeSearchInput.inputRef}
+                  autoFocus
+                />
+                {nodeSearchInput.searchTerm && (
+                  <button
+                    onClick={nodeSearchInput.clearSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleAllNodes(!allSelected);
+                    }}
+                    className="rounded text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium">Select All</span>
+                </label>
+                <div className="flex space-x-2">
+                  {nodeSearchInput.searchTerm && (
+                    <button
+                      onClick={() => toggleFilteredNodes(true)}
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      Select Filtered
+                    </button>
+                  )}
+                  <button
+                    onClick={() => toggleAllNodes(false)}
+                    className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto p-2">
+              {nodeNames
+                .filter(({ name }) => 
+                  name.toLowerCase().includes(nodeSearchInput.searchTerm.toLowerCase())
+                )
+                .map(({ name, count }) => (
+                <label key={name} className="flex items-center space-x-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedNodes[name] || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setSelectedNodes({
+                        ...selectedNodes,
+                        [name]: !selectedNodes[name]
+                      });
+                    }}
+                    className="rounded text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm truncate">{name}</span>
+                  <span className="text-xs text-gray-500 ml-auto">({count})</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Edge Label Filter component
+  const EdgeLabelFilter = () => {
+    if (!edgeLabels.length) return null;
+    
+    const allSelected = Object.values(selectedEdgeLabels).every(value => value);
+    const someSelected = Object.values(selectedEdgeLabels).some(value => value);
+    
+    return (
+      <div className="relative">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsEdgeFilterOpen(!isEdgeFilterOpen);
+          }}
+          className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          <Filter size={16} />
+          <span className="text-sm">Filter by Relationship</span>
+          {Object.values(selectedEdgeLabels).filter(Boolean).length !== edgeLabels.length && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+              {Object.values(selectedEdgeLabels).filter(Boolean).length}/{edgeLabels.length}
+            </span>
+          )}
+          {isEdgeFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        
+        {isEdgeFilterOpen && (
+          <div ref={edgeFilterRef} className="absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="relative mb-2">
+                <input
+                  key={edgeSearchInput.inputKey}
+                  type="text"
+                  placeholder="Search relationships..."
+                  value={edgeSearchInput.searchTerm}
+                  onChange={edgeSearchInput.handleChange}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white pr-8"
+                  ref={edgeSearchInput.inputRef}
+                  autoFocus
+                />
+                {edgeSearchInput.searchTerm && (
+                  <button
+                    onClick={edgeSearchInput.clearSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleAllEdgeLabels(!allSelected);
+                    }}
+                    className="rounded text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium">Select All</span>
+                </label>
+                <div className="flex space-x-2">
+                  {edgeSearchInput.searchTerm && (
+                    <button
+                      onClick={() => toggleFilteredEdgeLabels(true)}
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      Select Filtered
+                    </button>
+                  )}
+                  <button
+                    onClick={() => toggleAllEdgeLabels(false)}
+                    className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto p-2">
+              {edgeLabels
+                .filter(({ label }) => 
+                  label.toLowerCase().includes(edgeSearchInput.searchTerm.toLowerCase())
+                )
+                .map(({ label, count }) => (
+                <label key={label} className="flex items-center space-x-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedEdgeLabels[label] || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setSelectedEdgeLabels({
+                        ...selectedEdgeLabels,
+                        [label]: !selectedEdgeLabels[label]
+                      });
+                    }}
+                    className="rounded text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm truncate">{label === 'No Label' ? '(No Label)' : label}</span>
                   <span className="text-xs text-gray-500 ml-auto">({count})</span>
                 </label>
               ))}
@@ -437,6 +941,61 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     );
   };
 
+  // Focus search input when filter is opened
+  useEffect(() => {
+    if (isFilterOpen && typeSearchInput.inputRef.current) {
+      typeSearchInput.focusInput();
+    }
+  }, [isFilterOpen]);
+  
+  // Focus search input when node filter is opened
+  useEffect(() => {
+    if (isNodeFilterOpen && nodeSearchInput.inputRef.current) {
+      nodeSearchInput.focusInput();
+    }
+  }, [isNodeFilterOpen]);
+  
+  // Focus search input when edge filter is opened
+  useEffect(() => {
+    if (isEdgeFilterOpen && edgeSearchInput.inputRef.current) {
+      edgeSearchInput.focusInput();
+    }
+  }, [isEdgeFilterOpen]);
+
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close entity type filter dropdown if clicked outside
+      if (isFilterOpen && 
+          typeFilterRef.current && 
+          !typeFilterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+      
+      // Close node name filter dropdown if clicked outside
+      if (isNodeFilterOpen && 
+          nodeFilterRef.current && 
+          !nodeFilterRef.current.contains(event.target as Node)) {
+        setIsNodeFilterOpen(false);
+      }
+      
+      // Close edge label filter dropdown if clicked outside
+      if (isEdgeFilterOpen && 
+          edgeFilterRef.current && 
+          !edgeFilterRef.current.contains(event.target as Node)) {
+        setIsEdgeFilterOpen(false);
+      }
+    };
+    
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Clean up
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFilterOpen, isNodeFilterOpen, isEdgeFilterOpen]);
+
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-300">
@@ -457,38 +1016,22 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   return (
     <div className="flex flex-col w-full h-full">
       <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-800 rounded mb-2">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           {showVersionControls && <VersionControls />}
           <EntityTypeFilter />
-          
-          {/* Save Filtered View button */}
-          {artifactId && filteredNodes.length > 0 && filteredNodes.length !== graphData.nodes.length && (
-            <button
-              onClick={saveFilteredView}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
-              title="Save current filtered view as a new version"
-            >
-              <Save size={16} />
-              <span className="text-sm">Save Filtered View</span>
-            </button>
-          )}
+          <NodeNameFilter />
+          <EdgeLabelFilter />
         </div>
         
-        {artifactId && (
+        {/* Save Filtered View button */}
+        {artifactId && filteredNodes.length > 0 && filteredNodes.length !== graphData.nodes.length && (
           <button
-            onClick={() => {
-              if (artifactId) {
-                setPinnedGraphId(isPinned ? null : artifactId);
-              }
-            }}
-            className={`p-2 rounded-full ${
-              isPinned 
-                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-            }`}
-            title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
+            onClick={saveFilteredView}
+            className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
+            title="Save current filtered view as a new version"
           >
-            {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+            <Save size={16} />
+            <span className="text-sm">Save Filtered View</span>
           </button>
         )}
       </div>
