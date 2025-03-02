@@ -112,15 +112,24 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     if (!parsedData) return { nodes: [], edges: [] };
     
     // Map nodes to Reagraph format
-    const nodes = parsedData.nodes.map(node => ({
-      id: node.id,
-      label: node.name,
-      data: { ...node },
-      // Use node.color if available, otherwise generate from group
-      color: node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4'),
-      // Use node.val for size if available
-      size: node.val || 1
-    }));
+    const nodes = parsedData.nodes.map(node => {
+      // Log the node color for debugging
+      console.log(`Node ${node.id} color: ${node.color}`);
+      
+      // Get the color value from node or generate one
+      const colorValue = node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4');
+      
+      return {
+        id: node.id,
+        label: node.name,
+        data: { ...node },
+        // Include both color and fill properties
+        color: colorValue,
+        fill: colorValue,
+        // Use node.val for size if available
+        size: node.val || 1
+      };
+    });
     
     // Map links to Reagraph edges format
     const edges = parsedData.links.map(link => ({

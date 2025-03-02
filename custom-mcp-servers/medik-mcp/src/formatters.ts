@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Define types for the knowledge graph data structure
 interface KnowledgeGraphNode {
   id: string;
-  startingId?: string; // Original ID before normalization
+  startingId?: string[]; // Array of original IDs before normalization
   name: string;
   group: number;
   val?: number;
@@ -85,6 +85,77 @@ function getEntityTypeAndGroup(id: string): { type: string; group: number } {
   } else {
     return { type: 'Other', group: 7 };
   }
+}
+
+/**
+ * Determine entity type from biolink types
+ * @param types Array of biolink types
+ * @returns A human-readable entity type
+ */
+function getEntityTypeFromBiolink(types: string[] | undefined): string {
+  if (!types || types.length === 0) {
+    return 'Other';
+  }
+  
+  // Check for cellular component
+  if (types.includes('biolink:CellularComponent')) {
+    return 'Cellular Component';
+  }
+  
+  // Check for chemical entities
+  if (types.includes('biolink:SmallMolecule') || 
+      types.includes('biolink:ChemicalEntity') || 
+      types.includes('biolink:ChemicalOrDrugOrTreatment')) {
+    return 'Chemical';
+  }
+  
+  // Check for anatomical structures
+  if (types.includes('biolink:GrossAnatomicalStructure') || 
+      types.includes('biolink:AnatomicalEntity')) {
+    return 'Anatomical Structure';
+  }
+  
+  // Check for genes and proteins
+  if (types.includes('biolink:Gene') || 
+      types.includes('biolink:GeneOrGeneProduct') || 
+      types.includes('biolink:Protein') || 
+      types.includes('biolink:GeneProductMixin') || 
+      types.includes('biolink:Polypeptide')) {
+    return 'Gene';
+  }
+  
+  // Check for gene families and groups
+  if (types.includes('biolink:GeneFamily') || 
+      types.includes('biolink:GeneGroupingMixin')) {
+    return 'Gene Group';
+  }
+  
+  // Default case
+  return 'Other';
+}
+
+/**
+ * Get a color for a specific entity type
+ * @param entityType The entity type
+ * @returns A hex color code
+ */
+function getColorForEntityType(entityType: string): string {
+  // Define a color mapping for entity types
+  const colorMap: Record<string, string> = {
+    'Gene': '#4285F4',           // Google Blue
+    'Gene Group': '#34A853',     // Google Green
+    'Chemical': '#FBBC05',       // Google Yellow
+    'Disease': '#EA4335',        // Google Red
+    'Cellular Component': '#8E24AA', // Purple
+    'Anatomical Structure': '#00ACC1', // Cyan
+    'Drug': '#FB8C00',           // Orange
+    'UMLS Concept': '#9E9E9E',   // Gray
+    'Cancer Concept': '#D81B60', // Pink
+    'Reaction': '#43A047',       // Green
+    'Other': '#757575'           // Dark Gray
+  };
+  
+  return colorMap[entityType] || colorMap['Other'];
 }
 
 // Helper function to make predicate human-readable
@@ -255,7 +326,7 @@ export function formatKnowledgeGraphArtifact(
       const { type, group } = getEntityTypeAndGroup(sourceId);
       nodeMap.set(sourceId, {
         id: sourceId,
-        startingId: sourceId, // Store the original ID
+        startingId: [sourceId], // Store the original ID as an array
         name: sourceName,
         group,
         entityType: type
@@ -267,7 +338,7 @@ export function formatKnowledgeGraphArtifact(
       const { type, group } = getEntityTypeAndGroup(targetId);
       nodeMap.set(targetId, {
         id: targetId,
-        startingId: targetId, // Store the original ID
+        startingId: [targetId], // Store the original ID as an array
         name: targetName,
         group,
         entityType: type
@@ -309,7 +380,10 @@ export function formatKnowledgeGraphArtifact(
     const idMap = new Map<string, string>();
     let normalizedCount = 0;
     
-    // Apply normalized IDs to nodes
+    // Track nodes that have been merged
+    const mergedNodes = new Map<string, KnowledgeGraphNode>();
+    
+    // First pass: Apply normalized IDs to nodes and identify duplicates
     nodes.forEach(node => {
       console.error(`MEDIK FORMATTER: Processing node ${node.id}`);
       const normData = normalizedMap.get(node.id);
@@ -326,25 +400,84 @@ export function formatKnowledgeGraphArtifact(
       
       // Store the original ID for reference
       const originalId = node.id;
-      
-      // Update the node with normalized data
-      node.startingId = originalId;
-      node.id = normData.id.identifier;
-      node.name = normData.id.label || node.name;
-      node.metadata = {
-        label: normData.id.label,
-        description: normData.id.description,
-        type: normData.type
-      };
+      const normalizedId = normData.id.identifier;
       
       // Track the ID change for updating links
-      idMap.set(originalId, node.id);
-      normalizedCount++;
+      idMap.set(originalId, normalizedId);
       
-      console.error(`MEDIK FORMATTER: Normalized ${originalId} to ${node.id}`);
+      // Check if we've already seen this normalized ID
+      if (mergedNodes.has(normalizedId)) {
+        // This is a duplicate, merge with existing node
+        const existingNode = mergedNodes.get(normalizedId)!;
+        
+        // Add the original ID to the startingId array of the existing node
+        if (node.startingId && node.startingId.length > 0) {
+          existingNode.startingId = [...(existingNode.startingId || []), ...node.startingId];
+        } else {
+          existingNode.startingId = [...(existingNode.startingId || []), originalId];
+        }
+        
+        // Update connection count (will be used for node size)
+        existingNode.val = (existingNode.val || 0) + (node.val || 0);
+        
+        // Preserve color if it exists on the node being merged
+        if (node.color && !existingNode.color) {
+          existingNode.color = node.color;
+          console.error(`MEDIK FORMATTER: Copied color ${node.color} from merged node ${originalId} to ${normalizedId}`);
+        }
+        
+        // If the node being merged has an entity type but the existing node doesn't, copy it
+        if (node.entityType && !existingNode.entityType) {
+          existingNode.entityType = node.entityType;
+          console.error(`MEDIK FORMATTER: Copied entity type ${node.entityType} from merged node ${originalId} to ${normalizedId}`);
+          
+          // Set color based on entity type if not already set
+          if (!existingNode.color) {
+            existingNode.color = getColorForEntityType(existingNode.entityType);
+            console.error(`MEDIK FORMATTER: Set color ${existingNode.color} based on entity type ${existingNode.entityType} for merged node ${normalizedId}`);
+          }
+        }
+        
+        console.error(`MEDIK FORMATTER: Merged node ${originalId} into existing node ${normalizedId}`);
+      } else {
+        // This is a new normalized ID
+        // Update the node with normalized data
+        node.id = normalizedId;
+        node.name = normData.id.label || node.name;
+        
+        // Ensure startingId is an array
+        if (!Array.isArray(node.startingId)) {
+          node.startingId = node.startingId ? [node.startingId] : [originalId];
+        }
+        
+        // Determine entity type from biolink types if available
+        const biolinkEntityType = getEntityTypeFromBiolink(normData.type);
+        
+        // Update node metadata and entity type
+        node.metadata = {
+          label: normData.id.label,
+          description: normData.id.description,
+          type: normData.type
+        };
+        
+        // Update entity type with biolink-derived type
+        node.entityType = biolinkEntityType;
+        
+        // Assign color based on entity type
+        node.color = getColorForEntityType(biolinkEntityType);
+        
+        // Log the entity type determination and color
+        console.error(`MEDIK FORMATTER: Determined entity type for ${node.id}: ${biolinkEntityType} (color: ${node.color}) (from ${normData.type?.slice(0, 3).join(', ')}${normData.type && normData.type.length > 3 ? '...' : ''})`);
+        
+        // Add to merged nodes map
+        mergedNodes.set(normalizedId, node);
+        normalizedCount++;
+        
+        console.error(`MEDIK FORMATTER: Normalized ${originalId} to ${normalizedId}`);
+      }
     });
     
-    console.error(`MEDIK FORMATTER: Successfully normalized ${normalizedCount} out of ${nodes.length} nodes`);
+    console.error(`MEDIK FORMATTER: Successfully normalized to ${mergedNodes.size} unique nodes from ${nodes.length} original nodes`);
     console.error(`MEDIK FORMATTER: ID map contains ${idMap.size} entries`);
     
     // Update links with new node IDs
@@ -366,15 +499,120 @@ export function formatKnowledgeGraphArtifact(
     
     console.error(`MEDIK FORMATTER: Updated ${updatedLinkCount} link endpoints`);
     
-    // Update the graph with normalized nodes
-    graph.nodes = nodes;
+    // Update the graph with merged nodes
+    graph.nodes = Array.from(mergedNodes.values());
+    
+    // Ensure all nodes have colors and startingId arrays
+    graph.nodes.forEach(node => {
+      // Make sure startingId is an array
+      if (!node.startingId) {
+        node.startingId = [node.id];
+        console.error(`MEDIK FORMATTER: Fixed missing startingId for node ${node.id}`);
+      } else if (!Array.isArray(node.startingId)) {
+        node.startingId = [node.startingId];
+        console.error(`MEDIK FORMATTER: Converted startingId to array for node ${node.id}`);
+      }
+      
+      // Make sure color is set based on entity type
+      if (!node.color && node.entityType) {
+        node.color = getColorForEntityType(node.entityType);
+        console.error(`MEDIK FORMATTER: Added missing color for node ${node.id} based on entity type ${node.entityType}: ${node.color}`);
+      } else if (!node.color) {
+        // If no entity type, use the group to determine a color
+        const entityType = node.group === 1 ? 'Drug' :
+                          node.group === 2 ? 'Gene' :
+                          node.group === 3 ? 'Disease' :
+                          node.group === 4 ? 'UMLS Concept' :
+                          node.group === 5 ? 'Reaction' :
+                          node.group === 6 ? 'Cancer Concept' : 'Other';
+        node.color = getColorForEntityType(entityType);
+        console.error(`MEDIK FORMATTER: Added missing color for node ${node.id} based on group ${node.group}: ${node.color}`);
+      }
+    });
+    
+    // Log the final nodes after ensuring colors and startingId arrays
+    console.error(`MEDIK FORMATTER: Final nodes after ensuring colors and startingId arrays:`);
+    graph.nodes.slice(0, 3).forEach((node, index) => {
+      console.error(`MEDIK FORMATTER: Node ${index + 1}:`, JSON.stringify({
+        id: node.id,
+        name: node.name,
+        entityType: node.entityType,
+        color: node.color,
+        startingId: node.startingId
+      }, null, 2));
+    });
     
     // Log a sample of the final nodes
     if (graph.nodes.length > 0) {
       console.error(`MEDIK FORMATTER: Sample of final node:`, JSON.stringify(graph.nodes[0], null, 2));
     }
     
-    console.error(`MEDIK FORMATTER: Created knowledge graph with ${graph.nodes.length} nodes and ${graph.links.length} links`);
+    // Final verification that all nodes have colors
+    const nodesWithoutColor = graph.nodes.filter(node => !node.color);
+    if (nodesWithoutColor.length > 0) {
+      console.error(`MEDIK FORMATTER: WARNING - Found ${nodesWithoutColor.length} nodes without color property. Fixing...`);
+      nodesWithoutColor.forEach(node => {
+        // Determine color based on entity type or group
+        if (node.entityType) {
+          node.color = getColorForEntityType(node.entityType);
+        } else {
+          const entityType = node.group === 1 ? 'Drug' :
+                            node.group === 2 ? 'Gene' :
+                            node.group === 3 ? 'Disease' :
+                            node.group === 4 ? 'UMLS Concept' :
+                            node.group === 5 ? 'Reaction' :
+                            node.group === 6 ? 'Cancer Concept' : 'Other';
+          node.color = getColorForEntityType(entityType);
+        }
+        console.error(`MEDIK FORMATTER: Fixed missing color for node ${node.id}: ${node.color}`);
+      });
+    } else {
+      console.error(`MEDIK FORMATTER: All nodes have color property. Good!`);
+    }
+    
+    // Final check before returning the graph
+    console.error(`MEDIK FORMATTER: Performing final verification of node properties before returning graph...`);
+    const finalNodeCheck = graph.nodes.map(node => {
+      // Create a deep copy to avoid modifying the original
+      const nodeCopy = { ...node };
+      
+      // Ensure startingId is an array
+      if (!nodeCopy.startingId) {
+        nodeCopy.startingId = [nodeCopy.id];
+        console.error(`MEDIK FORMATTER: Final check - Fixed missing startingId for node ${nodeCopy.id}`);
+      } else if (!Array.isArray(nodeCopy.startingId)) {
+        nodeCopy.startingId = [nodeCopy.startingId];
+        console.error(`MEDIK FORMATTER: Final check - Converted startingId to array for node ${nodeCopy.id}`);
+      }
+      
+      // Ensure color is set
+      if (!nodeCopy.color) {
+        if (nodeCopy.entityType) {
+          nodeCopy.color = getColorForEntityType(nodeCopy.entityType);
+          console.error(`MEDIK FORMATTER: Final check - Added missing color for node ${nodeCopy.id} based on entity type ${nodeCopy.entityType}: ${nodeCopy.color}`);
+        } else {
+          nodeCopy.color = getColorForEntityType('Other');
+          console.error(`MEDIK FORMATTER: Final check - Added default color for node ${nodeCopy.id} with no entity type: ${nodeCopy.color}`);
+        }
+      }
+      
+      return nodeCopy;
+    });
+    
+    // Replace the nodes with the verified ones
+    graph.nodes = finalNodeCheck;
+    
+    // Log the final graph structure
+    console.error(`MEDIK FORMATTER: Final graph structure - ${graph.nodes.length} nodes and ${graph.links.length} links`);
+    if (graph.nodes.length > 0) {
+      console.error(`MEDIK FORMATTER: First node in final graph:`, JSON.stringify({
+        id: graph.nodes[0].id,
+        name: graph.nodes[0].name,
+        entityType: graph.nodes[0].entityType,
+        color: graph.nodes[0].color,
+        startingId: graph.nodes[0].startingId
+      }, null, 2));
+    }
     
     // Create human-readable text
     const queryType = queryParams.e1 === 'X->Known' ? 'entities related to' : 'entities that relate to';
