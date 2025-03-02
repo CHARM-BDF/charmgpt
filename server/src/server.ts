@@ -25,8 +25,6 @@ app.listen(PORT, () => {
   console.log('\nLLM Routes:')
   console.log('- POST /api/llm/chat')
   console.log('  Body: { message: string, config: LLMConfig }')
-  console.log('- POST /api/llm/generate-code')
-  console.log('  Body: { prompt: string, config: LLMConfig }')
   
   console.log('\nCode Execution Routes:')
   console.log('- POST /api/run-code')
