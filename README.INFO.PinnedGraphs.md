@@ -22,6 +22,27 @@ The pin button appears in:
 1. The KnowledgeGraphViewer component
 2. The ArtifactContent component when displaying knowledge graphs
 
+### Node Interaction
+
+#### Control/Command+Click to Add Node Data to Chat
+
+Users can quickly reference specific nodes in their messages by using Control+Click (or Command+Click on Mac):
+
+1. When a user holds the Control key (Windows/Linux) or Command key (Mac) and clicks on a node:
+   - The node's label and ID are added to the chat input
+   - The graph is automatically pinned if not already pinned
+   - A notification appears confirming the action
+
+2. Visual cues:
+   - A persistent tooltip at the bottom of the graph informs users of this functionality
+   - A temporary notification appears when a node is added to the chat input
+
+3. Format of added data:
+   - Node data is added in the format: `Node Label (node:id)`
+   - This format allows the AI to easily identify and reference the specific node
+
+This feature enables quick referencing of specific nodes without having to manually type node IDs or labels, making it easier to ask questions about particular entities in the knowledge graph.
+
 ## Technical Implementation
 
 ### State Management
@@ -63,7 +84,84 @@ The component determines if the graph is currently pinned by comparing:
 const isPinned = artifactId ? pinnedGraphId === artifactId : false;
 ```
 
-#### 2. Message Processing
+#### 2. Node Click Handling
+
+When a user Control/Command+clicks on a node:
+
+```typescript
+// In ReagraphKnowledgeGraphViewer.tsx
+const handleNodeClick = (node: any, props?: any, event?: any) => {
+  // Check if Control key (or Command key on Mac) is pressed
+  if (event && (event.ctrlKey || event.metaKey)) {
+    // Format node data
+    const nodeText = `${node.label} (${node.id})`;
+    
+    // Update chat input
+    updateChatInput(nodeText);
+    
+    // Pin the graph if not already pinned
+    if (artifactId && !isPinned) {
+      setPinnedGraphId(artifactId);
+    }
+    
+    // Show notification
+    setNotification({
+      show: true,
+      message: `Graph pinned! "${node.label}" added to chat input.`
+    });
+    
+    // Hide notification after 3 seconds
+    setTimeout(() => {
+      setNotification({ show: false, message: '' });
+    }, 3000);
+  }
+  
+  // Log for debugging
+  console.log('Node clicked:', node);
+};
+```
+
+This function is passed to the GraphCanvas component:
+
+```typescript
+<GraphCanvas
+  nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
+  edges={filteredEdges.length ? filteredEdges : graphData.edges}
+  layoutType="forceDirected2d"
+  draggable
+  labelType="all"
+  onNodeClick={handleNodeClick}
+/>
+```
+
+#### 3. Chat Input Management
+
+The chat input state is managed in the `chatStore`:
+
+```typescript
+// State definition
+chatInput: string;
+
+// Action to update the state
+updateChatInput: (text: string) => void;
+```
+
+When a node is clicked with Control/Command, the `updateChatInput` function is called to add the node data to the chat input:
+
+```typescript
+// In chatStore.ts
+updateChatInput: (text: string) => {
+  console.log('ChatStore: Updating chat input with:', text);
+  set((state) => {
+    // If there's already text in the input, append with a space
+    const currentInput = state.chatInput.trim();
+    const newInput = currentInput ? `${currentInput} ${text}` : text;
+    return { chatInput: newInput };
+  });
+},
+```
+
+#### 4. Message Processing
 
 When a user sends a message, the `processMessage` function in `chatStore.ts` includes the pinned graph in the request:
 
@@ -97,7 +195,7 @@ const response = await fetch(apiUrl, {
 });
 ```
 
-#### 3. Server-Side Processing
+#### 5. Server-Side Processing
 
 The server receives the request with the pinned graph in `chat.ts`:
 
@@ -129,7 +227,7 @@ if (pinnedGraph) {
 }
 ```
 
-#### 4. AI Processing
+#### 6. AI Processing
 
 The AI model (Claude) receives these additional messages as part of its context and can reference the knowledge graph when generating its response.
 
@@ -196,6 +294,19 @@ Unpin a graph when:
 - You're changing topics and the graph is no longer relevant
 - The graph is large and you want to reduce context size
 - You want to start fresh without the previous context
+
+### Efficient Node Referencing
+
+To efficiently reference specific nodes in your questions:
+1. Hold Control (Windows/Linux) or Command (Mac) while clicking on a node
+2. The node data will be added to your chat input
+3. The graph will be automatically pinned if not already
+4. You can then complete your question and send it
+
+This is particularly useful when:
+- You need to ask about specific entities in a complex graph
+- You want to ensure accurate node IDs in your questions
+- You're exploring relationships between specific nodes
 
 ## Technical Considerations
 
@@ -266,6 +377,15 @@ persist(
 5. The merged graph is included in the AI's response
 6. User can pin this new, enriched graph for future messages
 
+### Example Flow with Node Referencing
+
+1. User views a knowledge graph about a complex topic
+2. User holds Control/Command and clicks on a specific node of interest
+3. The node data is added to the chat input and the graph is pinned
+4. User completes their question about the specific node
+5. The AI receives both the specific node reference and the full graph context
+6. The AI can provide a precise answer about the specific node
+
 ## Troubleshooting
 
 ### Common Issues
@@ -289,3 +409,9 @@ If a pinned graph is not being included in messages, check:
 2. That the artifact with that ID exists in the artifacts array
 3. Server logs for the "PINNED GRAPH DETECTED" message
 4. Network requests to confirm the graph is being sent 
+
+If Control/Command+Click is not working:
+1. Check browser console for any errors
+2. Verify that the event object is being passed correctly to the handler
+3. Try using both Control and Command keys (on Mac)
+4. Ensure the chat input state is being updated correctly 
