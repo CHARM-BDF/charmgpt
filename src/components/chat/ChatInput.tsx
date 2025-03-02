@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import React, { useRef, useEffect, KeyboardEvent } from 'react';
 import { useChatStore } from '../../store/chatStore';
 
 export const ChatInput: React.FC = () => {
@@ -8,9 +8,7 @@ export const ChatInput: React.FC = () => {
   // const [input, setInput] = useState('create a bunch of text that will test all of the markdown formats including two different types of code. Include a table.');
   // const [input, setInput] = useState('make a meal plan for a week of lunches that can be packed for a teenager to take to school, describe but make an artifact for the final plan.');
   // const [input, setInput] = useState('look up 3 papers on the gene DYRK1A and provide a summary.');
-  const [input, setInput] = useState('use medik to find the nodes that are related_to NCBIGene:1859');
-  // const [input, setInput] = useState('write python that will simulate rolling 3 7 sided die 1000 times and make a histogram to show the results. ');
-  const { addMessage, processMessage } = useChatStore();
+  const { addMessage, processMessage, chatInput, updateChatInput } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea as content grows
@@ -20,22 +18,22 @@ export const ChatInput: React.FC = () => {
       textarea.style.height = 'auto';
       textarea.style.height = `${Math.min(textarea.scrollHeight, 400)}px`; // Max height of ~15 lines
     }
-  }, [input]);
+  }, [chatInput]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!chatInput.trim()) return;
 
-    console.log('ChatInput: Submitting message:', input);
+    console.log('ChatInput: Submitting message:', chatInput);
     
     // Add user message to chat store first
     addMessage({
       role: 'user',
-      content: input
+      content: chatInput
     });
     
     try {
-      await processMessage(input);
+      await processMessage(chatInput);
       console.log('ChatInput: Message processed successfully');
     } catch (error) {
       console.error('ChatInput: Error processing message:', error);
@@ -49,7 +47,7 @@ export const ChatInput: React.FC = () => {
     // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. And include an artifact of a sacred geometry svg.');
     // setInput('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
 // Use medik to find the nodes that are related_to NCBIGene:1859
-setInput('use medik to find the nodes that are related_to NCBIGene:1859');
+updateChatInput('use medik to find the nodes that are related_to NCBIGene:1859');
 
   };
 
@@ -66,8 +64,8 @@ setInput('use medik to find the nodes that are related_to NCBIGene:1859');
         <form onSubmit={handleSubmit} className="relative w-full flex">
           <textarea
             ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={chatInput}
+            onChange={(e) => updateChatInput(e.target.value)}
             onKeyDown={handleKeyDown}
             className="w-full min-h-[96px] p-3 
                      border border-stone-200/80 dark:border-gray-600/80 

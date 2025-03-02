@@ -24,8 +24,14 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const [parsedData, setParsedData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width, height });
-  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, pinnedGraphId, updateGraphArtifact } = useChatStore();
+  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, pinnedGraphId, updateGraphArtifact, updateChatInput } = useChatStore();
   const isPinned = artifactId ? pinnedGraphId === artifactId : false;
+  
+  // New state for notification popup
+  const [notification, setNotification] = useState<{ show: boolean; message: string }>({ 
+    show: false, 
+    message: '' 
+  });
   
   // New states for ID prefix filtering
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -360,6 +366,48 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     );
   };
 
+  // Handle node click with Control/Command key detection
+  const handleNodeClick = (node: any, props?: any, event?: any) => {
+    // Check if Control key (or Command key on Mac) is pressed
+    if (event && (event.ctrlKey || event.metaKey)) {
+      // Format node data
+      const nodeText = `${node.label} (${node.id})`;
+      
+      // Update chat input
+      updateChatInput(nodeText);
+      
+      // Pin the graph if not already pinned
+      if (artifactId && !isPinned) {
+        setPinnedGraphId(artifactId);
+      }
+      
+      // Show notification
+      setNotification({
+        show: true,
+        message: `Graph pinned! "${node.label}" added to chat input.`
+      });
+      
+      // Hide notification after 3 seconds
+      setTimeout(() => {
+        setNotification({ show: false, message: '' });
+      }, 3000);
+    }
+    
+    // Log for debugging
+    console.log('Node clicked:', node);
+  };
+
+  // Notification popup component
+  const NotificationPopup = () => {
+    if (!notification.show) return null;
+    
+    return (
+      <div className="absolute top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-50 animate-fade-in-out">
+        {notification.message}
+      </div>
+    );
+  };
+
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-300">
@@ -416,16 +464,14 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         )}
       </div>
       <div ref={containerRef} className="w-full h-full flex-grow relative">
+        <NotificationPopup />
         <GraphCanvas
           nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
           edges={filteredEdges.length ? filteredEdges : graphData.edges}
           layoutType="forceDirected2d"
           draggable
           labelType="all"
-          onNodeClick={(node) => {
-            // You can add custom node click behavior here
-            console.log('Node clicked:', node);
-          }}
+          onNodeClick={handleNodeClick}
         />
       </div>
     </div>

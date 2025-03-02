@@ -30,6 +30,7 @@ interface ChatState extends ConversationState {
   streamingComplete: boolean;
   streamingEnabled: boolean;
   pinnedGraphId: string | null;
+  chatInput: string; // New state for chat input
   
   // Existing message functions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
@@ -49,6 +50,7 @@ interface ChatState extends ConversationState {
   completeStreaming: () => void;
   toggleStreaming: () => void;
   setPinnedGraphId: (id: string | null) => void;
+  updateChatInput: (text: string) => void; // New function to update chat input
   
   // New conversation management functions
   startNewConversation: (name?: string) => string;
@@ -94,10 +96,22 @@ export const useChatStore = create<ChatState>()(
         streamingComplete: true,
         streamingEnabled: true,
         pinnedGraphId: null,
+        chatInput: '', // Initialize chat input state
         
         // New conversation state
         currentConversationId: null,
         conversations: {},
+
+        // Add new function to update chat input
+        updateChatInput: (text: string) => {
+          console.log('ChatStore: Updating chat input with:', text);
+          set((state) => {
+            // If there's already text in the input, append with a space
+            const currentInput = state.chatInput.trim();
+            const newInput = currentInput ? `${currentInput} ${text}` : text;
+            return { chatInput: newInput };
+          });
+        },
 
         clearMessages: () => {
           console.log('ChatStore: Clearing all messages and artifacts');
