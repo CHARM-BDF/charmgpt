@@ -1,27 +1,25 @@
 import { LLMService } from './index'
+import { Ollama } from 'ollama'
 
 export class OllamaService implements LLMService {
-  constructor(private baseUrl: string) {}
+  private baseUrl: string;
+  private service: Ollama;
+  private model: string;
+
+  constructor(baseUrl: string, model?: string) {
+    this.baseUrl = baseUrl;
+    this.model = model || 'qwen2.5';
+    this.service = new Ollama({
+      host: this.baseUrl,
+    });
+  }
 
   async chat(message: string): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'qwen2.5',
-        messages: [
-          { role: 'user', content: message }
-        ]
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Ollama request failed: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    return data.message.content
+    const response = await this.service.chat({
+      model: this.model,
+      messages: [{ role: 'user', content: message }]
+    })  
+    console.log(response.message.content)
+    return response.message.content;
   }
 } 
