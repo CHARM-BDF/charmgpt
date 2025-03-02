@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 export interface Config {
   port: number
   anthropicApiKey?: string

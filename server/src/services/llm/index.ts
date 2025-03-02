@@ -17,6 +17,7 @@ export interface LLMService {
 
 export function createLLMService(currentConfig?: LLMConfig): LLMService {
   const provider = currentConfig?.provider || config.defaultLLMProvider;
+  console.log(`Provider is ${provider} = current ${currentConfig?.provider} || ${config.defaultLLMProvider}`);
   switch (provider) {
     case 'claude':
       if (!config.anthropicApiKey) {
