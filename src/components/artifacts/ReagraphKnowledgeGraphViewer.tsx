@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { GraphCanvas } from 'reagraph';
 import { KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
-import { Pin, PinOff, ChevronDown, ChevronUp, Filter, Save } from 'lucide-react';
+import {  ChevronDown, ChevronUp, Filter, Save } from 'lucide-react';
 import { useMCPStore } from '../../store/mcpStore';
 
 interface ReagraphKnowledgeGraphViewerProps {
