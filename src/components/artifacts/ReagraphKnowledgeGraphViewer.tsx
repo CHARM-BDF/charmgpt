@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { GraphCanvas } from 'reagraph';
-import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../../types/knowledgeGraph';
+import { KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
 import { Pin, PinOff, ChevronDown, ChevronUp, Filter, Save } from 'lucide-react';
 import { useMCPStore } from '../../store/mcpStore';
@@ -33,9 +33,11 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     message: '' 
   });
   
-  // New states for ID prefix filtering
+  // New states for entity type filtering (replacing ID prefix filtering)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedPrefixes, setSelectedPrefixes] = useState<Record<string, boolean>>({});
+  const [selectedEntityTypes, setSelectedEntityTypes] = useState<Record<string, boolean>>({});
+  const [entityTypeCounts, setEntityTypeCounts] = useState<Record<string, number>>({});
+  const [entityTypeColors, setEntityTypeColors] = useState<Record<string, string>>({});
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
   const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
 
@@ -84,34 +86,52 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     }
   }, []);
 
-  // Extract unique ID prefixes from nodes
-  const idPrefixes = useMemo(() => {
+  // Extract unique entity types from nodes
+  const entityTypes = useMemo(() => {
     if (!parsedData) return [];
     
-    const prefixes = new Set<string>();
+    const types = new Map<string, { count: number; color: string }>();
     
     parsedData.nodes.forEach(node => {
-      const parts = node.id.split(':');
-      if (parts.length > 1) {
-        prefixes.add(parts[0]);
+      // Access entityType from the node object
+      const entityType = (node as any).entityType || 'Other';
+      const color = (node as any).color || '#757575'; // Default gray color
+      
+      if (types.has(entityType)) {
+        const current = types.get(entityType)!;
+        types.set(entityType, { 
+          count: current.count + 1,
+          color: current.color
+        });
       } else {
-        prefixes.add('NO_PREFIX');
+        types.set(entityType, { count: 1, color });
       }
     });
     
-    return Array.from(prefixes).sort();
+    // Convert to array and sort by count (descending)
+    return Array.from(types.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([type, { count, color }]) => ({ type, count, color }));
   }, [parsedData]);
 
-  // Initialize selected prefixes when prefixes are extracted
+  // Initialize selected entity types when entity types are extracted
   useEffect(() => {
-    if (idPrefixes.length > 0) {
-      const initialSelectedPrefixes: Record<string, boolean> = {};
-      idPrefixes.forEach(prefix => {
-        initialSelectedPrefixes[prefix] = true;
+    if (entityTypes.length > 0) {
+      const initialSelectedTypes: Record<string, boolean> = {};
+      const typeCounts: Record<string, number> = {};
+      const typeColors: Record<string, string> = {};
+      
+      entityTypes.forEach(({ type, count, color }) => {
+        initialSelectedTypes[type] = true;
+        typeCounts[type] = count;
+        typeColors[type] = color;
       });
-      setSelectedPrefixes(initialSelectedPrefixes);
+      
+      setSelectedEntityTypes(initialSelectedTypes);
+      setEntityTypeCounts(typeCounts);
+      setEntityTypeColors(typeColors);
     }
-  }, [idPrefixes]);
+  }, [entityTypes]);
 
   // Transform data for Reagraph format
   const graphData = useMemo(() => {
@@ -125,6 +145,9 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       // Get the color value from node or generate one
       const colorValue = node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4');
       
+      // Get entity type from node
+      const entityType = (node as any).entityType || 'Other';
+      
       return {
         id: node.id,
         label: node.name,
@@ -133,7 +156,9 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         color: colorValue,
         fill: colorValue,
         // Use node.val for size if available
-        size: node.val || 1
+        size: node.val || 1,
+        // Add entityType directly to the node object
+        entityType
       };
     });
     
@@ -151,15 +176,14 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     return { nodes, edges };
   }, [parsedData]);
 
-  // Filter nodes based on selected prefixes
+  // Filter nodes based on selected entity types
   useEffect(() => {
     if (!graphData.nodes.length) return;
     
-    // Filter nodes based on selected prefixes
+    // Filter nodes based on selected entity types
     const nodes = graphData.nodes.filter(node => {
-      const parts = node.id.split(':');
-      const prefix = parts.length > 1 ? parts[0] : 'NO_PREFIX';
-      return selectedPrefixes[prefix];
+      const entityType = node.entityType || 'Other';
+      return selectedEntityTypes[entityType];
     });
     
     // Get IDs of filtered nodes
@@ -172,15 +196,15 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     
     setFilteredNodes(nodes);
     setFilteredEdges(edges);
-  }, [graphData, selectedPrefixes]);
+  }, [graphData, selectedEntityTypes]);
 
-  // Toggle all prefixes
-  const toggleAllPrefixes = (value: boolean) => {
-    const updatedPrefixes = { ...selectedPrefixes };
-    Object.keys(updatedPrefixes).forEach(prefix => {
-      updatedPrefixes[prefix] = value;
+  // Toggle all entity types
+  const toggleAllEntityTypes = (value: boolean) => {
+    const updatedTypes = { ...selectedEntityTypes };
+    Object.keys(updatedTypes).forEach(type => {
+      updatedTypes[type] = value;
     });
-    setSelectedPrefixes(updatedPrefixes);
+    setSelectedEntityTypes(updatedTypes);
   };
 
   // Save filtered view as a new version
@@ -227,7 +251,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         params: { 
           customNodes: nodes,
           customLinks: links,
-          selectedPrefixes
+          selectedEntityTypes
         }
       }).then(success => {
         if (success) {
@@ -311,12 +335,12 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     );
   };
 
-  // ID Prefix Filter component
-  const PrefixFilter = () => {
-    if (!idPrefixes.length) return null;
+  // Entity Type Filter component
+  const EntityTypeFilter = () => {
+    if (!entityTypes.length) return null;
     
-    const allSelected = Object.values(selectedPrefixes).every(value => value);
-    const someSelected = Object.values(selectedPrefixes).some(value => value);
+    const allSelected = Object.values(selectedEntityTypes).every(value => value);
+    const someSelected = Object.values(selectedEntityTypes).some(value => value);
     
     return (
       <div className="relative">
@@ -325,7 +349,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           <Filter size={16} />
-          <span className="text-sm">Filter by ID Prefix</span>
+          <span className="text-sm">Filter by Entity Type</span>
           {isFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         
@@ -336,27 +360,32 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
                 <input
                   type="checkbox"
                   checked={allSelected}
-                  onChange={() => toggleAllPrefixes(!allSelected)}
+                  onChange={() => toggleAllEntityTypes(!allSelected)}
                   className="rounded text-blue-500 focus:ring-blue-500"
                 />
                 <span className="text-sm font-medium">Select All</span>
               </label>
             </div>
             <div className="max-h-60 overflow-y-auto p-2">
-              {idPrefixes.map(prefix => (
-                <label key={prefix} className="flex items-center space-x-2 py-1">
+              {entityTypes.map(({ type, count, color }) => (
+                <label key={type} className="flex items-center space-x-2 py-1">
                   <input
                     type="checkbox"
-                    checked={selectedPrefixes[prefix] || false}
+                    checked={selectedEntityTypes[type] || false}
                     onChange={() => {
-                      setSelectedPrefixes({
-                        ...selectedPrefixes,
-                        [prefix]: !selectedPrefixes[prefix]
+                      setSelectedEntityTypes({
+                        ...selectedEntityTypes,
+                        [type]: !selectedEntityTypes[type]
                       });
                     }}
                     className="rounded text-blue-500 focus:ring-blue-500"
                   />
-                  <span className="text-sm">{prefix === 'NO_PREFIX' ? '(No Prefix)' : prefix}</span>
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-sm">{type === 'Other' ? '(Other)' : type}</span>
+                  <span className="text-xs text-gray-500 ml-auto">({count})</span>
                 </label>
               ))}
             </div>
@@ -430,7 +459,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-800 rounded mb-2">
         <div className="flex items-center space-x-2">
           {showVersionControls && <VersionControls />}
-          <PrefixFilter />
+          <EntityTypeFilter />
           
           {/* Save Filtered View button */}
           {artifactId && filteredNodes.length > 0 && filteredNodes.length !== graphData.nodes.length && (
