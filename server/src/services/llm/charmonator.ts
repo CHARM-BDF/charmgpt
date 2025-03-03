@@ -24,7 +24,7 @@ export class CharmonatorService implements LLMService {
                 stream: false
             }
         }
-      const response = await fetch(`${this.baseUrl}/api/chat`, {
+      const response = await fetch(`${this.baseUrl}/chat/extend_transcript`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
