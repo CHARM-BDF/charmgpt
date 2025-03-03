@@ -14,7 +14,7 @@ export class CharmonatorService implements LLMService {
   async chat(message: string): Promise<string> {
     try {
         const request = {
-            model: this.modelName,
+            model: this.model,
             system: "You are a helpful AI assistant specializing in data science and programming.",
             temperature: this.temperature,
             transcript: {
