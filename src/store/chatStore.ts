@@ -106,15 +106,18 @@ export const useChatStore = create<ChatState>()(
         updateChatInput: (text: string, append: boolean = false) => {
           console.log('ChatStore: Updating chat input with:', text, append ? '(append)' : '(replace)');
           set((state) => {
-            if (append) {
-              // If append is true, append with a space
-              const currentInput = state.chatInput.trim();
-              const newInput = currentInput ? `${currentInput} ${text}` : text;
+            // Only update if the value is actually changing
+            const newInput = append 
+              ? (state.chatInput.trim() ? `${state.chatInput.trim()} ${text}` : text)
+              : text;
+              
+            // Return new state only if input has changed
+            if (newInput !== state.chatInput) {
               return { chatInput: newInput };
-            } else {
-              // Otherwise, replace the text
-              return { chatInput: text };
             }
+            
+            // Return empty object if no change to prevent unnecessary updates
+            return {};
           });
         },
 

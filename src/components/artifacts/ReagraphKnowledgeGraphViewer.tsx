@@ -84,7 +84,16 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const [parsedData, setParsedData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width, height });
-  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, pinnedGraphId, updateGraphArtifact, updateChatInput } = useChatStore();
+  
+  // Use selector functions to only subscribe to the specific state we need
+  const getGraphVersionHistory = useChatStore(state => state.getGraphVersionHistory);
+  const getLatestGraphVersion = useChatStore(state => state.getLatestGraphVersion);
+  const selectArtifact = useChatStore(state => state.selectArtifact);
+  const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
+  const pinnedGraphId = useChatStore(state => state.pinnedGraphId);
+  const updateGraphArtifact = useChatStore(state => state.updateGraphArtifact);
+  const updateChatInput = useChatStore(state => state.updateChatInput);
+  
   const isPinned = artifactId ? pinnedGraphId === artifactId : false;
   
   // New state for notification popup
@@ -495,22 +504,28 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     if (!artifactId || !showVersionControls) return null;
     
     const versions = getGraphVersionHistory(artifactId);
-    console.log('Version history for artifact:', {
-      artifactId,
-      versionsCount: versions.length,
-      versions: versions.map(v => ({
-        id: v.id,
-        title: v.title,
-        versionNumber: v.versionNumber,
-        previousVersionId: v.previousVersionId,
-        nextVersionId: v.nextVersionId
-      }))
-    });
+    // Only log in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Version history for artifact:', {
+        artifactId,
+        versionsCount: versions.length,
+        versions: versions.map(v => ({
+          id: v.id,
+          title: v.title,
+          versionNumber: v.versionNumber,
+          previousVersionId: v.previousVersionId,
+          nextVersionId: v.nextVersionId
+        }))
+      });
+    }
     
     if (versions.length <= 1) return null;
     
     const currentIndex = versions.findIndex(v => v.id === artifactId);
-    console.log('Current version index:', currentIndex, 'out of', versions.length);
+    // Only log in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Current version index:', currentIndex, 'out of', versions.length);
+    }
     
     const isLatest = currentIndex === versions.length - 1;
     

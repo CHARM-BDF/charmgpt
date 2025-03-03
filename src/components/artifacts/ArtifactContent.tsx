@@ -17,7 +17,11 @@ export const ArtifactContent: React.FC<{
   const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph, setUseReagraph] = useState(true);
-  const { setPinnedGraphId, pinnedGraphId } = useChatStore();
+  
+  // Use selector functions to only subscribe to the specific state we need
+  const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
+  const pinnedGraphId = useChatStore(state => state.pinnedGraphId);
+  
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
   const isPinned = isKnowledgeGraph ? pinnedGraphId === artifact.id : false;
   
@@ -130,13 +134,16 @@ export const ArtifactContent: React.FC<{
       
       case 'application/vnd.knowledge-graph':
       case 'application/vnd.ant.knowledge-graph':
-        console.log('Rendering knowledge graph artifact:', {
-          id: artifact.id,
-          title: artifact.title,
-          versionNumber: artifact.versionNumber,
-          previousVersionId: artifact.previousVersionId,
-          nextVersionId: artifact.nextVersionId
-        });
+        // Only log in development mode
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Rendering knowledge graph artifact:', {
+            id: artifact.id,
+            title: artifact.title,
+            versionNumber: artifact.versionNumber,
+            previousVersionId: artifact.previousVersionId,
+            nextVersionId: artifact.nextVersionId
+          });
+        }
         
         return (
           <div className="w-full h-full min-h-[400px] flex flex-col">

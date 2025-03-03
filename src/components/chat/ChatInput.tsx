@@ -1,14 +1,39 @@
-import React, { useRef, useEffect, KeyboardEvent } from 'react';
+import React, { useRef, useEffect, KeyboardEvent, useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 
 export const ChatInput: React.FC = () => {
-  // 
-// look papers on the gene GNB1 and provide a summary
-  // const [input, setInput] = useState('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
-  // const [input, setInput] = useState('create a bunch of text that will test all of the markdown formats including two different types of code. Include a table.');
-  // const [input, setInput] = useState('make a meal plan for a week of lunches that can be packed for a teenager to take to school, describe but make an artifact for the final plan.');
-  // const [input, setInput] = useState('look up 3 papers on the gene DYRK1A and provide a summary.');
-  const { addMessage, processMessage, chatInput, updateChatInput } = useChatStore();
+  // Use selector functions to only subscribe to the specific state we need
+  const chatInput = useChatStore(state => state.chatInput);
+  const updateChatInput = useChatStore(state => state.updateChatInput);
+  const addMessage = useChatStore(state => state.addMessage);
+  const processMessage = useChatStore(state => state.processMessage);
+  
+  // Local state for input to debounce updates to the store
+  const [localInput, setLocalInput] = useState(chatInput);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Update local input when chatInput changes from elsewhere
+  useEffect(() => {
+    if (chatInput !== localInput) {
+      setLocalInput(chatInput);
+    }
+  }, [chatInput]);
+  
+  // Debounced update function
+  const debouncedUpdate = (value: string) => {
+    setLocalInput(value);
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    // Set a new timeout
+    timeoutRef.current = setTimeout(() => {
+      updateChatInput(value, false);
+    }, 300); // 300ms debounce
+  };
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea as content grows
@@ -18,22 +43,31 @@ export const ChatInput: React.FC = () => {
       textarea.style.height = 'auto';
       textarea.style.height = `${Math.min(textarea.scrollHeight, 400)}px`; // Max height of ~15 lines
     }
-  }, [chatInput]);
+  }, [localInput]);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!localInput.trim()) return;
 
-    console.log('ChatInput: Submitting message:', chatInput);
+    console.log('ChatInput: Submitting message:', localInput);
     
     // Add user message to chat store first
     addMessage({
       role: 'user',
-      content: chatInput
+      content: localInput
     });
     
     try {
-      await processMessage(chatInput);
+      await processMessage(localInput);
       console.log('ChatInput: Message processed successfully');
     } catch (error) {
       console.error('ChatInput: Error processing message:', error);
@@ -63,8 +97,8 @@ export const ChatInput: React.FC = () => {
         <form onSubmit={handleSubmit} className="relative w-full flex">
           <textarea
             ref={textareaRef}
-            value={chatInput}
-            onChange={(e) => updateChatInput(e.target.value, false)}
+            value={localInput}
+            onChange={(e) => debouncedUpdate(e.target.value)}
             onKeyDown={handleKeyDown}
             className="w-full min-h-[96px] p-3 
                      border border-stone-200/80 dark:border-gray-600/80 
