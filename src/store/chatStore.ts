@@ -276,6 +276,24 @@ export const useChatStore = create<ChatState>()(
           set({ isLoading: true, error: null });
           
           try {
+            // Helper function for status updates
+            const sendStatusUpdate = (status: string) => {
+              if (get().streamingEnabled && get().streamingMessageId) {
+                const currentContent = get().streamingContent;
+                const statusPrefix = currentContent.includes('_Status:') 
+                  ? currentContent.split('_Status:')[0] 
+                  : '';
+                const newContent = `${statusPrefix}_Status: ${status}_\n\n`;
+                
+                set(state => ({
+                  streamingContent: newContent,
+                  messages: state.messages.map(msg =>
+                    msg.id === state.streamingMessageId ? { ...msg, content: newContent } : msg
+                  )
+                }));
+              }
+            };
+
             // Get the selected model from the correct store
             const selectedModel = useModelStore.getState().selectedModel;
             console.log('ChatStore: Using model:', selectedModel);
@@ -284,55 +302,13 @@ export const useChatStore = create<ChatState>()(
             const endpoint = selectedModel === 'ollama' ? API_ENDPOINTS.OLLAMA : API_ENDPOINTS.CHAT;
             const apiUrl = getApiUrl(endpoint);
 
-            // Get pinned graph if available
-            const pinnedGraphId = get().pinnedGraphId;
-            let pinnedGraph = null;
-            
-            if (pinnedGraphId) {
-              const pinnedArtifact = get().artifacts.find(a => a.id === pinnedGraphId);
-              if (pinnedArtifact) {
-                console.log('ChatStore: Including pinned graph in message:', pinnedGraphId);
-                pinnedGraph = pinnedArtifact;
-              }
-            }
-
-            // Get all messages for the history
-            const messageHistory = get().messages
-              .filter(msg => msg.content.trim() !== '')
-              .map(msg => ({
-                role: msg.role,
-                content: msg.content
-              }));
-
-            const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                message: content,
-                history: messageHistory,
-                blockedServers: useMCPStore.getState().getBlockedServers(),
-                pinnedGraph: pinnedGraph
-              })
-            });
-
-            if (!response.ok) {
-              throw new Error('Failed to get response from chat API');
-            }
-
-            const data = await response.json();
-            const storeResponse = data.response;
-            const fullContent = storeResponse.conversation;
-
-            // Create assistant message
+            // Create assistant message for status updates
             const assistantMessageId = crypto.randomUUID();
             const assistantMessage: MessageWithThinking = {
               role: 'assistant',
-              content: '',
+              content: '_Status: Initializing..._\n\n',
               id: assistantMessageId,
-              timestamp: new Date(),
-              thinking: storeResponse.thinking
+              timestamp: new Date()
             };
 
             // Add assistant message to current conversation
@@ -354,19 +330,138 @@ export const useChatStore = create<ChatState>()(
                   [state.currentConversationId!]: updatedConversation
                 },
                 streamingMessageId: assistantMessageId,
-                streamingContent: ''
+                streamingContent: '_Status: Initializing..._\n\n'
+              };
+            });
+
+            // Get pinned graph if available
+            const pinnedGraphId = get().pinnedGraphId;
+            let pinnedGraph = null;
+            
+            if (pinnedGraphId) {
+              sendStatusUpdate('Retrieving pinned knowledge graph...');
+              const pinnedArtifact = get().artifacts.find(a => a.id === pinnedGraphId);
+              if (pinnedArtifact) {
+                console.log('ChatStore: Including pinned graph in message:', pinnedGraphId);
+                pinnedGraph = pinnedArtifact;
+                sendStatusUpdate('Knowledge graph retrieved');
+              }
+            }
+
+            // Get all messages for the history
+            sendStatusUpdate('Preparing message history...');
+            const messageHistory = get().messages
+              .filter(msg => msg.content.trim() !== '')
+              .map(msg => ({
+                role: msg.role,
+                content: msg.content
+              }));
+
+            sendStatusUpdate('Connecting to MCP server...');
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message: content,
+                history: messageHistory,
+                blockedServers: useMCPStore.getState().getBlockedServers(),
+                pinnedGraph: pinnedGraph
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to get response from chat API');
+            }
+
+            // Process the streaming response
+            const reader = response.body!.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let finalResponse = null;
+
+            while (true) {
+              const { done, value } = await reader.read();
+              
+              if (done) {
+                break;
+              }
+              
+              // Decode the chunk and add to buffer
+              buffer += decoder.decode(value, { stream: true });
+              
+              // Process complete JSON objects
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || ''; // Keep the last potentially incomplete line in the buffer
+              
+              for (const line of lines) {
+                if (!line.trim()) continue;
+                
+                try {
+                  const data = JSON.parse(line);
+                  console.log('Received chunk:', data);
+                  
+                  if (data.type === 'status') {
+                    // Update the message with the status
+                    set(state => ({
+                      messages: state.messages.map(msg =>
+                        msg.id === assistantMessageId ? 
+                          { ...msg, content: `_Status: ${data.message}_\n\n` } : 
+                          msg
+                      ),
+                      streamingContent: `_Status: ${data.message}_\n\n`
+                    }));
+                  } 
+                  else if (data.type === 'result') {
+                    // Store the final response for processing after the loop
+                    finalResponse = data.response;
+                  }
+                  else if (data.type === 'error') {
+                    throw new Error(data.message);
+                  }
+                } catch (e) {
+                  console.error('Error parsing chunk:', e, 'Line:', line);
+                }
+              }
+            }
+
+            // Process the final response
+            if (!finalResponse) {
+              throw new Error('No final response received from server');
+            }
+
+            const storeResponse = finalResponse;
+            const fullContent = storeResponse.conversation;
+
+            // Update assistant message with thinking
+            set(state => {
+              const updatedConversation = {
+                ...state.conversations[state.currentConversationId!],
+                messages: state.conversations[state.currentConversationId!].messages.map(msg =>
+                  msg.id === assistantMessageId ? { ...msg, thinking: storeResponse.thinking } : msg
+                )
+              };
+
+              return {
+                messages: updatedConversation.messages,
+                conversations: {
+                  ...state.conversations,
+                  [state.currentConversationId!]: updatedConversation
+                }
               };
             });
 
             if (get().streamingEnabled) {
               // Stream the content in chunks
+              sendStatusUpdate('Generating response...');
               const chunkSize = 20;
               let currentPosition = 0;
-              let buffer = '';
+              let streamBuffer = '';
               let accumulatedContent = '';
               
               const processChunk = (chunk: string): string => {
-                const combined = buffer + chunk;
+                const combined = streamBuffer + chunk;
                 let safeText = combined;
                 let newBuffer = '';
 
@@ -386,9 +481,12 @@ export const useChatStore = create<ChatState>()(
                   safeText = safeText.slice(0, lastBacktickIndex);
                 }
 
-                buffer = newBuffer;
+                streamBuffer = newBuffer;
                 return safeText;
               };
+              
+              // Replace the status message with the actual content
+              accumulatedContent = '';
               
               while (currentPosition < fullContent.length) {
                 const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
@@ -410,8 +508,8 @@ export const useChatStore = create<ChatState>()(
                 await new Promise(resolve => setTimeout(resolve, .5));
               }
               
-              if (buffer) {
-                accumulatedContent += buffer;
+              if (streamBuffer) {
+                accumulatedContent += streamBuffer;
                 set(state => ({
                   messages: state.messages.map(msg =>
                     msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
@@ -420,6 +518,7 @@ export const useChatStore = create<ChatState>()(
                 }));
               }
             } else {
+              sendStatusUpdate('Processing response...');
               set(state => {
                 const updatedConversation = {
                   ...state.conversations[state.currentConversationId!],
@@ -441,6 +540,7 @@ export const useChatStore = create<ChatState>()(
             }
 
             // Process artifacts
+            sendStatusUpdate('Processing artifacts...');
             const artifactIds = storeResponse.artifacts?.map((artifact: {
               id: string;
               artifactId: string;
@@ -475,6 +575,7 @@ export const useChatStore = create<ChatState>()(
             });
 
             // Update final message state with artifact reference
+            sendStatusUpdate('Finalizing response...');
             set(state => {
               const updatedConversation = {
                 ...state.conversations[state.currentConversationId!],
@@ -518,6 +619,18 @@ export const useChatStore = create<ChatState>()(
               streamingContent: '',
               streamingComplete: true
             });
+            
+            // Update the message to show the error
+            const errorMessageId = get().streamingMessageId;
+            if (errorMessageId) {
+              set(state => ({
+                messages: state.messages.map(msg =>
+                  msg.id === errorMessageId ? 
+                    { ...msg, content: `_Error: ${error instanceof Error ? error.message : 'Unknown error'}_` } : 
+                    msg
+                )
+              }));
+            }
           }
         },
 

@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { systemPrompt } from '../systemPrompt';
 import { MCPService } from '../services/mcp';
-import { MessageService, ChatMessage, StoreFormat } from '../services/message';
+import { MessageService, ChatMessage } from '../services/message';
 import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
 import { isValidKnowledgeGraph, KnowledgeGraph, mergeKnowledgeGraphs } from '../../utils/knowledgeGraphUtils';
@@ -33,7 +33,26 @@ router.post('/', async (req: Request<{}, {}, {
 }>, res: Response) => {
   const loggingService = req.app.locals.loggingService as LoggingService;
   
+  // Set headers for streaming
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  
+  // Helper function to send status updates
+  const sendStatusUpdate = (status: string) => {
+    console.log(`Sending status update: ${status}`);
+    res.write(JSON.stringify({ 
+      type: 'status', 
+      message: status,
+      timestamp: new Date().toISOString()
+    }) + '\n');
+  };
+  
   try {
+    // Initial status update
+    sendStatusUpdate('Initializing request...');
+    
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
@@ -43,6 +62,7 @@ router.post('/', async (req: Request<{}, {}, {
 
     // If there's a pinned graph, add it to the context
     if (pinnedGraph) {
+      sendStatusUpdate('Processing pinned knowledge graph...');
       console.log('\n=== PINNED GRAPH DETECTED ===');
       console.log('Graph ID:', pinnedGraph.id);
       console.log('Graph Title:', pinnedGraph.title);
@@ -73,13 +93,17 @@ router.post('/', async (req: Request<{}, {}, {
 
     // First phase: Sequential thinking and tool usage
     while (!isSequentialThinkingComplete) {
+      sendStatusUpdate('Analyzing request and planning response...');
+      
       // Get MCP tools if available
       let tools = [];
       if (req.app.locals.mcpService) {
+        sendStatusUpdate('Retrieving available MCP tools...');
         tools = await req.app.locals.mcpService.getAllAvailableTools(blockedServers);
       }
 
       // Make Anthropic call for next thought/tool use
+      sendStatusUpdate('Determining next steps...');
       const toolResponse = await anthropic.messages.create({
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
@@ -97,15 +121,10 @@ router.post('/', async (req: Request<{}, {}, {
 
           const [serverName, toolName] = originalToolName.split(':');
           
-          // console.log('\n=== TOOL EXECUTION DETAILS ===');
-          // console.log(`Tool Selected: ${content.name} (Original name: ${originalToolName})`);
-          // console.log('Tool Input:', JSON.stringify(content.input, null, 2));
-
+          sendStatusUpdate(`Executing tool: ${toolName} on server: ${serverName}...`);
+          
           // Execute tool
           const toolResult = await mcpService.callTool(serverName, toolName, content.input as Record<string, unknown>);
-
-          // console.log('\n=== TOOL EXECUTION RESPONSE ===');
-          // console.log('Raw Tool Result:', JSON.stringify(toolResult, null, 2));
 
           // Add tool usage to conversation
           messages.push({
@@ -120,9 +139,6 @@ router.post('/', async (req: Request<{}, {}, {
             );
 
             if (textContent) {
-              // console.log('\n=== PROCESSED TOOL RESULT ===');
-              // console.log('Text Content Found:', textContent.text);
-
               messages.push({
                 role: 'user',
                 content: [{ type: 'text', text: textContent.text }]
@@ -133,10 +149,6 @@ router.post('/', async (req: Request<{}, {}, {
                 try {
                   const result = JSON.parse(textContent.text);
                   isSequentialThinkingComplete = !result.nextThoughtNeeded;
-                  // console.log('\n=== SEQUENTIAL THINKING STATUS ===');
-                  // console.log('Next thought needed:', result.nextThoughtNeeded);
-                  // console.log('Current thought number:', result.thoughtNumber);
-                  // console.log('Total thoughts planned:', result.totalThoughts);
                 } catch (error) {
                   console.error('Error parsing sequential thinking result:', error);
                   isSequentialThinkingComplete = true;
@@ -146,9 +158,6 @@ router.post('/', async (req: Request<{}, {}, {
 
             // Handle bibliography if present
             if ('bibliography' in toolResult && toolResult.bibliography) {
-              // console.log('\n=== BIBLIOGRAPHY DATA ===');
-              // console.log(JSON.stringify(toolResult.bibliography, null, 2));
-              
               // Check if bibliography exists and merge if it does
               if ((messages as any).bibliography) {
                 // Merge and deduplicate based on PMID
@@ -171,13 +180,6 @@ router.post('/', async (req: Request<{}, {}, {
 
             // Handle knowledge graph artifacts if present
             if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
-              // Add this logging
-              // console.log('\n=== CHECKING FOR KNOWLEDGE GRAPH ARTIFACTS ===');
-              // console.log(`Tool has ${toolResult.artifacts.length} artifacts`);
-              // toolResult.artifacts.forEach((a, i) => {
-              //   console.log(`Artifact ${i+1} type: ${a.type}`);
-              // });
-              
               // Find any knowledge graph artifacts in the response
               const knowledgeGraphArtifact = toolResult.artifacts.find((a: any) => 
                 a.type === 'application/vnd.knowledge-graph' && typeof a.content === 'string'
@@ -223,10 +225,7 @@ router.post('/', async (req: Request<{}, {}, {
 
             // Handle binary output if present
             if ('binaryOutput' in toolResult && toolResult.binaryOutput) {
-              // console.log('\n=== BINARY OUTPUT DATA ===');
               const binaryOutput = toolResult.binaryOutput as BinaryOutput;
-              // console.log('Type:', binaryOutput.type);
-              // console.log('Metadata:', JSON.stringify(binaryOutput.metadata, null, 2));
               
               // Initialize binaryOutputs array if it doesn't exist
               if (!(messages as any).binaryOutputs) {
@@ -247,7 +246,7 @@ router.post('/', async (req: Request<{}, {}, {
     }
 
     // Final phase: Response formatting
-    // console.log('\n=== PREPARING FINAL RESPONSE ===');
+    sendStatusUpdate('Generating final response...');
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
@@ -314,11 +313,6 @@ router.post('/', async (req: Request<{}, {}, {
       tool_choice: { type: "tool", name: "response_formatter" }
     });
 
-    // Log the response formatting results
-    // console.log('\n=== RESPONSE FORMATTING RESULTS ===');
-    // console.log('Raw Response:', response);
-    // console.log('stringify Raw Response:', JSON.stringify(response, null, 2));
-
     // Process and validate response
     if (response.content[0].type !== 'tool_use') {
       throw new Error('Expected tool_use response from Claude');
@@ -329,19 +323,13 @@ router.post('/', async (req: Request<{}, {}, {
       throw new Error('Expected response_formatter tool response');
     }
 
-    // Log the formatted response
-    // console.log('\n=== FORMATTED RESPONSE ===');
-    // console.log('Tool Response:', JSON.stringify(toolResponse, null, 2));
-
     // Convert to store format
+    sendStatusUpdate('Processing response format...');
     let storeResponse = messageService.convertToStoreFormat(toolResponse as any);
     
-    // Log the store format
-    // console.log('\n=== STORE FORMAT ===');
-    // console.log('Store Response:', JSON.stringify(storeResponse, null, 2));
-
     // Add bibliography if present
     if ((messages as any).bibliography) {
+      sendStatusUpdate('Adding bibliography...');
       storeResponse = messageService.formatResponseWithBibliography(
         storeResponse, 
         (messages as any).bibliography
@@ -350,6 +338,7 @@ router.post('/', async (req: Request<{}, {}, {
 
     // Add knowledge graph if present
     if ((messages as any).knowledgeGraph) {
+      sendStatusUpdate('Adding knowledge graph...');
       console.log('\n=== ADDING KNOWLEDGE GRAPH TO RESPONSE ===');
       console.log(`Knowledge graph has ${(messages as any).knowledgeGraph.nodes.length} nodes and ${(messages as any).knowledgeGraph.links.length} links`);
       
@@ -370,13 +359,11 @@ router.post('/', async (req: Request<{}, {}, {
           console.log('WARNING: Knowledge graph artifact not found in response after formatting');
         }
       }
-    } else {
-      // console.log('\n=== NO KNOWLEDGE GRAPH TO ADD ===');
-      // console.log('messages.knowledgeGraph is not present');
     }
 
     // Add binary outputs if present
     if ((messages as any).binaryOutputs) {
+      sendStatusUpdate('Processing binary outputs...');
       const artifacts = storeResponse.artifacts || [];
       let position = artifacts.length;
 
@@ -392,42 +379,30 @@ router.post('/', async (req: Request<{}, {}, {
     // Log response
     loggingService.logResponse(res);
 
-    // Add this logging before processing tool results
-    // console.log('\n=== TOOL RESULTS OVERVIEW ===');
-    // console.log(`Tool results available: ${storeResponse.artifacts ? storeResponse.artifacts.length : 0}`);
-    // if (storeResponse.artifacts && storeResponse.artifacts.length > 0) {
-    //   storeResponse.artifacts.forEach((artifact, index) => {
-    //     console.log(`Artifact ${index + 1}:`);
-    //     console.log(`- ID: ${artifact.id}`);
-    //     console.log(`- Type: ${artifact.type}`);
-    //     console.log(`- Title: ${artifact.title || 'untitled'}`);
-    //     console.log(`- Has artifactId: ${!!artifact.artifactId}`);
-    //   });
-    // }
+    sendStatusUpdate('Finalizing response...');
 
-    // Find where the final response is being prepared
-    // Add before returning the response:
-    // console.log('\n=== FINAL RESPONSE ARTIFACTS ===');
-    // if (storeResponse.artifacts) {
-    //   console.log(`Total artifacts: ${storeResponse.artifacts.length}`);
-    //   storeResponse.artifacts.forEach((artifact, index) => {
-    //     console.log(`Artifact ${index + 1}:`);
-    //     console.log(`- ID: ${artifact.id}`);
-    //     console.log(`- Type: ${artifact.type}`);
-    //     console.log(`- Title: ${artifact.title || 'untitled'}`);
-    //     console.log(`- Has artifactId: ${!!artifact.artifactId}`);
-    //   });
-    // }
+    // Send the final complete response
+    res.write(JSON.stringify({ 
+      type: 'result',
+      response: storeResponse,
+      timestamp: new Date().toISOString()
+    }) + '\n');
 
-    // Send response
-    res.json({ response: storeResponse });
+    // End the response
+    res.end();
 
   } catch (error) {
     loggingService.logError(error as Error);
-    res.status(500).json({
-      error: 'Failed to process chat message',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    
+    // Send error as a status update
+    res.write(JSON.stringify({ 
+      type: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    }) + '\n');
+    
+    // End the response
+    res.end();
   }
 });
 
