@@ -37,7 +37,7 @@ export class CharmonatorService implements LLMService {
       }
 
       const data = await response.json()
-      return data.response
+      return data.messages[0].content;
     } catch (error) {
       console.error('Error in Charmonator chat:', error)
       throw error
