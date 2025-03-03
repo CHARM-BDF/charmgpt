@@ -50,7 +50,7 @@ interface ChatState extends ConversationState {
   completeStreaming: () => void;
   toggleStreaming: () => void;
   setPinnedGraphId: (id: string | null) => void;
-  updateChatInput: (text: string) => void; // New function to update chat input
+  updateChatInput: (text: string, append: boolean) => void; // New function to update chat input
   
   // New conversation management functions
   startNewConversation: (name?: string) => string;
@@ -103,13 +103,18 @@ export const useChatStore = create<ChatState>()(
         conversations: {},
 
         // Add new function to update chat input
-        updateChatInput: (text: string) => {
-          console.log('ChatStore: Updating chat input with:', text);
+        updateChatInput: (text: string, append: boolean = false) => {
+          console.log('ChatStore: Updating chat input with:', text, append ? '(append)' : '(replace)');
           set((state) => {
-            // If there's already text in the input, append with a space
-            const currentInput = state.chatInput.trim();
-            const newInput = currentInput ? `${currentInput} ${text}` : text;
-            return { chatInput: newInput };
+            if (append) {
+              // If append is true, append with a space
+              const currentInput = state.chatInput.trim();
+              const newInput = currentInput ? `${currentInput} ${text}` : text;
+              return { chatInput: newInput };
+            } else {
+              // Otherwise, replace the text
+              return { chatInput: text };
+            }
           });
         },
 
@@ -263,25 +268,14 @@ export const useChatStore = create<ChatState>()(
          * with an alternative communication method
          */
         processMessage: async (content: string) => {
+          console.log('ChatStore: Processing message:', content);
+          
+          set({ isLoading: true, error: null });
+          
           try {
-            set({ 
-              isLoading: true, 
-              error: null,
-              streamingContent: '',
-              streamingComplete: false
-            });
-            
-            const messageId = crypto.randomUUID();
-            let state = get();
-            
-            // Create a new conversation if none exists
-            if (!state.currentConversationId) {
-              get().startNewConversation();
-              state = get(); // Get updated state
-            }
-            
-            // Get the selected model from modelStore
+            // Get the selected model from the correct store
             const selectedModel = useModelStore.getState().selectedModel;
+            console.log('ChatStore: Using model:', selectedModel);
             
             // Choose the appropriate API endpoint based on the model
             const endpoint = selectedModel === 'ollama' ? API_ENDPOINTS.OLLAMA : API_ENDPOINTS.CHAT;
@@ -299,6 +293,14 @@ export const useChatStore = create<ChatState>()(
               }
             }
 
+            // Get all messages for the history
+            const messageHistory = get().messages
+              .filter(msg => msg.content.trim() !== '')
+              .map(msg => ({
+                role: msg.role,
+                content: msg.content
+              }));
+
             const response = await fetch(apiUrl, {
               method: 'POST',
               headers: {
@@ -306,19 +308,9 @@ export const useChatStore = create<ChatState>()(
               },
               body: JSON.stringify({
                 message: content,
-                history: get().messages
-                  .filter(msg => msg.content.trim() !== '')
-                  .map(msg => ({
-                    role: msg.role,
-                    content: msg.content
-                  })),
+                history: messageHistory,
                 blockedServers: useMCPStore.getState().getBlockedServers(),
-                pinnedGraph: pinnedGraph ? {
-                  id: pinnedGraph.id,
-                  type: pinnedGraph.type,
-                  title: pinnedGraph.title,
-                  content: pinnedGraph.content
-                } : undefined
+                pinnedGraph: pinnedGraph
               })
             });
 

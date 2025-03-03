@@ -47,7 +47,6 @@ export const ChatInput: React.FC = () => {
     // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. And include an artifact of a sacred geometry svg.');
     // setInput('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
 // Use medik to find the nodes that are related_to NCBIGene:1859
-updateChatInput('use medik to find the nodes that are related_to NCBIGene:1859');
 
   };
 
@@ -65,7 +64,7 @@ updateChatInput('use medik to find the nodes that are related_to NCBIGene:1859')
           <textarea
             ref={textareaRef}
             value={chatInput}
-            onChange={(e) => updateChatInput(e.target.value)}
+            onChange={(e) => updateChatInput(e.target.value, false)}
             onKeyDown={handleKeyDown}
             className="w-full min-h-[96px] p-3 
                      border border-stone-200/80 dark:border-gray-600/80 

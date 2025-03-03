@@ -26,6 +26,11 @@ const QueryRequestSchema = z.object({
     e3: z.string().describe("A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.")
 });
 
+// Define validation schema for get-everything tool
+const GetEverythingRequestSchema = z.object({
+    curie: z.string().describe("A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.")
+});
+
 // Create server instance
 const server = new Server(
     {
@@ -92,6 +97,79 @@ export async function runQuery(params: {
     return await makeMediKanrenRequest<QueryResponse>(params);
 }
 
+// Function to run both X->Known and Known->X queries
+export async function runBidirectionalQuery(params: {
+    curie: string
+}): Promise<QueryResponse | null> {
+    server.sendLoggingMessage({
+        level: "info",
+        data: {
+            message: "MEDIK: Starting runBidirectionalQuery",
+            params: params
+        },
+    });
+    
+    // Run X->Known query
+    const xToKnownParams = {
+        e1: "X->Known",
+        e2: "biolink:related_to",
+        e3: params.curie
+    };
+    
+    console.error(`MEDIK: Running X->Known query with params:`, xToKnownParams);
+    const xToKnownResults = await makeMediKanrenRequest<QueryResponse>(xToKnownParams);
+    
+    // Run Known->X query
+    const knownToXParams = {
+        e1: "Known->X",
+        e2: "biolink:related_to",
+        e3: params.curie
+    };
+    
+    console.error(`MEDIK: Running Known->X query with params:`, knownToXParams);
+    const knownToXResults = await makeMediKanrenRequest<QueryResponse>(knownToXParams);
+    
+    // Check for errors in either query
+    if (!xToKnownResults || !knownToXResults) {
+        console.error("MEDIK: One or both queries failed");
+        return null;
+    }
+    
+    // Check if either result is an error
+    if (!Array.isArray(xToKnownResults) || !Array.isArray(knownToXResults)) {
+        console.error("MEDIK: One or both queries returned an error");
+        return Array.isArray(xToKnownResults) ? xToKnownResults : knownToXResults;
+    }
+    
+    // Combine results
+    const combinedResults = [...xToKnownResults];
+    
+    // Add results from Known->X query, avoiding duplicates
+    // We'll consider a result duplicate if source, predicate, and target are the same
+    knownToXResults.forEach(knownToXResult => {
+        const [sourceId, sourceName, predicate, targetId, targetName] = knownToXResult;
+        
+        // Check if this relationship already exists in the combined results
+        const isDuplicate = combinedResults.some(existingResult => {
+            const [existingSourceId, , existingPredicate, existingTargetId] = existingResult;
+            return (
+                existingSourceId === sourceId &&
+                existingPredicate === predicate &&
+                existingTargetId === targetId
+            );
+        });
+        
+        // If not a duplicate, add to combined results
+        if (!isDuplicate) {
+            combinedResults.push(knownToXResult);
+        }
+    });
+    
+    console.error(`MEDIK: Combined ${xToKnownResults.length} X->Known results and ${knownToXResults.length} Known->X results into ${combinedResults.length} total results`);
+    
+    return combinedResults;
+}
+
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
@@ -116,6 +194,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                         }
                     },
                     required: ["e1", "e2", "e3"],
+                },
+            },
+            {
+                name: "get-everything",
+                description: "Run both X->Known and Known->X queries with biolink:related_to to get all relationships for a CURIE",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        curie: {
+                            type: "string",
+                            description: "A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.",
+                        }
+                    },
+                    required: ["curie"],
                 },
             }
         ],
@@ -256,38 +348,127 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     ],
                 };
             }
-        }
-
-        // Default return for unknown tool
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: `Unknown tool: ${toolName}`,
-                },
-            ],
-        };
-    } catch (error) {
-        if (error instanceof z.ZodError) {
+        } else if (toolName === "get-everything") {
+            const { curie } = GetEverythingRequestSchema.parse(toolArgs);
+            
+            // Add a clear boundary marker for the start of a new query
+            console.error("\n\n========================================");
+            console.error(`MEDIK: NEW BIDIRECTIONAL QUERY STARTED AT ${new Date().toISOString()}`);
+            console.error(`MEDIK: Query: get-everything for ${curie}`);
+            console.error("========================================\n");
+            
+            if (DEBUG) {
+                console.error('MEDIK: Parsed arguments:', { curie });
+            }
+        
+            const queryResult = await runBidirectionalQuery({ curie });
+        
+            if (!queryResult) {
+                console.error("========================================");
+                console.error(`MEDIK: BIDIRECTIONAL QUERY FAILED AT ${new Date().toISOString()}`);
+                console.error("========================================\n");
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: "Failed to retrieve bidirectional query results. Please check the server logs for details.",
+                        },
+                    ],
+                };
+            }
+            
+            // Check if the result is an array (successful query) or an error
+            if (Array.isArray(queryResult)) {
+                // Log that we're filtering CAID nodes
+                server.sendLoggingMessage({
+                    level: "info",
+                    data: {
+                        message: "MEDIK: Filtering out nodes with CAID: prefix from bidirectional query results",
+                        originalResultCount: queryResult.length
+                    },
+                });
+                
+                console.error(`MEDIK: Starting CAID node filtering process on ${queryResult.length} results`);
+                
+                try {
+                    console.error(`MEDIK: Calling formatKnowledgeGraphArtifact with ${queryResult.length} results`);
+                    
+                    // Create a combined query params object for the formatter
+                    // We'll use a special value for e1 to indicate this is a bidirectional query
+                    const combinedParams = {
+                        e1: "Bidirectional",
+                        e2: "biolink:related_to",
+                        e3: curie
+                    };
+                    
+                    // Format the query results into a knowledge graph artifact
+                    const formattingPromise = formatKnowledgeGraphArtifact(queryResult, combinedParams);
+                    console.error(`MEDIK: Got Promise from formatKnowledgeGraphArtifact, waiting for resolution...`);
+                    
+                    // Wait for the Promise to resolve
+                    const formattedResult = await formattingPromise;
+                    console.error(`MEDIK: Promise resolved successfully, got formatted result`);
+                    
+                    // Log the filtering results
+                    if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
+                        console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
+                        server.sendLoggingMessage({
+                            level: "info",
+                            data: {
+                                message: `MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique nodes with CAID: prefix`,
+                                filteredCount: formattedResult.filteredCount,
+                                filteredNodeCount: formattedResult.filteredNodeCount,
+                                remainingCount: queryResult.length - formattedResult.filteredCount
+                            },
+                        });
+                    }
+                    
+                    // Return the formatted result
+                    return {
+                        content: formattedResult.content,
+                        artifacts: formattedResult.artifacts
+                    };
+                } catch (error) {
+                    console.error(`MEDIK: Error formatting knowledge graph:`, error);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error formatting knowledge graph: ${error}`,
+                            },
+                        ],
+                    };
+                }
+            } else {
+                // Handle error response
+                console.error(`MEDIK: Query returned an error:`, queryResult);
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Query error: ${queryResult.error}`,
+                        },
+                    ],
+                };
+            }
+        } else {
+            // Handle unknown tool
             return {
                 content: [
                     {
                         type: "text",
-                        text: `Invalid arguments: ${error.errors
-                            .map((e) => `${e.path.join(".")}: ${e.message}`)
-                            .join(", ")}`,
+                        text: `Unknown tool: ${toolName}`,
                     },
                 ],
             };
         }
-        
-        // Return error message for any other errors
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    } catch (error) {
+        console.error(`MEDIK: Error handling tool request:`, error);
         return {
             content: [
                 {
                     type: "text",
-                    text: `Error: ${errorMessage}`,
+                    text: `Error: ${error}`,
                 },
             ],
         };

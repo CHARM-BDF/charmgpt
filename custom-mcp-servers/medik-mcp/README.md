@@ -5,6 +5,7 @@ A Model Context Protocol (MCP) server that interfaces with the mediKanren API, a
 ## Features
 
 - Run 1-hop queries in the mediKanren knowledge graph
+- Run comprehensive bidirectional queries to get all relationships for an entity
 - Retrieve PubMed abstracts by ID
 - Generate knowledge graph artifacts for visualization
 - Format query results into human-readable text
@@ -30,7 +31,7 @@ npm run build
 
 ## Usage
 
-The server exposes two main tools:
+The server exposes three main tools:
 
 ### 1. run-query
 
@@ -55,7 +56,32 @@ The response includes:
 1. Human-readable text describing the relationships found
 2. A knowledge graph artifact that can be visualized by compatible clients
 
-### 2. get-pubmed-abstract
+### 2. get-everything
+
+Runs both X->Known and Known->X queries with biolink:related_to to get all relationships for a CURIE. This tool provides a comprehensive view of all entities related to the specified CURIE, combining both incoming and outgoing relationships.
+
+**Parameters:**
+- `curie`: A CURIE identifier (e.g., MONDO:0011719)
+
+**Example:**
+```json
+{
+  "curie": "MONDO:0011719"
+}
+```
+
+**Response:**
+The response includes:
+1. Human-readable text describing all relationships found, with a note indicating this is a comprehensive bidirectional query
+2. A knowledge graph artifact containing both incoming and outgoing relationships
+
+**How it works:**
+- Runs an X->Known query with biolink:related_to and the specified CURIE
+- Runs a Known->X query with biolink:related_to and the specified CURIE
+- Combines and deduplicates the results from both queries
+- Formats the combined results into a comprehensive knowledge graph
+
+### 3. get-pubmed-abstract
 
 Retrieves a PubMed abstract by ID.
 

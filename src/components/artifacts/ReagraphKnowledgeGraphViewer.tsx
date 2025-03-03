@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { GraphCanvas } from 'reagraph';
 import { KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
-import {  ChevronDown, ChevronUp, Filter, Save } from 'lucide-react';
+import {  ChevronDown, ChevronUp, Filter, Save, Pin, PinOff } from 'lucide-react';
 import { useMCPStore } from '../../store/mcpStore';
 
 interface ReagraphKnowledgeGraphViewerProps {
@@ -282,9 +282,6 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     
     // Map nodes to Reagraph format
     const nodes = parsedData.nodes.map(node => {
-      // Log the node color for debugging
-      console.log(`Node ${node.id} color: ${node.color}`);
-      
       // Get the color value from node or generate one
       const colorValue = node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4');
       
@@ -906,8 +903,8 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       // Format node data
       const nodeText = `${node.label} (${node.id})`;
       
-      // Update chat input
-      updateChatInput(nodeText);
+      // Update chat input with append=true to add to existing text
+      updateChatInput(nodeText, true);
       
       // Pin the graph if not already pinned
       if (artifactId && !isPinned) {
@@ -1023,17 +1020,38 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           <EdgeLabelFilter />
         </div>
         
-        {/* Save Filtered View button */}
-        {artifactId && filteredNodes.length > 0 && filteredNodes.length !== graphData.nodes.length && (
-          <button
-            onClick={saveFilteredView}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
-            title="Save current filtered view as a new version"
-          >
-            <Save size={16} />
-            <span className="text-sm">Save Filtered View</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Pin/Unpin button */}
+          {artifactId && (
+            <button
+              onClick={() => {
+                if (artifactId) {
+                  setPinnedGraphId(isPinned ? null : artifactId);
+                }
+              }}
+              className={`p-2 rounded-full ${
+                isPinned 
+                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+              }`}
+              title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
+            >
+              {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+            </button>
+          )}
+          
+          {/* Save Filtered View button */}
+          {artifactId && filteredNodes.length > 0 && filteredNodes.length !== graphData.nodes.length && (
+            <button
+              onClick={saveFilteredView}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
+              title="Save current filtered view as a new version"
+            >
+              <Save size={16} />
+              <span className="text-sm">Save Filtered View</span>
+            </button>
+          )}
+        </div>
       </div>
       <div ref={containerRef} className="w-full h-full flex-grow relative">
         <NotificationPopup />

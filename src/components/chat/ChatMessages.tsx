@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MessageWithThinking } from '../../types/chat';
 import { Artifact } from '../../types/artifacts';
 import { useChatStore } from '../../store/chatStore';
@@ -11,55 +11,30 @@ import BrainWaveCharm from '../animations/BrainWaveCharm';
 // const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
 export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ messages }) => {
-  const { selectArtifact, isLoading, streamingMessageId, streamingContent, artifacts } = useChatStore();
+  // Use regular useChatStore without a selector function to avoid infinite loops
+  const chatStore = useChatStore();
+  
+  // Extract only the properties we need using destructuring
+  const { selectArtifact, isLoading, streamingMessageId, streamingContent, artifacts } = chatStore;
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string | null>(null);
   const [showThinkingMap, setShowThinkingMap] = useState<Record<string, boolean>>({});
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
-  // Debug function to log all artifacts
-  const logAllArtifacts = () => {
+  // Debug function to log all artifacts - only call this when needed, not on every render
+  const logAllArtifacts = useCallback(() => {
     console.log("=== DEBUG: ALL ARTIFACTS ===");
-    // console.log(`Total artifacts in store: ${artifacts.length}`);
+    console.log(`Total artifacts in store: ${artifacts.length}`);
     
-    // // Log each artifact with full details
-    // artifacts.forEach((artifact, index) => {
-    //   console.log(`Artifact ${index + 1}:`);
-    //   console.log(`  ID: ${artifact.id}`);
-    //   console.log(`  ArtifactID: ${artifact.artifactId}`);
-    //   console.log(`  Type: ${artifact.type}`);
-    //   console.log(`  Title: ${artifact.title}`);
-    //   console.log(`  Position: ${artifact.position}`);
-    //   console.log(`  Timestamp: ${artifact.timestamp}`);
-      
-    //   // For knowledge graphs, log additional details
-    //   if (artifact.type === 'application/vnd.knowledge-graph') {
-    //     try {
-    //       const graphData = JSON.parse(artifact.content);
-    //       console.log(`  Knowledge Graph Details:`);
-    //       console.log(`    Nodes: ${graphData.nodes?.length || 0}`);
-    //       console.log(`    Links: ${graphData.links?.length || 0}`);
-    //     } catch (e) {
-    //       console.log(`  Error parsing knowledge graph content: ${e}`);
-    //     }
-    //   }
-    // });
-    
-    // // Log message-artifact associations
-    // console.log("\n=== DEBUG: MESSAGE-ARTIFACT ASSOCIATIONS ===");
-    // messages.forEach((message, index) => {
-    //   console.log(`Message ${index + 1} (ID: ${message.id}):`);
-    //   console.log(`  ArtifactID: ${message.artifactId || 'none'}`);
-      
-    //   // Get all artifacts for this message using our function
-    //   const messageArtifacts = getMessageArtifacts(message);
-    //   console.log(`  Total artifacts found by getMessageArtifacts: ${messageArtifacts.length}`);
-    //   messageArtifacts.forEach((artifact, i) => {
-    //     console.log(`  Artifact ${i + 1}: ${artifact.id} (${artifact.type})`);
-    //   });
-    // });
-  };
+    // Log each artifact with full details
+    artifacts.forEach((artifact, index) => {
+      console.log(`Artifact ${index + 1}:`);
+      console.log(`  ID: ${artifact.id}`);
+      console.log(`  ArtifactID: ${artifact.artifactId}`);
+    });
+  }, [artifacts]);
   
   // Function to get all artifacts associated with a message
   const getMessageArtifacts = (message: MessageWithThinking) => {
@@ -376,33 +351,20 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   );
 };
 
-// Bibliography link component with Heroicons
-export const BibliographyLink: React.FC<{ artifactId: string }> = ({ artifactId }) => {
-  const { selectArtifact } = useChatStore();
-  
-  return (
-    <button
-      onClick={() => selectArtifact(artifactId)}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40 transition-colors"
-    >
-      <DocumentTextIcon className="h-3.5 w-3.5" />
-      <span>View References</span>
-    </button>
-  );
-};
-
 // Bibliography link component with Lucide
 export const BibliographyLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
-  const { selectArtifact, artifacts } = useChatStore();
-  const artifact = artifacts.find(a => a.id === artifactId);
+  const chatStore = useChatStore();
+  const { selectArtifact } = chatStore;
+  const artifact = chatStore.artifacts.find(a => a.id === artifactId);
   const title = artifact?.title || "Bibliography";
   
   return (
     <button
       onClick={() => selectArtifact(artifactId)}
       className="inline-flex items-center gap-3 px-3 py-2 
-                bg-blue-100 hover:bg-blue-200
-                text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40
+                bg-blue-50 hover:bg-blue-100
+                text-blue-700
+                dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/40
                 rounded-lg border border-blue-200 dark:border-blue-800
                 shadow-[0_2px_4px_rgba(59,130,246,0.1)] hover:shadow-[0_4px_6px_rgba(59,130,246,0.15)]
                 transition-all duration-200
@@ -423,8 +385,9 @@ export const BibliographyLinkLucide: React.FC<{ artifactId: string }> = ({ artif
 
 // Knowledge Graph link component with Lucide
 export const KnowledgeGraphLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
-  const { selectArtifact, artifacts } = useChatStore();
-  const artifact = artifacts.find(a => a.id === artifactId);
+  const chatStore = useChatStore();
+  const { selectArtifact } = chatStore;
+  const artifact = chatStore.artifacts.find(a => a.id === artifactId);
   const title = artifact?.title || "Knowledge Graph";
   
   return (
@@ -453,29 +416,30 @@ export const KnowledgeGraphLinkLucide: React.FC<{ artifactId: string }> = ({ art
 
 // JSON link component with Lucide
 export const JsonLinkLucide: React.FC<{ artifactId: string }> = ({ artifactId }) => {
-  const { selectArtifact, artifacts } = useChatStore();
-  const artifact = artifacts.find(a => a.id === artifactId);
+  const chatStore = useChatStore();
+  const { selectArtifact } = chatStore;
+  const artifact = chatStore.artifacts.find(a => a.id === artifactId);
   const title = artifact?.title || "JSON Data";
   
   return (
     <button
       onClick={() => selectArtifact(artifactId)}
       className="inline-flex items-center gap-3 px-3 py-2 
-                bg-emerald-100 hover:bg-emerald-200
-                text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-800/40
-                rounded-lg border border-emerald-200 dark:border-emerald-800
-                shadow-[0_2px_4px_rgba(16,185,129,0.1)] hover:shadow-[0_4px_6px_rgba(16,185,129,0.15)]
+                bg-amber-100 hover:bg-amber-200
+                text-amber-700
+                rounded-lg border border-amber-200
+                shadow-[0_2px_4px_rgba(217,119,6,0.1)] hover:shadow-[0_4px_6px_rgba(217,119,6,0.15)]
                 transition-all duration-200
                 min-w-[50%] max-w-full"
       data-artifact-id={artifactId}
       data-artifact-type="application/json"
     >
-      <div className="flex-shrink-0 p-2 border-r border-emerald-200 dark:border-emerald-800">
+      <div className="flex-shrink-0 p-2 border-r border-amber-200">
         <FileText className="w-6 h-6" />
       </div>
       <div className="flex flex-col items-start min-w-0">
         <span className="text-sm font-medium truncate w-full">{title}</span>
-        <span className="text-xs text-emerald-500 dark:text-emerald-400">Click to open</span>
+        <span className="text-xs text-amber-500">Click to open</span>
       </div>
     </button>
   );

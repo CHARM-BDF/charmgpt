@@ -9,36 +9,27 @@ export const ArtifactWindow: React.FC = () => {
     selectedArtifactId,
   } = useChatStore();
 
-  console.log('ArtifactWindow: Rendering with selectedArtifactId:', selectedArtifactId);
-  console.log('ArtifactWindow: Available artifacts:', artifacts);
+  // Remove excessive logging that happens on every render
+  // Only log when selectedArtifactId changes
+  React.useEffect(() => {
+    console.log('ArtifactWindow: Selected artifact ID changed:', selectedArtifactId);
+  }, [selectedArtifactId]);
 
   const selectedArtifact = artifacts.find(a => a.id === selectedArtifactId);
-  console.log('ArtifactWindow: Selected artifact:', selectedArtifact);
 
   return (
     <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col min-w-0">
       <div className="flex-1 flex min-h-0 min-w-0 bg-gray-200 dark:bg-gray-900">
-        <div className="flex-1 h-full p-4 min-w-0">
-          {selectedArtifact ? (
-            <div className="h-full min-w-0">
-              <ArtifactContent artifact={selectedArtifact} />
+        {selectedArtifact ? (
+          <ArtifactContent artifact={selectedArtifact} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+            <div className="text-center p-4">
+              <p>No artifact selected</p>
+              <KnowledgeGraphTestButton />
             </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-                  No artifact selected
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Select an artifact from the list or test the knowledge graph visualization.
-                </p>
-                <div className="flex justify-center">
-                  <KnowledgeGraphTestButton />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

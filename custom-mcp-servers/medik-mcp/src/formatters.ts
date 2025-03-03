@@ -615,8 +615,12 @@ export function formatKnowledgeGraphArtifact(
     }
     
     // Create human-readable text
-    const queryType = queryParams.e1 === 'X->Known' ? 'entities related to' : 'entities that relate to';
-    const entityName = queryParams.e1 === 'X->Known' ? queryParams.e3 : queryParams.e1;
+    const queryType = queryParams.e1 === 'X->Known' ? 'entities related to' : 
+                      queryParams.e1 === 'Bidirectional' ? 'all entities related to' : 
+                      'entities that relate to';
+    const entityName = queryParams.e1 === 'X->Known' || queryParams.e1 === 'Bidirectional' ? 
+                      queryParams.e3 : 
+                      queryParams.e1;
     const relationshipType = formatPredicate(queryParams.e2);
     
     // Group relationships by predicate for better readability
@@ -640,7 +644,7 @@ export function formatKnowledgeGraphArtifact(
     let humanReadableText = `
 # Knowledge Graph: ${queryType} ${entityName} via ${relationshipType}
 
-The graph includes the following relationships:
+${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\n\n' : ''}The graph includes the following relationships:
 ${formattedRelationships}
 
 Identify any patterns or insights based solely on what the graph shows, and then offer your own insights such as other concepts that may be interesting to pursue based on the data and why.
@@ -651,7 +655,7 @@ Identify any patterns or insights based solely on what the graph shows, and then
       humanReadableText = `
 # Knowledge Graph: ${queryType} ${entityName} via ${relationshipType}
 
-Note: ${filteredCount} relationships involving ${filteredNodeCount} unique nodes with CAID: prefix were filtered out from the results. These CAID variants are typically less reliable or less established in the literature.
+${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\n\n' : ''}Note: ${filteredCount} relationships involving ${filteredNodeCount} unique nodes with CAID: prefix were filtered out from the results. These CAID variants are typically less reliable or less established in the literature.
 
 The graph includes the following relationships:
 ${formattedRelationships}
@@ -663,7 +667,9 @@ Identify any patterns or insights based solely on what the graph shows, and then
     // Create the knowledge graph artifact
     const artifact: KnowledgeGraphArtifact = {
       type: 'application/vnd.knowledge-graph',
-      title: `Knowledge Graph: ${queryType} ${entityName}`,
+      title: queryParams.e1 === 'Bidirectional' 
+        ? `Knowledge Graph: All relationships for ${entityName}`
+        : `Knowledge Graph: ${queryType} ${entityName}`,
       content: JSON.stringify(graph)
     };
     
