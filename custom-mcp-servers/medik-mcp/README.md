@@ -11,7 +11,8 @@ A Model Context Protocol (MCP) server that interfaces with the mediKanren API, a
 - Format query results into human-readable text
 - Comprehensive error handling and logging
 - Interactive knowledge graph visualization
-- Automatic filtering of CAID-prefixed nodes
+- Automatic filtering of CAID-prefixed nodes and transcribed_from edges
+- Retry logic with 1-second delay between attempts
 
 ## Installation
 
@@ -143,9 +144,9 @@ The knowledge graph is formatted as a JSON object with the following structure:
 }
 ```
 
-## Node Filtering
+## Node and Edge Filtering
 
-The server automatically filters out nodes with certain prefixes to improve data quality:
+The server automatically filters out certain nodes and edges to improve data quality:
 
 ### CAID Node Filtering
 
@@ -157,7 +158,29 @@ Nodes with the `CAID:` prefix are automatically removed from query results. This
 - Counts and logs the total number of relationships affected by filtering
 - Adds a detailed note in the human-readable output about filtered nodes and relationships
 
-CAID (Confidence Assertion ID) nodes often represent less reliable or less established relationships in the literature. Filtering these nodes helps ensure that only high-quality, well-established relationships are included in the knowledge graph. The filtering process is transparent, with detailed information about filtered nodes included in both the server logs and the response text.
+CAID (Confidence Assertion ID) nodes often represent less reliable or less established relationships in the literature. Filtering these nodes helps ensure that only high-quality, well-established relationships are included in the knowledge graph.
+
+### Transcribed_from Edge Filtering
+
+Edges with the 'transcribed_from' predicate are automatically filtered out:
+
+- Removes any edge where predicate === 'transcribed_from'
+- Logs when such edges are filtered
+- Updates the filtering summary in both logs and human-readable output
+- Maintains transparency about filtered relationships
+
+This filtering helps focus on more meaningful biological relationships by removing basic transcription relationships.
+
+## Retry Logic
+
+The server implements automatic retry logic for API requests:
+
+- Maximum of 3 retry attempts for failed requests
+- 1-second delay between retry attempts
+- Detailed logging of each retry attempt
+- Transparent error reporting if all retries fail
+
+This retry mechanism helps handle temporary network issues or API instability.
 
 ## Knowledge Graph Generation and Visualization
 
