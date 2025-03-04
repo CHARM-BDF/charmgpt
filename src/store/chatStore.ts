@@ -1,10 +1,24 @@
+/**
+ * ChatStore: Manages the chat state and interactions
+ * 
+ * This store is responsible for:
+ * 1. Managing messages and conversations
+ * 2. Handling user and assistant messages
+ * 3. Processing artifacts and linking them to messages
+ * 4. Managing the streaming state for real-time updates
+ * 
+ * DO NOT REMOVE the artifact linking logic as it is essential
+ * for the proper functioning of the application.
+ */
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Message, ConversationMetadata, Conversation, ConversationState } from '../types/chat';
+import { v4 as uuidv4 } from 'uuid';
+import { Message, MessageWithThinking, ConversationMetadata, Conversation, ConversationState } from '../types/chat';
 import { Artifact, ArtifactType } from '../types/artifacts';
-import { useMCPStore } from './mcpStore';
+import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';
-import { getApiUrl, API_ENDPOINTS } from '../utils/api';
+import { useMCPStore } from './mcpStore';
 import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../types/knowledgeGraph';
 
 /**
@@ -12,13 +26,10 @@ import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../t
  * IMPORTANT: artifactId is used to link messages with their associated artifacts
  * This linking is essential for the artifact reference system
  */
-interface MessageWithThinking extends Message {
-  thinking?: string;
-  artifactId?: string;  // DO NOT REMOVE: Required for artifact linking
-}
+// MessageWithThinking is now imported from '../types/chat'
 
 interface ChatState extends ConversationState {
-  messages: Message[];
+  messages: MessageWithThinking[];
   artifacts: Artifact[];
   selectedArtifactId: string | null;
   showArtifactWindow: boolean;
@@ -69,6 +80,9 @@ interface ChatState extends ConversationState {
   }) => string | null;
   getGraphVersionHistory: (artifactId: string) => Artifact[];
   getLatestGraphVersion: (artifactId: string) => Artifact | null;
+  
+  // Status updates
+  toggleStatusUpdatesCollapsed: (messageId: string) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -96,7 +110,7 @@ export const useChatStore = create<ChatState>()(
         streamingComplete: true,
         streamingEnabled: true,
         pinnedGraphId: null,
-        chatInput: '', // Initialize chat input state
+        chatInput: '', // Initialize chat input
         
         // New conversation state
         currentConversationId: null,
@@ -276,22 +290,16 @@ export const useChatStore = create<ChatState>()(
           set({ isLoading: true, error: null });
           
           try {
-            // Helper function for status updates
+            // Helper function to send status updates
             const sendStatusUpdate = (status: string) => {
-              if (get().streamingEnabled && get().streamingMessageId) {
-                const currentContent = get().streamingContent;
-                const statusPrefix = currentContent.includes('_Status:') 
-                  ? currentContent.split('_Status:')[0] 
-                  : '';
-                const newContent = `${statusPrefix}_Status: ${status}_\n\n`;
-                
-                set(state => ({
-                  streamingContent: newContent,
-                  messages: state.messages.map(msg =>
-                    msg.id === state.streamingMessageId ? { ...msg, content: newContent } : msg
-                  )
-                }));
-              }
+              set(state => ({
+                messages: state.messages.map(msg =>
+                  msg.id === assistantMessageId ? 
+                    { ...msg, statusUpdates: (msg.statusUpdates || '') + `_Status: ${status}_\n\n` } : 
+                    msg
+                ),
+                streamingContent: `_Status: ${status}_\n\n`
+              }));
             };
 
             // Get the selected model from the correct store
@@ -306,9 +314,10 @@ export const useChatStore = create<ChatState>()(
             const assistantMessageId = crypto.randomUUID();
             const assistantMessage: MessageWithThinking = {
               role: 'assistant',
-              content: '_Status: Initializing..._\n\n',
+              content: '_Status: Initializing..._',
               id: assistantMessageId,
-              timestamp: new Date()
+              timestamp: new Date(),
+              statusUpdatesCollapsed: true // Default to collapsed
             };
 
             // Add assistant message to current conversation
@@ -407,7 +416,7 @@ export const useChatStore = create<ChatState>()(
                     set(state => ({
                       messages: state.messages.map(msg =>
                         msg.id === assistantMessageId ? 
-                          { ...msg, content: `_Status: ${data.message}_\n\n` } : 
+                          { ...msg, statusUpdates: (msg.statusUpdates || '') + `_Status: ${data.message}_\n\n` } : 
                           msg
                       ),
                       streamingContent: `_Status: ${data.message}_\n\n`
@@ -453,77 +462,109 @@ export const useChatStore = create<ChatState>()(
             });
 
             if (get().streamingEnabled) {
-              // Stream the content in chunks
-              sendStatusUpdate('Generating response...');
-              const chunkSize = 20;
-              let currentPosition = 0;
-              let streamBuffer = '';
-              let accumulatedContent = '';
-              
-              const processChunk = (chunk: string): string => {
-                const combined = streamBuffer + chunk;
-                let safeText = combined;
-                let newBuffer = '';
-
-                const lastOpenIndex = combined.lastIndexOf('<');
-                if (lastOpenIndex !== -1) {
-                  const closeIndex = combined.indexOf('>', lastOpenIndex);
-                  if (closeIndex === -1) {
-                    safeText = combined.slice(0, lastOpenIndex);
-                    newBuffer = combined.slice(lastOpenIndex);
-                  }
-                }
-
-                const backtickCount = (safeText.match(/`/g) || []).length;
-                if (backtickCount % 2 !== 0) {
-                  const lastBacktickIndex = safeText.lastIndexOf('`');
-                  newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
-                  safeText = safeText.slice(0, lastBacktickIndex);
-                }
-
-                streamBuffer = newBuffer;
-                return safeText;
-              };
-              
-              // Replace the status message with the actual content
-              accumulatedContent = '';
-              
-              while (currentPosition < fullContent.length) {
-                const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
-                const chunk = fullContent.slice(currentPosition, nextPosition);
+                // Stream the content in chunks
+                sendStatusUpdate('Generating response...');
+                const chunkSize = 20;
+                let currentPosition = 0;
+                let streamBuffer = '';
+                let accumulatedContent = '';
                 
-                const safeChunk = processChunk(chunk);
-                if (safeChunk) {
-                  accumulatedContent += safeChunk;
+                const processChunk = (chunk: string): string => {
+                  const combined = streamBuffer + chunk;
+                  let safeText = combined;
+                  let newBuffer = '';
+
+                  const lastOpenIndex = combined.lastIndexOf('<');
+                  if (lastOpenIndex !== -1) {
+                    const closeIndex = combined.indexOf('>', lastOpenIndex);
+                    if (closeIndex === -1) {
+                      safeText = combined.slice(0, lastOpenIndex);
+                      newBuffer = combined.slice(lastOpenIndex);
+                    }
+                  }
+
+                  const backtickCount = (safeText.match(/`/g) || []).length;
+                  if (backtickCount % 2 !== 0) {
+                    const lastBacktickIndex = safeText.lastIndexOf('`');
+                    newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
+                    safeText = safeText.slice(0, lastBacktickIndex);
+                  }
+
+                  streamBuffer = newBuffer;
+                  return safeText;
+                };
+                
+                // Get the current message with status updates
+                const currentMsg = get().messages.find(msg => msg.id === assistantMessageId);
+                
+                // Add a separator between status updates and actual content
+                sendStatusUpdate('Response received, displaying content below:');
+                set(state => {
+                  const msgToUpdate = state.messages.find(msg => msg.id === assistantMessageId);
+                  
+                  return {
+                    messages: state.messages.map(msg =>
+                      msg.id === assistantMessageId ? 
+                        { ...msg, content: fullContent } : 
+                        msg
+                    ),
+                    streamingContent: fullContent
+                  };
+                });
+                
+                // Now stream the actual content after the status updates
+                while (currentPosition < fullContent.length) {
+                  const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
+                  const chunk = fullContent.slice(currentPosition, nextPosition);
+                  
+                  const safeChunk = processChunk(chunk);
+                  if (safeChunk) {
+                    accumulatedContent += safeChunk;
+                    
+                    set(state => ({
+                      messages: state.messages.map(msg =>
+                        msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
+                      ),
+                      streamingContent: accumulatedContent
+                    }));
+                  }
+                  
+                  currentPosition = nextPosition;
+                  await new Promise(resolve => setTimeout(resolve, .5));
+                }
+                
+                if (streamBuffer) {
+                  accumulatedContent += streamBuffer;
+                  
+                  // Get the current message again for the final update
+                  const msgWithStatus = get().messages.find(msg => msg.id === assistantMessageId);
+                  const baseContent = msgWithStatus ? 
+                    msgWithStatus.content.split('---\n\n')[0] + '---\n\n' : 
+                    '\n\n---\n\n';
+                  
+                  const newContent = baseContent + accumulatedContent;
                   
                   set(state => ({
                     messages: state.messages.map(msg =>
-                      msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
+                      msg.id === assistantMessageId ? { ...msg, content: newContent } : msg
                     ),
-                    streamingContent: accumulatedContent
+                    streamingContent: newContent
                   }));
                 }
-                
-                currentPosition = nextPosition;
-                await new Promise(resolve => setTimeout(resolve, .5));
-              }
-              
-              if (streamBuffer) {
-                accumulatedContent += streamBuffer;
-                set(state => ({
-                  messages: state.messages.map(msg =>
-                    msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
-                  ),
-                  streamingContent: accumulatedContent
-                }));
-              }
             } else {
               sendStatusUpdate('Processing response...');
+              
+              // Add a separator between status updates and actual content
+              sendStatusUpdate('Response received, displaying content below:');
+              
               set(state => {
                 const updatedConversation = {
                   ...state.conversations[state.currentConversationId!],
                   messages: state.conversations[state.currentConversationId!].messages.map(msg =>
-                    msg.id === assistantMessageId ? { ...msg, content: fullContent } : msg
+                    msg.id === assistantMessageId ? { 
+                      ...msg, 
+                      content: fullContent 
+                    } : msg
                   )
                 };
 
@@ -576,13 +617,20 @@ export const useChatStore = create<ChatState>()(
 
             // Update final message state with artifact reference
             sendStatusUpdate('Finalizing response...');
+            
+            // Get the current message with all status updates and content
+            const finalMsg = get().messages.find(msg => msg.id === assistantMessageId);
+            // Extract just the status updates
+            const statusUpdates = finalMsg ? finalMsg.content : '';
+            
             set(state => {
               const updatedConversation = {
                 ...state.conversations[state.currentConversationId!],
                 messages: state.conversations[state.currentConversationId!].messages.map(msg =>
                   msg.id === assistantMessageId ? {
                     ...msg,
-                    content: fullContent,
+                    statusUpdates: statusUpdates, // Store status updates separately
+                    content: fullContent, // Use the actual response content
                     thinking: storeResponse.thinking,
                     artifactId: artifactIds[0],
                     artifactIds: artifactIds.length > 0 ? artifactIds : undefined
@@ -594,7 +642,9 @@ export const useChatStore = create<ChatState>()(
                 messageId: assistantMessageId,
                 primaryArtifactId: artifactIds[0],
                 allArtifactIds: artifactIds,
-                totalArtifacts: artifactIds.length
+                totalArtifacts: artifactIds.length,
+                contentLength: fullContent.length,
+                statusUpdatesLength: statusUpdates.length
               });
 
               return {
@@ -604,6 +654,7 @@ export const useChatStore = create<ChatState>()(
                   [state.currentConversationId!]: updatedConversation
                 },
                 streamingMessageId: null,
+                streamingContent: fullContent,
                 streamingComplete: true
               };
             });
@@ -918,6 +969,26 @@ export const useChatStore = create<ChatState>()(
         setPinnedGraphId: (id: string | null) => {
           console.log('ChatStore: Setting pinned graph ID to', id);
           set({ pinnedGraphId: id });
+        },
+        toggleStatusUpdatesCollapsed: (messageId: string) => {
+          set(state => {
+            const updatedConversation = {
+              ...state.conversations[state.currentConversationId!],
+              messages: state.conversations[state.currentConversationId!].messages.map(msg =>
+                msg.id === messageId ? 
+                  { ...msg, statusUpdatesCollapsed: !msg.statusUpdatesCollapsed } : 
+                  msg
+              )
+            };
+            
+            return {
+              messages: updatedConversation.messages,
+              conversations: {
+                ...state.conversations,
+                [state.currentConversationId!]: updatedConversation
+              }
+            };
+          });
         },
       };
     },

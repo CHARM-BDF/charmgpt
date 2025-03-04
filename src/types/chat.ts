@@ -12,6 +12,8 @@ export interface MessageWithThinking extends Message {
   artifactId?: string;  // Kept for backward compatibility
   artifactIds?: string[]; // Array of all artifact IDs associated with this message
   isStreaming?: boolean;
+  statusUpdatesCollapsed?: boolean; // Controls visibility of status updates
+  statusUpdates?: string; // Separate field for status updates
 }
 
 export interface StreamingState {

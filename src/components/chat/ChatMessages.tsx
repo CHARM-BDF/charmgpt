@@ -4,7 +4,7 @@ import { Artifact } from '../../types/artifacts';
 import { useChatStore } from '../../store/chatStore';
 import { AssistantMarkdown } from './AssistantMarkdown';
 import { ClipboardIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
-import { BookOpen, FileText, GraduationCap, Library, Network } from 'lucide-react';
+import { BookOpen, FileText, GraduationCap, Library, Network, ChevronDown, ChevronRight } from 'lucide-react';
 import BrainWaveCharm from '../animations/BrainWaveCharm';
 
 // Remove or set to a past date to enable copy buttons for all messages
@@ -15,7 +15,14 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   const chatStore = useChatStore();
   
   // Extract only the properties we need using destructuring
-  const { selectArtifact, isLoading, streamingMessageId, streamingContent, artifacts } = chatStore;
+  const { 
+    selectArtifact, 
+    isLoading, 
+    streamingMessageId, 
+    streamingContent, 
+    artifacts,
+    toggleStatusUpdatesCollapsed 
+  } = chatStore;
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -156,6 +163,11 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     }
   };
 
+  // Function to check if a message has status updates
+  const hasStatusUpdates = (message: MessageWithThinking): boolean => {
+    return !!message.statusUpdates && message.statusUpdates.includes('_Status:');
+  };
+
   return (
     <div ref={containerRef} className="w-full max-w-3xl mx-auto px-4 pt-6">
       {/* Debug button - only show in development */}
@@ -244,11 +256,45 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                     )}
                     <div className="flex justify-between items-start">
                       <div className="flex-grow">
-                        <AssistantMarkdown 
-                          content={isStreaming ? streamingContent : message.content} 
-                        />
-                        {isStreaming && (
-                          <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
+                        {isStreaming ? (
+                          // For streaming messages
+                          <>
+                            <AssistantMarkdown content={streamingContent} />
+                            <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
+                          </>
+                        ) : (
+                          // For completed messages
+                          <>
+                            {hasStatusUpdates(message) && (
+                              <div className="mb-3">
+                                <button
+                                  onClick={() => toggleStatusUpdatesCollapsed(message.id)}
+                                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 mb-1"
+                                >
+                                  {message.statusUpdatesCollapsed ? (
+                                    <ChevronRight className="h-3 w-3" />
+                                  ) : (
+                                    <ChevronDown className="h-3 w-3" />
+                                  )}
+                                  <span>Processing Steps</span>
+                                </button>
+                                
+                                {!message.statusUpdatesCollapsed && (
+                                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 font-mono">
+                                    {message.statusUpdates?.split('\n').map((line, i) => (
+                                      <div key={i} className="mb-1 last:mb-0">
+                                        {line.replace(/_Status: /, '').replace(/_/g, '')}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            <AssistantMarkdown 
+                              content={message.content} 
+                            />
+                          </>
                         )}
                       </div>
                     </div>

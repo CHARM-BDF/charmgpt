@@ -47,6 +47,18 @@ const server = new Server(
 
 // Helper function for API requests
 async function makeMediKanrenRequest<T>(params: Record<string, any>): Promise<T | null> {
+    server.sendLoggingMessage({
+        level: "info",
+        data: {
+            message: "MEDIK: Starting makeMediKanrenRequest",
+            params: params
+        },
+    });
+    
+    // Add a 1 second pause before making the request
+    console.error(`MEDIK: Adding 1 second pause before making request to mediKanren`);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+    
     const url = `${MEDIKANREN_API_BASE}/query`;
     
     console.error(`MEDIK: Making request to: ${url}`);
