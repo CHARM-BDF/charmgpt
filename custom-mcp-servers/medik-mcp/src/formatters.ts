@@ -319,16 +319,29 @@ export function formatKnowledgeGraphArtifact(
     }
   });
   
-  // Filter out results containing CAID: prefixed nodes
+  // Filter out results containing CAID: prefixed nodes and transcribed_from edges
   const originalCount = queryResults.length;
   const filteredResults = queryResults.filter(result => {
-    const [sourceId, , , targetId] = result;
-    return !shouldFilterNode(sourceId) && !shouldFilterNode(targetId);
+    const [sourceId, , predicate, targetId] = result;
+    
+    // Filter out CAID nodes
+    if (shouldFilterNode(sourceId) || shouldFilterNode(targetId)) {
+      return false;
+    }
+    
+    // Filter out transcribed_from edges
+    if (predicate === 'transcribed_from') {
+      console.error(`MEDIK FORMATTER: Filtering out transcribed_from edge: ${sourceId} -> ${targetId}`);
+      return false;
+    }
+    
+    return true;
   });
+  
   const filteredCount = originalCount - filteredResults.length;
   const filteredNodeCount = caidNodes.size;
   
-  console.error(`MEDIK FORMATTER: After filtering: ${filteredResults.length} results remain (removed ${filteredCount} results with ${filteredNodeCount} unique CAID nodes)`);
+  console.error(`MEDIK FORMATTER: After filtering: ${filteredResults.length} results remain (removed ${filteredCount} results [${caidNodes.size} CAID nodes and transcribed_from edges])`);
   
   // Initialize the knowledge graph structure
   const graph: KnowledgeGraph = {
@@ -692,7 +705,9 @@ Identify any patterns or insights based solely on what the graph shows, and then
       humanReadableText = `
 # Knowledge Graph: ${queryType} ${entityName} via ${relationshipType}
 
-${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\n\n' : ''}Note: ${filteredCount} relationships involving ${filteredNodeCount} unique nodes with CAID: prefix were filtered out from the results. These CAID variants are typically less reliable or less established in the literature.
+${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\n\n' : ''}Note: ${filteredCount} relationships were filtered out from the results:
+- Relationships involving ${filteredNodeCount} unique nodes with CAID: prefix (these variants are typically less reliable or less established in the literature)
+- Edges with the 'transcribed_from' predicate (these represent basic transcription relationships)
 
 The graph includes the following relationships:
 ${formattedRelationships}

@@ -46,18 +46,23 @@ const server = new Server(
 );
 
 // Helper function for API requests
-async function makeMediKanrenRequest<T>(params: Record<string, any>): Promise<T | null> {
+async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount = 0): Promise<T | null> {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 1000; // 1 second between retries
+    
     server.sendLoggingMessage({
         level: "info",
         data: {
-            message: "MEDIK: Starting makeMediKanrenRequest",
+            message: `MEDIK: Starting makeMediKanrenRequest (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`,
             params: params
         },
     });
     
+    console.error(`MEDIK: Request attempt ${retryCount + 1}/${MAX_RETRIES + 1} for params:`, params);
+    
     // Add a 1 second pause before making the request
     console.error(`MEDIK: Adding 1 second pause before making request to mediKanren`);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
     
     const url = `${MEDIKANREN_API_BASE}/query`;
     
@@ -88,6 +93,13 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>): Promise<T 
         return data as T;
     } catch (error) {
         console.error(`MEDIK: Error in request:`, error);
+        
+        // If we haven't exceeded max retries, try again
+        if (retryCount < MAX_RETRIES) {
+            console.error(`MEDIK: Retrying request (attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
+            return makeMediKanrenRequest<T>(params, retryCount + 1);
+        }
+        
         return null;
     }
 }
@@ -128,8 +140,14 @@ export async function runBidirectionalQuery(params: {
         e3: params.curie
     };
     
-    console.error(`MEDIK: Running X->Known query with params:`, xToKnownParams);
+    console.error(`MEDIK: Starting X->Known query with params:`, xToKnownParams);
     const xToKnownResults = await makeMediKanrenRequest<QueryResponse>(xToKnownParams);
+    
+    if (!xToKnownResults) {
+        console.error("MEDIK: X->Known query failed after all retries");
+    } else {
+        console.error(`MEDIK: X->Known query succeeded with ${Array.isArray(xToKnownResults) ? xToKnownResults.length : 'error'} results`);
+    }
     
     // Run Known->X query
     const knownToXParams = {
@@ -138,12 +156,18 @@ export async function runBidirectionalQuery(params: {
         e3: params.curie
     };
     
-    console.error(`MEDIK: Running Known->X query with params:`, knownToXParams);
+    console.error(`MEDIK: Starting Known->X query with params:`, knownToXParams);
     const knownToXResults = await makeMediKanrenRequest<QueryResponse>(knownToXParams);
+    
+    if (!knownToXResults) {
+        console.error("MEDIK: Known->X query failed after all retries");
+    } else {
+        console.error(`MEDIK: Known->X query succeeded with ${Array.isArray(knownToXResults) ? knownToXResults.length : 'error'} results`);
+    }
     
     // Check for errors in either query
     if (!xToKnownResults || !knownToXResults) {
-        console.error("MEDIK: One or both queries failed");
+        console.error("MEDIK: One or both queries failed after all retries");
         return null;
     }
     
