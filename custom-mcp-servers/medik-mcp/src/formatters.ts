@@ -1,4 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Add workspace root path resolution
+const workspaceRoot = process.cwd();
+const logsDir = path.join(workspaceRoot, 'logs', 'data');
+
+// Ensure logs directory exists
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+  console.error(`MEDIK FORMATTER: Created logs directory at ${logsDir}`);
+}
 
 // Define types for the knowledge graph data structure
 interface KnowledgeGraphNode {
@@ -228,8 +240,14 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
         console.error(`MEDIK FORMATTER: Sample normalized data for ${sampleKey}:`, JSON.stringify(data[sampleKey], null, 2));
       }
       
-      // Add the normalized data to the map
+      // Add the normalized data to the map, filtering out null values
       for (const [curie, normData] of Object.entries(data)) {
+        if (normData === null) {
+          console.error(`MEDIK FORMATTER: Node Normalizer returned null for ${curie}, will keep original node data`);
+          // Don't add null values to the map - this will make normalizedMap.get() return undefined
+          // which is already handled in the node processing logic
+          continue;
+        }
         normalizedMap.set(curie, normData);
       }
       
@@ -259,6 +277,25 @@ export function formatKnowledgeGraphArtifact(
   queryResults: any[],
   queryParams: { e1: string; e2: string; e3: string }
 ): Promise<FormattedResult & { filteredCount?: number; filteredNodeCount?: number }> {
+  // Create timestamp and filename base
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const searchTerm = queryParams.e3.replace(/[^a-zA-Z0-9]/g, '_');
+  const fileBase = `${timestamp}_${searchTerm}`;
+  
+  // Save raw data with absolute path
+  try {
+    const rawDataPath = path.join(logsDir, `${fileBase}_raw.json`);
+    fs.writeFileSync(rawDataPath, JSON.stringify({
+      queryParams,
+      results: queryResults
+    }, null, 2));
+    console.error(`MEDIK FORMATTER: Saved raw data to ${rawDataPath}`);
+  } catch (error) {
+    console.error(`MEDIK FORMATTER: Error saving raw data: ${error}`);
+    console.error(`MEDIK FORMATTER: Current working directory: ${process.cwd()}`);
+    console.error(`MEDIK FORMATTER: Attempted to save to: ${logsDir}`);
+  }
+
   // Log the raw data before processing
   console.error(`MEDIK FORMATTER: Processing ${queryResults.length} raw results`);
   console.error(`MEDIK FORMATTER: Query params:`, JSON.stringify(queryParams, null, 2));
@@ -675,6 +712,28 @@ Identify any patterns or insights based solely on what the graph shows, and then
     
     console.error(`MEDIK FORMATTER: Completed formatting with ${relationships.length} relationships`);
     
+    // Before returning, save the formatted data with absolute path
+    try {
+      const formattedDataPath = path.join(logsDir, `${fileBase}_formatted.json`);
+      fs.writeFileSync(formattedDataPath, JSON.stringify({
+        graph,
+        relationships,
+        content: humanReadableText,
+        stats: {
+          originalCount,
+          filteredCount,
+          filteredNodeCount,
+          finalNodeCount: graph.nodes.length,
+          finalLinkCount: graph.links.length
+        }
+      }, null, 2));
+      console.error(`MEDIK FORMATTER: Saved formatted data to ${formattedDataPath}`);
+    } catch (error) {
+      console.error(`MEDIK FORMATTER: Error saving formatted data: ${error}`);
+      console.error(`MEDIK FORMATTER: Current working directory: ${process.cwd()}`);
+      console.error(`MEDIK FORMATTER: Attempted to save to: ${logsDir}`);
+    }
+
     return {
       content: [
         {

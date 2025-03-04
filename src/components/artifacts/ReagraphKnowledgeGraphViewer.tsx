@@ -289,6 +289,11 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const graphData = useMemo(() => {
     if (!parsedData) return { nodes: [], edges: [] };
     
+    console.log('Processing graph data:', {
+      nodeCount: parsedData.nodes.length,
+      linkCount: parsedData.links.length
+    });
+    
     // Map nodes to Reagraph format
     const nodes = parsedData.nodes.map(node => {
       // Get the color value from node or generate one
@@ -297,10 +302,31 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       // Get entity type from node
       const entityType = (node as any).entityType || 'Other';
       
+      // Log any nodes with NaN coordinates
+      if (node.x !== undefined && isNaN(node.x) || node.y !== undefined && isNaN(node.y)) {
+        console.warn('Found node with NaN coordinates:', {
+          id: node.id,
+          name: node.name,
+          x: node.x,
+          y: node.y
+        });
+      }
+      
+      // Ensure we have valid coordinates for THREE.js - add z if missing
+      const nodeWithPosition = {
+        ...node,
+        // If x or y are undefined/NaN, don't set them (let Reagraph calculate them)
+        // If they exist, ensure they're valid numbers
+        x: node.x !== undefined ? (isNaN(node.x) ? undefined : node.x) : undefined,
+        y: node.y !== undefined ? (isNaN(node.y) ? undefined : node.y) : undefined,
+        // Always set z to 0 for 2D layouts, if x/y are defined
+        z: (node.x !== undefined && !isNaN(node.x) && node.y !== undefined && !isNaN(node.y)) ? 0 : undefined
+      };
+      
       return {
         id: node.id,
         label: node.name,
-        data: { ...node },
+        data: { ...nodeWithPosition }, // Use the validated position data
         // Include both color and fill properties
         color: colorValue,
         fill: colorValue,
@@ -311,7 +337,8 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       };
     });
     
-    // Map links to Reagraph edges format
+    // Map links to Reagraph edges format and ensure valid node references
+    const validNodeIds = new Set(nodes.map(node => node.id));
     const edges = parsedData.links.map(link => ({
       id: `${link.source}->${link.target}${link.label ? `-${link.label}` : ''}`,
       source: link.source,
@@ -320,7 +347,21 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       data: { ...link },
       color: link.color || '#999',
       size: link.value || 1
-    }));
+    })).filter(edge => {
+      const isValid = validNodeIds.has(edge.source) && validNodeIds.has(edge.target);
+      if (!isValid) {
+        console.error('❌ INVALID EDGE DETECTED ❌');
+        console.error(`Edge from "${edge.source}" to "${edge.target}" with label "${edge.label}" is invalid because:`);
+        if (!validNodeIds.has(edge.source)) {
+          console.error(`- Source node "${edge.source}" does not exist in the graph`);
+        }
+        if (!validNodeIds.has(edge.target)) {
+          console.error(`- Target node "${edge.target}" does not exist in the graph`);
+        }
+        console.error('Full edge details:', edge);
+      }
+      return isValid;
+    });
     
     return { nodes, edges };
   }, [parsedData]);
@@ -505,19 +546,19 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     
     const versions = getGraphVersionHistory(artifactId);
     // Only log in development mode
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Version history for artifact:', {
-        artifactId,
-        versionsCount: versions.length,
-        versions: versions.map(v => ({
-          id: v.id,
-          title: v.title,
-          versionNumber: v.versionNumber,
-          previousVersionId: v.previousVersionId,
-          nextVersionId: v.nextVersionId
-        }))
-      });
-    }
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('Version history for artifact:', {
+    //     artifactId,
+    //     versionsCount: versions.length,
+    //     versions: versions.map(v => ({
+    //       id: v.id,
+    //       title: v.title,
+    //       versionNumber: v.versionNumber,
+    //       previousVersionId: v.previousVersionId,
+    //       nextVersionId: v.nextVersionId
+    //     }))
+    //   });
+    // }
     
     if (versions.length <= 1) return null;
     

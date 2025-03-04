@@ -10,6 +10,15 @@ import BrainWaveCharm from '../animations/BrainWaveCharm';
 // Remove or set to a past date to enable copy buttons for all messages
 // const COPY_FEATURE_START_DATE = new Date('2000-01-01');
 
+// Simple debounce utility
+const debounce = (fn: Function, ms = 300) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function (this: any, ...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+  };
+};
+
 export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ messages }) => {
   // Use regular useChatStore without a selector function to avoid infinite loops
   const chatStore = useChatStore();
@@ -64,7 +73,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
         if (id !== message.artifactId) { // Avoid duplicates
           const artifact = artifacts.find(a => a.id === id);
           if (artifact) {
-            console.log(`  Found additional linked artifact: ${artifact.id} (${artifact.type})`);
+            // console.log(`  Found additional linked artifact: ${artifact.id} (${artifact.type})`);
             result.push(artifact);
           }
         }
@@ -98,10 +107,17 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     return result;
   };
 
-  // Log messages when they change
+  // Create a debounced log function that persists between renders
+  const debouncedLog = useCallback(
+    debounce((msgs: MessageWithThinking[]) => {
+      console.log('ChatMessages received:', msgs);
+    }, 500),
+    []
+  );
+
   useEffect(() => {
-    console.log('ChatMessages received:', messages);
-  }, [messages]);
+    debouncedLog(messages);
+  }, [messages, debouncedLog]);
 
   // Toggle thinking visibility for a specific message
   const toggleThinking = (messageId: string) => {

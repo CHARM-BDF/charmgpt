@@ -135,15 +135,15 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.knowledge-graph':
       case 'application/vnd.ant.knowledge-graph':
         // Only log in development mode
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Rendering knowledge graph artifact:', {
-            id: artifact.id,
-            title: artifact.title,
-            versionNumber: artifact.versionNumber,
-            previousVersionId: artifact.previousVersionId,
-            nextVersionId: artifact.nextVersionId
-          });
-        }
+        // if (process.env.NODE_ENV === 'development') {
+        //   console.log('Rendering knowledge graph artifact:', {
+        //     id: artifact.id,
+        //     title: artifact.title,
+        //     versionNumber: artifact.versionNumber,
+        //     previousVersionId: artifact.previousVersionId,
+        //     nextVersionId: artifact.nextVersionId
+        //   });
+        // }
         
         return (
           <div className="w-full h-full min-h-[400px] flex flex-col">
