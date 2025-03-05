@@ -7,13 +7,20 @@ export interface Message {
   timestamp: Date;
 }
 
+export interface StatusUpdate {
+  id: string;
+  message: string;
+  timestamp: Date;
+}
+
 export interface MessageWithThinking extends Message {
   thinking?: string;
   artifactId?: string;  // Kept for backward compatibility
   artifactIds?: string[]; // Array of all artifact IDs associated with this message
   isStreaming?: boolean;
   statusUpdatesCollapsed?: boolean; // Controls visibility of status updates
-  statusUpdates?: string; // Separate field for status updates
+  statusUpdates?: StatusUpdate[]; // Changed from string to StatusUpdate[]
+  isLastStatusUpdate?: boolean;
 }
 
 export interface StreamingState {

@@ -14,7 +14,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Message, MessageWithThinking, ConversationMetadata, Conversation, ConversationState } from '../types/chat';
+import { Message, MessageWithThinking, ConversationMetadata, Conversation, ConversationState, StatusUpdate } from '../types/chat';
 import { Artifact, ArtifactType } from '../types/artifacts';
 import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';
@@ -108,7 +108,7 @@ export const useChatStore = create<ChatState>()(
         streamingMessageId: null,
         streamingContent: '',
         streamingComplete: true,
-        streamingEnabled: true,
+        streamingEnabled: false,
         pinnedGraphId: null,
         chatInput: '', // Initialize chat input
         
@@ -292,14 +292,63 @@ export const useChatStore = create<ChatState>()(
           try {
             // Helper function to send status updates
             const sendStatusUpdate = (status: string) => {
-              set(state => ({
-                messages: state.messages.map(msg =>
-                  msg.id === assistantMessageId ? 
-                    { ...msg, statusUpdates: (msg.statusUpdates || '') + `_Status: ${status}_\n\n` } : 
-                    msg
-                ),
+              set((state: ChatState) => ({
+                messages: state.messages.map(msg => {
+                  if (msg.id === assistantMessageId) {
+                    const updatedMsg: MessageWithThinking = {
+                      ...msg,
+                      statusUpdates: [
+                        ...((msg.statusUpdates || []) as StatusUpdate[]),
+                        {
+                          id: crypto.randomUUID(),
+                          message: status,
+                          timestamp: new Date()
+                        }
+                      ]
+                    };
+                    return updatedMsg;
+                  }
+                  return msg;
+                }),
                 streamingContent: `_Status: ${status}_\n\n`
               }));
+            };
+
+            // Process incoming status update from server
+            const processStatusUpdate = (data: { message: string; id?: string; timestamp?: string }) => {
+              set((state: ChatState) => {
+                const assistantMessage = state.messages.find(msg => msg.id === assistantMessageId);
+                console.log(`[ID DEBUG] In processStatusUpdate, found message: ${assistantMessage?.id === assistantMessageId ? 'MATCH' : 'NO MATCH'}`);
+                console.log(`[STATUS DEBUG] Processing update: "${data.message}"`);
+                console.log(`[STATUS DEBUG] Current message has ${assistantMessage?.statusUpdates?.length || 0} existing updates`);
+                
+                // Create new status update
+                const newUpdate: StatusUpdate = {
+                  id: data.id || crypto.randomUUID(),
+                  message: data.message,
+                  timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+                };
+                
+                // Update the messages with the new status update
+                const updatedMessages = state.messages.map(msg => {
+                  if (msg.id === assistantMessageId) {
+                    const existingUpdates = Array.isArray(msg.statusUpdates) ? msg.statusUpdates : [];
+                    console.log(`[STATUS DEBUG] Adding update to list of ${existingUpdates.length} updates`);
+                    
+                    return {
+                      ...msg,
+                      statusUpdates: [...existingUpdates, newUpdate],
+                      statusUpdatesCollapsed: false, // Always keep expanded during streaming
+                      isLastStatusUpdate: data.message === 'Finalizing response...' // Flag the final update
+                    } as MessageWithThinking;
+                  }
+                  return msg;
+                });
+                
+                return {
+                  messages: updatedMessages
+                };
+              });
             };
 
             // Get the selected model from the correct store
@@ -317,7 +366,8 @@ export const useChatStore = create<ChatState>()(
               content: '_Status: Initializing..._',
               id: assistantMessageId,
               timestamp: new Date(),
-              statusUpdatesCollapsed: true // Default to collapsed
+              statusUpdatesCollapsed: true, // Default to collapsed
+              statusUpdates: [] // Initialize with empty array
             };
 
             // Add assistant message to current conversation
@@ -343,6 +393,9 @@ export const useChatStore = create<ChatState>()(
               };
             });
 
+            // After creating the assistant message
+            console.log(`[ID DEBUG] Initial assistantMessageId: ${assistantMessageId}`);
+            
             // Get pinned graph if available
             const pinnedGraphId = get().pinnedGraphId;
             let pinnedGraph = null;
@@ -409,21 +462,16 @@ export const useChatStore = create<ChatState>()(
                 
                 try {
                   const data = JSON.parse(line);
-                  console.log('Received chunk:', data);
+                  console.log('[STREAM DEBUG] Received chunk type:', data.type);
                   
                   if (data.type === 'status') {
                     // Update the message with the status
-                    set(state => ({
-                      messages: state.messages.map(msg =>
-                        msg.id === assistantMessageId ? 
-                          { ...msg, statusUpdates: (msg.statusUpdates || '') + `_Status: ${data.message}_\n\n` } : 
-                          msg
-                      ),
-                      streamingContent: `_Status: ${data.message}_\n\n`
-                    }));
+                    console.log('[STREAM DEBUG] Processing status update:', data.message);
+                    processStatusUpdate(data);
                   } 
                   else if (data.type === 'result') {
                     // Store the final response for processing after the loop
+                    console.log('[STREAM DEBUG] Received final result');
                     finalResponse = data.response;
                   }
                   else if (data.type === 'error') {
@@ -436,135 +484,54 @@ export const useChatStore = create<ChatState>()(
             }
 
             // Process the final response
-            if (!finalResponse) {
-              throw new Error('No final response received from server');
-            }
-
-            const storeResponse = finalResponse;
-            const fullContent = storeResponse.conversation;
-
-            // Update assistant message with thinking
-            set(state => {
-              const updatedConversation = {
-                ...state.conversations[state.currentConversationId!],
-                messages: state.conversations[state.currentConversationId!].messages.map(msg =>
-                  msg.id === assistantMessageId ? { ...msg, thinking: storeResponse.thinking } : msg
-                )
-              };
-
-              return {
-                messages: updatedConversation.messages,
-                conversations: {
-                  ...state.conversations,
-                  [state.currentConversationId!]: updatedConversation
-                }
-              };
-            });
-
-            if (get().streamingEnabled) {
-                // Stream the content in chunks
-                sendStatusUpdate('Generating response...');
-                const chunkSize = 20;
-                let currentPosition = 0;
-                let streamBuffer = '';
-                let accumulatedContent = '';
-                
-                const processChunk = (chunk: string): string => {
-                  const combined = streamBuffer + chunk;
-                  let safeText = combined;
-                  let newBuffer = '';
-
-                  const lastOpenIndex = combined.lastIndexOf('<');
-                  if (lastOpenIndex !== -1) {
-                    const closeIndex = combined.indexOf('>', lastOpenIndex);
-                    if (closeIndex === -1) {
-                      safeText = combined.slice(0, lastOpenIndex);
-                      newBuffer = combined.slice(lastOpenIndex);
-                    }
-                  }
-
-                  const backtickCount = (safeText.match(/`/g) || []).length;
-                  if (backtickCount % 2 !== 0) {
-                    const lastBacktickIndex = safeText.lastIndexOf('`');
-                    newBuffer = safeText.slice(lastBacktickIndex) + newBuffer;
-                    safeText = safeText.slice(0, lastBacktickIndex);
-                  }
-
-                  streamBuffer = newBuffer;
-                  return safeText;
-                };
-                
-                // Get the current message with status updates
-                const currentMsg = get().messages.find(msg => msg.id === assistantMessageId);
-                
-                // Add a separator between status updates and actual content
-                sendStatusUpdate('Response received, displaying content below:');
-                set(state => {
-                  const msgToUpdate = state.messages.find(msg => msg.id === assistantMessageId);
-                  
-                  return {
-                    messages: state.messages.map(msg =>
-                      msg.id === assistantMessageId ? 
-                        { ...msg, content: fullContent } : 
-                        msg
-                    ),
-                    streamingContent: fullContent
-                  };
-                });
-                
-                // Now stream the actual content after the status updates
-                while (currentPosition < fullContent.length) {
-                  const nextPosition = Math.min(currentPosition + chunkSize, fullContent.length);
-                  const chunk = fullContent.slice(currentPosition, nextPosition);
-                  
-                  const safeChunk = processChunk(chunk);
-                  if (safeChunk) {
-                    accumulatedContent += safeChunk;
-                    
-                    set(state => ({
-                      messages: state.messages.map(msg =>
-                        msg.id === assistantMessageId ? { ...msg, content: accumulatedContent } : msg
-                      ),
-                      streamingContent: accumulatedContent
-                    }));
-                  }
-                  
-                  currentPosition = nextPosition;
-                  await new Promise(resolve => setTimeout(resolve, .5));
-                }
-                
-                if (streamBuffer) {
-                  accumulatedContent += streamBuffer;
-                  
-                  // Get the current message again for the final update
-                  const msgWithStatus = get().messages.find(msg => msg.id === assistantMessageId);
-                  const baseContent = msgWithStatus ? 
-                    msgWithStatus.content.split('---\n\n')[0] + '---\n\n' : 
-                    '\n\n---\n\n';
-                  
-                  const newContent = baseContent + accumulatedContent;
-                  
-                  set(state => ({
-                    messages: state.messages.map(msg =>
-                      msg.id === assistantMessageId ? { ...msg, content: newContent } : msg
-                    ),
-                    streamingContent: newContent
-                  }));
-                }
-            } else {
-              sendStatusUpdate('Processing response...');
+            if (finalResponse) {
+              console.log(`[FINAL DEBUG] Processing final response`);
+              const startTime = Date.now();
               
-              // Add a separator between status updates and actual content
-              sendStatusUpdate('Response received, displaying content below:');
+              // CRITICAL: Capture status updates BEFORE artifact processing
+              const beforeFinalMsg = get().messages.find(msg => msg.id === assistantMessageId);
+              console.log(`[FINAL DEBUG] Before processing final: Message has ${beforeFinalMsg?.statusUpdates?.length || 0} status updates`);
               
+              // Save ALL status updates right away
+              const savedStatusUpdates = beforeFinalMsg?.statusUpdates || [];
+              console.log(`[FINAL DEBUG] Saved ${savedStatusUpdates.length} status updates before any processing`);
+              
+              const storeResponse = finalResponse;
+
+              // Log the storeResponse structure 
+              console.log(`[FINAL DEBUG] storeResponse keys:`, Object.keys(storeResponse));
+              console.log(`[FINAL DEBUG] storeResponse has thinking:`, !!storeResponse.thinking);
+              console.log(`[FINAL DEBUG] storeResponse has conversation:`, !!storeResponse.conversation);
+              
+              // Inspect the top-level conversation structure
+              if (typeof storeResponse.conversation === 'string') {
+                console.log(`[FINAL DEBUG] storeResponse.conversation is a string of length:`, storeResponse.conversation.length);
+              } else if (storeResponse.conversation) {
+                console.log(`[FINAL DEBUG] storeResponse.conversation type:`, typeof storeResponse.conversation);
+              }
+
+              let fullContent = '';
+              if (typeof storeResponse.conversation === 'string') {
+                fullContent = storeResponse.conversation;
+              }
+
+              // Update assistant message with thinking
+              sendStatusUpdate('Processing artifacts...');
+              
+              // Check all messages to ensure our ID is still valid
+              console.log(`[ID DEBUG] Before artifact processing - assistantMessageId: ${assistantMessageId}`);
+              const allMessages = get().messages;
+              const messageIds = allMessages.map(msg => msg.id);
+              console.log(`[ID DEBUG] Available message IDs in state:`, messageIds);
+              const messageIndex = messageIds.indexOf(assistantMessageId);
+              console.log(`[ID DEBUG] Message index in array: ${messageIndex}`);
+              
+              // Update the message with thinking first
               set(state => {
                 const updatedConversation = {
                   ...state.conversations[state.currentConversationId!],
                   messages: state.conversations[state.currentConversationId!].messages.map(msg =>
-                    msg.id === assistantMessageId ? { 
-                      ...msg, 
-                      content: fullContent 
-                    } : msg
+                    msg.id === assistantMessageId ? { ...msg, thinking: storeResponse.thinking } : msg
                   )
                 };
 
@@ -573,94 +540,139 @@ export const useChatStore = create<ChatState>()(
                   conversations: {
                     ...state.conversations,
                     [state.currentConversationId!]: updatedConversation
+                  }
+                };
+              });
+              
+              // Process artifacts and add them to the store
+              const artifactIds = storeResponse.artifacts?.map((artifact: {
+                id: string;
+                artifactId: string;
+                type: ArtifactType;
+                title: string;
+                content: string;
+                position: number;
+                language?: string;
+              }) => {
+                console.log('ChatStore: Processing artifact:', {
+                  id: artifact.id,
+                  artifactId: artifact.artifactId,
+                  type: artifact.type,
+                  title: artifact.title
+                });
+                
+                return get().addArtifact({
+                  id: artifact.id,
+                  artifactId: artifact.artifactId,
+                  type: artifact.type,
+                  title: artifact.title,
+                  content: artifact.content,
+                  position: artifact.position,
+                  language: artifact.language
+                });
+              }) || [];
+              
+              console.log('ChatStore: Processed all artifacts:', {
+                count: artifactIds.length,
+                ids: artifactIds,
+                messageId: assistantMessageId
+              });
+              
+              // Final status update
+              sendStatusUpdate('Finalizing response...');
+              
+              // When ready to do final update, use our previously saved status updates
+              const currentMsg = get().messages.find(msg => msg.id === assistantMessageId);
+              console.log(`[ID DEBUG] After artifact processing - currentMsg found: ${currentMsg ? 'YES' : 'NO'}, id: ${currentMsg?.id}`);
+              console.log(`[ID DEBUG] Current messages in state:`, get().messages.map(msg => msg.id));
+              console.log(`[STATUS DEBUG] ---- FINAL RESPONSE HANDLING ----`);
+              console.log(`[STATUS DEBUG] Current message has ${currentMsg?.statusUpdates?.length || 0} status updates`);
+              console.log(`[STATUS DEBUG] Original preserved updates: ${savedStatusUpdates.length}`);
+              
+              // Merge in any new updates that were added during artifact processing
+              const finalStatusUpdates = [...savedStatusUpdates];
+              
+              // Add any new updates that might have been added after we preserved savedStatusUpdates
+              if (currentMsg?.statusUpdates && currentMsg.statusUpdates.length > 0) {
+                const lastPreservedTime = savedStatusUpdates.length > 0 
+                  ? savedStatusUpdates[savedStatusUpdates.length - 1].timestamp.getTime() 
+                  : 0;
+                
+                const newUpdates = currentMsg.statusUpdates.filter(update => {
+                  const updateTime = update.timestamp instanceof Date 
+                    ? update.timestamp.getTime() 
+                    : new Date(update.timestamp).getTime();
+                  return updateTime > lastPreservedTime;
+                });
+                
+                if (newUpdates.length > 0) {
+                  console.log(`[STATUS DEBUG] Adding ${newUpdates.length} new updates that occurred during artifact processing`);
+                  finalStatusUpdates.push(...newUpdates);
+                }
+              }
+              
+              // Use the merged list of status updates for the final message
+              const existingStatusUpdates = finalStatusUpdates;
+              
+              set(state => {
+                const messagesInState = state.conversations[state.currentConversationId!].messages;
+                console.log(`[ID DEBUG] Messages in state during update:`, messagesInState.map(msg => msg.id));
+                console.log(`[ID DEBUG] Looking for message with ID: ${assistantMessageId}`);
+                
+                const updatedMessages = messagesInState.map(msg => {
+                  if (msg.id === assistantMessageId) {
+                    console.log(`[ID DEBUG] Found message to update! ID: ${msg.id}`);
+                    console.log(`[FINAL DEBUG] Found message to update. Using all ${existingStatusUpdates.length} preserved updates.`);
+                    
+                    return {
+                      ...msg,
+                      statusUpdates: existingStatusUpdates,
+                      content: fullContent,
+                      thinking: storeResponse.thinking,
+                      artifactId: artifactIds[0],
+                      artifactIds: artifactIds.length > 0 ? artifactIds : undefined
+                    };
+                  }
+                  return msg;
+                });
+                
+                // Check if the message was actually updated
+                const updatedMessage = updatedMessages.find(msg => msg.id === assistantMessageId);
+                console.log(`[ID DEBUG] After mapping - updated message found: ${updatedMessage ? 'YES' : 'NO'}`);
+                if (updatedMessage) {
+                  console.log(`[ID DEBUG] Final status updates length: ${updatedMessage.statusUpdates?.length || 0}`);
+                }
+                
+                const updatedConversation = {
+                  ...state.conversations[state.currentConversationId!],
+                  messages: updatedMessages
+                };
+                
+                console.log('ChatStore: Updated message with artifact references:', {
+                  messageId: assistantMessageId,
+                  primaryArtifactId: artifactIds[0],
+                  allArtifactIds: artifactIds,
+                  totalArtifacts: artifactIds.length,
+                  contentLength: fullContent.length,
+                  statusUpdatesLength: Array.isArray(existingStatusUpdates) ? existingStatusUpdates.length : 0
+                });
+
+                return {
+                  messages: updatedConversation.messages,
+                  conversations: {
+                    ...state.conversations,
+                    [state.currentConversationId!]: updatedConversation
                   },
+                  streamingMessageId: null,
                   streamingContent: fullContent,
                   streamingComplete: true
                 };
               });
+
+              set({ isLoading: false });
+              
             }
 
-            // Process artifacts
-            sendStatusUpdate('Processing artifacts...');
-            const artifactIds = storeResponse.artifacts?.map((artifact: {
-              id: string;
-              artifactId: string;
-              type: ArtifactType;
-              title: string;
-              content: string;
-              position: number;
-              language?: string;
-            }) => {
-              console.log('ChatStore: Processing artifact:', {
-                id: artifact.id,
-                artifactId: artifact.artifactId,
-                type: artifact.type,
-                title: artifact.title
-              });
-              
-              return get().addArtifact({
-                id: artifact.id,
-                artifactId: artifact.artifactId,
-                type: artifact.type,
-                title: artifact.title,
-                content: artifact.content,
-                position: artifact.position,
-                language: artifact.language
-              });
-            }) || [];
-            
-            console.log('ChatStore: Processed all artifacts:', {
-              count: artifactIds.length,
-              ids: artifactIds,
-              messageId: assistantMessageId
-            });
-
-            // Update final message state with artifact reference
-            sendStatusUpdate('Finalizing response...');
-            
-            // Get the current message with all status updates and content
-            const finalMsg = get().messages.find(msg => msg.id === assistantMessageId);
-            // Extract just the status updates
-            const statusUpdates = finalMsg ? finalMsg.content : '';
-            
-            set(state => {
-              const updatedConversation = {
-                ...state.conversations[state.currentConversationId!],
-                messages: state.conversations[state.currentConversationId!].messages.map(msg =>
-                  msg.id === assistantMessageId ? {
-                    ...msg,
-                    statusUpdates: statusUpdates, // Store status updates separately
-                    content: fullContent, // Use the actual response content
-                    thinking: storeResponse.thinking,
-                    artifactId: artifactIds[0],
-                    artifactIds: artifactIds.length > 0 ? artifactIds : undefined
-                  } : msg
-                )
-              };
-              
-              console.log('ChatStore: Updated message with artifact references:', {
-                messageId: assistantMessageId,
-                primaryArtifactId: artifactIds[0],
-                allArtifactIds: artifactIds,
-                totalArtifacts: artifactIds.length,
-                contentLength: fullContent.length,
-                statusUpdatesLength: statusUpdates.length
-              });
-
-              return {
-                messages: updatedConversation.messages,
-                conversations: {
-                  ...state.conversations,
-                  [state.currentConversationId!]: updatedConversation
-                },
-                streamingMessageId: null,
-                streamingContent: fullContent,
-                streamingComplete: true
-              };
-            });
-
-            set({ isLoading: false });
-            
           } catch (error) {
             console.error('ChatStore: Error processing message:', error);
             set({ 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { MessageWithThinking } from '../../types/chat';
+import { MessageWithThinking, Message, StatusUpdate } from '../../types/chat';
 import { Artifact } from '../../types/artifacts';
 import { useChatStore } from '../../store/chatStore';
 import { AssistantMarkdown } from './AssistantMarkdown';
@@ -181,7 +181,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
 
   // Function to check if a message has status updates
   const hasStatusUpdates = (message: MessageWithThinking): boolean => {
-    return !!message.statusUpdates && message.statusUpdates.includes('_Status:');
+    return Array.isArray(message.statusUpdates) && message.statusUpdates.length > 0;
   };
 
   return (
@@ -275,33 +275,54 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                         {isStreaming ? (
                           // For streaming messages
                           <>
+                            {/* Show status updates first in the blue box */}
+                            {hasStatusUpdates(message) && (
+                              <div className="mb-3">
+                                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 font-mono">
+                                  {Array.isArray(message.statusUpdates) && message.statusUpdates.map((update) => (
+                                    <div key={update.id} className="mb-1 last:mb-0">
+                                      <span className="opacity-70 mr-2">
+                                        {(typeof update.timestamp === 'string' ? new Date(update.timestamp) : update.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                                      </span>
+                                      {update.message}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
                             <AssistantMarkdown content={streamingContent} />
                             <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
                           </>
                         ) : (
                           // For completed messages
                           <>
-                            {hasStatusUpdates(message) && (
-                              <div className="mb-3">
-                                <button
-                                  onClick={() => toggleStatusUpdatesCollapsed(message.id)}
-                                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 mb-1"
-                                >
-                                  {message.statusUpdatesCollapsed ? (
-                                    <ChevronRight className="h-3 w-3" />
-                                  ) : (
-                                    <ChevronDown className="h-3 w-3" />
-                                  )}
-                                  <span>Processing Steps</span>
-                                </button>
+                            {/* Status Updates Section */}
+                            {message.statusUpdates && message.statusUpdates.length > 0 && (
+                              <div className="mt-2">
+                                {/* Only show collapse button when not streaming */}
+                                {!message.thinking && (
+                                  <button
+                                    onClick={() => toggleStatusUpdatesCollapsed(message.id)}
+                                    className="text-xs text-gray-500 hover:text-gray-700"
+                                  >
+                                    {message.statusUpdatesCollapsed ? 'Show' : 'Hide'} processing steps
+                                  </button>
+                                )}
                                 
-                                {!message.statusUpdatesCollapsed && (
-                                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 font-mono">
-                                    {message.statusUpdates?.split('\n').map((line, i) => (
-                                      <div key={i} className="mb-1 last:mb-0">
-                                        {line.replace(/_Status: /, '').replace(/_/g, '')}
-                                      </div>
-                                    ))}
+                                {/* Always show status updates during streaming, respect collapse state when complete */}
+                                {(!message.statusUpdatesCollapsed || message.thinking) && (
+                                  <div className="mt-1 rounded-md bg-blue-50 p-2">
+                                    <div className="text-sm text-blue-700">
+                                      {message.statusUpdates.map((update: StatusUpdate) => (
+                                        <div key={update.id} className="flex items-start space-x-2">
+                                          <span className="text-xs text-blue-500">
+                                            {(typeof update.timestamp === 'string' ? new Date(update.timestamp) : update.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                                          </span>
+                                          <span>{update.message}</span>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>

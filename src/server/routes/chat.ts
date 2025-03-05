@@ -45,6 +45,7 @@ router.post('/', async (req: Request<{}, {}, {
     res.write(JSON.stringify({ 
       type: 'status', 
       message: status,
+      id: crypto.randomUUID(),
       timestamp: new Date().toISOString()
     }) + '\n');
   };
