@@ -212,7 +212,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         tools: [
             {
                 name: "run-query",
-                description: "Run a 1-hop query in mediKanren",
+                description: "Run a 1-hop query in mediKanren. Note: If you need comprehensive bidirectional relationships, use get-everything instead as it provides complete coverage.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -234,7 +234,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "get-everything",
-                description: "Run both X->Known and Known->X queries with biolink:related_to to get all relationships for a CURIE",
+                description: "Run both X->Known and Known->X queries with biolink:related_to to get all relationships for a CURIE. This is the recommended comprehensive query that provides complete bidirectional coverage. Do not use run-query if you are using this tool as it would be redundant.",
                 inputSchema: {
                     type: "object",
                     properties: {
