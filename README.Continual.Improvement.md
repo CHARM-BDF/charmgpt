@@ -913,3 +913,72 @@ Assistant: "I notice that's different from our current plan. Let me explain why:
 3. Python environment settings are handled in env.ts
 Would you like me to show you how to implement this in the correct location?"
 ```
+
+## Troubleshooting Rules
+
+### 1. State Preservation in Asynchronous Processes
+
+**Problem Pattern:**
+- Data appears complete at one point but becomes partial later
+- Only the most recent items in arrays/collections remain
+- State is consistent at start but inconsistent at end
+- Debug logs show "before processing" has more data than "after processing"
+
+**Early Detection Signals:**
+1. Data length decreases between process stages
+2. Only the most recent items remain in collections
+3. Debug logs show state inconsistency
+4. State appears to reset during processing
+
+**Prevention Strategy:**
+1. **Early Capture**: Save critical state at the EARLIEST possible point in the process
+2. **Explicit Preservation**: Never assume state will be preserved through async operations
+3. **State Transition Logging**: Add logging before/after each state transition
+4. **Immutable Updates**: Use immutable patterns to update state, never mutate objects
+
+**Implementation Pattern:**
+```typescript
+// CORRECT: Early state capture
+const savedState = [...currentState];
+
+// Process async operations using preserved state
+await someAsyncOperation();
+
+// Use saved state instead of current state
+updateFinalState(savedState);
+```
+
+**Testing Verification:**
+1. Verify state consistency through entire process flow
+2. Test with deliberately delayed async operations
+3. Validate that early state is preserved in final output
+4. Check state before/after each async operation
+
+**Common Pitfalls:**
+1. Assuming state will be preserved through async operations
+2. Mutating objects instead of creating new ones
+3. Capturing state too late in the process
+4. Not logging state transitions
+
+**Example Fix:**
+```typescript
+// BEFORE (Problematic):
+const currentMsg = get().messages.find(msg => msg.id === messageId);
+await processArtifacts();
+updateMessage(currentMsg); // State might be lost!
+
+// AFTER (Fixed):
+const savedMsg = get().messages.find(msg => msg.id === messageId);
+const savedStatusUpdates = [...savedMsg.statusUpdates];
+await processArtifacts();
+updateMessage({
+  ...savedMsg,
+  statusUpdates: savedStatusUpdates
+});
+```
+
+**Related Issues:**
+- Race conditions in async operations
+- State management in streaming processes
+- Data loss during object updates
+- Inconsistent state between async operations

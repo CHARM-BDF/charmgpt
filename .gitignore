@@ -38,3 +38,6 @@ doc/archive/*
 
 # Ignore files in venv
 venv/
+
+# Private individual user cursor rules
+.cursor/rules/_*.mdc

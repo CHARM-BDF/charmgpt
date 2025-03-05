@@ -1,0 +1,34 @@
+---
+description: SAVE state EARLY in async processes to PREVENT data loss during state transitions
+globs: src/**/*.{ts,tsx}
+---
+
+# State Preservation in Async Processes
+
+## Context
+- When handling async operations that modify state
+- When state appears to be lost between process stages
+- When debug logs show state inconsistency
+- When data length decreases between stages
+
+## Requirements
+- Capture critical state before any async operations
+- Use immutable state updates
+- Log state transitions
+- Verify state consistency through process flow
+- Test with delayed async operations
+
+## Examples
+<example>
+// CORRECT: Early state capture
+const savedState = [...currentState];
+await someAsyncOperation();
+updateFinalState(savedState);
+</example>
+
+<example type="invalid">
+// INCORRECT: Late state capture
+await someAsyncOperation();
+const currentState = get().messages.find(msg => msg.id === messageId);
+updateMessage(currentState); // State might be lost!
+</example> 
