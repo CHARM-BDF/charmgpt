@@ -450,6 +450,7 @@ except Exception as e:
     return `
 library(jsonlite)
 library(ggplot2)
+library(tidyverse)
 
 # Initialize tracking
 var2val <- list()
@@ -467,6 +468,25 @@ convert_value <- function(value) {
     return(lapply(value, convert_value))
   }
   return(as.character(value))
+}
+
+find_assignments <- function(code) {
+  # Parse the code and find assignments
+  parsed <- parse(text = code)
+  assignments <- list()
+  
+  for (i in seq_along(parsed)) {
+    expr <- parsed[[i]]
+    if (is.call(expr) && as.character(expr[[1]]) %in% c("<-", "=", "<<-")) {
+      var_name <- as.character(expr[[2]])
+      assignments[[var_name]] <- list(
+        name = var_name,
+        line_start = attr(expr, "srcref")[1],
+        line_end = attr(expr, "srcref")[3]
+      )
+    }
+  }
+  return(assignments)
 }
 
 save_intermediate_value <- function(value, var_name, line_start, line_end) {
@@ -501,8 +521,31 @@ tryCatch({
   # Set up PNG device before running the code
   png(file.path('/app/output', paste0('${runId}_plot.png')))
   
-  # Read and execute the code
+  # Read the code first
+  code <- readLines('user_code.R')
+  
+  # Find all assignments
+  assignments <- find_assignments(paste(code, collapse = "\\n"))
+  
+  # Execute the code
   source('user_code.R', local = TRUE)
+  
+  # Save values for all assignments found
+  for (assign in assignments) {
+    tryCatch({
+      value <- get(assign$name, envir = .GlobalEnv)
+      if (!is.null(value)) {
+        save_intermediate_value(
+          value,
+          assign$name,
+          assign$line_start,
+          assign$line_end
+        )
+      }
+    }, error = function(e) {
+      # Silently continue if we can't get a value
+    })
+  }
   
   # Close the device to save the plot
   if (length(dev.list()) > 0) {
