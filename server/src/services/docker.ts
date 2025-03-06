@@ -450,6 +450,10 @@ except Exception as e:
     return `
 library(jsonlite)
 library(ggplot2)
+library(magrittr)  # For pipe operator %>%
+library(dplyr)     # For filter, select, etc.
+library(readr)     # For read_csv, write_csv
+library(stringr)   # For str_detect
 
 # Set up PNG device for plots
 png(file.path('/app/output', paste0('${runId}_plot.png')))
