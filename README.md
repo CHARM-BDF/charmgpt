@@ -42,7 +42,7 @@ cd server
 npm install
 ```
 
-3. Build the Docker image:
+3. Build the Docker images:
 ```bash
 docker build -t my-python-app .
 docker build -t my-r-app -f Dockerfile.r .
