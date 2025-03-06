@@ -150,8 +150,7 @@ charmgpt/
 │   │   ├── routes/       # Express routes
 │   │   ├── services/     # Docker and LLM services
 │   │   └── config/       # Server configuration
-│   |── Dockerfile        # Python environment
-|   └── Dockerfile.r      # R environment
+|   └── Dockerfile.*      # Python (default) and R environments
 └── README.md
 ```
 
