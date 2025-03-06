@@ -25,13 +25,38 @@ interface DockerRunResult {
   var2line_end: Record<string, number>
 }
 
+type SupportedLanguage = 'python' | 'r'
+
+interface LanguageConfig {
+  imageTag: string
+  fileExtension: string
+  command: string
+  wrapperGenerator: (runId: string) => string
+}
+
 export class DockerService {
   private tempDir: string
-  private readonly imageTag: string
+  private readonly languageConfigs: Record<SupportedLanguage, LanguageConfig>
 
   constructor() {
     this.tempDir = path.join(process.cwd(), 'temp')
-    this.imageTag = 'my-python-app'
+    
+    // Configure supported languages
+    this.languageConfigs = {
+      python: {
+        imageTag: 'my-python-app',
+        fileExtension: 'py',
+        command: 'python',
+        wrapperGenerator: this.generatePythonWrapper.bind(this)
+      },
+      r: {
+        imageTag: 'my-r-app',
+        fileExtension: 'R',
+        command: 'Rscript',
+        wrapperGenerator: this.generateRWrapper.bind(this)
+      }
+    }
+
     // Create temp directory if it doesn't exist
     if (!fs.existsSync(this.tempDir)) {
       fs.mkdirSync(this.tempDir, { recursive: true })
@@ -105,28 +130,29 @@ export class DockerService {
     }
   }
 
-  async runCode(code: string): Promise<DockerRunResult> {
+  async runCode(code: string, language: SupportedLanguage = 'python'): Promise<DockerRunResult> {
     const runId = uuidv4()
-    console.log('Starting code run:', runId)
+    console.log(`Starting ${language} code run:`, runId)
 
     try {
+      const config = this.languageConfigs[language]
       const tempDir = this.getTempDir()
       const codeDir = path.join(tempDir, runId)
       await fsPromises.mkdir(codeDir, { recursive: true })
       
       await this.prepareDataFiles(codeDir);
 
-      const userCodePath = path.join(codeDir, 'user_code.py')
-      const wrapperPath = path.join(codeDir, 'wrapper.py')
+      const userCodePath = path.join(codeDir, `user_code.${config.fileExtension}`)
+      const wrapperPath = path.join(codeDir, `wrapper.${config.fileExtension}`)
       
       await fsPromises.writeFile(userCodePath, code)
-      await fsPromises.writeFile(wrapperPath, this.wrapCode(runId))
+      await fsPromises.writeFile(wrapperPath, config.wrapperGenerator(runId))
       
       console.log('Running code with ID:', runId)
       console.log('Temp directory:', tempDir)
 
       // Run the code in Docker
-      const { stdout } = await this.runDocker(runId, codeDir)
+      const { stdout } = await this.runDocker(runId, codeDir, config)
       console.log('Docker execution result:', stdout)
 
       // Check for generated files
@@ -147,7 +173,6 @@ export class DockerService {
       let var2val = {}
       let var2line = {}
       let var2line_end = {}
-
 
       if (resultsMatch) {
         try {
@@ -231,7 +256,66 @@ export class DockerService {
     }
   }
 
-  private wrapCode(runId: string): string {
+  private async runDocker(runId: string, codeDir: string, config: LanguageConfig): Promise<{ stdout: string }> {
+    return new Promise((resolve, reject) => {
+      const docker = spawn('docker', [
+        'run',
+        '--name', runId,
+        '-v', `${codeDir}:/app/code:rw`,
+        '-v', `${this.getTempDir()}:/app/temp:rw`,
+        '-v', `${this.getTempDir()}:/app/output:rw`,
+        '--network', 'none',
+        '--memory', '512m',
+        '--cpus', '0.5',
+        '--workdir', '/app/code',
+        config.imageTag,
+        config.command,
+        `/app/code/wrapper.${config.fileExtension}`
+      ])
+
+      let stdout = ''
+      let stderr = ''
+
+      docker.stdout.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      docker.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      docker.on('close', async (code) => {
+        try {
+          // Copy files from container before removing it
+          if (code === 0) {
+            // Only copy if the file exists
+            const plotExists = await this.copyFromContainer(runId, `${runId}_plot.png`)
+            const dataExists = await this.copyFromContainer(runId, `${runId}_data.csv`)
+            console.log('File copy status:', { plotExists, dataExists })
+          }
+          
+          // Remove the container
+          await new Promise<void>((resolveRm, rejectRm) => {
+            const rm = spawn('docker', ['rm', runId])
+            rm.on('close', (rmCode) => {
+              if (rmCode === 0) resolveRm()
+              else rejectRm(new Error(`Failed to remove container: ${rmCode}`))
+            })
+          })
+
+          if (code === 0) {
+            resolve({ stdout })
+          } else {
+            reject(new Error(`Docker process failed: ${stderr}`))
+          }
+        } catch (error) {
+          reject(error)
+        }
+      })
+    })
+  }
+
+  private generatePythonWrapper(runId: string): string {
     return `
 import sys
 import json
@@ -362,62 +446,86 @@ except Exception as e:
 `
   }
 
-  private async runDocker(runId: string, codeDir: string): Promise<{ stdout: string }> {
-    return new Promise((resolve, reject) => {
-      const docker = spawn('docker', [
-        'run',
-        '--name', runId,
-        '-v', `${codeDir}:/app/code:rw`,
-        '-v', `${this.getTempDir()}:/app/temp:rw`,
-        '-v', `${this.getTempDir()}:/app/output:rw`,
-        '--network', 'none',
-        '--memory', '512m',
-        '--cpus', '0.5',
-        '--workdir', '/app/code',
-        this.imageTag,
-        'python',
-        '/app/code/wrapper.py'
-      ])
+  private generateRWrapper(runId: string): string {
+    return `
+library(jsonlite)
+library(ggplot2)
 
-      let stdout = ''
-      let stderr = ''
+# Initialize tracking
+var2val <- list()
+var2line <- list()
+var2line_end <- list()
+value_log_buffer <- ""
 
-      docker.stdout.on('data', (data) => {
-        stdout += data.toString()
-      })
+convert_value <- function(value) {
+  # Convert R objects to JSON-serializable types
+  if (is.numeric(value) || is.character(value) || is.logical(value)) {
+    return(value)
+  } else if (is.data.frame(value)) {
+    return(as.list(value))
+  } else if (is.list(value)) {
+    return(lapply(value, convert_value))
+  }
+  return(as.character(value))
+}
 
-      docker.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      docker.on('close', async (code) => {
-        try {
-          // Copy files from container before removing it
-          if (code === 0) {
-            // Only copy if the file exists
-            const plotExists = await this.copyFromContainer(runId, `${runId}_plot.png`)
-            const dataExists = await this.copyFromContainer(runId, `${runId}_data.csv`)
-            console.log('File copy status:', { plotExists, dataExists })
-          }
-          
-          // Remove the container
-          await new Promise<void>((resolveRm, rejectRm) => {
-            const rm = spawn('docker', ['rm', runId])
-            rm.on('close', (rmCode) => {
-              if (rmCode === 0) resolveRm()
-              else rejectRm(new Error(`Failed to remove container: ${rmCode}`))
-            })
-          })
-
-          if (code === 0) {
-            resolve({ stdout })
-          } else {
-            reject(new Error(`Docker process failed: ${stderr}`))
-          }
-        } catch (error) {
-          reject(error)
-        }
-      })
+save_intermediate_value <- function(value, var_name, line_start, line_end) {
+  if (is.data.frame(value)) {
+    # Handle data frame by saving to file
+    filename <- paste0('${runId}_', var_name, '.csv')
+    write.csv(value, file = file.path('/app/output', filename), row.names = FALSE)
+    var2val[[var_name]] <<- list(
+      type = 'file',
+      value = filename
+    )
+    var2line[[var_name]] <<- line_start
+    var2line_end[[var_name]] <<- line_end
+    value_log_buffer <<- paste0(value_log_buffer, '\\nSaved DataFrame ', var_name, ' to ', filename)
+  } else {
+    tryCatch({
+      converted_value <- convert_value(value)
+      var2val[[var_name]] <<- list(
+        type = 'immediate',
+        value = converted_value
+      )
+      var2line[[var_name]] <<- line_start
+      var2line_end[[var_name]] <<- line_end
+      value_log_buffer <<- paste0(value_log_buffer, '\\nSaved value ', var_name, ' = ', toJSON(converted_value))
+    }, error = function(e) {
+      value_log_buffer <<- paste0(value_log_buffer, '\\nCould not serialize value for ', var_name)
     })
+  }
+}
+
+tryCatch({
+  # Set up PNG device before running the code
+  png(file.path('/app/output', paste0('${runId}_plot.png')))
+  
+  # Read and execute the code
+  source('user_code.R', local = TRUE)
+  
+  # Close the device to save the plot
+  if (length(dev.list()) > 0) {
+    dev.off()
+    value_log_buffer <- paste0(value_log_buffer, '\\nSaved plot as ${runId}_plot.png')
+  }
+  
+  # Print program output and results
+  cat(value_log_buffer)
+  cat('\\n__RESULTS__\\n')
+  cat(toJSON(list(
+    var2val = var2val,
+    var2line = var2line,
+    var2line_end = var2line_end
+  ), auto_unbox = TRUE))
+  
+}, error = function(e) {
+  # Make sure to close the device if there's an error
+  if (length(dev.list()) > 0) {
+    dev.off()
+  }
+  cat(paste('Error:', e$message))
+})
+`
   }
 } 

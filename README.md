@@ -1,11 +1,12 @@
 # CHARMGPT
 
-A collaborative data science environment with integrated chat and visualization capabilities. This project combines React and TypeScript for the frontend with an Express backend that provides unified interfaces for LLM providers and Python code execution.
+A collaborative data science environment with integrated chat and visualization capabilities. This project combines React and TypeScript for the frontend with an Express backend that provides unified interfaces for LLM providers and code execution in Python and R.
 
 ## Features
 
 - Interactive Python code execution with matplotlib visualization
-- Real-time chat interface with LLM support (Charmonator, Claude, Ollama)
+- Interactive R code execution with visualization
+- Real-time chat interface with LLM support (Charmonator, Claude, Gemini, Ollama)
 - History of code artifacts and outputs
 - Support for multiple LLM providers
 - Code execution in isolated Docker containers
@@ -17,9 +18,11 @@ A collaborative data science environment with integrated chat and visualization 
 
 - Node.js (v16 or higher)
 - Docker
-- Python 3.x
+- Python 3.x, R, ...
+- Charmonator endpoint (if using)
 - Ollama (if using local models)
 - Anthropic API key (if using Claude)
+- Gemini API key (if using)
 
 ### Installation
 
@@ -42,6 +45,7 @@ npm install
 3. Build the Docker image:
 ```bash
 docker build -t my-python-app .
+docker build -t my-r-app -f Dockerfile.r .
 ```
 
 ### Configuration
@@ -77,7 +81,7 @@ npm run dev
 
 ### Code Execution & Visualization
 
-1. Write or paste Python code in the code editor
+1. Write or paste Python/R code in the code editor
 2. Click "Run" to execute the code
 3. View results and plots in the output panels
 
@@ -146,7 +150,7 @@ charmgpt/
 │   │   ├── routes/       # Express routes
 │   │   ├── services/     # Docker and LLM services
 │   │   └── config/       # Server configuration
-│   └── Dockerfile        # Python environment
+|   └── Dockerfile.*      # Python (default) and R environments
 └── README.md
 ```
 
@@ -154,6 +158,6 @@ charmgpt/
 
 - Frontend: React, TypeScript, Material-UI
 - Backend: Node.js, Express
-- Code Execution: Docker, Python
-- Visualization: Matplotlib
-- LLM Integration: Charmonator, Claude API, Ollama
+- Code Execution: Docker, Python, R
+- Visualization: Matplotlib, ...
+- LLM Integration: Charmonator, Claude API, Gemini API, Ollama

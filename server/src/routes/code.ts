@@ -93,7 +93,7 @@ router.delete<FileParams>('/plots/:filename', async (req, res) => {
 
 router.post('/run-code', async (req, res) => {
   try {
-    const { code, artifacts } = req.body
+    const { code, artifacts, language = 'python' } = req.body
     
     // Save artifacts info if provided
     if (artifacts) {
@@ -103,7 +103,7 @@ router.post('/run-code', async (req, res) => {
       )
     }
 
-    const result = await docker.runCode(code)
+    const result = await docker.runCode(code, language)
     res.json(result)
   } catch (error) {
     console.error('Error running code:', error)

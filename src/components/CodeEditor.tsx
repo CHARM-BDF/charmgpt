@@ -4,12 +4,20 @@ import {
 	ToggleButtonGroup,
 	Button,
 	CircularProgress,
+	Select,
+	MenuItem,
+	FormControl,
+	InputLabel,
+	SelectChangeEvent,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SaveIcon from '@mui/icons-material/Save';
 import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode } from '../contexts/ArtifactContext.types';
+import { useState } from 'react';
+
+type CodeLanguage = 'python' | 'r';
 
 export default function CodeEditor() {
 	const {
@@ -22,6 +30,8 @@ export default function CodeEditor() {
 		handleChat,
 	} = useArtifact();
 
+	const [language, setLanguage] = useState<CodeLanguage>('python');
+
 	const handleModeChange = (
 		_: React.MouseEvent<HTMLElement>,
 		newMode: EditorMode
@@ -31,6 +41,10 @@ export default function CodeEditor() {
 		}
 	};
 
+	const handleLanguageChange = (event: SelectChangeEvent<CodeLanguage>) => {
+		setLanguage(event.target.value as CodeLanguage);
+	};
+
 	const handleRun = async () => {
 		if (!editorContent && !planContent) {
 			console.warn('No content to run');
@@ -38,7 +52,7 @@ export default function CodeEditor() {
 		}
 		try {
 			if (mode === 'code') {
-				await runArtifact(editorContent);
+				await runArtifact(editorContent, language);
 			} else {
 				await handleChat();
 			}
@@ -96,6 +110,7 @@ export default function CodeEditor() {
 					flexShrink: 0,
 					backgroundColor: 'background.paper',
 					width: '100%',
+					gap: 2,
 				}}
 			>
 				<ToggleButtonGroup
@@ -107,6 +122,22 @@ export default function CodeEditor() {
 					<ToggleButton value='code'>Code</ToggleButton>
 					<ToggleButton value='plan'>Plan</ToggleButton>
 				</ToggleButtonGroup>
+
+				{mode === 'code' && (
+					<FormControl size="small" sx={{ minWidth: 120 }}>
+						<InputLabel id="language-select-label">Language</InputLabel>
+						<Select
+							labelId="language-select-label"
+							id="language-select"
+							value={language}
+							label="Language"
+							onChange={handleLanguageChange}
+						>
+							<MenuItem value="python">Python</MenuItem>
+							<MenuItem value="r">R</MenuItem>
+						</Select>
+					</FormControl>
+				)}
 
 				<Box
 					sx={{
@@ -148,7 +179,7 @@ export default function CodeEditor() {
 				</Box>
 			</Box>
 			<Box sx={{ flex: 1, overflow: 'hidden' }}>
-				<Editor />
+				<Editor language={mode === 'code' ? language : undefined} />
 			</Box>
 		</Box>
 	);
