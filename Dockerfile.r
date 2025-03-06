@@ -1,4 +1,4 @@
-FROM r-base:latest
+FROM rocker/tidyverse
 
 WORKDIR /app
 
