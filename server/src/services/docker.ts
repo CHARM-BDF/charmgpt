@@ -450,112 +450,26 @@ except Exception as e:
     return `
 library(jsonlite)
 library(ggplot2)
-library(tidyverse)
 
-# Initialize tracking
-var2val <- list()
-var2line <- list()
-var2line_end <- list()
-value_log_buffer <- ""
+# Set up PNG device for plots
+png(file.path('/app/output', paste0('${runId}_plot.png')))
 
-convert_value <- function(value) {
-  # Convert R objects to JSON-serializable types
-  if (is.numeric(value) || is.character(value) || is.logical(value)) {
-    return(value)
-  } else if (is.data.frame(value)) {
-    return(as.list(value))
-  } else if (is.list(value)) {
-    return(lapply(value, convert_value))
-  }
-  return(as.character(value))
-}
-
-save_intermediate_value <- function(value, var_name, line_start, line_end) {
-  if (is.data.frame(value)) {
-    # Handle data frame by saving to file
-    filename <- paste0('${runId}_', var_name, '.csv')
-    write.csv(value, file = file.path('/app/output', filename), row.names = FALSE)
-    var2val[[var_name]] <<- list(
-      type = 'file',
-      value = filename
-    )
-    var2line[[var_name]] <<- line_start
-    var2line_end[[var_name]] <<- line_end
-    value_log_buffer <<- paste0(value_log_buffer, '\\nSaved DataFrame ', var_name, ' to ', filename)
-  } else {
-    tryCatch({
-      converted_value <- convert_value(value)
-      var2val[[var_name]] <<- list(
-        type = 'immediate',
-        value = converted_value
-      )
-      var2line[[var_name]] <<- line_start
-      var2line_end[[var_name]] <<- line_end
-      value_log_buffer <<- paste0(value_log_buffer, '\\nSaved value ', var_name, ' = ', toJSON(converted_value))
-    }, error = function(e) {
-      value_log_buffer <<- paste0(value_log_buffer, '\\nCould not serialize value for ', var_name)
-    })
-  }
-}
-
+# Execute the code
 tryCatch({
-  # Set up PNG device before running the code
-  png(file.path('/app/output', paste0('${runId}_plot.png')))
-  
-  # Read the code first
-  code <- readLines('user_code.R')
-  
-  # Find all assignments - parse each line individually to preserve source references
-  assignments <- list()
-  for (i in seq_along(code)) {
-    line <- code[i]
-    parsed <- parse(text = line, keep.source = TRUE)
-    if (length(parsed) > 0) {
-      expr <- parsed[[1]]
-      if (is.call(expr) && as.character(expr[[1]]) %in% c("<-", "=", "<<-")) {
-        var_name <- as.character(expr[[2]])
-        assignments[[var_name]] <- list(
-          name = var_name,
-          line_start = i,
-          line_end = i
-        )
-      }
-    }
-  }
-  
-  # Execute the code
   source('user_code.R', local = TRUE)
-  
-  # Save values for all assignments found
-  for (assign in assignments) {
-    tryCatch({
-      value <- get(assign$name, envir = .GlobalEnv)
-      if (!is.null(value)) {
-        save_intermediate_value(
-          value,
-          assign$name,
-          assign$line_start,
-          assign$line_end
-        )
-      }
-    }, error = function(e) {
-      # Silently continue if we can't get a value
-    })
-  }
   
   # Close the device to save the plot
   if (length(dev.list()) > 0) {
     dev.off()
-    value_log_buffer <- paste0(value_log_buffer, '\\nSaved plot as ${runId}_plot.png')
+    cat('\\nSaved plot as ${runId}_plot.png\\n')
   }
   
-  # Print program output and results
-  cat(value_log_buffer)
+  # Return empty results since we're not tracking intermediate state
   cat('\\n__RESULTS__\\n')
   cat(toJSON(list(
-    var2val = var2val,
-    var2line = var2line,
-    var2line_end = var2line_end
+    var2val = list(),
+    var2line = list(),
+    var2line_end = list()
   ), auto_unbox = TRUE))
   
 }, error = function(e) {
