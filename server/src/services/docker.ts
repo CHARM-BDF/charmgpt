@@ -498,12 +498,15 @@ save_intermediate_value <- function(value, var_name, line_start, line_end) {
 }
 
 tryCatch({
+  # Set up PNG device before running the code
+  png(file.path('/app/output', paste0('${runId}_plot.png')))
+  
   # Read and execute the code
   source('user_code.R', local = TRUE)
   
-  # Save the last plot if any
+  # Close the device to save the plot
   if (length(dev.list()) > 0) {
-    ggsave(file.path('/app/output', paste0('${runId}_plot.png')))
+    dev.off()
     value_log_buffer <- paste0(value_log_buffer, '\\nSaved plot as ${runId}_plot.png')
   }
   
@@ -517,6 +520,10 @@ tryCatch({
   ), auto_unbox = TRUE))
   
 }, error = function(e) {
+  # Make sure to close the device if there's an error
+  if (length(dev.list()) > 0) {
+    dev.off()
+  }
   cat(paste('Error:', e$message))
 })
 `

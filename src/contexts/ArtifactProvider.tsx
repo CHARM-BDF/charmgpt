@@ -117,7 +117,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       console.log('Run result from server:', result)
 
       // Add API prefix to plot and data files if they exist
-      const plotFile = result.plotFile ? `/api/data/${result.plotFile}` : undefined
+      const plotFile = result.plotFile ? `/api/plots/${result.plotFile}` : undefined
 
       const newArtifact: Artifact = {
         id: artifacts.length + 1,  // Add id
