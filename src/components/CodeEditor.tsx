@@ -15,7 +15,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode } from '../contexts/ArtifactContext.types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type CodeLanguage = 'python' | 'r';
 
@@ -28,9 +28,17 @@ export default function CodeEditor() {
 		planContent,
 		isRunning,
 		handleChat,
+		activeArtifact,
 	} = useArtifact();
 
 	const [language, setLanguage] = useState<CodeLanguage>('python');
+
+	// Update language when active artifact changes
+	useEffect(() => {
+		if (activeArtifact?.language) {
+			setLanguage(activeArtifact.language);
+		}
+	}, [activeArtifact]);
 
 	const handleModeChange = (
 		_: React.MouseEvent<HTMLElement>,
