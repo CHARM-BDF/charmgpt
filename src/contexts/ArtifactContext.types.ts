@@ -2,6 +2,7 @@ import { createContext } from 'react'
 
 export type EditorMode = 'code' | 'plan'
 export type ViewMode = 'plot' | 'data' | 'output'
+export type CodeLanguage = 'python' | 'r'
 
 export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data'
 
@@ -81,7 +82,7 @@ export interface ArtifactContextType {
   setMode: (mode: EditorMode) => void
   setViewMode: (mode: ViewMode) => void
   setActiveArtifact: (artifact: Artifact | null) => void
-  runArtifact: (code: string, name?: string, chatInput?: string) => Promise<void>
+  runArtifact: (code: string, language?: CodeLanguage) => Promise<void>
   editorContent: string
   setEditorContent: (content: string) => void
   planContent: string

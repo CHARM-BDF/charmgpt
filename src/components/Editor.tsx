@@ -7,7 +7,13 @@ import { dataHeader, getDisplayName, Artifact, ViewMode } from '../contexts/Arti
 import { DataViewer } from './DataViewer'
 import '../styles/editor.css'
 
-export default function Editor() {
+type CodeLanguage = 'python' | 'r'
+
+interface EditorProps {
+  language?: CodeLanguage;
+}
+
+export default function Editor({ language = 'python' }: EditorProps) {
   const { 
     activeArtifact, 
     setEditorContent,
@@ -185,8 +191,8 @@ export default function Editor() {
     const model = editorRef.current.getModel()
     if (!model) return
 
-    monaco.editor.setModelLanguage(model, mode === 'code' ? 'python' : 'markdown')
-  }, [mode])
+    monaco.editor.setModelLanguage(model, mode === 'code' ? language : 'markdown')
+  }, [mode, language])
 
   // Add effect to handle line highlighting when selectedStep changes
   useEffect(() => {
@@ -230,7 +236,7 @@ export default function Editor() {
       <Box sx={{ flex: 1 }}>
         <MonacoEditor
           height="100%"
-          defaultLanguage={mode === 'code' ? 'python' : 'markdown'}
+          defaultLanguage={mode === 'code' ? language : 'markdown'}
           value={currentValue}
           onChange={handleChange}
           onMount={handleEditorDidMount}
@@ -239,7 +245,7 @@ export default function Editor() {
             scrollBeyondLastLine: false,
             fontSize: 14,
             wordWrap: 'on',
-            language: mode === 'code' ? 'python' : 'markdown'
+            language: mode === 'code' ? language : 'markdown'
           }}
         />
       </Box>
@@ -249,10 +255,12 @@ export default function Editor() {
           <Typography variant="subtitle2">
             Step: {currentStepData.step}
           </Typography>
-          <DataViewer 
-            dataFile={currentStepData.file}
-            height="calc(100% - 32px)"  // Subtract header height
-          />
+          {currentStepData.file && (
+            <DataViewer 
+              dataFile={currentStepData.file}
+              height="calc(100% - 32px)"  // Subtract header height
+            />
+          )}
         </Box>
       )}
     </Box>
