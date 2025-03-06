@@ -470,25 +470,6 @@ convert_value <- function(value) {
   return(as.character(value))
 }
 
-find_assignments <- function(code) {
-  # Parse the code and find assignments
-  parsed <- parse(text = code)
-  assignments <- list()
-  
-  for (i in seq_along(parsed)) {
-    expr <- parsed[[i]]
-    if (is.call(expr) && as.character(expr[[1]]) %in% c("<-", "=", "<<-")) {
-      var_name <- as.character(expr[[2]])
-      assignments[[var_name]] <- list(
-        name = var_name,
-        line_start = attr(expr, "srcref")[1],
-        line_end = attr(expr, "srcref")[3]
-      )
-    }
-  }
-  return(assignments)
-}
-
 save_intermediate_value <- function(value, var_name, line_start, line_end) {
   if (is.data.frame(value)) {
     # Handle data frame by saving to file
@@ -524,8 +505,23 @@ tryCatch({
   # Read the code first
   code <- readLines('user_code.R')
   
-  # Find all assignments
-  assignments <- find_assignments(paste(code, collapse = "\\n"))
+  # Find all assignments - parse each line individually to preserve source references
+  assignments <- list()
+  for (i in seq_along(code)) {
+    line <- code[i]
+    parsed <- parse(text = line, keep.source = TRUE)
+    if (length(parsed) > 0) {
+      expr <- parsed[[1]]
+      if (is.call(expr) && as.character(expr[[1]]) %in% c("<-", "=", "<<-")) {
+        var_name <- as.character(expr[[2]])
+        assignments[[var_name]] <- list(
+          name = var_name,
+          line_start = i,
+          line_end = i
+        )
+      }
+    }
+  }
   
   # Execute the code
   source('user_code.R', local = TRUE)
@@ -571,4 +567,4 @@ tryCatch({
 })
 `
   }
-} 
+}
