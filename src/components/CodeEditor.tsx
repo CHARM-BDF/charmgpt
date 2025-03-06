@@ -19,10 +19,6 @@ import { useState } from 'react';
 
 type CodeLanguage = 'python' | 'r';
 
-interface EditorProps {
-	language?: CodeLanguage;
-}
-
 export default function CodeEditor() {
 	const {
 		mode,

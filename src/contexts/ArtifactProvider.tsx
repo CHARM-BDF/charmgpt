@@ -1,6 +1,14 @@
 import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { ArtifactContext } from './createArtifactContext'
-import { Artifact, ViewMode, EditorMode, getDisplayName, dataHeader, getDefaultViewMode } from './ArtifactContext.types'
+import { 
+  Artifact, 
+  ViewMode, 
+  EditorMode, 
+  CodeLanguage,
+  getDisplayName, 
+  dataHeader, 
+  getDefaultViewMode 
+} from './ArtifactContext.types'
 import { chatWithLLM } from '../services/api'
 
 interface ArtifactProviderProps {
@@ -87,7 +95,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     setViewMode(getDefaultViewMode(newArtifact))
   }, [artifacts, setActiveArtifact, setViewMode])
 
-  const runArtifact = useCallback(async (code: string, name: string = 'Run Result', chatInput?: string) => {
+  const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
     try {
       setIsRunning(true)
       const response = await fetch('/api/run-code', {
@@ -95,6 +103,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           code,
+          language,
           artifacts: artifacts.filter(a => a.pinned)
         })
       })
@@ -113,13 +122,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       const newArtifact: Artifact = {
         id: artifacts.length + 1,  // Add id
         type: 'code' as const,
-        name,
+        name: `${language} Run Result`,
         code,
         output: result.output,
         plotFile,
-        dataFile: result.dataFile,  // Add comma
+        dataFile: result.dataFile,
         source: 'assistant',
-        chatInput,
+        language,  // Store the language
         var2val: result.var2val,
         var2line: result.var2line,
         var2line_end: result.var2line_end,
@@ -215,7 +224,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [])
 
   const parseCodeFromResponse = useCallback(async (response: string, input: string) => {
-    const codeBlockRegex = /```python\n([\s\S]*?)```/g
+    // Match both Python and R code blocks
+    const codeBlockRegex = /```([Pp]ython|[Rr])\n([\s\S]*?)```/g
     const matches = [...response.matchAll(codeBlockRegex)]
     
     // First create the chat artifact with the processed response
@@ -236,19 +246,28 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       
       // Process each code block
       for (let i = 0; i < matches.length; i++) {
-        const code = matches[i][1].trim()
+        const [, language, code] = matches[i]
+        const trimmedCode = code.trim()
         
         // Start new artifact if:
         // 1. It's the first code block, or
-        // 2. Code starts with import
-        if (i === 0 || code.startsWith('import') || code.startsWith('from ')) {
+        // 2. Code starts with import/library/require
+        const isNewBlock = i === 0 || 
+          trimmedCode.startsWith('import') || 
+          trimmedCode.startsWith('from ') ||
+          trimmedCode.startsWith('library(') ||
+          trimmedCode.startsWith('require(')
+
+        if (isNewBlock) {
           // Add the chat input as a comment at the top of the code
-          const codeWithComment = `"""Query: ${input}\n"""\n\n${code}`
+          const commentStart = language === 'python' ? '"""' : '#'
+          const commentEnd = language === 'python' ? '"""' : ''
+          const codeWithComment = `${commentStart}Query: ${input}\n${commentEnd}\n\n${trimmedCode}`
           
           setMode('code')
           setEditorContent(codeWithComment)
           try {
-            await runArtifact(codeWithComment, artifactName + (i > 0 ? ` (${i+1})` : ''), input)
+            await runArtifact(codeWithComment, language as CodeLanguage)
           } catch (err) {
             console.error('Failed to run code:', err)
             addArtifact({
@@ -260,6 +279,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
               dataFile: undefined,
               source: 'assistant',
               chatInput: input,
+              language: language.toLowerCase() === 'python' ? 'python' : 'r',  // Normalize language
               var2val: {},
               var2line: {},
               var2line_end: {}
@@ -267,7 +287,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           }
         } else {
           // Append to existing code
-          const newCode = editorContent + '\n\n' + code
+          const newCode = editorContent + '\n\n' + trimmedCode
           setEditorContent(newCode)
         }
       }
@@ -305,20 +325,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     try {
       const response = await chatWithLLM(msg)
 
-      // Process the response first to get processedResponse
-      const codeBlockRegex = /```python\n([\s\S]*?)```/g
-      const processedResponse = response.replace(codeBlockRegex, '[Code added to editor and executed]')
-
-      addArtifact({
-        type: 'chat',
-        name: `Chat: ${message?.slice(0, 30) || ''}...`,
-        output: processedResponse,
-        chatInput: message || '(plan only)\n\n'+msg,
-        var2val: {},
-        var2line: {},
-        var2line_end: {}
-      })
-
       // Process response and create artifacts in order
       await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)
       return true
@@ -326,7 +332,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       console.error('Chat error:', err)
       return false
     }
-  }, [generateSummary, parseCodeFromResponse, planContent, addArtifact])
+  }, [generateSummary, parseCodeFromResponse, planContent])
 
   const value = {
     artifacts,

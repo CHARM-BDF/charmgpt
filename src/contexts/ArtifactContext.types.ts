@@ -66,6 +66,7 @@ export interface Artifact {
   pinned?: boolean
   chatInput?: string
   processingJob?: ProcessingJob
+  language?: CodeLanguage
   // New structure for variables - make these optional
   var2val?: Record<string, ImmediateValue | FileValue>
   var2line?: Record<string, number>
