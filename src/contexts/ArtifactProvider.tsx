@@ -128,7 +128,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         plotFile,
         dataFile: result.dataFile,
         source: 'assistant',
-        language,  // Store the language
+        language,
         var2val: result.var2val,
         var2line: result.var2line,
         var2line_end: result.var2line_end,
@@ -247,6 +247,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       // Process each code block
       for (let i = 0; i < matches.length; i++) {
         const [, language, code] = matches[i]
+        const normalizedLanguage = language.toLowerCase() === 'python' ? 'python' : 'r'
         const trimmedCode = code.trim()
         
         // Start new artifact if:
@@ -260,14 +261,14 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
         if (isNewBlock) {
           // Add the chat input as a comment at the top of the code
-          const commentStart = language === 'python' ? '"""' : '#'
-          const commentEnd = language === 'python' ? '"""' : ''
+          const commentStart = normalizedLanguage === 'python' ? '"""' : '#'
+          const commentEnd = normalizedLanguage === 'python' ? '"""' : ''
           const codeWithComment = `${commentStart}Query: ${input}\n${commentEnd}\n\n${trimmedCode}`
           
           setMode('code')
           setEditorContent(codeWithComment)
           try {
-            await runArtifact(codeWithComment, language as CodeLanguage)
+            await runArtifact(codeWithComment, normalizedLanguage)
           } catch (err) {
             console.error('Failed to run code:', err)
             addArtifact({
@@ -279,7 +280,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
               dataFile: undefined,
               source: 'assistant',
               chatInput: input,
-              language: language.toLowerCase() === 'python' ? 'python' : 'r',  // Normalize language
+              language: normalizedLanguage,
               var2val: {},
               var2line: {},
               var2line_end: {}
