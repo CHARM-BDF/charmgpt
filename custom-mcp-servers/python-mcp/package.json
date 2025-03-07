@@ -10,7 +10,7 @@
     "test": "tsx src/test-suite.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.1.1",
+    "@modelcontextprotocol/sdk": "^1.6.1",
     "python-shell": "^5.0.0",
     "dotenv": "^16.4.7"
   },

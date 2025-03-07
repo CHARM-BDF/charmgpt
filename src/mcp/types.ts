@@ -1,10 +1,19 @@
 // Import types from SDK
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
+export type LogLevel = 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
+
+export interface MCPLogMessage {
+  level: LogLevel;
+  logger?: string;
+  data?: Record<string, unknown>;
+}
+
 export interface MCPClientConfig {
   name: string;
   version: string;
   roots?: string[];
+  logLevel?: LogLevel;
 }
 
 export interface MCPServerInfo {

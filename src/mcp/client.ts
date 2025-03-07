@@ -8,7 +8,9 @@ import {
   MCPToolResponse,
   MCPPromptResponse,
   MCPResourceResponse,
-  MCPToolSchema 
+  MCPToolSchema,
+  MCPLogMessage,
+  LogLevel 
 } from './types';
 
 // Response schemas
@@ -69,8 +71,10 @@ export class MCPClient {
   private client: Client;
   private config: MCPClientConfig;
   private serverInfo: MCPServerInfo | null = null;
+  private onLogMessage?: (message: MCPLogMessage) => void;
 
   constructor(config: MCPClientConfig) {
+    console.log(`[MCP-DEBUG] Initializing MCPClient for ${config.name}`);
     this.config = config;
     this.client = new Client(
       { name: config.name, version: config.version },
@@ -78,18 +82,69 @@ export class MCPClient {
         capabilities: {
           prompts: {},
           resources: {},
-          tools: {}
+          tools: {},
+          logging: {}  // Explicitly enable logging capability
         }
       }
     );
+
+    // Set up notification handler for log messages
+    console.log(`[MCP-DEBUG] Setting up notification handler for ${config.name}`);
+    this.client.notification = async (notification: { method: string; params?: unknown }) => {
+      console.log(`[MCP-DEBUG] ${config.name} received notification:`, notification.method);
+      if (notification.method === 'notifications/message') {
+        try {
+          const logMessage = z.object({
+            level: z.enum(['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']),
+            logger: z.string().optional(),
+            data: z.record(z.unknown()).optional()
+          }).parse(notification.params);
+
+          console.log(`[MCP-DEBUG] ${config.name} parsed log message:`, logMessage);
+          if (this.onLogMessage) {
+            console.log(`[MCP-DEBUG] ${config.name} forwarding to handler`);
+            this.onLogMessage(logMessage);
+          } else {
+            console.log(`[MCP-DEBUG] ${config.name} no handler available for log message`);
+          }
+        } catch (error) {
+          console.error(`[MCP-DEBUG] ${config.name} invalid log message format:`, error);
+        }
+      }
+    };
+  }
+
+  // Method to set the log message handler
+  setLogMessageHandler(handler: (message: MCPLogMessage) => void) {
+    console.log(`[MCP-DEBUG] ${this.config.name} setting log message handler`);
+    this.onLogMessage = handler;
+  }
+
+  // Method to set the minimum log level
+  async setLogLevel(level: LogLevel): Promise<void> {
+    try {
+      await this.client.request(
+        {
+          method: 'logging/setLevel',
+          params: { level }
+        },
+        z.object({ result: z.object({}).optional() })
+      );
+    } catch (error) {
+      console.error('Error setting log level:', error);
+      throw error;
+    }
   }
 
   async connect(command: string, args: string[]): Promise<MCPServerInfo> {
     try {
+      console.log(`[MCP-DEBUG] ${this.config.name} connecting with command:`, command);
       const transport = new StdioClientTransport({ command, args });
       await this.client.connect(transport);
+      console.log(`[MCP-DEBUG] ${this.config.name} connected successfully`);
 
       // Send initialize request
+      console.log(`[MCP-DEBUG] ${this.config.name} sending initialize request`);
       const initializeResponse = await this.client.request(
         {
           method: 'initialize',
@@ -99,6 +154,7 @@ export class MCPClient {
         },
         serverInfoSchema
       );
+      console.log(`[MCP-DEBUG] ${this.config.name} initialization response:`, initializeResponse);
 
       this.serverInfo = {
         name: initializeResponse.serverInfo?.name || 'unknown',
@@ -106,10 +162,16 @@ export class MCPClient {
         capabilities: initializeResponse.capabilities || {},
       };
 
-      console.log('Successfully connected to MCP server:', this.serverInfo);
+      // Set initial log level if provided in config
+      if (this.config.logLevel && this.serverInfo.capabilities.logging) {
+        console.log(`[MCP-DEBUG] ${this.config.name} setting initial log level:`, this.config.logLevel);
+        await this.setLogLevel(this.config.logLevel);
+      }
+
+      console.log(`[MCP-DEBUG] ${this.config.name} connected to MCP server:`, this.serverInfo);
       return this.serverInfo;
     } catch (error) {
-      console.error('Failed to connect to MCP server:', error);
+      console.error(`[MCP-DEBUG] ${this.config.name} failed to connect:`, error);
       throw error;
     }
   }

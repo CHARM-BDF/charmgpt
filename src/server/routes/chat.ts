@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { systemPrompt } from '../systemPrompt';
-import { MCPService } from '../services/mcp';
+import { MCPService, MCPLogMessage } from '../services/mcp';
 import { MessageService, ChatMessage } from '../services/message';
 import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
@@ -32,6 +32,7 @@ router.post('/', async (req: Request<{}, {}, {
   };
 }>, res: Response) => {
   const loggingService = req.app.locals.loggingService as LoggingService;
+  const mcpService = req.app.locals.mcpService as MCPService;
   
   // Set headers for streaming
   res.setHeader('Content-Type', 'application/json');
@@ -41,13 +42,41 @@ router.post('/', async (req: Request<{}, {}, {
   
   // Helper function to send status updates
   const sendStatusUpdate = (status: string) => {
-    console.log(`Sending status update: ${status}`);
+    const timestamp = new Date().toISOString();
+    console.log(`[MAIN] Status Update: ${status}`);
     res.write(JSON.stringify({ 
       type: 'status', 
       message: status,
       id: crypto.randomUUID(),
-      timestamp: new Date().toISOString()
+      timestamp: timestamp
     }) + '\n');
+  };
+
+  // Helper function to send MCP log messages as status updates
+  const sendMCPLogMessage = (message: MCPLogMessage) => {
+    const timestamp = new Date().toISOString();
+    const traceId = crypto.randomUUID().split('-')[0]; // Short unique ID for tracing
+    
+    console.log(`\n=== [MAIN:${traceId}] [CHAT:LOG-STEP-1] MCP LOG MESSAGE RECEIVED IN CHAT ROUTE ===`);
+    console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-1] Timestamp: ${timestamp}`);
+    console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-1] Logger: ${message.logger || 'MCP'}`);
+    console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-1] Level: ${message.level}`);
+    console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-1] Data:`, message.data);
+    
+    // Format message for both console and UI
+    const formattedMessage = `[${message.logger || 'MCP'}:${traceId}] ${message.data?.message || JSON.stringify(message.data)}`;
+    console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-2] Formatted message: ${formattedMessage}`);
+    
+    try {
+      // Send to UI with trace ID
+      console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-3] Sending to client via sendStatusUpdate`);
+      sendStatusUpdate(`[TRACE:${traceId}] ${formattedMessage}`);
+      console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-3] ✅ Status update sent successfully`);
+    } catch (error) {
+      console.error(`[MAIN:${traceId}] [CHAT:LOG-STEP-3] ❌ Error sending status update: ${error}`);
+    }
+    
+    console.log(`[MAIN:${traceId}] [CHAT:LOG-STEP-4] ================================\n`);
   };
   
   try {
@@ -60,6 +89,26 @@ router.post('/', async (req: Request<{}, {}, {
     const { message, history, blockedServers = [], pinnedGraph } = req.body;
     let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
+
+    // Set MCP log message handler for this request
+    if (mcpService) {
+      console.log('[CHAT-DEBUG] Setting request-specific MCP log handler');
+      
+      // Store the global handler to restore it later
+      const globalLogHandler = req.app.locals.globalLogHandler;
+      
+      // Set our chat-specific handler
+      mcpService.setLogMessageHandler(sendMCPLogMessage);
+      sendStatusUpdate('MCP log handler enabled - you will receive server logs in this session');
+      
+      // Make sure to restore the global handler when the request is complete
+      res.on('close', () => {
+        console.log('[CHAT-DEBUG] Request closed, restoring global MCP log handler');
+        if (globalLogHandler) {
+          mcpService.setLogMessageHandler(globalLogHandler);
+        }
+      });
+    }
 
     // If there's a pinned graph, add it to the context
     if (pinnedGraph) {
@@ -124,8 +173,24 @@ router.post('/', async (req: Request<{}, {}, {
           
           sendStatusUpdate(`Executing tool: ${toolName} on server: ${serverName}...`);
           
+          // Add debug logging for MCP tool execution
+          console.log('\n=== MCP TOOL EXECUTION DEBUG ===');
+          console.log('Server:', serverName);
+          console.log('Tool:', toolName);
+          console.log('Arguments:', content.input);
+          
           // Execute tool
           const toolResult = await mcpService.callTool(serverName, toolName, content.input as Record<string, unknown>);
+
+          // Debug log the tool result
+          console.log('\n=== MCP TOOL RESULT DEBUG ===');
+          // console.log('Raw tool result:', toolResult);
+          console.log('Has content:', 'content' in toolResult);
+          console.log('Has logs:', 'logs' in toolResult);
+          if ('logs' in toolResult) {
+            console.log('Logs structure:', toolResult.logs);
+          }
+          console.log('================================\n');
 
           // Add tool usage to conversation
           messages.push({

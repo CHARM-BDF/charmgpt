@@ -1,5 +1,12 @@
 import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { randomUUID } from 'crypto';
+
+export interface MCPLogMessage {
+  level: 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
+  logger?: string;
+  data?: Record<string, unknown>;
+}
 
 export interface MCPServersConfig {
   mcpServers: Record<string, {
@@ -23,24 +30,138 @@ export class MCPService {
   private mcpClients: Map<string, McpClient>;
   private toolNameMapping: Map<string, string>;
   private serverStatuses: Record<string, boolean>;
+  private logMessageHandler?: (message: MCPLogMessage) => void;
 
   constructor() {
     this.mcpClients = new Map();
     this.toolNameMapping = new Map();
     this.serverStatuses = {};
+    console.log('[MCP-DEBUG] MCPService initialized');
+  }
+
+  // Function to handle notifications from MCP clients
+  private handleMCPNotification(serverName: string, notification: { method: string; params?: unknown }) {
+    const traceId = notification?.params && typeof notification.params === 'object' && 'data' in notification.params
+      ? ((notification.params as any).data?.traceId || randomUUID().split('-')[0])
+      : randomUUID().split('-')[0];
+    
+    // Log essential details first to quickly identify the notification
+    console.log(`\n=== [CLIENT-NOTIFICATION:${traceId}] RECEIVED FROM ${serverName} ===`);
+    console.log(`[CLIENT-NOTIFICATION:${traceId}] Method: ${notification.method}`);
+    console.log(`[CLIENT-NOTIFICATION:${traceId}] Params Type: ${typeof notification.params}`);
+    
+    // Special detailed logging for exact notification/message format
+    if (notification.method === 'notifications/message') {
+      console.log(`[CLIENT-NOTIFICATION:${traceId}] 📝 LOG MESSAGE DETECTED - FULL PARAMS:`, JSON.stringify(notification.params, null, 2));
+    } else {
+      console.log(`[CLIENT-NOTIFICATION:${traceId}] Raw params:`, notification.params);
+    }
+    
+    if (notification.method === 'notifications/message' && notification.params) {
+      console.log(`\n=== [CLIENT-NOTIFICATION:${traceId}] PROCESSING LOG MESSAGE FROM ${serverName} ===`);
+      try {
+        // Attempt to parse and validate the log message
+        const logMessage = notification.params as MCPLogMessage;
+        
+        // Validate required fields
+        if (!logMessage.level) {
+          console.error(`[CLIENT-NOTIFICATION:${traceId}] ❌ MISSING REQUIRED FIELD 'level' IN LOG MESSAGE`);
+          console.error(`[CLIENT-NOTIFICATION:${traceId}] Raw params:`, notification.params);
+          return;
+        }
+        
+        console.log(`[CLIENT-NOTIFICATION:${traceId}] ✅ Parsed log level: ${logMessage.level}`);
+        console.log(`[CLIENT-NOTIFICATION:${traceId}] ✅ Parsed logger: ${logMessage.logger || 'undefined'}`);
+        console.log(`[CLIENT-NOTIFICATION:${traceId}] ✅ Parsed data:`, logMessage.data);
+        
+        if (this.logMessageHandler) {
+          console.log(`\n=== [CLIENT-NOTIFICATION:${traceId}] FOUND LOG HANDLER, CALLING NOW ===`);
+          try {
+            // Important: Call the handler which should forward to chat.ts
+            this.logMessageHandler(logMessage);
+            console.log(`[CLIENT-NOTIFICATION:${traceId}] ✅ HANDLER CALL COMPLETED SUCCESSFULLY`);
+            console.log(`[CLIENT-NOTIFICATION:${traceId}] Handler implementation type: ${typeof this.logMessageHandler}`);
+          } catch (handlerError) {
+            console.error(`[CLIENT-NOTIFICATION:${traceId}] ❌ ERROR IN HANDLER:`, handlerError);
+          }
+        } else {
+          console.warn(`[CLIENT-NOTIFICATION:${traceId}] ❌ NO LOG MESSAGE HANDLER AVAILABLE`);
+        }
+      } catch (error) {
+        console.error(`[CLIENT-NOTIFICATION:${traceId}] ❌ ERROR PARSING LOG MESSAGE:`, error);
+        console.error(`[CLIENT-NOTIFICATION:${traceId}] Raw notification.params:`, notification.params);
+      }
+    } else {
+      console.log(`[CLIENT-NOTIFICATION:${traceId}] Not a log message notification, ignoring`);
+    }
+    console.log(`=== [CLIENT-NOTIFICATION:${traceId}] END NOTIFICATION PROCESSING ===\n`);
+  }
+
+  // Update setLogMessageHandler method
+  setLogMessageHandler(handler: (message: MCPLogMessage) => void) {
+    const stackTrace = new Error().stack || '';
+    const callerInfo = stackTrace.split('\n')[2] || 'unknown caller';
+    
+    console.log('\n=== [MCP-LOG-HANDLER] SETTING NEW LOG MESSAGE HANDLER ===');
+    console.log(`[MCP-LOG-HANDLER] Called from: ${callerInfo}`);
+    console.log(`[MCP-LOG-HANDLER] Handler type: ${typeof handler}`);
+    console.log(`[MCP-LOG-HANDLER] Previous handler existed: ${this.logMessageHandler !== undefined ? 'YES' : 'NO'}`);
+    
+    // Store the handler
+    this.logMessageHandler = handler;
+    
+    // Set handler for existing clients
+    const clientCount = this.mcpClients.size;
+    console.log(`[MCP-LOG-HANDLER] Setting notification handler for ${clientCount} existing clients`);
+    
+    for (const [serverName, client] of this.mcpClients.entries()) {
+      console.log(`[MCP-LOG-HANDLER] Setting notification handler for client: ${serverName}`);
+      
+      if ('notification' in client) {
+        client.notification = async (notification: { method: string; params?: unknown }) => {
+          console.log(`[MCP-LOG-HANDLER] Notification received from ${serverName}`);
+          this.handleMCPNotification(serverName, notification);
+        };
+        console.log(`[MCP-LOG-HANDLER] Successfully set notification handler for ${serverName}`);
+      } else {
+        console.warn(`[MCP-LOG-HANDLER] Client ${serverName} does not support notifications!`);
+      }
+    }
+    console.log('=== [MCP-LOG-HANDLER] LOG HANDLER SETUP COMPLETE ===\n');
   }
 
   async initializeServers(config: MCPServersConfig): Promise<void> {
-    console.log('\n=== Starting MCP Server Initialization ===');
+    console.log('\n=== [SETUP] Starting MCP Server Initialization ===');
 
     for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
       try {
+        console.log(`\n=== [SETUP] Creating client for: ${serverName} ===`);
+        
         // Create new MCP client instance for this server
         const client = new McpClient(
-          { name: `${serverName}-client`, version: '1.0.0' },
-          { capabilities: { tools: {} } }
+          { name: serverName, version: '1.0.0' },
+          { capabilities: { tools: {}, logging: {} } }  // Add logging capability
         );
+        console.log(`[SETUP] Client created with capabilities:`, {
+          tools: true,
+          logging: true
+        });
         
+        // Set up notification handler
+        if ('notification' in client) {
+          console.log(`[SETUP] Setting notification handler for ${serverName} BEFORE connection`);
+          const serverNameCopy = serverName; // Ensure serverName is captured for the closure
+          
+          client.notification = async (notification: { method: string; params?: unknown }) => {
+            console.log(`\n[RECEIVE] ${serverName} INITIAL NOTIFICATION RECEIVED:`, notification.method);
+            this.handleMCPNotification(serverNameCopy, notification);
+          };
+          
+          console.log(`[SETUP] Notification handler set`);
+        } else {
+          console.warn(`[SETUP] ❌ Client ${serverName} does NOT support notifications!`);
+        }
+
         // Adjust paths for node_modules if needed
         const modifiedArgs = serverConfig.args.map(arg => {
           if (arg.startsWith('./node_modules/')) {
@@ -49,6 +170,7 @@ export class MCPService {
           return arg;
         });
 
+        console.log(`[SETUP] Attempting to connect client for ${serverName}`);
         // Connect client using StdioClientTransport
         await client.connect(new StdioClientTransport({ 
           command: serverConfig.command,
@@ -60,12 +182,23 @@ export class MCPService {
             ) as Record<string, string>
           }
         }));
-
+        console.log(`[SETUP] ✅ Client connected successfully for ${serverName}`);
+        
         // Store client instance for future use
         this.mcpClients.set(serverName, client);
-
+        
+        // Verify notification handler is still set after connection
+        console.log(`[SETUP] Verifying notification handler after connection`);
+        if ('notification' in client && typeof client.notification === 'function') {
+          console.log(`[SETUP] ✅ Notification handler still present after connection`);
+        } else {
+          console.warn(`[SETUP] ❌ Notification handler LOST after connection!`);
+        }
+        
         // Verify server functionality by listing available tools
+        console.log(`[SETUP] Testing server by listing tools`);
         const tools = await client.listTools();
+        console.log(`[SETUP] Successfully listed tools, count:`, tools.tools?.length || 0);
         
         // Process and validate tool list
         const toolsList = (tools.tools || []) as unknown[];
