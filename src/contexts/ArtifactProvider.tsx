@@ -109,6 +109,16 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     var2line_end?: Record<string, number>
   }
 
+  // Helper function to generate a unique ID
+  const generateUniqueId = useCallback(() => {
+    // Get the highest existing ID
+    const maxId = artifacts.reduce((max, artifact) => 
+      artifact.id > max ? artifact.id : max, 0);
+    
+    // Return the next ID (max + 1)
+    return maxId + 1;
+  }, [artifacts]);
+
   const addArtifact = useCallback(async (artifact: NewArtifact) => {
     // If it's a plan artifact, save the content to the backend first
     if ((artifact.type as string) === 'plan' && 'content' in artifact) {
@@ -133,13 +143,14 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
     const newArtifact: Artifact = {
       ...artifact,
-      id: artifacts.length + 1,
+      id: generateUniqueId(),
       timestamp: Date.now(),
       var2val: artifact.var2val || {},
       var2line: artifact.var2line || {},
       var2line_end: artifact.var2line_end || {}
     }
 
+    // Update artifacts state
     setArtifacts(prev => {
       // Remove any existing artifact with the same name
       const filtered = prev.filter(a => a.name !== artifact.name)
@@ -153,7 +164,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     setViewMode(getDefaultViewMode(newArtifact))
 
     // If it's a plan artifact, switch to plan mode
-    // Use type assertion since TypeScript doesn't understand discriminated unions well here
     if ((artifact.type as string) === 'plan') {
       setMode('plan')
     }
@@ -176,7 +186,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         console.error('Failed to save to pinned artifacts:', err);
       }
     }
-  }, [artifacts, setActiveArtifact, setViewMode, setMode, setPlanContent])
+  }, [artifacts, setActiveArtifact, setViewMode, setMode, setPlanContent, generateUniqueId])
 
   const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
     // Don't run if already running
