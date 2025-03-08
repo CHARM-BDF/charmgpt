@@ -223,38 +223,57 @@ export default function Editor({ language = 'python' }: EditorProps) {
 
   // Add effect to handle line highlighting when selectedStep changes
   useEffect(() => {
-    if (mode !== 'code' || !editorRef.current || !activeArtifact?.var2line || !activeArtifact?.var2line_end) return
+    if (!editorRef.current) return;
     
-    const editor = editorRef.current
+    // Clear existing decorations first
+    const editor = editorRef.current;
+    decorationIds.current = editor.deltaDecorations(decorationIds.current, []);
     
-    // Clear existing decorations
-    decorationIds.current = editor.deltaDecorations(decorationIds.current, [])
+    // Only add new decorations if we're in code mode and have the necessary data
+    if (mode !== 'code' || !activeArtifact?.var2line || !activeArtifact?.var2line_end) return;
     
     if (selectedStep) {
-      const startLine = activeArtifact.var2line[selectedStep]
-      const endLine = activeArtifact.var2line_end?.[selectedStep] || startLine
+      const startLine = activeArtifact.var2line[selectedStep];
+      const endLine = activeArtifact.var2line_end?.[selectedStep] || startLine;
       
-      // Add new decoration
-      const newDecorations = [{
-        range: new monaco.Range(startLine, 1, endLine, 1),
-        options: {
-          isWholeLine: true,
-          className: 'highlighted-line',
-          linesDecorationsClassName: 'highlighted-line-gutter'
-        }
-      }]
-      
-      decorationIds.current = editor.deltaDecorations([], newDecorations)
+      // Only add decoration if we have valid line numbers
+      if (startLine && endLine) {
+        // Add new decoration
+        const newDecorations = [{
+          range: new monaco.Range(startLine, 1, endLine, 1),
+          options: {
+            isWholeLine: true,
+            className: 'highlighted-line',
+            linesDecorationsClassName: 'highlighted-line-gutter'
+          }
+        }];
+        
+        decorationIds.current = editor.deltaDecorations([], newDecorations);
+      }
     }
-  }, [selectedStep, activeArtifact?.var2line, activeArtifact?.var2line_end, mode])
+  }, [selectedStep, activeArtifact?.var2line, activeArtifact?.var2line_end, mode]);
 
-  // Add effect to clear decorations when switching to plan mode
+  // Add effect to clear decorations when switching to plan mode or when component unmounts
   useEffect(() => {
     if (mode === 'plan' && editorRef.current) {
       // Clear existing decorations when switching to plan mode
-      decorationIds.current = editorRef.current.deltaDecorations(decorationIds.current, [])
+      decorationIds.current = editorRef.current.deltaDecorations(decorationIds.current, []);
     }
-  }, [mode])
+    
+    // Cleanup function to clear decorations when component unmounts
+    return () => {
+      if (editorRef.current) {
+        decorationIds.current = editorRef.current.deltaDecorations(decorationIds.current, []);
+      }
+    };
+  }, [mode]);
+
+  // Add effect to clear decorations when active artifact changes
+  useEffect(() => {
+    if (editorRef.current) {
+      decorationIds.current = editorRef.current.deltaDecorations(decorationIds.current, []);
+    }
+  }, [activeArtifact]);
 
   const currentValue = mode === 'code' ? editorContent : planContent
 
