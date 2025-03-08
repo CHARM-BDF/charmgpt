@@ -81,42 +81,47 @@ export default function CodeEditor() {
 		setArtifactName(defaultName);
 	};
 
-	const handleSaveConfirm = () => {
+	const handleSaveConfirm = async () => {
 		if (!artifactName) return;
 
-		if (mode === 'code') {
-			// Save as code artifact
-			addArtifact({
-				type: 'code',
-				name: artifactName,
-				code: editorContent,
-				output: '',
-				source: 'user',
-				language,
-				var2val: {},
-				var2line: {},
-				var2line_end: {},
-				pinned: true,
-			});
-		} else {
-			// Save as plan artifact
-			// Use a type assertion to work around TypeScript limitations
-			const planArtifact = {
-				type: 'plan',
-				name: artifactName,
-				content: planContent,
-				source: 'user',
-				var2val: {},
-				var2line: {},
-				var2line_end: {},
-				pinned: true,
-			};
-			// @ts-expect-error - TypeScript doesn't understand plan artifacts yet
-			addArtifact(planArtifact);
-		}
+		try {
+			if (mode === 'code') {
+				// Save as code artifact
+				await addArtifact({
+					type: 'code',
+					name: artifactName,
+					code: editorContent,
+					output: '',
+					source: 'user',
+					language,
+					var2val: {},
+					var2line: {},
+					var2line_end: {},
+					pinned: true,
+				});
+			} else {
+				// Save as plan artifact
+				// Use a type assertion to work around TypeScript limitations
+				const planArtifact = {
+					type: 'plan',
+					name: artifactName,
+					content: planContent,
+					source: 'user',
+					var2val: {},
+					var2line: {},
+					var2line_end: {},
+					pinned: true,
+				};
+				// @ts-expect-error - TypeScript doesn't understand plan artifacts yet
+				await addArtifact(planArtifact);
+			}
 
-		setSaveDialogOpen(false);
-		setArtifactName('');
+			setSaveDialogOpen(false);
+			setArtifactName('');
+		} catch (error) {
+			console.error('Failed to save artifact:', error);
+			// You could add error handling UI here
+		}
 	};
 
 	return (

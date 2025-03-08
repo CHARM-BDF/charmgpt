@@ -28,15 +28,44 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
     
-    if (artifact) {  // Only set view mode and editor content if we have an artifact
-      setViewMode(getDefaultViewMode(artifact))
+    if (artifact) {
+      if ((artifact.type as string) === 'plan' && 'content' in artifact) {
+        // For plan artifacts, switch to plan mode and load content immediately
+        setMode('plan')
+        
+        // Set the plan content from the artifact
+        const planContent = artifact.content as string;
+        setPlanContent(planContent);
+        
+        // Also save to backend to ensure consistency
+        const savePlanToBackend = async () => {
+          try {
+            await fetch('/api/artifacts/plan', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ content: planContent })
+            });
+          } catch (err) {
+            console.error('Failed to save plan to backend:', err);
+          }
+        };
+        savePlanToBackend();
+      } else if ((artifact.type as string) === 'code') {
+        // For code artifacts, use default behavior
+        setViewMode(getDefaultViewMode(artifact))
 
-      // If it's a code artifact, also set the editor content
-      if (artifact.code && mode === 'code') {
-        setEditorContent(artifact.code)
+        // If we're in code mode, set the editor content
+        if (mode === 'code') {
+          setEditorContent(artifact.code as string)
+        }
+      } else {
+        // For other artifacts (chat), just set view mode
+        setViewMode(getDefaultViewMode(artifact))
       }
     }
-  }, [mode, setEditorContent, setViewMode])
+  }, [mode, setEditorContent, setPlanContent, setMode, setViewMode])
 
   // Load pinned artifacts and plan on mount
   useEffect(() => {
@@ -80,7 +109,28 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     var2line_end?: Record<string, number>
   }
 
-  const addArtifact = useCallback((artifact: NewArtifact) => {
+  const addArtifact = useCallback(async (artifact: NewArtifact) => {
+    // If it's a plan artifact, save the content to the backend first
+    if ((artifact.type as string) === 'plan' && 'content' in artifact) {
+      try {
+        const planContent = artifact.content as string;
+        
+        // Save plan content to backend
+        await fetch('/api/artifacts/plan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ content: planContent })
+        });
+        
+        // Update local plan content state
+        setPlanContent(planContent);
+      } catch (err) {
+        console.error('Failed to save plan to backend:', err);
+      }
+    }
+
     const newArtifact: Artifact = {
       ...artifact,
       id: artifacts.length + 1,
@@ -107,7 +157,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     if ((artifact.type as string) === 'plan') {
       setMode('plan')
     }
-  }, [artifacts, setActiveArtifact, setViewMode, setMode])
+  }, [artifacts, setActiveArtifact, setViewMode, setMode, setPlanContent])
 
   const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
     try {
