@@ -12,6 +12,7 @@ This document provides a comprehensive guide for troubleshooting the MCP (Model 
 6. [Minimal Implementation Reference](#minimal-implementation-reference)
 7. [Debugging Steps](#debugging-steps)
 8. [Implementation Comparison](#implementation-comparison)
+9. [Hybrid Implementation](#hybrid-implementation)
 
 ## System Architecture
 
@@ -341,6 +342,75 @@ This section compares the minimal implementation with the main application to he
    - Is the client displaying the status updates properly?
 
 By comparing these specific aspects between the two implementations, you can identify where the main application's logging system might be failing and apply targeted fixes.
+
+## Hybrid Implementation
+
+To address the logging issues, we've implemented a minimal changes approach that adds direct stdout parsing from the minimal implementation while preserving all existing functionality. This approach provides a reliable mechanism for capturing and displaying MCP logs without disrupting the existing tool functionality.
+
+### Key Changes
+
+1. **Direct Stdout Parsing**:
+   - Added direct parsing of MCP server stdout to capture JSON-RPC notifications
+   - Implemented in parallel with the existing SDK notification system
+   - Provides a fallback mechanism if the SDK notification system fails
+
+2. **Parallel Process Management**:
+   - Maintains the existing SDK client connections and functionality
+   - Adds parallel process spawning for direct stdout parsing
+   - Ensures proper cleanup of processes on server shutdown
+
+3. **Unified Log Handling**:
+   - Both methods (SDK notifications and direct stdout parsing) use the same log message handler
+   - Preserves the existing status update system for UI integration
+   - Maintains backward compatibility with the client interface
+
+### Implementation Details
+
+The minimal changes approach is implemented in the following files:
+
+1. **src/server/services/mcp.ts**:
+   - Added `mcpProcesses` map to track spawned MCP processes
+   - Implemented `handleMCPOutput` method for direct stdout parsing
+   - Added process spawning in the `initializeServers` method
+   - Implemented `cleanup` method for proper process termination
+   - Preserved all existing tool functionality and naming conventions
+
+2. **src/server/index.ts**:
+   - Added signal handlers (SIGINT, SIGTERM) to ensure proper cleanup
+   - Calls MCPService cleanup method on server shutdown
+
+3. **src/server/routes/chat.ts** (unchanged):
+   - Continues to use `sendStatusUpdate` to send logs to the client
+   - Maintains the existing UI integration
+
+### Benefits
+
+1. **Increased Reliability**:
+   - If the SDK notification system fails, logs are still captured via stdout parsing
+   - If stdout parsing fails, logs can still be received via SDK notifications
+   - Redundancy ensures more reliable log capture
+
+2. **Minimal Risk**:
+   - Preserves all existing functionality
+   - Maintains existing tool naming conventions
+   - Adds new functionality without modifying existing code
+
+3. **Minimal Changes to Existing Code**:
+   - No changes to the client-side code
+   - No changes to existing methods
+   - Only additions, not modifications
+
+### Testing the Hybrid Implementation
+
+To verify that the hybrid implementation is working correctly:
+
+1. Start the server with `npm run server:dev`
+2. Check the console for both types of log messages:
+   - SDK notification logs
+   - Direct stdout parsing logs with the prefix `[MCP-DIRECT:...]`
+3. Verify that logs appear in the client interface as status updates
+
+If logs are appearing in the console but not in the client interface, check the chat route's `sendMCPLogMessage` function to ensure it's correctly formatting and sending status updates.
 
 ## Console Output Reference
 

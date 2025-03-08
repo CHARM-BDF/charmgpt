@@ -1,6 +1,7 @@
 import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { randomUUID } from 'crypto';
+import { ChildProcess, spawn } from 'child_process';
 
 export interface MCPLogMessage {
   level: 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
@@ -31,11 +32,13 @@ export class MCPService {
   private toolNameMapping: Map<string, string>;
   private serverStatuses: Record<string, boolean>;
   private logMessageHandler?: (message: MCPLogMessage) => void;
+  private mcpProcesses: Map<string, ChildProcess>;
 
   constructor() {
     this.mcpClients = new Map();
     this.toolNameMapping = new Map();
     this.serverStatuses = {};
+    this.mcpProcesses = new Map();
     console.log('[MCP-DEBUG] MCPService initialized');
   }
 
@@ -130,6 +133,88 @@ export class MCPService {
     console.log('=== [MCP-LOG-HANDLER] LOG HANDLER SETUP COMPLETE ===\n');
   }
 
+  // Add method to handle direct stdout parsing from MCP processes
+  private handleMCPOutput(serverName: string, mcpProcess: ChildProcess) {
+    console.log(`[MCP-DIRECT:${serverName}] Setting up direct stdout parsing for ${serverName}`);
+    
+    if (mcpProcess.stdout) {
+      mcpProcess.stdout.on('data', (data) => {
+        const output = data.toString().trim();
+        
+        // Log all output for debugging
+        console.log(`\n[MCP-DIRECT:${serverName}] RAW OUTPUT START ===`);
+        console.log(output);
+        console.log(`=== [MCP-DIRECT:${serverName}] RAW OUTPUT END\n`);
+        
+        // Check if output contains a notification message
+        if (output.includes('"method":"notifications/message"')) {
+          const jsonStart = output.indexOf('{"method');
+          if (jsonStart >= 0) {
+            try {
+              // Extract and parse the JSON notification
+              const jsonStr = output.substring(jsonStart);
+              console.log(`[MCP-DIRECT:${serverName}] Extracted JSON: ${jsonStr}`);
+              
+              const notification = JSON.parse(jsonStr);
+              
+              const traceId = randomUUID().split('-')[0];
+              console.log(`\n=== [MCP-DIRECT:${serverName}:${traceId}] DETECTED LOG MESSAGE IN STDOUT ===`);
+              console.log(`[MCP-DIRECT:${serverName}:${traceId}] Full notification:`, JSON.stringify(notification, null, 2));
+              
+              if (notification.params && notification.method === 'notifications/message') {
+                console.log(`[MCP-DIRECT:${serverName}:${traceId}] Valid notification format detected`);
+                
+                // Process the log message
+                if (this.logMessageHandler) {
+                  console.log(`[MCP-DIRECT:${serverName}:${traceId}] Forwarding to log message handler`);
+                  try {
+                    this.logMessageHandler(notification.params as MCPLogMessage);
+                    console.log(`[MCP-DIRECT:${serverName}:${traceId}] ✅ Successfully forwarded log message`);
+                  } catch (error) {
+                    console.error(`[MCP-DIRECT:${serverName}:${traceId}] ❌ Error in log handler:`, error);
+                    console.error(`[MCP-DIRECT:${serverName}:${traceId}] Error details:`, error);
+                  }
+                } else {
+                  console.warn(`[MCP-DIRECT:${serverName}:${traceId}] ❌ No log message handler available`);
+                }
+              } else {
+                console.log(`[MCP-DIRECT:${serverName}:${traceId}] Not a log message notification, method: ${notification.method}`);
+              }
+              console.log(`=== [MCP-DIRECT:${serverName}:${traceId}] END STDOUT PROCESSING ===\n`);
+            } catch (error) {
+              console.error(`[MCP-DIRECT:${serverName}] Error parsing JSON from stdout:`, error);
+              console.error(`[MCP-DIRECT:${serverName}] Problematic JSON string:`, output.substring(jsonStart, jsonStart + 200) + '...');
+            }
+          }
+        } else {
+          // Log when no notification message is found
+          console.log(`[MCP-DIRECT:${serverName}] No notification message found in output`);
+        }
+      });
+    } else {
+      console.warn(`[MCP-DIRECT:${serverName}] No stdout available for process`);
+    }
+    
+    if (mcpProcess.stderr) {
+      mcpProcess.stderr.on('data', (data) => {
+        console.error(`[MCP-DIRECT:${serverName}] STDERR: ${data.toString().trim()}`);
+      });
+    } else {
+      console.warn(`[MCP-DIRECT:${serverName}] No stderr available for process`);
+    }
+    
+    mcpProcess.on('close', (code) => {
+      console.log(`[MCP-DIRECT:${serverName}] Process closed with code ${code}`);
+    });
+    
+    mcpProcess.on('error', (error) => {
+      console.error(`[MCP-DIRECT:${serverName}] Process error:`, error);
+    });
+    
+    console.log(`[MCP-DIRECT:${serverName}] Direct stdout parsing setup complete`);
+  }
+
+  // Modify initializeServers to add process spawning
   async initializeServers(config: MCPServersConfig): Promise<void> {
     console.log('\n=== [SETUP] Starting MCP Server Initialization ===');
 
@@ -215,6 +300,29 @@ export class MCPService {
         this.serverStatuses[serverName] = serverTools.length > 0;
         
         console.log(`[${serverName}] ✅ Started successfully with ${serverTools.length} tools`);
+
+        // Spawn separate process for direct stdout parsing
+        console.log(`[SETUP] Spawning MCP process for direct stdout parsing: ${serverName}`);
+        try {
+          // Prepare environment variables
+          const env = {
+            ...process.env,
+            ...serverConfig.env
+          };
+          
+          // Spawn MCP server process
+          const mcpProcess = spawn(serverConfig.command, serverConfig.args, { env });
+          
+          // Store process for tracking
+          this.mcpProcesses.set(serverName, mcpProcess);
+          
+          // Set up direct stdout parsing
+          this.handleMCPOutput(serverName, mcpProcess);
+          
+          console.log(`[SETUP] Successfully spawned MCP process for ${serverName}`);
+        } catch (spawnError) {
+          console.error(`[SETUP] Error spawning MCP process for ${serverName}:`, spawnError);
+        }
       } catch (error) {
         console.error(`[${serverName}] ❌ Failed to start:`, error);
         this.serverStatuses[serverName] = false;
@@ -362,5 +470,56 @@ export class MCPService {
 
   getServerStatus(serverName: string): boolean {
     return this.serverStatuses[serverName] || false;
+  }
+
+  // Add cleanup method
+  cleanup(): void {
+    console.log('\n=== [CLEANUP] Shutting down MCP service ===');
+    
+    // Clean up MCP processes
+    console.log(`[CLEANUP] Terminating ${this.mcpProcesses.size} MCP processes`);
+    for (const [serverName, process] of this.mcpProcesses.entries()) {
+      try {
+        console.log(`[CLEANUP] Terminating process for ${serverName}`);
+        process.kill();
+      } catch (error) {
+        console.error(`[CLEANUP] Error terminating process for ${serverName}:`, error);
+      }
+    }
+    
+    // Clear the processes map
+    this.mcpProcesses.clear();
+    
+    console.log('[CLEANUP] MCP service shutdown complete');
+  }
+
+  // Add a method to send a test log message
+  sendTestLogMessage() {
+    console.log('\n=== [MCP-TEST] SENDING TEST LOG MESSAGE ===');
+    
+    const testMessage: MCPLogMessage = {
+      level: 'info',
+      logger: 'test-logger',
+      data: {
+        message: '[TEST] This is a test log message',
+        timestamp: new Date().toISOString(),
+        traceId: randomUUID().split('-')[0],
+        source: 'test'
+      }
+    };
+    
+    if (this.logMessageHandler) {
+      console.log('[MCP-TEST] Log handler found, sending test message');
+      try {
+        this.logMessageHandler(testMessage);
+        console.log('[MCP-TEST] ✅ Test message sent successfully');
+      } catch (error) {
+        console.error('[MCP-TEST] ❌ Error sending test message:', error);
+      }
+    } else {
+      console.warn('[MCP-TEST] ❌ No log message handler available');
+    }
+    
+    console.log('=== [MCP-TEST] TEST COMPLETE ===\n');
   }
 } 

@@ -68,10 +68,6 @@ const globalLogHandler = (message: MCPLogMessage) => {
   // Standard log output
   console.log(`[SERVER] ${formattedMessage}`);
   
-  // Consider SSE clients connected to /api/logs or /api/events endpoint
-  // This would be implemented here if we want to send logs to all connected clients
-  // For now, logs will only be sent to clients in active chat sessions
-  
   console.log(`=== [GLOBAL-HANDLER:${traceId}] END LOG MESSAGE ===\n`);
 };
 
@@ -110,9 +106,28 @@ app.use('/api/chat', chatRouter);
 app.use('/api/ollama', ollamaRouter);
 app.use('/api/server-status', serverStatusRouter);
 
+// Add cleanup handlers for graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n[SERVER] Received SIGINT signal, shutting down gracefully...');
+  mcpService.cleanup();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n[SERVER] Received SIGTERM signal, shutting down gracefully...');
+  mcpService.cleanup();
+  process.exit(0);
+});
+
 app.listen(port, () => {
   const now = new Date();
   const timestamp = now.toLocaleString();
   console.log(`Server started at: ${timestamp}`);
   console.log(`API running at http://localhost:${port}`);
+  
+  // Send a test log message after a short delay
+  setTimeout(() => {
+    console.log('\n[SERVER] Sending test log message to verify log handler...');
+    mcpService.sendTestLogMessage();
+  }, 5000);
 }); 

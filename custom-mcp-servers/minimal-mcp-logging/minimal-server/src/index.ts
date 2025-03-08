@@ -16,6 +16,9 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+// Enable JSON parsing for request bodies
+app.use(express.json());
+
 // Connected clients
 const clients: WebSocket[] = [];
 
@@ -24,6 +27,64 @@ const mcpProcesses: Record<string, ChildProcess> = {};
 
 // Serve static files from the client directory
 app.use(express.static(path.join(__dirname, '../../minimal-client')));
+
+// Define tool interface
+interface Tool {
+  name: string;
+  description: string;
+  input_schema: {
+    type: string;
+    properties: Record<string, any>;
+    required: string[];
+  };
+}
+
+// Mock tools for demonstration
+const mockTools: Record<string, Tool[]> = {
+  'test-mcp': [
+    {
+      name: 'echo',
+      description: 'Echoes back the input with optional transformation',
+      input_schema: {
+        type: 'object',
+        properties: {
+          message: {
+            type: 'string',
+            description: 'Message to echo back'
+          },
+          uppercase: {
+            type: 'boolean',
+            description: 'Convert message to uppercase'
+          }
+        },
+        required: ['message']
+      }
+    },
+    {
+      name: 'calculator',
+      description: 'Performs basic arithmetic operations',
+      input_schema: {
+        type: 'object',
+        properties: {
+          operation: {
+            type: 'string',
+            description: 'Operation to perform (add, subtract, multiply, divide)',
+            enum: ['add', 'subtract', 'multiply', 'divide']
+          },
+          a: {
+            type: 'number',
+            description: 'First operand'
+          },
+          b: {
+            type: 'number',
+            description: 'Second operand'
+          }
+        },
+        required: ['operation', 'a', 'b']
+      }
+    }
+  ]
+};
 
 // Initialize MCP servers from config
 async function initializeMCPServers() {
@@ -126,6 +187,164 @@ function handleLogMessage(message: any) {
   console.log(`[MAIN:${traceId}] Log forwarded to ${sentCount}/${clientCount} clients\n`);
 }
 
+// Mock implementation of echo tool
+function mockEchoTool(params: any) {
+  console.log(`[MOCK] Echo tool called with params: ${JSON.stringify(params)}`);
+  
+  if (!params.message) {
+    throw new Error('Missing required parameter: message');
+  }
+  
+  const result = params.uppercase ? 
+    params.message.toUpperCase() : 
+    params.message;
+  
+  // Create a log message for this tool call
+  const traceId = randomUUID().split('-')[0];
+  const logMessage = {
+    type: 'log',
+    timestamp: new Date().toISOString(),
+    logger: 'test-mcp',
+    level: 'info',
+    message: `[INFO] [${traceId}] Tool 'echo' was called with: "${params.message}"`,
+    traceId,
+    metadata: { toolCall: true, params }
+  };
+  
+  // Send log to all clients
+  const messageStr = JSON.stringify(logMessage);
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageStr);
+    }
+  });
+  
+  return { result };
+}
+
+// Mock implementation of calculator tool
+function mockCalculatorTool(params: any) {
+  console.log(`[MOCK] Calculator tool called with params: ${JSON.stringify(params)}`);
+  
+  if (!params.operation || !('a' in params) || !('b' in params)) {
+    throw new Error('Missing required parameters: operation, a, b');
+  }
+  
+  let result: number;
+  
+  switch (params.operation) {
+    case 'add':
+      result = params.a + params.b;
+      break;
+    case 'subtract':
+      result = params.a - params.b;
+      break;
+    case 'multiply':
+      result = params.a * params.b;
+      break;
+    case 'divide':
+      if (params.b === 0) {
+        throw new Error('Division by zero');
+      }
+      result = params.a / params.b;
+      break;
+    default:
+      throw new Error(`Unknown operation: ${params.operation}`);
+  }
+  
+  // Create a log message for this tool call
+  const traceId = randomUUID().split('-')[0];
+  const logMessage = {
+    type: 'log',
+    timestamp: new Date().toISOString(),
+    logger: 'test-mcp',
+    level: 'info',
+    message: `[INFO] [${traceId}] Tool 'calculator' was called: ${params.a} ${params.operation} ${params.b} = ${result}`,
+    traceId,
+    metadata: { toolCall: true, params }
+  };
+  
+  // Send log to all clients
+  const messageStr = JSON.stringify(logMessage);
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageStr);
+    }
+  });
+  
+  return { result };
+}
+
+// API endpoint to list available tools
+app.get('/api/tools', async (req, res) => {
+  try {
+    console.log('[MAIN] Listing available tools');
+    
+    // Collect tools from all MCP servers (using mock data for now)
+    const allTools = [];
+    
+    for (const serverName of Object.keys(mcpProcesses)) {
+      if (mockTools[serverName]) {
+        // Process the tools and add server prefix
+        const tools = mockTools[serverName].map((tool: Tool) => ({
+          ...tool,
+          name: `${serverName}:${tool.name}`
+        }));
+        
+        allTools.push(...tools);
+      }
+    }
+    
+    res.json({ tools: allTools });
+  } catch (error) {
+    console.error('[MAIN] Error listing tools:', error);
+    res.status(500).json({ error: 'Failed to list tools' });
+  }
+});
+
+// API endpoint to call a tool
+app.post('/api/tools/call', async (req, res) => {
+  try {
+    const { serverName, toolName, params } = req.body;
+    
+    if (!serverName || !toolName || !params) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    console.log(`[MAIN] Calling tool: ${toolName} on server: ${serverName}`);
+    console.log(`[MAIN] Params: ${JSON.stringify(params)}`);
+    
+    // Check if server exists
+    if (!mcpProcesses[serverName]) {
+      return res.status(404).json({ error: `Server ${serverName} not found` });
+    }
+    
+    // Extract the actual tool name (remove server prefix if present)
+    const actualToolName = toolName.includes(':') ? 
+      toolName.split(':')[1] : 
+      toolName;
+    
+    // Call the mock tool implementation
+    let result;
+    
+    if (actualToolName === 'echo') {
+      result = mockEchoTool(params);
+    } else if (actualToolName === 'calculator') {
+      result = mockCalculatorTool(params);
+    } else {
+      return res.status(404).json({ error: `Tool ${actualToolName} not found` });
+    }
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error('[MAIN] Error calling tool:', error);
+    res.status(500).json({ 
+      error: 'Failed to call tool', 
+      message: error.message || 'Unknown error' 
+    });
+  }
+});
+
 // Set up WebSocket connection
 wss.on('connection', (ws: WebSocket) => {
   console.log('[MAIN] Client connected');
@@ -178,4 +397,6 @@ const PORT = config.server.port;
 server.listen(PORT, () => {
   console.log(`[MAIN] Server listening on port ${PORT}`);
   console.log(`[MAIN] Open http://localhost:${PORT} in your browser to view logs`);
+  console.log(`[MAIN] Use curl http://localhost:${PORT}/api/tools to list available tools`);
+  console.log(`[MAIN] Use curl -X POST http://localhost:${PORT}/api/tools/call -H "Content-Type: application/json" -d '{"serverName":"test-mcp","toolName":"echo","params":{"message":"Hello"}}' to call a tool`);
 }); 
