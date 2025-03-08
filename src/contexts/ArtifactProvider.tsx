@@ -150,13 +150,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       var2line_end: artifact.var2line_end || {}
     }
 
-    // Update artifacts state
-    setArtifacts(prev => {
-      // Remove any existing artifact with the same name
-      const filtered = prev.filter(a => a.name !== artifact.name)
-      return [...filtered, newArtifact]
-    })
-
     // Set as active artifact
     setActiveArtifact(newArtifact)
     
