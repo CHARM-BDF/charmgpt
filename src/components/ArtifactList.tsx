@@ -252,7 +252,7 @@ export default function ArtifactList({
 				<List sx={{ flex: 1, overflow: 'auto' }}>
 					{artifacts.map((artifact) => (
 						<ListItem
-							key={`artifact-${artifact.id}-${artifact.timestamp}`}
+							key={`artifact-${artifact.id}`}
 							disablePadding
 							secondaryAction={
 								<IconButton

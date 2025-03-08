@@ -186,7 +186,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         console.error('Failed to save to pinned artifacts:', err);
       }
     }
-  }, [artifacts, setActiveArtifact, setViewMode, setMode, setPlanContent, generateUniqueId])
+  }, [setActiveArtifact, setViewMode, setMode, setPlanContent, generateUniqueId])
 
   const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
     // Don't run if already running
@@ -210,22 +210,30 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         newLanguage: language
       });
       
-      // If identical, just re-run without creating a new artifact
-      if (isIdenticalToActive) {
-        // Run the code
-        const result = await fetch('/api/run-code', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ code, language })
+      // Run the code first to get the results
+      const response = await fetch('/api/run-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          code,
+          language
         })
-        
-        if (!result.ok) {
-          throw new Error(`Failed to run code: ${result.statusText}`)
-        }
-        
-        const data = await result.json()
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to run code: ${errorText}`)
+      }
+      
+      const result = await response.json()
+      console.log('Run result from server:', result)
+      
+      // Add API prefix to plot and data files if they exist
+      const plotFile = result.plotFile ? `/api/plots/${result.plotFile}` : undefined
+      
+      // If identical, update the existing artifact
+      if (isIdenticalToActive) {
+        console.log('Running identical code, updating existing artifact');
         
         // Update the existing artifact with new results
         setArtifacts(prev => {
@@ -233,11 +241,12 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
             if (a.id === activeArtifact.id) {
               return {
                 ...a,
-                output: data.output,
-                plotFile: data.plotFile,
-                var2val: data.var2val || {},
-                var2line: data.var2line || {},
-                var2line_end: data.var2line_end || {}
+                output: result.output,
+                plotFile,
+                dataFile: result.dataFile,
+                var2val: result.var2val || {},
+                var2line: result.var2line || {},
+                var2line_end: result.var2line_end || {}
               }
             }
             return a
@@ -246,21 +255,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         
         // No need to change the active artifact
       } else {
-        // Create a new artifact for this run
-        // Run the code
-        const result = await fetch('/api/run-code', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ code, language })
-        })
-        
-        if (!result.ok) {
-          throw new Error(`Failed to run code: ${result.statusText}`)
-        }
-        
-        const data = await result.json()
+        console.log('Running new code, creating new artifact');
         
         // Create a name based on the first line of code or timestamp
         const firstLine = code.split('\n')[0].trim()
@@ -273,12 +268,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           type: 'code',
           name: artifactName,
           code,
-          output: data.output,
-          plotFile: data.plotFile,
+          output: result.output,
+          plotFile,
+          dataFile: result.dataFile,
           language,
-          var2val: data.var2val || {},
-          var2line: data.var2line || {},
-          var2line_end: data.var2line_end || {},
+          var2val: result.var2val || {},
+          var2line: result.var2line || {},
+          var2line_end: result.var2line_end || {},
           source: 'user'
         }
         
