@@ -157,6 +157,25 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     if ((artifact.type as string) === 'plan') {
       setMode('plan')
     }
+
+    // Save to pinned artifacts if it should be pinned
+    if (artifact.pinned) {
+      try {
+        await fetch('/api/artifacts/pin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            artifactId: newArtifact.id,
+            pinned: true,
+            artifact: newArtifact
+          })
+        });
+      } catch (err) {
+        console.error('Failed to save to pinned artifacts:', err);
+      }
+    }
   }, [artifacts, setActiveArtifact, setViewMode, setMode, setPlanContent])
 
   const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
