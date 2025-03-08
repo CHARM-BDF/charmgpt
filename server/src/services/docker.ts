@@ -325,7 +325,7 @@ from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import random
+import importlib
 
 # Initialize tracking
 var2val = {}
@@ -348,6 +348,36 @@ def convert_value(value):
     elif isinstance(value, dict):
         return {k: convert_value(v) for k, v in value.items()}
     return value
+
+def detect_imports(code):
+    """Detect import statements in the code and execute them"""
+    try:
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            # Handle 'import x' and 'import x as y'
+            if isinstance(node, ast.Import):
+                for name in node.names:
+                    try:
+                        if name.name not in ['sys', 'json', 'os', 'ast', 'StringIO', 'matplotlib.pyplot', 'pandas', 'numpy', 'importlib']:
+                            importlib.import_module(name.name)
+                            print(f"Imported {name.name}")
+                    except ImportError:
+                        print(f"Warning: Could not import {name.name}")
+            
+            # Handle 'from x import y' and 'from x import y as z'
+            elif isinstance(node, ast.ImportFrom):
+                try:
+                    if node.module not in ['sys', 'json', 'os', 'ast', 'io', 'matplotlib', 'pandas', 'numpy']:
+                        module = importlib.import_module(node.module)
+                        for name in node.names:
+                            try:
+                                getattr(module, name.name)
+                            except AttributeError:
+                                print(f"Warning: Could not import {name.name} from {node.module}")
+                except ImportError:
+                    print(f"Warning: Could not import module {node.module}")
+    except SyntaxError:
+        print("Warning: Could not parse code for imports")
 
 def save_intermediate_value(value, var_name: str, line_start: int, line_end: int) -> None:
     global value_log_buffer
@@ -400,11 +430,14 @@ def find_assignments(code):
     return list(assignments.values())  # Convert back to list for the rest of the code
 
 try:
-    # Read and execute the code first
+    # Read the code
     with open('user_code.py', 'r') as f:
         code = f.read()
     
-    # Create globals dict
+    # Detect and import any additional libraries
+    detect_imports(code)
+    
+    # Create globals dict with pre-imported libraries
     globals_dict = {'pd': pd, 'np': np, 'plt': plt, '__name__': '__main__'}
     
     # Execute the code once
@@ -440,7 +473,7 @@ try:
         'var2line': var2line,
         'var2line_end': var2line_end
     }))
-
+    
 except Exception as e:
     print(f"Error: {str(e)}")
 `
