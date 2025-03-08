@@ -44,7 +44,7 @@ npm install
 
 3. Build the Docker images:
 ```bash
-docker build -t my-python-app .
+docker build  --platform linux/amd64 -t my-python-app .
 docker build  --platform linux/amd64 -t my-r-app -f Dockerfile.r .
 ```
 

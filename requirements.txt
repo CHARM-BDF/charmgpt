@@ -6,9 +6,9 @@ pandas
 # Bioinformatics
 biopython
 pysam
-scikit-bio
+# scikit-bio # fails
 cyvcf2
-pybedtools
+# pybedtools # fails
 
 # Machine Learning
 scikit-learn
@@ -33,7 +33,7 @@ opencv-python
 # Genomics Tools
 pyfaidx
 gffutils
-pybigwig
+# pybigwig # fails
 
 # Phylogenetics
 ete3
@@ -59,14 +59,14 @@ statsmodels
 
 # Dimensionality Reduction and Clustering
 umap-learn
-hdbscan
+# hdbscan # fails
 
 # GUI Development (if needed)
 # PyQt5 # too onerous
 
 # Biological Pathway Analysis
 goatools
-gseapy
+# gseapy # fails
 
 # Public Dataset Search and Retrieval
 pysradb
