@@ -22,8 +22,6 @@ export default function Editor({ language = 'python' }: EditorProps) {
     setPlanContent,
     mode,
     setViewMode,
-    setEditorContent: setEditorContentContext,
-    setPlanContent: setPlanContentContext,
     setSelectedStep,
     selectedStep
   } = useArtifact()
@@ -70,8 +68,8 @@ export default function Editor({ language = 'python' }: EditorProps) {
       text: artifactSummary
     }])
     
-    setPlanContentContext(editor.getValue())
-  }, [setPlanContentContext])
+    setPlanContent(editor.getValue())
+  }, [setPlanContent])
 
   // Add debounce to avoid rapid switches
   const debouncedSetViewMode = useMemo(() => {
@@ -154,27 +152,56 @@ export default function Editor({ language = 'python' }: EditorProps) {
     }
   }, [activeArtifact, mode])
 
-  // Handle artifact selection
+  // Handle artifact selection and mode changes
   useEffect(() => {
     if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
+      isInitialMount.current = false;
+      return;
     }
 
-   if (activeArtifact && mode === 'code' && activeArtifact.code) {
-      setEditorContentContext(activeArtifact.code)
+    if (!editorRef.current) return;
+    
+    const editor = editorRef.current;
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Update language
+    monaco.editor.setModelLanguage(model, mode === 'code' ? language : 'markdown');
+
+    // Handle content updates based on mode switch
+    if (mode === 'code') {
+      // When switching to code mode, save the current plan content to backend
+      const savePlan = async () => {
+        try {
+          await fetch('/api/artifacts/plan', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content: planContent })
+          });
+        } catch (err) {
+          console.error('Failed to save plan:', err);
+        }
+      };
+      savePlan();
+
+      // Then restore code content
+      if (activeArtifact?.code) {
+        setEditorContent(activeArtifact.code);
+      }
     }
-  }, [activeArtifact, mode, setEditorContentContext])
+  }, [activeArtifact, mode, language, setEditorContent, planContent]);
 
   const handleChange: OnChange = (value) => {
-    if (value === undefined) return
+    if (value === undefined) return;
     
     if (mode === 'code') {
-      setEditorContent(value)
+      setEditorContent(value);
     } else {
-      setPlanContent(value)
+      setPlanContent(value);
     }
-  }
+  };
 
   // Use effect to handle command lifecycle
   useEffect(() => {
