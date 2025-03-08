@@ -203,7 +203,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       // If identical, just re-run without creating a new artifact
       if (isIdenticalToActive) {
         // Run the code
-        const result = await fetch('/api/run', {
+        const result = await fetch('/api/run-code', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -238,7 +238,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       } else {
         // Create a new artifact for this run
         // Run the code
-        const result = await fetch('/api/run', {
+        const result = await fetch('/api/run-code', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
