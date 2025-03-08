@@ -179,55 +179,108 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [artifacts, setActiveArtifact, setViewMode, setMode, setPlanContent])
 
   const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
+    // Don't run if already running
+    if (isRunning) return
+    
+    setIsRunning(true)
+    
     try {
-      setIsRunning(true)
-      const response = await fetch('/api/run-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          code,
-          language,
-          artifacts: artifacts.filter(a => a.pinned)
+      // Check if we're running the exact same code as the current artifact
+      const isIdenticalToActive = 
+        activeArtifact && 
+        (activeArtifact.type as string) === 'code' && 
+        activeArtifact.code === code &&
+        activeArtifact.language === language;
+      
+      console.log('Code comparison:', {
+        isIdenticalToActive,
+        activeCode: activeArtifact?.code,
+        newCode: code,
+        activeLanguage: activeArtifact?.language,
+        newLanguage: language
+      });
+      
+      // If identical, just re-run without creating a new artifact
+      if (isIdenticalToActive) {
+        // Run the code
+        const result = await fetch('/api/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ code, language })
         })
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to run code: ${errorText}`)
+        
+        if (!result.ok) {
+          throw new Error(`Failed to run code: ${result.statusText}`)
+        }
+        
+        const data = await result.json()
+        
+        // Update the existing artifact with new results
+        setArtifacts(prev => {
+          return prev.map(a => {
+            if (a.id === activeArtifact.id) {
+              return {
+                ...a,
+                output: data.output,
+                plotFile: data.plotFile,
+                var2val: data.var2val || {},
+                var2line: data.var2line || {},
+                var2line_end: data.var2line_end || {}
+              }
+            }
+            return a
+          })
+        })
+        
+        // No need to change the active artifact
+      } else {
+        // Create a new artifact for this run
+        // Run the code
+        const result = await fetch('/api/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ code, language })
+        })
+        
+        if (!result.ok) {
+          throw new Error(`Failed to run code: ${result.statusText}`)
+        }
+        
+        const data = await result.json()
+        
+        // Create a name based on the first line of code or timestamp
+        const firstLine = code.split('\n')[0].trim()
+        const artifactName = firstLine 
+          ? firstLine.substring(0, 30) + (firstLine.length > 30 ? '...' : '')
+          : `Code ${new Date().toLocaleTimeString()}`
+        
+        // Create a new artifact
+        const newArtifact: NewArtifact = {
+          type: 'code',
+          name: artifactName,
+          code,
+          output: data.output,
+          plotFile: data.plotFile,
+          language,
+          var2val: data.var2val || {},
+          var2line: data.var2line || {},
+          var2line_end: data.var2line_end || {},
+          source: 'user'
+        }
+        
+        // Add the new artifact
+        await addArtifact(newArtifact)
       }
-
-      const result = await response.json()
-      console.log('Run result from server:', result)
-
-      // Add API prefix to plot and data files if they exist
-      const plotFile = result.plotFile ? `/api/plots/${result.plotFile}` : undefined
-
-      const newArtifact: Artifact = {
-        id: artifacts.length + 1,  // Add id
-        type: 'code' as const,
-        name: `${language} Run Result`,
-        code,
-        output: result.output,
-        plotFile,
-        dataFile: result.dataFile,
-        source: 'assistant',
-        language,
-        var2val: result.var2val,
-        var2line: result.var2line,
-        var2line_end: result.var2line_end,
-        timestamp: Date.now()
-      }
-      console.log('Created new artifact:', newArtifact)
-
-      addArtifact(newArtifact)
-      return result
     } catch (error) {
-      console.error('Failed to run code:', error)
-      throw error
+      console.error('Error running code:', error)
     } finally {
       setIsRunning(false)
     }
-  }, [artifacts, addArtifact, setIsRunning])
+  }, [isRunning, activeArtifact, addArtifact])
 
   const generateSummary = useCallback(async () => {
     // Group artifacts by their display name to get latest versions
