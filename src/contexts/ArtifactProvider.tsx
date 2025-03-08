@@ -7,7 +7,7 @@ import {
   CodeLanguage,
   getDisplayName, 
   dataHeader, 
-  getDefaultViewMode 
+  getDefaultViewMode
 } from './ArtifactContext.types'
 import { chatWithLLM } from '../services/api'
 
@@ -72,12 +72,20 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     loadInitialData()
   }, [artifacts.length, activeArtifact, selectArtifact])
 
-  const addArtifact = useCallback((artifact: Omit<Artifact, 'id' | 'timestamp'>) => {
+  // Define a type for new artifacts without id and timestamp
+  type NewArtifact = Omit<Artifact, 'id' | 'timestamp'> & {
+    // These fields are required in the base type but might be undefined in new artifacts
+    var2val?: Record<string, { type: string, value: unknown }>,
+    var2line?: Record<string, number>,
+    var2line_end?: Record<string, number>
+  }
+
+  const addArtifact = useCallback((artifact: NewArtifact) => {
     const newArtifact: Artifact = {
       ...artifact,
       id: artifacts.length + 1,
       timestamp: Date.now(),
-      var2val: artifact.var2val || {},  // Ensure optional fields have defaults
+      var2val: artifact.var2val || {},
       var2line: artifact.var2line || {},
       var2line_end: artifact.var2line_end || {}
     }
@@ -93,7 +101,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     
     // Set appropriate view mode
     setViewMode(getDefaultViewMode(newArtifact))
-  }, [artifacts, setActiveArtifact, setViewMode])
+
+    // If it's a plan artifact, switch to plan mode
+    // Use type assertion since TypeScript doesn't understand discriminated unions well here
+    if ((artifact.type as string) === 'plan') {
+      setMode('plan')
+    }
+  }, [artifacts, setActiveArtifact, setViewMode, setMode])
 
   const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
     try {

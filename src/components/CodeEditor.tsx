@@ -9,6 +9,11 @@ import {
 	FormControl,
 	InputLabel,
 	SelectChangeEvent,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions,
+	TextField,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SaveIcon from '@mui/icons-material/Save';
@@ -29,9 +34,12 @@ export default function CodeEditor() {
 		isRunning,
 		handleChat,
 		activeArtifact,
+		addArtifact,
 	} = useArtifact();
 
 	const [language, setLanguage] = useState<CodeLanguage>('python');
+	const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+	const [artifactName, setArtifactName] = useState('');
 
 	// Update language when active artifact changes
 	useEffect(() => {
@@ -54,118 +62,116 @@ export default function CodeEditor() {
 	};
 
 	const handleRun = async () => {
-		if (!editorContent && !planContent) {
-			console.warn('No content to run');
-			return;
-		}
-		try {
-			if (mode === 'code') {
-				await runArtifact(editorContent, language);
-			} else {
-				await handleChat();
-			}
-		} catch (error) {
-			console.error('Error in handleRun:', error);
+		if (mode === 'code') {
+			await runArtifact(editorContent, language);
+		} else {
+			// In plan mode, send to chat
+			await handleChat(planContent);
 		}
 	};
 
-	const handleSave = async () => {
-		if (mode === 'plan') {
-			try {
-				// Create download
-				const blob = new Blob([planContent], { type: 'text/markdown' });
-				const link = document.createElement('a');
-				link.href = URL.createObjectURL(blob);
-				link.download = 'plan.md';
-				document.body.appendChild(link);
-				link.click();
-				document.body.removeChild(link);
-				URL.revokeObjectURL(link.href);
+	const handleSave = () => {
+		setSaveDialogOpen(true);
+		// Default name based on first line or content preview
+		const content = mode === 'code' ? editorContent : planContent;
+		const firstLine = content.split('\n')[0].trim();
+		const defaultName = firstLine 
+			? firstLine.substring(0, 30) + (firstLine.length > 30 ? '...' : '')
+			: `${mode === 'code' ? 'Code' : 'Plan'} ${new Date().toLocaleTimeString()}`;
+		setArtifactName(defaultName);
+	};
 
-				// Save to server
-				await fetch('/api/artifacts/plan', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({ content: planContent }),
-				});
-			} catch (err) {
-				console.error('Failed to save plan:', err);
-			}
+	const handleSaveConfirm = () => {
+		if (!artifactName) return;
+
+		if (mode === 'code') {
+			// Save as code artifact
+			addArtifact({
+				type: 'code',
+				name: artifactName,
+				code: editorContent,
+				output: '',
+				source: 'user',
+				language,
+				var2val: {},
+				var2line: {},
+				var2line_end: {},
+				pinned: true,
+			});
+		} else {
+			// Save as plan artifact
+			// Use a type assertion to work around TypeScript limitations
+			const planArtifact = {
+				type: 'plan',
+				name: artifactName,
+				content: planContent,
+				source: 'user',
+				var2val: {},
+				var2line: {},
+				var2line_end: {},
+				pinned: true,
+			};
+			// @ts-expect-error - TypeScript doesn't understand plan artifacts yet
+			addArtifact(planArtifact);
 		}
+
+		setSaveDialogOpen(false);
+		setArtifactName('');
 	};
 
 	return (
-		<Box
-			sx={{
-				height: '100%',
-				display: 'flex',
-				flexDirection: 'column',
-				overflow: 'hidden',
-				position: 'relative',
-				flex: 1,
-			}}
-		>
+		<Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 			<Box
 				sx={{
 					p: 1,
+					display: 'flex',
+					justifyContent: 'space-between',
 					borderBottom: 1,
 					borderColor: 'divider',
-					display: 'flex',
-					alignItems: 'center',
-					minHeight: '48px',
-					flexShrink: 0,
-					backgroundColor: 'background.paper',
-					width: '100%',
-					gap: 2,
 				}}
 			>
-				<ToggleButtonGroup
-					value={mode}
-					exclusive
-					onChange={handleModeChange}
-					size='small'
-				>
-					<ToggleButton value='code'>Code</ToggleButton>
-					<ToggleButton value='plan'>Plan</ToggleButton>
-				</ToggleButtonGroup>
+				<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+					<ToggleButtonGroup
+						value={mode}
+						exclusive
+						onChange={handleModeChange}
+						aria-label="editor mode"
+						size="small"
+					>
+						<ToggleButton value="plan">Plan</ToggleButton>
+						<ToggleButton value="code">Code</ToggleButton>
+					</ToggleButtonGroup>
 
-				{mode === 'code' && (
-					<FormControl size="small" sx={{ minWidth: 120 }}>
-						<InputLabel id="language-select-label">Language</InputLabel>
-						<Select
-							labelId="language-select-label"
-							id="language-select"
-							value={language}
-							label="Language"
-							onChange={handleLanguageChange}
-						>
-							<MenuItem value="python">Python</MenuItem>
-							<MenuItem value="r">R</MenuItem>
-						</Select>
-					</FormControl>
-				)}
+					{mode === 'code' && (
+						<FormControl size="small" sx={{ minWidth: 120 }}>
+							<InputLabel id="language-select-label">Language</InputLabel>
+							<Select
+								labelId="language-select-label"
+								value={language}
+								label="Language"
+								onChange={handleLanguageChange}
+							>
+								<MenuItem value="python">Python</MenuItem>
+								<MenuItem value="r">R</MenuItem>
+							</Select>
+						</FormControl>
+					)}
+				</Box>
 
-				<Box
-					sx={{
-						position: 'absolute',
-						right: 8,
-						display: 'flex',
-						gap: 1,
-						backgroundColor: 'background.paper',
-						alignItems: 'center',
-					}}
-				>
+				<Box sx={{ display: 'flex', gap: 1 }}>
 					<Button
-						variant='contained'
-						size='small'
+						variant="contained"
+						startIcon={<SaveIcon />}
+						onClick={handleSave}
+					>
+						Save
+					</Button>
+					<Button
+						variant="contained"
+						color="primary"
 						startIcon={
 							isRunning ? (
-								<CircularProgress
-									size={16}
-									color='inherit'
-								/>
+								<CircularProgress size={20} color="inherit" />
 							) : (
 								<PlayArrowIcon />
 							)
@@ -173,22 +179,34 @@ export default function CodeEditor() {
 						onClick={handleRun}
 						disabled={isRunning}
 					>
-						{isRunning ? 'Running...' : 'Run'}
-					</Button>
-					<Button
-						variant='outlined'
-						size='small'
-						startIcon={<SaveIcon />}
-						onClick={handleSave}
-						disabled={mode === 'code'} // Enable save only in plan mode
-					>
-						Save
+						{mode === 'code' ? 'Run' : 'Chat'}
 					</Button>
 				</Box>
 			</Box>
-			<Box sx={{ flex: 1, overflow: 'hidden' }}>
-				<Editor language={mode === 'code' ? language : undefined} />
+
+			<Box sx={{ flex: 1 }}>
+				<Editor language={language} />
 			</Box>
+
+			<Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+				<DialogTitle>Save {mode === 'code' ? 'Code' : 'Plan'}</DialogTitle>
+				<DialogContent>
+					<TextField
+						autoFocus
+						margin="dense"
+						label="Name"
+						fullWidth
+						value={artifactName}
+						onChange={(e) => setArtifactName(e.target.value)}
+					/>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+					<Button onClick={handleSaveConfirm} disabled={!artifactName}>
+						Save
+					</Button>
+				</DialogActions>
+			</Dialog>
 		</Box>
 	);
 }
