@@ -184,7 +184,7 @@ export default function CodeEditor() {
 						onClick={handleRun}
 						disabled={isRunning}
 					>
-						{mode === 'code' ? 'Run' : 'Chat'}
+						Run
 					</Button>
 				</Box>
 			</Box>
