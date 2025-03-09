@@ -45,7 +45,7 @@ export default function Editor({ language = 'python' }: EditorProps) {
       artifactSummary += `\n### Chat Input\n${artifact.chatInput}\n`
     }
     if (artifact.code) {
-      artifactSummary += `\n### Code\n\`\`\`python\n${artifact.code}\`\`\`\nOutput:\n\`\`\`\n${artifact.output}\`\`\`\n${artifact.plotFile ? `\n![Plot](${artifact.plotFile})\n` : ''}`
+      artifactSummary += `\n### Code\n\`\`\`python\n${artifact.code}\`\`\`\n`
     }
     if (artifact.output && !artifact.dataFile) {
       artifactSummary += `\n### Output\n\`\`\`\n${artifact.output}\`\`\`\n`
