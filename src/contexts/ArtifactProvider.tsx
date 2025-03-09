@@ -232,25 +232,57 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       if (isIdenticalToActive) {
         console.log('Running identical code, updating existing artifact');
         
-        // Update the existing artifact with new results
+        // Update the existing artifact with new results and update timestamp
+        const currentTime = Date.now();
+        
+        // Create updated artifact with new results
+        const updatedArtifact = {
+          ...activeArtifact,
+          output: result.output,
+          plotFile,
+          dataFile: result.dataFile,
+          var2val: result.var2val || {},
+          var2line: result.var2line || {},
+          var2line_end: result.var2line_end || {},
+          timestamp: currentTime // Update timestamp to current time
+        };
+        
+        // Update artifacts list
         setArtifacts(prev => {
           return prev.map(a => {
             if (a.id === activeArtifact.id) {
-              return {
-                ...a,
-                output: result.output,
-                plotFile,
-                dataFile: result.dataFile,
-                var2val: result.var2val || {},
-                var2line: result.var2line || {},
-                var2line_end: result.var2line_end || {}
-              }
+              return updatedArtifact;
             }
-            return a
-          })
-        })
+            return a;
+          });
+        });
         
-        // No need to change the active artifact
+        // Also update the active artifact reference
+        setActiveArtifact(updatedArtifact);
+        
+        // Set the appropriate view mode based on the updated artifact
+        setViewMode(getDefaultViewMode(updatedArtifact));
+        
+        // If the artifact is pinned, update it in the backend
+        if (activeArtifact.pinned) {
+          try {
+            fetch('/api/artifacts/pin', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                artifactId: updatedArtifact.id,
+                pinned: true,
+                artifact: updatedArtifact
+              })
+            }).catch(err => {
+              console.error('Failed to update pinned artifact:', err);
+            });
+          } catch (err) {
+            console.error('Failed to update pinned artifact:', err);
+          }
+        }
       } else {
         console.log('Running new code, creating new artifact');
         
@@ -362,6 +394,14 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       art.id === updatedArtifact.id ? updatedArtifact : art
     ));
     
+    // Also update activeArtifact if it's the same artifact
+    if (activeArtifact && activeArtifact.id === updatedArtifact.id) {
+      setActiveArtifact(updatedArtifact);
+      
+      // Set the appropriate view mode based on the updated artifact
+      setViewMode(getDefaultViewMode(updatedArtifact));
+    }
+    
     // Save to backend if it's a pinned artifact
     if (updatedArtifact.pinned) {
       try {
@@ -380,7 +420,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         console.error('Failed to save updated artifact to backend:', err);
       }
     }
-  }, [])
+  }, [activeArtifact, setViewMode])
 
   const parseCodeFromResponse = useCallback(async (response: string, input: string) => {
     // Match both Python and R code blocks
