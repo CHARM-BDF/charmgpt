@@ -150,6 +150,10 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       var2line_end: artifact.var2line_end || {}
     }
 
+    setArtifacts(prev => {
+      return [...prev, newArtifact]
+    })
+
     // Set as active artifact
     setActiveArtifact(newArtifact)
     
@@ -179,7 +183,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         console.error('Failed to save to pinned artifacts:', err);
       }
     }
-  }, [setActiveArtifact, setViewMode, setMode, setPlanContent, generateUniqueId])
+  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent])
 
   const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
     // Don't run if already running
