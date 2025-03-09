@@ -469,7 +469,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     const matches = [...response.matchAll(codeBlockRegex)]
     
     // First create the chat artifact with the processed response
-    const processedResponse = response//response.replace(codeBlockRegex, '[Code added to editor and executed]')
+    const processedResponse = `Query: ${input}\n\n${response}`//response.replace(codeBlockRegex, '[Code added to editor and executed]')
     const chatArtifact = await addArtifact({
       type: 'chat',
       name: `Chat: ${input.slice(0, 30)}...`,
