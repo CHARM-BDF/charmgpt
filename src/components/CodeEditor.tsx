@@ -49,11 +49,34 @@ export default function CodeEditor() {
 		}
 	}, [activeArtifact]);
 
-	const handleModeChange = (
+	const handleModeChange = async (
 		_: React.MouseEvent<HTMLElement>,
 		newMode: EditorMode
 	) => {
-		if (newMode !== null) {
+		if (newMode !== null && newMode !== mode) {
+			// If switching from code to plan, save the code content
+			if (mode === 'code' && newMode === 'plan' && activeArtifact && editorContent) {
+				// Only update if the code has changed
+				if (activeArtifact.code !== editorContent) {
+					// Update the active artifact with the current code
+					const updatedArtifact = {
+						...activeArtifact,
+						code: editorContent
+					};
+					
+					try {
+						// Use the addArtifact function to update the artifact
+						await addArtifact({
+							...updatedArtifact,
+							pinned: true
+						});
+					} catch (err) {
+						console.error('Failed to save code before switching to plan mode:', err);
+					}
+				}
+			}
+			
+			// Set the new mode
 			setMode(newMode);
 		}
 	};

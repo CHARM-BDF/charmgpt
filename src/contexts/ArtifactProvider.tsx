@@ -356,10 +356,30 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [artifacts])
 
-  const updateArtifact = useCallback((updatedArtifact: Artifact) => {
+  const updateArtifact = useCallback(async (updatedArtifact: Artifact) => {
+    // Update in state
     setArtifacts(prev => prev.map(art => 
       art.id === updatedArtifact.id ? updatedArtifact : art
-    ))
+    ));
+    
+    // Save to backend if it's a pinned artifact
+    if (updatedArtifact.pinned) {
+      try {
+        await fetch('/api/artifacts/pin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            artifactId: updatedArtifact.id,
+            pinned: true,
+            artifact: updatedArtifact
+          })
+        });
+      } catch (err) {
+        console.error('Failed to save updated artifact to backend:', err);
+      }
+    }
   }, [])
 
   const parseCodeFromResponse = useCallback(async (response: string, input: string) => {

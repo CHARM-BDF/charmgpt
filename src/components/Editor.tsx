@@ -14,16 +14,16 @@ interface EditorProps {
 }
 
 export default function Editor({ language = 'python' }: EditorProps) {
-  const { 
-    activeArtifact, 
+  const {
+    activeArtifact,
     setEditorContent,
-    editorContent, 
+    editorContent,
     planContent,
     setPlanContent,
     mode,
     setViewMode,
     setSelectedStep,
-    selectedStep
+    selectedStep,
   } = useArtifact()
 
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -191,6 +191,7 @@ export default function Editor({ language = 'python' }: EditorProps) {
         setEditorContent(activeArtifact.code);
       }
     }
+    // We'll handle saving code when switching to plan mode in the CodeEditor component
   }, [activeArtifact, mode, language, setEditorContent, planContent]);
 
   const handleChange: OnChange = (value) => {
