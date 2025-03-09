@@ -325,13 +325,15 @@ from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import importlib
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Initialize tracking
 var2val = {}
 var2line = {}
 var2line_end = {}
 value_log_buffer = ""
+has_plot = False
 
 def convert_value(value):
     """Recursively convert values to JSON-serializable types"""
@@ -399,13 +401,33 @@ def find_assignments(code):
     AssignmentVisitor().visit(tree)
     return list(assignments.values())  # Convert back to list for the rest of the code
 
+# Patch plotly's show method to save the figure
+original_show = go.Figure.show
+def patched_show(self, *args, **kwargs):
+    global has_plot, value_log_buffer
+    # Save the figure as an image
+    plot_path = f'/app/output/${runId}_plot.png'
+    self.write_image(plot_path, scale=2)
+    value_log_buffer += f"\\nSaved Plotly figure as ${runId}_plot.png"
+    has_plot = True
+    # Call the original show method
+    return original_show(self, *args, **kwargs)
+go.Figure.show = patched_show
+
 try:
     # Read the code
     with open('user_code.py', 'r') as f:
         code = f.read()
     
     # Create globals dict with pre-imported libraries
-    globals_dict = {'pd': pd, 'np': np, 'plt': plt, '__name__': '__main__'}
+    globals_dict = {
+        'pd': pd, 
+        'np': np, 
+        'plt': plt, 
+        'px': px, 
+        'go': go, 
+        '__name__': '__main__'
+    }
     
     # Execute the code once
     exec(code, globals_dict)
@@ -424,13 +446,20 @@ try:
                     assign['line_start'],
                     assign['line_end']
                 )
-        except:
-            pass
+                # Check if this is a plotly figure
+                if isinstance(value, go.Figure) and not has_plot:
+                    plot_path = f'/app/output/${runId}_plot.png'
+                    value.write_image(plot_path, scale=2)
+                    value_log_buffer += f"\\nSaved Plotly figure {assign['name']} as ${runId}_plot.png"
+                    has_plot = True
+        except Exception as e:
+            print(f"Error saving value {assign['name']}: {str(e)}")
 
-    # Handle plot if any
-    if plt.get_fignums():
+    # Handle matplotlib plot if any
+    if plt.get_fignums() and not has_plot:
         plt.savefig(f'/app/output/${runId}_plot.png')
-        value_log_buffer += f"\\nSaved plot as ${runId}_plot.png"
+        value_log_buffer += f"\\nSaved Matplotlib plot as ${runId}_plot.png"
+        has_plot = True
 
     # Print program output and results
     print(value_log_buffer)
@@ -438,7 +467,8 @@ try:
     print(json.dumps({
         'var2val': var2val,
         'var2line': var2line,
-        'var2line_end': var2line_end
+        'var2line_end': var2line_end,
+        'plotFile': '${runId}_plot.png' if has_plot else None
     }))
     
 except Exception as e:
