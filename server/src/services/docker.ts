@@ -434,26 +434,6 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
         var2line[var_name] = line_start
         var2line_end[var_name] = line_end
         value_log_buffer += f"\\nSaved DataFrame {var_name} to {filename}"
-    elif isinstance(value, go.Figure):
-        # Handle Plotly figures by saving them
-        plot_counter += 1
-        plot_filename = f'${runId}_plot_{plot_counter}.png'
-        plot_path = f'/app/output/{plot_filename}'
-        
-        with SuppressOutput():
-            value.write_image(plot_path, scale=2)
-        
-        # Add to our list of plot files
-        plot_files.append(plot_filename)
-        value_log_buffer += f"\\nSaved Plotly figure {var_name} as {plot_filename}"
-        
-        # Also save as a regular value
-        var2val[var_name] = {
-            'type': 'immediate',
-            'value': f"Plotly Figure (saved as {plot_filename})"
-        }
-        var2line[var_name] = line_start
-        var2line_end[var_name] = line_end
     else:
         # Handle immediate values (numbers, strings, lists, etc)
         try:
