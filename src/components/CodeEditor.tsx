@@ -14,9 +14,15 @@ import {
 	DialogContent,
 	DialogActions,
 	TextField,
+	IconButton,
+	Menu,
+	Tooltip,
+	useMediaQuery,
+	useTheme,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SaveIcon from '@mui/icons-material/Save';
+import MenuIcon from '@mui/icons-material/Menu';
 import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode } from '../contexts/ArtifactContext.types';
@@ -41,6 +47,18 @@ export default function CodeEditor() {
 	const [language, setLanguage] = useState<CodeLanguage>('python');
 	const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 	const [artifactName, setArtifactName] = useState('');
+	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+	
+	const theme = useTheme();
+	const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+	
+	const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+		setMenuAnchorEl(event.currentTarget);
+	};
+	
+	const handleMenuClose = () => {
+		setMenuAnchorEl(null);
+	};
 
 	// Update language when active artifact changes
 	useEffect(() => {
@@ -161,10 +179,13 @@ export default function CodeEditor() {
 					p: 1,
 					display: 'flex',
 					justifyContent: 'space-between',
+					alignItems: 'center',
 					borderBottom: 1,
 					borderColor: 'divider',
+					position: 'relative',
 				}}
 			>
+				{/* Left side - Toggle buttons */}
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 					<ToggleButtonGroup
 						value={mode}
@@ -177,7 +198,8 @@ export default function CodeEditor() {
 						<ToggleButton value="code">Code</ToggleButton>
 					</ToggleButtonGroup>
 
-					{mode === 'code' && (
+					{/* Language selector - visible on desktop, hidden on mobile */}
+					{mode === 'code' && !isMobile && (
 						<FormControl size="small" sx={{ minWidth: 120 }}>
 							<InputLabel id="language-select-label">Language</InputLabel>
 							<Select
@@ -193,31 +215,107 @@ export default function CodeEditor() {
 					)}
 				</Box>
 
+				{/* Right side - Save and Run buttons on desktop, Run button and Hamburger menu on mobile */}
 				<Box sx={{ display: 'flex', gap: 1 }}>
-					<Button
-						variant="contained"
-						startIcon={<SaveIcon />}
-						onClick={handleSave}
-					>
-						Save
-					</Button>
-					<Button
-						variant="contained"
-						color="primary"
-						startIcon={
-							isRunning ? (
-								<CircularProgress size={20} color="inherit" />
-							) : (
-								<PlayArrowIcon />
-							)
-						}
-						onClick={handleRun}
-						disabled={isRunning}
-					>
-						Run
-					</Button>
+					{!isMobile ? (
+						<>
+							<Button
+								variant="contained"
+								startIcon={<SaveIcon />}
+								onClick={handleSave}
+							>
+								Save
+							</Button>
+							<Button
+								variant="contained"
+								color="primary"
+								startIcon={
+									isRunning ? (
+										<CircularProgress size={20} color="inherit" />
+									) : (
+										<PlayArrowIcon />
+									)
+								}
+								onClick={handleRun}
+								disabled={isRunning}
+							>
+								Run
+							</Button>
+						</>
+					) : (
+						<>
+							<Button
+								variant="contained"
+								color="primary"
+								size="small"
+								onClick={handleRun}
+								disabled={isRunning}
+								startIcon={
+									isRunning ? (
+										<CircularProgress size={20} color="inherit" />
+									) : (
+										<PlayArrowIcon />
+									)
+								}
+								sx={{ 
+									height: '36px', // Increased height to match ToggleButtonGroup
+									textTransform: 'none',
+									minWidth: 'unset', // Reduce minimum width
+									padding: '6px 12px' // Match padding of toggle buttons
+								}}
+							>
+								{isRunning ? 'Running...' : 'Run'}
+							</Button>
+							<IconButton
+								edge="end"
+								color="inherit"
+								aria-label="menu"
+								onClick={handleMenuOpen}
+							>
+								<MenuIcon />
+							</IconButton>
+						</>
+					)}
 				</Box>
 			</Box>
+
+			{/* Mobile menu */}
+			<Menu
+				anchorEl={menuAnchorEl}
+				open={Boolean(menuAnchorEl)}
+				onClose={handleMenuClose}
+				anchorOrigin={{
+					vertical: 'bottom',
+					horizontal: 'right',
+				}}
+				transformOrigin={{
+					vertical: 'top',
+					horizontal: 'right',
+				}}
+			>
+				{mode === 'code' && (
+					<MenuItem>
+						<FormControl size="small" sx={{ minWidth: 120 }}>
+							<InputLabel id="mobile-language-select-label">Language</InputLabel>
+							<Select
+								labelId="mobile-language-select-label"
+								value={language}
+								label="Language"
+								onChange={handleLanguageChange}
+							>
+								<MenuItem value="python">Python</MenuItem>
+								<MenuItem value="r">R</MenuItem>
+							</Select>
+						</FormControl>
+					</MenuItem>
+				)}
+				<MenuItem onClick={() => { handleSave(); handleMenuClose(); }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						<SaveIcon fontSize="small" />
+						Save
+					</Box>
+				</MenuItem>
+			</Menu>
 
 			<Box sx={{ flex: 1 }}>
 				<Editor language={language} />
