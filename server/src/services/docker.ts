@@ -325,8 +325,50 @@ from io import StringIO
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
+
+# Create a simple context manager to suppress output temporarily
+class SuppressOutput:
+    def __init__(self):
+        self.original_stdout = None
+        self.original_stderr = None
+        self.null_output = None
+    
+    def __enter__(self):
+        self.original_stdout = sys.stdout
+        self.original_stderr = sys.stderr
+        self.null_output = StringIO()
+        sys.stdout = self.null_output
+        sys.stderr = self.null_output
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout = self.original_stdout
+        sys.stderr = self.original_stderr
+
+# Import Plotly with output suppression
+with SuppressOutput():
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    from plotly.offline import init_notebook_mode
+    
+    # Patch Plotly's _repr_html_ method to prevent HTML output
+    # This is the method that generates the HTML output we're seeing
+    original_repr_html = go.Figure._repr_html_
+    def empty_repr_html(self):
+        return None
+    go.Figure._repr_html_ = empty_repr_html
+    
+    # Also patch the _repr_html_ method for any other Plotly classes that might have it
+    for cls in [go.FigureWidget]:
+        if hasattr(cls, '_repr_html_'):
+            setattr(cls, '_repr_html_', empty_repr_html)
+    
+    # Patch init_notebook_mode to do nothing
+    original_init_notebook_mode = init_notebook_mode
+    def patched_init_notebook_mode(*args, **kwargs):
+        return None
+    init_notebook_mode = patched_init_notebook_mode
 
 # Initialize tracking
 var2val = {}
@@ -334,6 +376,21 @@ var2line = {}
 var2line_end = {}
 value_log_buffer = ""
 has_plot = False
+
+# Patch Plotly's show method to save the figure without displaying HTML
+original_show = go.Figure.show
+def patched_show(self, *args, **kwargs):
+    global has_plot, value_log_buffer
+    # Save the figure as an image
+    plot_path = f'/app/output/${runId}_plot.png'
+    with SuppressOutput():
+        self.write_image(plot_path, scale=2)
+    value_log_buffer += f"\\nSaved Plotly figure as ${runId}_plot.png"
+    has_plot = True
+    
+    # Return None instead of calling the original show method
+    return None
+go.Figure.show = patched_show
 
 def convert_value(value):
     """Recursively convert values to JSON-serializable types"""
@@ -356,7 +413,9 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
     if isinstance(value, pd.DataFrame):
         # Handle DataFrame by saving to file
         filename = f'${runId}_{var_name}.csv'
-        value.to_csv(f'/app/output/{filename}', index=False)
+        # Only suppress output for DataFrame operations
+        with SuppressOutput():
+            value.to_csv(f'/app/output/{filename}', index=False)
         var2val[var_name] = {
             'type': 'file',
             'value': filename
@@ -401,19 +460,6 @@ def find_assignments(code):
     AssignmentVisitor().visit(tree)
     return list(assignments.values())  # Convert back to list for the rest of the code
 
-# Patch plotly's show method to save the figure
-original_show = go.Figure.show
-def patched_show(self, *args, **kwargs):
-    global has_plot, value_log_buffer
-    # Save the figure as an image
-    plot_path = f'/app/output/${runId}_plot.png'
-    self.write_image(plot_path, scale=2)
-    value_log_buffer += f"\\nSaved Plotly figure as ${runId}_plot.png"
-    has_plot = True
-    # Call the original show method
-    return original_show(self, *args, **kwargs)
-go.Figure.show = patched_show
-
 try:
     # Read the code
     with open('user_code.py', 'r') as f:
@@ -426,10 +472,13 @@ try:
         'plt': plt, 
         'px': px, 
         'go': go, 
-        '__name__': '__main__'
+        'make_subplots': make_subplots,
+        'init_notebook_mode': init_notebook_mode,
+        '__name__': '__main__',
+        'SuppressOutput': SuppressOutput
     }
     
-    # Execute the code once
+    # Execute the code
     exec(code, globals_dict)
     
     # Find all assignments
@@ -439,7 +488,7 @@ try:
     for assign in assignments:
         try:
             value = globals_dict.get(assign['name'])
-            if value is not None:
+            if value is not None and not assign['name'].startswith('_') and assign['name'] not in ['pd', 'np', 'plt', 'px', 'go', 'SuppressOutput', 'make_subplots', 'init_notebook_mode']:
                 save_intermediate_value(
                     value, 
                     assign['name'],
@@ -449,18 +498,20 @@ try:
                 # Check if this is a plotly figure
                 if isinstance(value, go.Figure) and not has_plot:
                     plot_path = f'/app/output/${runId}_plot.png'
-                    value.write_image(plot_path, scale=2)
+                    with SuppressOutput():
+                        value.write_image(plot_path, scale=2)
                     value_log_buffer += f"\\nSaved Plotly figure {assign['name']} as ${runId}_plot.png"
                     has_plot = True
         except Exception as e:
             print(f"Error saving value {assign['name']}: {str(e)}")
-
+    
     # Handle matplotlib plot if any
     if plt.get_fignums() and not has_plot:
-        plt.savefig(f'/app/output/${runId}_plot.png')
+        with SuppressOutput():
+            plt.savefig(f'/app/output/${runId}_plot.png', dpi=300, bbox_inches='tight')
         value_log_buffer += f"\\nSaved Matplotlib plot as ${runId}_plot.png"
         has_plot = True
-
+    
     # Print program output and results
     print(value_log_buffer)
     print("\\n__RESULTS__")
@@ -470,9 +521,11 @@ try:
         'var2line_end': var2line_end,
         'plotFile': '${runId}_plot.png' if has_plot else None
     }))
-    
+        
 except Exception as e:
+    import traceback
     print(f"Error: {str(e)}")
+    print(traceback.format_exc())
 `
   }
 
