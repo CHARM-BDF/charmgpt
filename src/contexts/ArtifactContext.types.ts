@@ -73,6 +73,9 @@ export interface Artifact {
   var2line_end?: Record<string, number>
   // Keep for uploads
   dataFile?: string
+  // Parent-child relationship fields
+  parentId?: number
+  blockIndex?: number
 }
 
 export interface ArtifactContextType {
@@ -83,12 +86,12 @@ export interface ArtifactContextType {
   setMode: (mode: EditorMode) => void
   setViewMode: (mode: ViewMode) => void
   setActiveArtifact: (artifact: Artifact | null) => void
-  runArtifact: (code: string, language?: CodeLanguage) => Promise<void>
+  runArtifact: (code: string, language?: CodeLanguage, options?: { parentId?: number, blockIndex?: number }) => Promise<void>
   editorContent: string
   setEditorContent: (content: string) => void
   planContent: string
   setPlanContent: (content: string) => void
-  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => void
+  addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => Promise<Artifact>
   isRunning: boolean
   setIsRunning: (running: boolean) => void
   generateSummary: () => Promise<string>

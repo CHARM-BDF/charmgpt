@@ -106,20 +106,21 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     // These fields are required in the base type but might be undefined in new artifacts
     var2val?: Record<string, { type: string, value: unknown }>,
     var2line?: Record<string, number>,
-    var2line_end?: Record<string, number>
+    var2line_end?: Record<string, number>,
+    // Optional fields for parent-child relationships
+    parentId?: number,
+    blockIndex?: number
   }
 
-  // Helper function to generate a unique ID
-  const generateUniqueId = useCallback(() => {
-    // Get the highest existing ID
-    const maxId = artifacts.reduce((max, artifact) => 
-      artifact.id > max ? artifact.id : max, 0);
+  const generateUniqueId = useCallback((options?: { parentId?: number, blockIndex?: number }) => {
+    if (options?.parentId && options?.blockIndex) {
+        return options.parentId + options.blockIndex;
+    }
     
-    // Return the next ID (max + 1)
-    return maxId + 1;
-  }, [artifacts]);
+    return Date.now() * 1000;
+  }, []);
 
-  const addArtifact = useCallback(async (artifact: NewArtifact) => {
+  const addArtifact = useCallback(async (artifact: NewArtifact): Promise<Artifact> => {
     // If it's a plan artifact, save the content to the backend first
     if ((artifact.type as string) === 'plan' && 'content' in artifact) {
       try {
@@ -141,10 +142,17 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       }
     }
 
+    // Generate a unique ID and timestamp for the new artifact
+    const uniqueId = generateUniqueId({
+      parentId: artifact.parentId,
+      blockIndex: artifact.blockIndex
+    });
+    const currentTimestamp = Date.now();
+
     const newArtifact: Artifact = {
       ...artifact,
-      id: generateUniqueId(),
-      timestamp: Date.now(),
+      id: uniqueId,
+      timestamp: currentTimestamp,
       var2val: artifact.var2val || {},
       var2line: artifact.var2line || {},
       var2line_end: artifact.var2line_end || {}
@@ -183,9 +191,16 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         console.error('Failed to save to pinned artifacts:', err);
       }
     }
+    
+    // Return the new artifact for chaining
+    return newArtifact;
   }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent])
 
-  const runArtifact = useCallback(async (code: string, language: CodeLanguage = 'python') => {
+  const runArtifact = useCallback(async (
+    code: string, 
+    language: CodeLanguage = 'python',
+    options?: { parentId?: number, blockIndex?: number }
+  ) => {
     // Don't run if already running
     if (isRunning) return
     
@@ -304,7 +319,10 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           var2val: result.var2val || {},
           var2line: result.var2line || {},
           var2line_end: result.var2line_end || {},
-          source: 'user'
+          source: 'user',
+          // Add parent-child relationship if provided
+          parentId: options?.parentId,
+          blockIndex: options?.blockIndex
         }
         
         // Add the new artifact
@@ -359,9 +377,22 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
     // Update UI state optimistically
     const newPinnedStatus = !artifact.pinned
+    
+    // Create a copy of the artifact with the updated pinned status
+    const updatedArtifact = {
+      ...artifact,
+      pinned: newPinnedStatus
+    };
+    
+    // Update the artifacts list
     setArtifacts(prev => prev.map(a => 
-      a.id === artifactId ? { ...a, pinned: newPinnedStatus } : a
-    ))
+      a.id === artifactId ? updatedArtifact : a
+    ));
+    
+    // Also update activeArtifact if it's the same artifact
+    if (activeArtifact && activeArtifact.id === artifactId) {
+      setActiveArtifact(updatedArtifact);
+    }
 
     try {
       const response = await fetch('/api/artifacts/pin', {
@@ -372,7 +403,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         body: JSON.stringify({
           artifactId,
           pinned: newPinnedStatus,
-          artifact  // Send the whole artifact, let server handle defaults
+          artifact: updatedArtifact  // Send the updated artifact
         })
       })
 
@@ -382,11 +413,21 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     } catch (err) {
       console.error('Failed to toggle pin:', err)
       // Revert UI state on error
+      const revertedArtifact = {
+        ...updatedArtifact,
+        pinned: !newPinnedStatus
+      };
+      
       setArtifacts(prev => prev.map(a => 
-        a.id === artifactId ? { ...a, pinned: !newPinnedStatus } : a
-      ))
+        a.id === artifactId ? revertedArtifact : a
+      ));
+      
+      // Also revert activeArtifact if it's the same artifact
+      if (activeArtifact && activeArtifact.id === artifactId) {
+        setActiveArtifact(revertedArtifact);
+      }
     }
-  }, [artifacts])
+  }, [artifacts, activeArtifact])
 
   const updateArtifact = useCallback(async (updatedArtifact: Artifact) => {
     // Update in state
@@ -428,8 +469,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     const matches = [...response.matchAll(codeBlockRegex)]
     
     // First create the chat artifact with the processed response
-    const processedResponse = response.replace(codeBlockRegex, '[Code added to editor and executed]')
-    addArtifact({
+    const processedResponse = response//response.replace(codeBlockRegex, '[Code added to editor and executed]')
+    const chatArtifact = await addArtifact({
       type: 'chat',
       name: `Chat: ${input.slice(0, 30)}...`,
       output: processedResponse,
@@ -467,10 +508,15 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           setMode('code')
           setEditorContent(codeWithComment)
           try {
-            await runArtifact(codeWithComment, normalizedLanguage)
+            // Run the code and create a new artifact
+            // The runArtifact function will handle creating the artifact with the appropriate ID
+            await runArtifact(codeWithComment, normalizedLanguage, {
+              parentId: chatArtifact.id,
+              blockIndex: i + 1  // 1-based index for the code block
+            })
           } catch (err) {
             console.error('Failed to run code:', err)
-            addArtifact({
+            await addArtifact({
               type: 'code',
               name: artifactName + (i > 0 ? ` (${i+1})` : ''),
               code: codeWithComment,
@@ -482,7 +528,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
               language: normalizedLanguage,
               var2val: {},
               var2line: {},
-              var2line_end: {}
+              var2line_end: {},
+              parentId: chatArtifact.id,
+              blockIndex: i + 1  // 1-based index for the code block
             })
           }
         } else {
