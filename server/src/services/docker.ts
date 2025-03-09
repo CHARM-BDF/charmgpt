@@ -350,25 +350,16 @@ with SuppressOutput():
     import plotly.express as px
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
-    from plotly.offline import init_notebook_mode
     
-    # Patch Plotly's _repr_html_ method to prevent HTML output
-    # This is the method that generates the HTML output we're seeing
-    original_repr_html = go.Figure._repr_html_
-    def empty_repr_html(self):
-        return None
-    go.Figure._repr_html_ = empty_repr_html
-    
-    # Also patch the _repr_html_ method for any other Plotly classes that might have it
-    for cls in [go.FigureWidget]:
-        if hasattr(cls, '_repr_html_'):
-            setattr(cls, '_repr_html_', empty_repr_html)
-    
-    # Patch init_notebook_mode to do nothing
-    original_init_notebook_mode = init_notebook_mode
+    # Import and immediately patch init_notebook_mode to do nothing
+    # This is the key to preventing the HTML output
+    from plotly.offline import init_notebook_mode as original_init_notebook_mode
     def patched_init_notebook_mode(*args, **kwargs):
         return None
-    init_notebook_mode = patched_init_notebook_mode
+    
+    # Replace the original function with our no-op version
+    import plotly.offline
+    plotly.offline.init_notebook_mode = patched_init_notebook_mode
 
 # Initialize tracking
 var2val = {}
@@ -473,7 +464,7 @@ try:
         'px': px, 
         'go': go, 
         'make_subplots': make_subplots,
-        'init_notebook_mode': init_notebook_mode,
+        'init_notebook_mode': patched_init_notebook_mode,
         '__name__': '__main__',
         'SuppressOutput': SuppressOutput
     }
