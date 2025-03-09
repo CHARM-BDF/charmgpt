@@ -32,6 +32,7 @@ export default function CodeEditor() {
 		editorContent,
 		planContent,
 		isRunning,
+		setIsRunning,
 		handleChat,
 		activeArtifact,
 		addArtifact,
@@ -66,7 +67,13 @@ export default function CodeEditor() {
 			await runArtifact(editorContent, language);
 		} else {
 			// In plan mode, send to chat
-			await handleChat(planContent);
+			// Set isRunning manually since we're not using runArtifact yet
+			setIsRunning(true);
+			try {
+				await handleChat(planContent);
+			} finally {
+				setIsRunning(false);
+			}
 		}
 	};
 
