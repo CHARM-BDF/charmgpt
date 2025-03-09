@@ -1,4 +1,4 @@
-import { ArtifactContextType } from './ArtifactContext.types'
+import { ArtifactContextType, Artifact } from './ArtifactContext.types'
 
 export const artifactContextValue: ArtifactContextType = {
   artifacts: [],
@@ -13,7 +13,7 @@ export const artifactContextValue: ArtifactContextType = {
   setEditorContent: () => undefined,
   planContent: '',
   setPlanContent: () => undefined,
-  addArtifact: () => undefined,
+  addArtifact: async () => ({} as Artifact), // Return empty artifact to satisfy Promise<Artifact>
   isRunning: false,
   setIsRunning: () => undefined,
   generateSummary: async () => '',

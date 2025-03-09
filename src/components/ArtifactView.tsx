@@ -1,8 +1,10 @@
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, IconButton } from '@mui/material'
 import { useArtifact } from '../contexts/useArtifact'
 import { DataViewer } from './DataViewer'
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { hasData, ImmediateValue, FileValue } from '../contexts/ArtifactContext.types'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
 interface VarInfo {
   name: string
@@ -13,6 +15,7 @@ interface VarInfo {
 
 export default function ArtifactView() {
   const { activeArtifact, viewMode, selectedStep, setSelectedStep } = useArtifact()
+  const [currentPlotIndex, setCurrentPlotIndex] = useState(0)
   
   const variables = useMemo<VarInfo[]>(() => {
     if (!activeArtifact?.var2val) return []
@@ -37,6 +40,11 @@ export default function ArtifactView() {
       .sort((a, b) => a.line_start - b.line_start)
   }, [activeArtifact])
 
+  // Reset plot index when active artifact changes
+  useEffect(() => {
+    setCurrentPlotIndex(0)
+  }, [activeArtifact?.id])
+
   // Set initial selection to last variable
   useEffect(() => {
     if (activeArtifact?.dataFile && !Object.keys(activeArtifact.var2val || {}).length) {
@@ -56,11 +64,52 @@ export default function ArtifactView() {
     )
   }
 
+  // Get all available plot files
+  const plotFiles = activeArtifact.plotFiles || 
+    (activeArtifact.plotFile ? [activeArtifact.plotFile] : []);
+  
+  // Get the current plot file to display
+  const currentPlotFile = plotFiles.length > 0 ? 
+    plotFiles[Math.min(currentPlotIndex, plotFiles.length - 1)] : 
+    undefined;
+  
+  // Handle navigation between plots
+  const handlePrevPlot = () => {
+    setCurrentPlotIndex(prev => Math.max(0, prev - 1));
+  };
+  
+  const handleNextPlot = () => {
+    setCurrentPlotIndex(prev => Math.min(plotFiles.length - 1, prev + 1));
+  };
+
   switch (viewMode) {
     case 'plot': {
-      return activeArtifact.plotFile ? (
-        <Box sx={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <img src={activeArtifact.plotFile} alt="Plot" style={{ maxWidth: '100%', maxHeight: '100%' }} />
+      return currentPlotFile ? (
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {plotFiles.length > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1 }}>
+              <IconButton 
+                onClick={handlePrevPlot} 
+                disabled={currentPlotIndex === 0}
+                size="small"
+              >
+                <ChevronLeftIcon />
+              </IconButton>
+              <Typography sx={{ mx: 2 }}>
+                Plot {currentPlotIndex + 1} of {plotFiles.length}
+              </Typography>
+              <IconButton 
+                onClick={handleNextPlot} 
+                disabled={currentPlotIndex === plotFiles.length - 1}
+                size="small"
+              >
+                <ChevronRightIcon />
+              </IconButton>
+            </Box>
+          )}
+          <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <img src={currentPlotFile} alt={`Plot ${currentPlotIndex + 1}`} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+          </Box>
         </Box>
       ) : null
     }

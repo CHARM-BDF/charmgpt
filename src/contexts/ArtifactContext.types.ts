@@ -59,6 +59,7 @@ export interface Artifact {
   name: string
   output: string
   plotFile?: string
+  plotFiles?: string[]
   type: ArtifactType
   timestamp: number
   code?: string

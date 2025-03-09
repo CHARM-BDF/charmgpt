@@ -19,7 +19,8 @@ interface DockerRunResult {
   success: boolean
   output: string
   visualization?: string  // JSON string for visualization data
-  plotFile?: string      // Name of the plot file if generated
+  plotFile?: string      // Name of the main plot file if generated
+  plotFiles?: string[]   // Names of all plot files if multiple plots are generated
   var2val: Record<string, ImmediateValue | FileValue>
   var2line: Record<string, number>
   var2line_end: Record<string, number>
@@ -155,17 +156,17 @@ export class DockerService {
       const { stdout } = await this.runDocker(runId, codeDir, config)
       console.log('Docker execution result:', stdout)
 
-      // Check for generated files
-      const plotFilename = `${runId}_plot.png`
-      const plotPath = path.join(tempDir, plotFilename)
-      const hasPlot = fs.existsSync(plotPath)
-
-      // Look for any CSV files with this runId
+      // Look for any files in the temp directory
       const files = await fsPromises.readdir(tempDir)
+      
+      // Find all plot files for this run
+      const plotFiles = files.filter(f => f.startsWith(runId) && f.endsWith('.png'))
+ 
+      // Find any CSV files for this run
       const csvFile = files.find(f => f.startsWith(runId) && f.endsWith('.csv'))
       const hasData = !!csvFile
 
-      if (hasPlot) console.log('Found plot file:', plotFilename)
+      if (plotFiles.length > 0) console.log('Found plot files:', plotFiles)
       if (hasData) console.log('Found data file:', csvFile)
 
       // Parse the results from the output
@@ -173,6 +174,7 @@ export class DockerService {
       let var2val = {}
       let var2line = {}
       let var2line_end = {}
+      let plotFilesFromOutput: string[] = []
 
       if (resultsMatch) {
         try {
@@ -180,15 +182,25 @@ export class DockerService {
           var2val = results.var2val;
           var2line = results.var2line;
           var2line_end = results.var2line_end;
+          
+          // Get plot files from the output if available
+          if (results.plotFiles && Array.isArray(results.plotFiles)) {
+            plotFilesFromOutput = results.plotFiles;
+          }
         } catch (e) {
           console.error('Failed to parse results:', e);
         }
       }
 
+      // Use plot files from output if available, otherwise use what we found in the directory
+      const finalPlotFiles = plotFilesFromOutput.length > 0 ? plotFilesFromOutput : plotFiles;
+      const finalMainPlotFile = finalPlotFiles.length > 0 ? finalPlotFiles[0] : undefined;
+
       const result = {
         success: true,
         output: stdout,
-        plotFile: hasPlot ? plotFilename : undefined,
+        plotFile: finalMainPlotFile,
+        plotFiles: finalPlotFiles,
         var2val,
         var2line,
         var2line_end
@@ -366,18 +378,26 @@ var2val = {}
 var2line = {}
 var2line_end = {}
 value_log_buffer = ""
-has_plot = False
+plot_files = []  # Track all plot files
+plot_counter = 0  # Counter for multiple plots
 
 # Patch Plotly's show method to save the figure without displaying HTML
 original_show = go.Figure.show
 def patched_show(self, *args, **kwargs):
-    global has_plot, value_log_buffer
+    global plot_counter, value_log_buffer, plot_files
+    
+    # Generate a unique filename for this plot
+    plot_counter += 1
+    plot_filename = f'${runId}_plot_{plot_counter}.png'
+    plot_path = f'/app/output/{plot_filename}'
+    
     # Save the figure as an image
-    plot_path = f'/app/output/${runId}_plot.png'
     with SuppressOutput():
         self.write_image(plot_path, scale=2)
-    value_log_buffer += f"\\nSaved Plotly figure as ${runId}_plot.png"
-    has_plot = True
+    
+    # Add to our list of plot files
+    plot_files.append(plot_filename)
+    value_log_buffer += f"\\nSaved Plotly figure as {plot_filename}"
     
     # Return None instead of calling the original show method
     return None
@@ -400,7 +420,7 @@ def convert_value(value):
     return value
 
 def save_intermediate_value(value, var_name: str, line_start: int, line_end: int) -> None:
-    global value_log_buffer
+    global value_log_buffer, plot_counter, plot_files
     if isinstance(value, pd.DataFrame):
         # Handle DataFrame by saving to file
         filename = f'${runId}_{var_name}.csv'
@@ -414,6 +434,26 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
         var2line[var_name] = line_start
         var2line_end[var_name] = line_end
         value_log_buffer += f"\\nSaved DataFrame {var_name} to {filename}"
+    elif isinstance(value, go.Figure):
+        # Handle Plotly figures by saving them
+        plot_counter += 1
+        plot_filename = f'${runId}_plot_{plot_counter}.png'
+        plot_path = f'/app/output/{plot_filename}'
+        
+        with SuppressOutput():
+            value.write_image(plot_path, scale=2)
+        
+        # Add to our list of plot files
+        plot_files.append(plot_filename)
+        value_log_buffer += f"\\nSaved Plotly figure {var_name} as {plot_filename}"
+        
+        # Also save as a regular value
+        var2val[var_name] = {
+            'type': 'immediate',
+            'value': f"Plotly Figure (saved as {plot_filename})"
+        }
+        var2line[var_name] = line_start
+        var2line_end[var_name] = line_end
     else:
         # Handle immediate values (numbers, strings, lists, etc)
         try:
@@ -486,22 +526,22 @@ try:
                     assign['line_start'],
                     assign['line_end']
                 )
-                # Check if this is a plotly figure
-                if isinstance(value, go.Figure) and not has_plot:
-                    plot_path = f'/app/output/${runId}_plot.png'
-                    with SuppressOutput():
-                        value.write_image(plot_path, scale=2)
-                    value_log_buffer += f"\\nSaved Plotly figure {assign['name']} as ${runId}_plot.png"
-                    has_plot = True
         except Exception as e:
             print(f"Error saving value {assign['name']}: {str(e)}")
     
-    # Handle matplotlib plot if any
-    if plt.get_fignums() and not has_plot:
+    # Handle matplotlib plots if any
+    for fig_num in plt.get_fignums():
+        fig = plt.figure(fig_num)
+        plot_counter += 1
+        plot_filename = f'${runId}_plot_{plot_counter}.png'
+        plot_path = f'/app/output/{plot_filename}'
+        
         with SuppressOutput():
-            plt.savefig(f'/app/output/${runId}_plot.png', dpi=300, bbox_inches='tight')
-        value_log_buffer += f"\\nSaved Matplotlib plot as ${runId}_plot.png"
-        has_plot = True
+            fig.savefig(plot_path, dpi=300, bbox_inches='tight')
+        
+        # Add to our list of plot files
+        plot_files.append(plot_filename)
+        value_log_buffer += f"\\nSaved Matplotlib plot as {plot_filename}"
     
     # Print program output and results
     print(value_log_buffer)
@@ -510,7 +550,8 @@ try:
         'var2val': var2val,
         'var2line': var2line,
         'var2line_end': var2line_end,
-        'plotFile': '${runId}_plot.png' if has_plot else None
+        'plotFile': plot_files[0] if plot_files else None,
+        'plotFiles': plot_files
     }))
         
 except Exception as e:

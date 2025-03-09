@@ -242,6 +242,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       
       // Add API prefix to plot and data files if they exist
       const plotFile = result.plotFile ? `/api/plots/${result.plotFile}` : undefined
+      const plotFiles = result.plotFiles ? result.plotFiles.map((file: string) => `/api/plots/${file}`) : undefined
       
       // If identical, update the existing artifact
       if (isIdenticalToActive) {
@@ -255,6 +256,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           ...activeArtifact,
           output: result.output,
           plotFile,
+          plotFiles,
           dataFile: result.dataFile,
           var2val: result.var2val || {},
           var2line: result.var2line || {},
@@ -314,6 +316,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           code,
           output: result.output,
           plotFile,
+          plotFiles,
           dataFile: result.dataFile,
           language,
           var2val: result.var2val || {},
