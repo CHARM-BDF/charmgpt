@@ -21,7 +21,7 @@ export function formatArtifact(artifact: Artifact, output_only: boolean = false)
     artifactSummary += `\n` + output + `\n`;
     return artifactSummary;
   } else {
-    artifactSummary += `  ${getDisplayName(artifact)}`;
+    artifactSummary += `  '${getDisplayName(artifact)}'`;
   }
   
   if (artifact.dataFile) {
