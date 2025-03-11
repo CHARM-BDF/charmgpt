@@ -198,6 +198,22 @@ export default function CodeEditor() {
 		// Log the step being executed for debugging
 		console.log(`Executing step ${currentStepIndex + 1} of ${pipelineExecutionRef.current.steps.length}: ${currentStep.title}`);
 		
+		// Extract the first # heading from the pipeline document
+		const lines = pipeContent.split('\n');
+		let pipelineTitle = '';
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+			if (trimmedLine.startsWith('# ') && !trimmedLine.startsWith('## ')) {
+				pipelineTitle = trimmedLine.substring(2).trim();
+				break;
+			}
+		}
+		
+		// Create a one-liner for the code docstring
+		const docstringOneLiner = pipelineTitle 
+			? `${pipelineTitle} - ${currentStep.title}`
+			: currentStep.title;
+		
 		// Create a prompt that includes the pipeline context and focuses on the current step
 		let prompt = `I'm working on a pipeline with the following steps:\n\n${pipeContent}\n\n`;
 		
@@ -222,7 +238,8 @@ export default function CodeEditor() {
 			}
 		}
 		
-		prompt += `Please help me execute ${currentStep.title} specifically. Focus only on this step for now, and provide detailed results that I can use for the next steps.`;
+		// Add the docstring one-liner to the prompt
+		prompt += `Please help me execute ${currentStep.title} specifically. Focus only on this step for now, and provide detailed results that I can use for the next steps.\n\n`;
 		
 		// Record the timestamp before executing the step
 		const stepStartTime = Date.now();
@@ -237,8 +254,8 @@ export default function CodeEditor() {
 		// Execute the step
 		setIsRunning(true);
 		try {
-			console.log(`Sending prompt for step ${currentStepIndex + 1}`);
-			const success = await handleChat(prompt);
+			console.log(`Sending prompt for step ${currentStepIndex + 1} with docstring: "${docstringOneLiner}"`);
+			const success = await handleChat(prompt, docstringOneLiner);
 			console.log(`Step ${currentStepIndex + 1} execution ${success ? 'succeeded' : 'failed'}`);
 			
 			// If the step was successful, check if there are more steps

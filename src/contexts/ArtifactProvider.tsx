@@ -746,7 +746,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [setMode, setEditorContent, runArtifact, addArtifact, editorContent])
 
-  const handleChat = useCallback(async (message?: string): Promise<boolean> => {
+  const handleChat = useCallback(async (message?: string, docString?: string): Promise<boolean> => {
     let msg = "";
     if (planContent.trim()) {
       msg = planContent
@@ -778,7 +778,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       const response = await chatWithLLM(msg)
 
       // Process response and create artifacts in order
-      await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)
+      await parseCodeFromResponse(response, docString || '(plan only)\n\n'+msg)
       return true
     } catch (err) {
       console.error('Chat error:', err)

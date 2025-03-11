@@ -100,7 +100,7 @@ export interface ArtifactContextType {
   generateSummary: () => Promise<string>
   togglePin: (artifactId: number) => Promise<void>
   updateArtifact: (artifact: Artifact) => void
-  handleChat: (message?: string) => Promise<boolean>
+  handleChat: (message?: string, docString?: string) => Promise<boolean>
   selectedStep: string
   setSelectedStep: (step: string) => void
   showAllArtifacts: boolean
