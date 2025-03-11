@@ -207,17 +207,22 @@ export default function CodeEditor() {
 		if (currentStepIndex > 0) {
 			prompt += `I've already completed the previous steps and here are the results:\n\n`;
 			
-			// Include information about recent artifacts (up to 3)
-			const recentArtifacts = [...artifacts].sort((a, b) => b.timestamp - a.timestamp).slice(0, 3);
+			// Filter artifacts to only include those created after the pipeline started and only code artifacts
+			const pipelineStartTime = pipelineExecutionRef.current.startTime || 0;
+			const relevantArtifacts = [...artifacts]
+				.filter(artifact => artifact.timestamp > pipelineStartTime && artifact.type === 'code')
+				.sort((a, b) => b.timestamp - a.timestamp)
+				.slice(0, 3);
 			
-			if (recentArtifacts.length > 0) {
-				recentArtifacts.forEach((artifact) => {
+			if (relevantArtifacts.length > 0) {
+				prompt += `Found ${relevantArtifacts.length} relevant artifacts from previous steps:\n\n`;
+				relevantArtifacts.forEach((artifact) => {
 					prompt += `Previous step created the following artifact:\n`;
 					prompt += formatArtifact(artifact, true);
 					prompt += '\n';
 				});
 			} else {
-				prompt += `No artifacts were created by previous steps.\n\n`;
+				prompt += `No relevant artifacts were created by previous steps.\n\n`;
 			}
 		}
 		
@@ -307,7 +312,8 @@ export default function CodeEditor() {
 						isExecuting: true,
 						steps,
 						currentStepIndex: 0,
-						stepArtifacts: []
+						stepArtifacts: [],
+						startTime: Date.now() // Add timestamp when pipeline starts
 					};
 					
 					// Make sure the UI shows step 1
@@ -329,6 +335,9 @@ export default function CodeEditor() {
 						// Get the step title
 						const stepTitle = stepToExecute.title;
 						
+						// Record the execution start time
+						const executionStartTime = Date.now();
+						
 						// Log which step we're executing
 						console.log(`Executing single step: ${stepTitle} (Step ${stepIndex + 1} of ${steps.length})`);
 						
@@ -339,17 +348,24 @@ export default function CodeEditor() {
 						if (stepIndex > 0) {
 							prompt += `I've already completed the previous steps and here are the results:\n\n`;
 							
-							// Include information about recent artifacts (up to 3)
-							const recentArtifacts = [...artifacts].sort((a, b) => b.timestamp - a.timestamp).slice(0, 3);
+							// Define a session start time (10 minutes ago) to filter artifacts
+							const sessionStartTime = executionStartTime - (10 * 60 * 1000); // 10 minutes ago
 							
-							if (recentArtifacts.length > 0) {
-								recentArtifacts.forEach((artifact) => {
+							// Filter artifacts to only include those created in this session and only code artifacts
+							const sessionArtifacts = [...artifacts]
+								.filter(artifact => artifact.timestamp > sessionStartTime && artifact.type === 'code')
+								.sort((a, b) => b.timestamp - a.timestamp)
+								.slice(0, 3);
+							
+							if (sessionArtifacts.length > 0) {
+								prompt += `Found ${sessionArtifacts.length} relevant artifacts from previous steps:\n\n`;
+								sessionArtifacts.forEach((artifact) => {
 									prompt += `Previous step created the following artifact:\n`;
 									prompt += formatArtifact(artifact, true);
 									prompt += '\n';
 								});
 							} else {
-								prompt += `No artifacts were created by previous steps.\n\n`;
+								prompt += `No relevant artifacts were created by previous steps.\n\n`;
 							}
 						}
 						
