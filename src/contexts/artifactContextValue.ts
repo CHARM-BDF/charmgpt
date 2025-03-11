@@ -21,5 +21,7 @@ export const artifactContextValue: ArtifactContextType = {
   updateArtifact: () => undefined,
   handleChat: async () => true,
   selectedStep: '',
-  setSelectedStep: () => undefined
+  setSelectedStep: () => undefined,
+  showAllArtifacts: false,
+  toggleShowAllArtifacts: () => undefined
 } 
