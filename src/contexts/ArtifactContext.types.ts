@@ -12,7 +12,7 @@ export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data' | 'plan' |
  */
 export const getDisplayName = (artifact: Artifact): string => {
   if (!artifact.dataFile) {
-    return artifact.name.replace('"', '')
+    return artifact.name.replace(/"/g, '')
   }
   // Use a display name based on the artifact name or original filename
   const displayName = artifact.name.endsWith('.csv')

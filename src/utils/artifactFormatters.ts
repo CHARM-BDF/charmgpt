@@ -6,7 +6,7 @@ import { Artifact, getDisplayName, dataHeader } from '../contexts/ArtifactContex
  * @returns A formatted string representation of the artifact
  */
 export function formatArtifact(artifact: Artifact, output_only: boolean = false): string {
-  let artifactSummary = `## Artifact ${getDisplayName(artifact)}`;
+  let artifactSummary = `## Artifact`;
   
   if (output_only) {
     // When output_only is true, only include content before "__RESULTS__"
@@ -20,6 +20,8 @@ export function formatArtifact(artifact: Artifact, output_only: boolean = false)
     
     artifactSummary += `\n` + output + `\n`;
     return artifactSummary;
+  } else {
+    artifactSummary += `  ${getDisplayName(artifact)}`;
   }
   
   if (artifact.dataFile) {

@@ -514,7 +514,7 @@ export default function CodeEditor() {
 
 	// Render the pipeline step indicator
 	const renderPipelineStepIndicator = () => {
-		if (mode !== 'pipe' || pipelineSteps.length === 0) {
+		if (mode !== 'pipe' || pipelineSteps.length === 0 || !pipelineExecutionRef.current.isExecuting) {
 			return null;
 		}
 		
@@ -529,9 +529,7 @@ export default function CodeEditor() {
 					size="small"
 					sx={{ mr: 1 }}
 				/>
-				{pipelineExecutionRef.current.isExecuting && (
-					<CircularProgress size={16} sx={{ ml: 1 }} />
-				)}
+				<CircularProgress size={16} sx={{ ml: 1 }} />
 			</Box>
 		);
 	};
