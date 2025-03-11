@@ -177,22 +177,20 @@ export default function CodeEditor() {
 	
 	// Function to execute the next step in the pipeline
 	const executeNextStep = async () => {
-		if (!pipelineExecutionRef.current.isExecuting) {
-			console.log("Pipeline execution is not active");
+		// Check if we're already executing or if the execution is complete
+		if (!pipelineExecutionRef.current || !pipelineExecutionRef.current.isExecuting) {
+			console.log('Pipeline execution is not active');
 			return;
 		}
 		
+		// Get the current step index and step
 		const currentStepIndex = pipelineExecutionRef.current.currentStepIndex;
+		const currentStep = pipelineExecutionRef.current.steps[currentStepIndex];
 		
-		// Check if we've completed all steps
-		if (currentStepIndex >= pipelineExecutionRef.current.steps.length) {
-			console.log('Pipeline execution completed!');
-			pipelineExecutionRef.current.isExecuting = false;
-			setCurrentPipelineStep(1); // Reset to first step for next execution
+		if (!currentStep) {
+			console.log('No step found at index', currentStepIndex);
 			return;
 		}
-		
-		const currentStep = pipelineExecutionRef.current.steps[currentStepIndex];
 		
 		// Update the UI to show the current step (1-indexed for display)
 		setCurrentPipelineStep(currentStepIndex + 1);
@@ -209,6 +207,8 @@ export default function CodeEditor() {
 			
 			// Get the step artifacts tracked in pipelineExecutionRef
 			const stepArtifacts = pipelineExecutionRef.current.stepArtifacts || [];
+			console.log(`[DEBUG] Step ${currentStepIndex + 1}: Found ${stepArtifacts.length} step artifacts in pipelineExecutionRef:`, 
+				stepArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
 			
 			if (stepArtifacts.length > 0) {
 				prompt += `Found ${stepArtifacts.length} relevant artifacts from previous steps:\n\n`;
@@ -226,7 +226,14 @@ export default function CodeEditor() {
 		
 		// Record the timestamp before executing the step
 		const stepStartTime = Date.now();
-
+		console.log(`[DEBUG] Step ${currentStepIndex + 1}: Recording start time ${stepStartTime}`);
+		
+		// Store the current artifacts for comparison after execution
+		const artifactsBeforeExecution = [...artifacts];
+		// Log all current artifacts for debugging
+		console.log(`[DEBUG] Step ${currentStepIndex + 1}: All artifacts before execution (${artifactsBeforeExecution.length}):`, 
+			artifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+		
 		// Execute the step
 		setIsRunning(true);
 		try {
@@ -236,20 +243,98 @@ export default function CodeEditor() {
 			
 			// If the step was successful, check if there are more steps
 			if (success) {
+				// Add a longer delay to allow time for artifacts to be created and processed
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: Waiting for artifacts to be processed...`);
+				await new Promise(resolve => setTimeout(resolve, 3000)); // Increase to 3 seconds
+				
+				// Get the latest artifacts after execution
+				// We need to ensure we're looking at the most recent artifacts
+				let latestArtifacts = [...artifacts]; // Default to current artifacts as fallback
+				
+				// Try to refresh artifacts from the server to get the most up-to-date list
+				try {
+					const response = await fetch('/api/artifacts/all');
+					if (response.ok) {
+						const refreshedArtifacts = await response.json();
+						console.log(`[DEBUG] Step ${currentStepIndex + 1}: Refreshed artifacts from server (${refreshedArtifacts.length})`);
+						latestArtifacts = refreshedArtifacts;
+					} else {
+						console.error(`[DEBUG] Step ${currentStepIndex + 1}: Failed to refresh artifacts from server:`, response.statusText);
+					}
+				} catch (error) {
+					console.error(`[DEBUG] Step ${currentStepIndex + 1}: Error refreshing artifacts:`, error);
+				}
+				
+				// Log all artifacts after execution for debugging
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: All artifacts after execution (${latestArtifacts.length}):`, 
+					latestArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+				
+				// Log artifact types for debugging
+				const artifactTypes = latestArtifacts.reduce((acc, a) => {
+					acc[a.type] = (acc[a.type] || 0) + 1;
+					return acc;
+				}, {} as Record<string, number>);
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: Artifact types:`, artifactTypes);
+				
+				// Log timestamp range for debugging
+				const timestamps = latestArtifacts.map(a => a.timestamp).sort((a, b) => a - b);
+				const now = Date.now();
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: Timestamp range:`, {
+					oldest: timestamps[0],
+					newest: timestamps[timestamps.length - 1],
+					current: now,
+					oldestDiff: now - timestamps[0],
+					newestDiff: now - timestamps[timestamps.length - 1]
+				});
+				
 				// Find new artifacts created during this step
-				const newArtifacts = [...artifacts]
+				const newArtifacts = latestArtifacts.filter(artifact => 
+					// Check if this artifact is new (not in the before-execution array)
+					!artifactsBeforeExecution.some(a => a.id === artifact.id) && 
+					// Only include code artifacts
+					artifact.type === 'code'
+				).sort((a, b) => b.timestamp - a.timestamp);
+				
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: Found ${newArtifacts.length} new artifacts by ID comparison:`, 
+					newArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+				
+				// As a fallback, also try the timestamp-based approach
+				const timestampBasedArtifacts = latestArtifacts
 					.filter(artifact => artifact.timestamp > stepStartTime && artifact.type === 'code')
 					.sort((a, b) => b.timestamp - a.timestamp);
 				
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: Found ${timestampBasedArtifacts.length} new artifacts by timestamp > ${stepStartTime}:`, 
+					timestampBasedArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+				
+				// Combine both approaches to ensure we don't miss any artifacts
+				const combinedArtifacts = Array.from(
+					new Set([...newArtifacts, ...timestampBasedArtifacts].map(a => a.id))
+				)
+					.map(id => latestArtifacts.find(a => a.id === id))
+					.filter((a): a is Artifact => a !== undefined)
+					.sort((a, b) => b.timestamp - a.timestamp);
+				
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: Combined ${combinedArtifacts.length} artifacts from both approaches:`, 
+					combinedArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+				
 				// Add the most recent artifact to the step artifacts list
-				if (newArtifacts.length > 0) {
+				if (combinedArtifacts.length > 0) {
+					// Initialize stepArtifacts if it doesn't exist
 					if (!pipelineExecutionRef.current.stepArtifacts) {
 						pipelineExecutionRef.current.stepArtifacts = [];
 					}
-					pipelineExecutionRef.current.stepArtifacts.push(newArtifacts[0]);
-					console.log(`Added artifact from step ${currentStepIndex + 1} to step artifacts list. Total artifacts: ${pipelineExecutionRef.current.stepArtifacts.length}`);
+					
+					// Add the most recent artifact to the step artifacts list
+					pipelineExecutionRef.current.stepArtifacts.push(combinedArtifacts[0]);
+					console.log(`[DEBUG] Step ${currentStepIndex + 1}: Added artifact to stepArtifacts:`, 
+						{ id: combinedArtifacts[0].id, name: combinedArtifacts[0].name, type: combinedArtifacts[0].type });
 				} else {
-					console.log(`No new artifacts found for step ${currentStepIndex + 1}`);
+					console.log(`[DEBUG] Step ${currentStepIndex + 1}: No new artifacts found, stopping pipeline execution`);
+					// If no new artifacts were found, stop the pipeline execution
+					console.log(`Pipeline execution stopped: No new artifacts were created during step ${currentStepIndex + 1}`);
+					pipelineExecutionRef.current.isExecuting = false;
+					setIsRunning(false);
+					return; // Exit the function early to prevent moving to the next step
 				}
 				
 				// Move to the next step
@@ -273,8 +358,11 @@ export default function CodeEditor() {
 		} catch (error) {
 			console.error('Error executing pipeline step:', error);
 			pipelineExecutionRef.current.isExecuting = false;
-		} finally {
 			setIsRunning(false);
+		} finally {
+			if (!pipelineExecutionRef.current.isExecuting) {
+				setIsRunning(false);
+			}
 		}
 	};
 
@@ -320,6 +408,17 @@ export default function CodeEditor() {
 				const executeAll = window.confirm('Do you want to execute all steps in the pipeline? Click OK to execute all steps sequentially, or Cancel to execute only the current step.');
 				
 				if (executeAll) {
+					// Log the previous state of pipelineExecutionRef if it exists
+					if (pipelineExecutionRef.current) {
+						console.log(`[DEBUG] Previous pipelineExecutionRef state before reset:`, {
+							isExecuting: pipelineExecutionRef.current.isExecuting,
+							currentStepIndex: pipelineExecutionRef.current.currentStepIndex,
+							stepsCount: pipelineExecutionRef.current.steps?.length,
+							artifactsCount: pipelineExecutionRef.current.stepArtifacts?.length,
+							artifacts: pipelineExecutionRef.current.stepArtifacts?.map(a => ({ id: a.id, name: a.name, type: a.type }))
+						});
+					}
+
 					// Initialize pipeline execution
 					pipelineExecutionRef.current = {
 						isExecuting: true,
@@ -328,6 +427,13 @@ export default function CodeEditor() {
 						stepArtifacts: [],
 						startTime: Date.now() // Add timestamp when pipeline starts
 					};
+					
+					console.log(`[DEBUG] Initialized new pipelineExecutionRef:`, {
+						isExecuting: pipelineExecutionRef.current.isExecuting,
+						currentStepIndex: pipelineExecutionRef.current.currentStepIndex,
+						stepsCount: pipelineExecutionRef.current.steps.length,
+						artifactsCount: pipelineExecutionRef.current.stepArtifacts.length
+					});
 					
 					// Make sure the UI shows step 1
 					setCurrentPipelineStep(1);
@@ -350,9 +456,14 @@ export default function CodeEditor() {
 						
 						// Record the timestamp before executing the step
 						const stepStartTime = Date.now();
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: Recording start time ${stepStartTime}`);
+						
+						// Log all current artifacts for debugging
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: All artifacts before execution:`, 
+							artifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
 						
 						// Log which step we're executing
-						console.log(`Executing single step: ${stepTitle} (Step ${stepIndex + 1} of ${steps.length})`);
+						console.log(`Executing single step: ${stepTitle} (Step ${currentPipelineStep} of ${steps.length})`);
 						
 						// Create a prompt that includes the pipeline context and focuses on the current step
 						let prompt = `I'm working on a pipeline with the following steps:\n\n${pipeContent}\n\n`;
@@ -361,7 +472,7 @@ export default function CodeEditor() {
 						if (stepIndex > 0) {
 							prompt += `I've already completed the previous steps and here are the results:\n\n`;
 							
-							// Initialize pipeline execution ref if it doesn't exist
+							// Initialize pipelineExecutionRef if it doesn't exist
 							if (!pipelineExecutionRef.current) {
 								pipelineExecutionRef.current = {
 									isExecuting: false,
@@ -373,6 +484,8 @@ export default function CodeEditor() {
 							
 							// Get the step artifacts tracked in pipelineExecutionRef
 							const stepArtifacts = pipelineExecutionRef.current.stepArtifacts || [];
+							console.log(`[DEBUG] Single-step ${currentPipelineStep}: Found ${stepArtifacts.length} step artifacts in pipelineExecutionRef:`, 
+								stepArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
 							
 							if (stepArtifacts.length > 0) {
 								prompt += `Found ${stepArtifacts.length} relevant artifacts from previous steps:\n\n`;
@@ -391,13 +504,71 @@ export default function CodeEditor() {
 						// Send the prompt to the chat
 						await handleChat(prompt);
 						
+						// Add a delay to allow time for artifacts to be created and processed
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: Waiting for artifacts to be processed...`);
+						await new Promise(resolve => setTimeout(resolve, 3000)); // Increase to 3 seconds
+						
+						// Get the latest artifacts after execution
+						// We need to ensure we're looking at the most recent artifacts
+						let latestArtifacts = [...artifacts]; // Default to current artifacts as fallback
+						
+						// Try to refresh artifacts from the server to get the most up-to-date list
+						try {
+							const response = await fetch('/api/artifacts/all');
+							if (response.ok) {
+								const refreshedArtifacts = await response.json();
+								console.log(`[DEBUG] Single-step ${currentPipelineStep}: Refreshed artifacts from server (${refreshedArtifacts.length})`);
+								latestArtifacts = refreshedArtifacts;
+							} else {
+								console.error(`[DEBUG] Single-step ${currentPipelineStep}: Failed to refresh artifacts from server:`, response.statusText);
+							}
+						} catch (error) {
+							console.error(`[DEBUG] Single-step ${currentPipelineStep}: Error refreshing artifacts:`, error);
+						}
+						
+						// Log all artifacts after execution for debugging
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: All artifacts after execution:`, 
+							latestArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+						
+						// Store the current artifacts for comparison after execution
+						const artifactsBeforeExecution = [...artifacts];
+						// Log all current artifacts for debugging
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: All artifacts before execution (${artifactsBeforeExecution.length}):`, 
+							artifactsBeforeExecution.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+						
 						// Find new artifacts created during this step
-						const newArtifacts = [...artifacts]
+						const newArtifacts = latestArtifacts.filter(artifact => 
+							// Check if this artifact is new (not in the before-execution array)
+							!artifactsBeforeExecution.some(a => a.id === artifact.id) && 
+							// Only include code artifacts
+							artifact.type === 'code'
+						).sort((a, b) => b.timestamp - a.timestamp);
+						
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: Found ${newArtifacts.length} new artifacts by ID comparison:`, 
+							newArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+						
+						// As a fallback, also try the timestamp-based approach
+						const timestampBasedArtifacts = latestArtifacts
 							.filter(artifact => artifact.timestamp > stepStartTime && artifact.type === 'code')
 							.sort((a, b) => b.timestamp - a.timestamp);
 						
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: Found ${timestampBasedArtifacts.length} new artifacts by timestamp > ${stepStartTime}:`, 
+							timestampBasedArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+						
+						// Combine both approaches to ensure we don't miss any artifacts
+						const combinedArtifacts = Array.from(
+							new Set([...newArtifacts, ...timestampBasedArtifacts].map(a => a.id))
+						)
+							.map(id => latestArtifacts.find(a => a.id === id))
+							.filter((a): a is Artifact => a !== undefined)
+							.sort((a, b) => b.timestamp - a.timestamp);
+						
+						console.log(`[DEBUG] Single-step ${currentPipelineStep}: Combined ${combinedArtifacts.length} artifacts from both approaches:`, 
+							combinedArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+						
 						// Add the most recent artifact to the step artifacts list
-						if (newArtifacts.length > 0) {
+						if (combinedArtifacts.length > 0) {
+							// Initialize pipelineExecutionRef if it doesn't exist
 							if (!pipelineExecutionRef.current) {
 								pipelineExecutionRef.current = {
 									isExecuting: false,
@@ -407,14 +578,30 @@ export default function CodeEditor() {
 								};
 							}
 							
+							// Ensure we have a stepArtifacts array
 							if (!pipelineExecutionRef.current.stepArtifacts) {
 								pipelineExecutionRef.current.stepArtifacts = [];
 							}
 							
-							pipelineExecutionRef.current.stepArtifacts.push(newArtifacts[0]);
-							console.log(`Added artifact from single-step execution to step artifacts list. Total artifacts: ${pipelineExecutionRef.current.stepArtifacts.length}`);
+							// Add the most recent artifact to the step artifacts list
+							pipelineExecutionRef.current.stepArtifacts.push(combinedArtifacts[0]);
+							console.log(`[DEBUG] Single-step ${currentPipelineStep}: Added artifact to stepArtifacts:`, 
+								{ id: combinedArtifacts[0].id, name: combinedArtifacts[0].name, type: combinedArtifacts[0].type });
+							
+							// Log the current state of pipelineExecutionRef for debugging
+							console.log(`[DEBUG] Current pipelineExecutionRef state:`, {
+								isExecuting: pipelineExecutionRef.current.isExecuting,
+								currentStepIndex: pipelineExecutionRef.current.currentStepIndex,
+								stepsCount: pipelineExecutionRef.current.steps.length,
+								artifactsCount: pipelineExecutionRef.current.stepArtifacts.length
+							});
 						} else {
-							console.log(`No new artifacts found for single-step execution`);
+							console.log(`[DEBUG] Single-step ${currentPipelineStep}: No new artifacts found, stopping pipeline execution`);
+							// If no new artifacts were found, stop the pipeline execution
+							console.log(`Pipeline execution stopped: No new artifacts were created during step ${currentPipelineStep}`);
+							if (pipelineExecutionRef.current) {
+								pipelineExecutionRef.current.isExecuting = false;
+							}
 						}
 					} finally {
 						setIsRunning(false);
