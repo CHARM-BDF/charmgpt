@@ -18,6 +18,8 @@ import {
 	Menu,
 	useMediaQuery,
 	useTheme,
+	Typography,
+	Chip,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SaveIcon from '@mui/icons-material/Save';
@@ -25,7 +27,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode } from '../contexts/ArtifactContext.types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 type CodeLanguage = 'python' | 'r';
 
@@ -33,14 +35,14 @@ export default function CodeEditor() {
 	const {
 		mode,
 		setMode,
-		runArtifact,
 		editorContent,
 		planContent,
 		pipeContent,
+		runArtifact,
 		isRunning,
 		setIsRunning,
-		handleChat,
 		activeArtifact,
+		handleChat,
 		addArtifact,
 	} = useArtifact();
 
@@ -48,6 +50,18 @@ export default function CodeEditor() {
 	const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 	const [artifactName, setArtifactName] = useState('');
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+	const [currentPipelineStep, setCurrentPipelineStep] = useState(1);
+	const [pipelineSteps, setPipelineSteps] = useState<{index: number, title: string}[]>([]);
+	const [stepCompleted, setStepCompleted] = useState(false);
+	const pipelineExecutionRef = useRef<{
+		isExecuting: boolean;
+		steps: {index: number, title: string}[];
+		currentStepIndex: number;
+	}>({
+		isExecuting: false,
+		steps: [],
+		currentStepIndex: 0
+	});
 	
 	const theme = useTheme();
 	const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -136,16 +150,184 @@ export default function CodeEditor() {
 		setLanguage(event.target.value as CodeLanguage);
 	};
 
+	// Function to parse pipeline steps
+	const parsePipelineSteps = useCallback((pipelineText: string) => {
+		const lines = pipelineText.split('\n');
+		const steps: {index: number, title: string}[] = [];
+		
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i].trim();
+			const match = line.match(/^## Step (\d+):(.*)/);
+			if (match) {
+				const stepNumber = parseInt(match[1], 10);
+				const stepTitle = match[2].trim();
+				steps.push({
+					index: i,
+					title: `Step ${stepNumber}: ${stepTitle}`
+				});
+			}
+		}
+		
+		return steps;
+	}, []);
+	
+	// Effect to check for chat completion and move to next step
+	useEffect(() => {
+		// If we're not executing a pipeline, do nothing
+		if (!pipelineExecutionRef.current.isExecuting) {
+			return;
+		}
+		
+		// If we've completed all steps, reset the execution state
+		if (pipelineExecutionRef.current.currentStepIndex >= pipelineExecutionRef.current.steps.length) {
+			pipelineExecutionRef.current.isExecuting = false;
+			alert('Pipeline execution completed!');
+			return;
+		}
+		
+		// If we're currently running a step, don't start another one
+		if (isRunning) {
+			return;
+		}
+		
+		// If we just completed a step, schedule the next one
+		if (stepCompleted) {
+			setStepCompleted(false);
+			
+			// Log the current step for debugging
+			console.log(`Completed step ${pipelineExecutionRef.current.currentStepIndex + 1} of ${pipelineExecutionRef.current.steps.length}`);
+			
+			// Move to the next step - always increment the index after completion
+			pipelineExecutionRef.current.currentStepIndex++;
+			
+			// Log the next step for debugging
+			console.log(`Moving to step ${pipelineExecutionRef.current.currentStepIndex + 1} of ${pipelineExecutionRef.current.steps.length}`);
+			
+			// Use a small delay to ensure UI updates before next step
+			const timer = setTimeout(() => {
+				// Only trigger the next step if we haven't completed all steps
+				if (pipelineExecutionRef.current.currentStepIndex < pipelineExecutionRef.current.steps.length) {
+					// Trigger the effect again to execute the next step
+					setStepCompleted(true);
+				} else {
+					// We've completed all steps
+					pipelineExecutionRef.current.isExecuting = false;
+					alert('Pipeline execution completed!');
+				}
+			}, 1000);
+			return () => clearTimeout(timer);
+		}
+		
+		// Execute the next step
+		const executeNextStep = async () => {
+			if (!pipelineExecutionRef.current.isExecuting) return;
+			
+			const currentStepIndex = pipelineExecutionRef.current.currentStepIndex;
+			const currentStep = pipelineExecutionRef.current.steps[currentStepIndex];
+			
+			// Update the UI to show the current step
+			setCurrentPipelineStep(currentStepIndex + 1);
+			
+			// Log the step being executed for debugging
+			console.log(`Executing step ${currentStepIndex + 1} of ${pipelineExecutionRef.current.steps.length}: ${currentStep.title}`);
+			
+			// Create a prompt for the current step
+			const prompt = `I'm working on a pipeline with the following steps:\n\n${pipeContent}\n\nPlease help me execute ${currentStep.title} specifically. Focus only on this step for now, and provide detailed results that I can use for the next steps.`;
+			
+			// Execute the step
+			setIsRunning(true);
+			try {
+				await handleChat(prompt);
+				// Mark this step as completed
+				setStepCompleted(true);
+			} catch (error) {
+				console.error('Error executing pipeline step:', error);
+				pipelineExecutionRef.current.isExecuting = false;
+			} finally {
+				setIsRunning(false);
+			}
+		};
+		
+		// Schedule the next step execution with a small delay
+		const timer = setTimeout(executeNextStep, 500);
+		return () => clearTimeout(timer);
+	}, [isRunning, pipeContent, handleChat, stepCompleted, setIsRunning]);
+
 	const handleRun = async () => {
 		if (mode === 'code') {
 			await runArtifact(editorContent, language);
-		} else {
+		} else if (mode === 'plan') {
 			// In plan mode, send to chat
 			// Set isRunning manually since we're not using runArtifact yet
 			setIsRunning(true);
 			try {
 				await handleChat(planContent);
 			} finally {
+				setIsRunning(false);
+			}
+		} else if (mode === 'pipe') {
+			// In pipe mode, parse the pipeline and execute all steps sequentially
+			try {
+				// Parse the pipeline to identify all steps
+				const steps = parsePipelineSteps(pipeContent);
+				setPipelineSteps(steps);
+				
+				if (steps.length === 0) {
+					// No steps found
+					alert('No steps found in the pipeline. Please define steps using "## Step X:" format.');
+					return;
+				}
+				
+				// Ask user if they want to execute all steps or just the current one
+				const executeAll = window.confirm('Do you want to execute all steps in the pipeline? Click OK to execute all steps sequentially, or Cancel to execute only the current step.');
+				
+				if (executeAll) {
+					// Reset the step tracking state
+					setStepCompleted(false);
+					// Set up the pipeline execution
+					pipelineExecutionRef.current = {
+						isExecuting: true,
+						steps,
+						currentStepIndex: 0
+					};
+					// Trigger the initial step execution by setting a timeout
+					setTimeout(() => {
+						setStepCompleted(true);
+					}, 100);
+				} else {
+					// Execute only the current step (original behavior)
+					setIsRunning(true);
+					try {
+						// Find the current step (look for "# Step X:" pattern)
+						let currentStepIndex = -1;
+						let currentStepTitle = '';
+						
+						for (let i = 0; i < steps.length; i++) {
+							if (i === 0 || (currentPipelineStep - 1) === i) {
+								// Use either the first step or the currently selected step
+								currentStepIndex = steps[i].index;
+								currentStepTitle = steps[i].title;
+								break;
+							}
+						}
+						
+						if (currentStepIndex === -1) {
+							// No step found
+							alert('No steps found in the pipeline. Please define steps using "# Step X:" format.');
+							return;
+						}
+						
+						// Create a prompt that includes the pipeline context and focuses on the current step
+						const prompt = `I'm working on a pipeline with the following steps:\n\n${pipeContent}\n\nPlease help me execute ${currentStepTitle} specifically. Focus only on this step for now, and provide detailed results that I can use for the next steps.`;
+						
+						// Send the prompt to the chat
+						await handleChat(prompt);
+					} finally {
+						setIsRunning(false);
+					}
+				}
+			} catch (error) {
+				console.error('Error executing pipeline:', error);
 				setIsRunning(false);
 			}
 		}
@@ -216,6 +398,30 @@ export default function CodeEditor() {
 			console.error('Failed to save artifact:', error);
 			// You could add error handling UI here
 		}
+	};
+
+	// Render the pipeline step indicator
+	const renderPipelineStepIndicator = () => {
+		if (mode !== 'pipe' || pipelineSteps.length === 0) {
+			return null;
+		}
+		
+		return (
+			<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+				<Typography variant="body2" sx={{ mr: 1 }}>
+					Current step:
+				</Typography>
+				<Chip 
+					label={`Step ${currentPipelineStep} of ${pipelineSteps.length}`} 
+					color="primary" 
+					size="small"
+					sx={{ mr: 1 }}
+				/>
+				{pipelineExecutionRef.current.isExecuting && (
+					<CircularProgress size={16} sx={{ ml: 1 }} />
+				)}
+			</Box>
+		);
 	};
 
 	return (
@@ -325,6 +531,9 @@ export default function CodeEditor() {
 					)}
 				</Box>
 			</Box>
+
+			{/* Pipeline step indicator */}
+			{renderPipelineStepIndicator()}
 
 			{/* Mobile menu */}
 			<Menu
