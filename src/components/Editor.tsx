@@ -3,9 +3,10 @@ import { useArtifact } from '../contexts/useArtifact'
 import { Box, Typography } from '@mui/material'
 import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
-import { dataHeader, getDisplayName, Artifact, ViewMode } from '../contexts/ArtifactContext.types'
+import { Artifact, ViewMode } from '../contexts/ArtifactContext.types'
 import { DataViewer } from './DataViewer'
 import '../styles/editor.css'
+import { formatArtifact } from '../utils/artifactFormatters'
 
 type CodeLanguage = 'python' | 'r'
 
@@ -32,33 +33,15 @@ export default function Editor({ language = 'python' }: EditorProps) {
   const isInitialMount = useRef(true)
   const decorationIds = useRef<string[]>([])
   
-  const insertArtifactAtCursor = useCallback((artifact: Artifact, quoted: boolean = false) => {
+  const insertArtifactAtCursor = useCallback((artifact: Artifact) => {
     if (!editorRef.current) return
 
     const editor = editorRef.current
     const position = editor.getPosition()
     if (!position) return
 
-    let artifactSummary = `## Artifact ${getDisplayName(artifact)}`
-    if (artifact.dataFile) {
-      artifactSummary += `\n### Data Columns\n${dataHeader(artifact.dataFile)}\n`
-    }
-    if (artifact.chatInput) {
-      artifactSummary += `\n### Chat Input\n${artifact.chatInput}\n`
-    }
-    if (artifact.code) {
-      artifactSummary += `\n### Code\n\`\`\`python\n${artifact.code}\`\`\`\n`
-    }
-    if (artifact.output && !artifact.dataFile) {
-      artifactSummary += `\n### Output\n\`\`\`\n${artifact.output}\`\`\`\n`
-    }
-    if (artifact.plotFile) {
-      artifactSummary += `\n### Plot\n![Plot](${artifact.plotFile})\n`
-    }
-
-    if (quoted) {
-      artifactSummary = `"""\n${artifactSummary}\n"""\n`
-    }
+    // Get the formatted artifact content
+    const artifactSummary = formatArtifact(artifact)
 
     editor.executeEdits('', [{
       range: new monaco.Range(
@@ -116,7 +99,7 @@ export default function Editor({ language = 'python' }: EditorProps) {
           console.log('No active artifact');
           return;
         }
-        insertArtifactAtCursor(activeArtifact, mode === 'code');
+        insertArtifactAtCursor(activeArtifact);
       }
     });
 
