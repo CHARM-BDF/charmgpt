@@ -18,7 +18,6 @@ import {
 	Menu,
 	useMediaQuery,
 	useTheme,
-	Typography,
 	Chip,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -531,22 +530,19 @@ export default function CodeEditor() {
 
 	// Render the pipeline step indicator
 	const renderPipelineStepIndicator = () => {
-		if (mode !== 'pipe' || pipelineSteps.length === 0 || !pipelineExecutionRef.current.isExecuting) {
+		if (pipelineSteps.length === 0 || !pipelineExecutionRef.current.isExecuting) {
 			return null;
 		}
 		
 		return (
-			<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-				<Typography variant="body2" sx={{ mr: 1 }}>
-					Current step:
-				</Typography>
+			<Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
 				<Chip 
 					label={`Step ${currentPipelineStep} of ${pipelineSteps.length}`} 
 					color="primary" 
 					size="small"
 					sx={{ mr: 1 }}
 				/>
-				<CircularProgress size={16} sx={{ ml: 1 }} />
+				<CircularProgress size={16} />
 			</Box>
 		);
 	};
@@ -593,6 +589,9 @@ export default function CodeEditor() {
 							</Select>
 						</FormControl>
 					)}
+					
+					{/* Pipeline step indicator - now in the top bar */}
+					{renderPipelineStepIndicator()}
 				</Box>
 
 				{/* Right side - Save and Run buttons on desktop, Run button and Hamburger menu on mobile */}
@@ -658,9 +657,6 @@ export default function CodeEditor() {
 					)}
 				</Box>
 			</Box>
-
-			{/* Pipeline step indicator */}
-			{renderPipelineStepIndicator()}
 
 			{/* Mobile menu */}
 			<Menu
