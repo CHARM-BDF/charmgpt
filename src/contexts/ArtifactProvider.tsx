@@ -24,6 +24,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [mode, setMode] = useState<EditorMode>('code')
   const [isRunning, setIsRunning] = useState(false)
   const [selectedStep, setSelectedStep] = useState('')
+  const [showAllArtifacts, setShowAllArtifacts] = useState(false)
 
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
@@ -71,18 +72,19 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // Load pinned artifacts
+        // Load pinned artifacts by default on initial load
         const artifactsResponse = await fetch('/api/artifacts/pinned')
+        
         if (artifactsResponse.ok) {
-          const pinnedArtifacts = await artifactsResponse.json()
+          const loadedArtifacts = await artifactsResponse.json()
           
           // Only update artifacts if we don't have any yet
           if (artifacts.length === 0) {
-            setArtifacts(pinnedArtifacts)
+            setArtifacts(loadedArtifacts)
             
             // Set active artifact to last one if none is active
-            if (!activeArtifact && pinnedArtifacts.length > 0) {
-              selectArtifact(pinnedArtifacts[pinnedArtifacts.length - 1])
+            if (!activeArtifact && loadedArtifacts.length > 0) {
+              selectArtifact(loadedArtifacts[loadedArtifacts.length - 1])
             }
           }
         }
@@ -119,6 +121,39 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     
     return Date.now() * 1000;
   }, []);
+
+  // Add toggleShowAllArtifacts function
+  const toggleShowAllArtifacts = useCallback(() => {
+    setShowAllArtifacts(prev => {
+      const newValue = !prev;
+      
+      // Force reload artifacts when toggle changes
+      const loadArtifacts = async () => {
+        try {
+          const endpoint = newValue ? '/api/artifacts/all' : '/api/artifacts/pinned';
+          const response = await fetch(endpoint);
+          
+          if (response.ok) {
+            const loadedArtifacts = await response.json();
+            setArtifacts(loadedArtifacts);
+            
+            // If active artifact is not in the new list, select the most recent one
+            if (activeArtifact) {
+              const stillExists = loadedArtifacts.some((a: Artifact) => a.id === activeArtifact.id);
+              if (!stillExists && loadedArtifacts.length > 0) {
+                selectArtifact(loadedArtifacts[0]);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load artifacts after toggle:', err);
+        }
+      };
+      
+      loadArtifacts();
+      return newValue;
+    });
+  }, [activeArtifact, selectArtifact]);
 
   const addArtifact = useCallback(async (artifact: NewArtifact): Promise<Artifact> => {
     // If it's a plan artifact, save the content to the backend first
@@ -158,6 +193,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       var2line_end: artifact.var2line_end || {}
     }
 
+    // Add to UI state
     setArtifacts(prev => {
       return [...prev, newArtifact]
     })
@@ -173,9 +209,10 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       setMode('plan')
     }
 
-    // Save to pinned artifacts if it should be pinned
-    if (artifact.pinned) {
-      try {
+    // Save to appropriate backend endpoint
+    try {
+      if (artifact.pinned) {
+        // Save to pinned artifacts
         await fetch('/api/artifacts/pin', {
           method: 'POST',
           headers: {
@@ -187,14 +224,31 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
             artifact: newArtifact
           })
         });
-      } catch (err) {
-        console.error('Failed to save to pinned artifacts:', err);
+      } else {
+        // Save to all artifacts
+        await fetch('/api/artifacts/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            artifact: newArtifact
+          })
+        });
+        
+        // If we're in "pinned only" mode and this is an unpinned artifact,
+        // we need to make sure it's still visible by toggling to "all artifacts" mode
+        if (!showAllArtifacts) {
+          toggleShowAllArtifacts();
+        }
       }
+    } catch (err) {
+      console.error('Failed to save artifact:', err);
     }
     
     // Return the new artifact for chaining
     return newArtifact;
-  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent])
+  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent, showAllArtifacts, toggleShowAllArtifacts])
 
   const runArtifact = useCallback(async (
     code: string, 
@@ -298,6 +352,23 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
             });
           } catch (err) {
             console.error('Failed to update pinned artifact:', err);
+          }
+        } else {
+          // Always save to all artifacts
+          try {
+            fetch('/api/artifacts/save', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                artifact: updatedArtifact
+              })
+            }).catch(err => {
+              console.error('Failed to save to all artifacts:', err);
+            });
+          } catch (err) {
+            console.error('Failed to save to all artifacts:', err);
           }
         }
       } else {
@@ -607,6 +678,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     handleChat,
     selectedStep,
     setSelectedStep,
+    showAllArtifacts,
+    toggleShowAllArtifacts
   }
 
   return (

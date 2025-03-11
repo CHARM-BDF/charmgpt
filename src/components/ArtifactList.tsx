@@ -22,6 +22,7 @@ import {
 } from '../contexts/ArtifactContext.types';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import HistoryIcon from '@mui/icons-material/History';
 
 interface UploadResponse {
 	filepath: string;
@@ -46,6 +47,8 @@ export default function ArtifactList({
 		viewMode,
 		setViewMode,
 		togglePin,
+		showAllArtifacts,
+		toggleShowAllArtifacts,
 	} = useArtifact();
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -189,9 +192,20 @@ export default function ArtifactList({
 					borderBottom: { xs: 0, sm: 1 },
 					borderColor: 'divider',
 					display: 'flex',
-					justifyContent: 'flex-end',
+					justifyContent: 'space-between',
 				}}
 			>
+				<Box sx={{ display: 'flex', alignItems: 'center' }}>
+					<Tooltip title={showAllArtifacts ? "Show pinned artifacts only" : "Show all artifacts"}>
+						<IconButton
+							size='small'
+							onClick={toggleShowAllArtifacts}
+							color={showAllArtifacts ? "primary" : "default"}
+						>
+							<HistoryIcon />
+						</IconButton>
+					</Tooltip>
+				</Box>
 				<ToggleButtonGroup
 					value={viewMode}
 					exclusive

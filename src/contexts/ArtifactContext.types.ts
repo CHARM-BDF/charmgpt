@@ -101,6 +101,8 @@ export interface ArtifactContextType {
   handleChat: (message?: string) => Promise<boolean>
   selectedStep: string
   setSelectedStep: (step: string) => void
+  showAllArtifacts: boolean
+  toggleShowAllArtifacts: () => void
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined)
