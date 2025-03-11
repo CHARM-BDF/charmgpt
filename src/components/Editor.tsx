@@ -20,6 +20,8 @@ export default function Editor({ language = 'python' }: EditorProps) {
     editorContent,
     planContent,
     setPlanContent,
+    pipeContent,
+    setPipeContent,
     mode,
     setViewMode,
     setSelectedStep,
@@ -195,14 +197,14 @@ export default function Editor({ language = 'python' }: EditorProps) {
   }, [activeArtifact, mode, language, setEditorContent, planContent]);
 
   const handleChange: OnChange = (value) => {
-    if (value === undefined) return;
-    
     if (mode === 'code') {
-      setEditorContent(value);
-    } else {
-      setPlanContent(value);
+      setEditorContent(value || '')
+    } else if (mode === 'plan') {
+      setPlanContent(value || '')
+    } else if (mode === 'pipe') {
+      setPipeContent(value || '')
     }
-  };
+  }
 
   // Use effect to handle command lifecycle
   useEffect(() => {
@@ -254,10 +256,10 @@ export default function Editor({ language = 'python' }: EditorProps) {
     }
   }, [selectedStep, activeArtifact?.var2line, activeArtifact?.var2line_end, mode]);
 
-  // Add effect to clear decorations when switching to plan mode or when component unmounts
+  // Add effect to clear decorations when switching to plan or pipe mode or when component unmounts
   useEffect(() => {
-    if (mode === 'plan' && editorRef.current) {
-      // Clear existing decorations when switching to plan mode
+    if ((mode === 'plan' || mode === 'pipe') && editorRef.current) {
+      // Clear existing decorations when switching to plan or pipe mode
       decorationIds.current = editorRef.current.deltaDecorations(decorationIds.current, []);
     }
     
@@ -276,7 +278,11 @@ export default function Editor({ language = 'python' }: EditorProps) {
     }
   }, [activeArtifact]);
 
-  const currentValue = mode === 'code' ? editorContent : planContent
+  const currentValue = mode === 'code' 
+    ? editorContent 
+    : mode === 'plan'
+    ? planContent
+    : pipeContent
 
   return (
     <Box sx={{ display: 'flex', height: '100%' }}>

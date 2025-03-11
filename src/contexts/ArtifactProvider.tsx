@@ -22,6 +22,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('plot')
   const [editorContent, setEditorContent] = useState('')
   const [planContent, setPlanContent] = useState('')
+  const [pipeContent, setPipeContent] = useState('')
   const [mode, setMode] = useState<EditorMode>('code')
   const [isRunning, setIsRunning] = useState(false)
   const [selectedStep, setSelectedStep] = useState('')
@@ -56,6 +57,29 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           }
         };
         savePlanToBackend();
+      } else if ((artifact.type as string) === 'pipe' && 'content' in artifact) {
+        // For pipe artifacts, switch to pipe mode and load content immediately
+        setMode('pipe')
+        
+        // Set the pipe content from the artifact
+        const pipeContent = artifact.content as string;
+        setPipeContent(pipeContent);
+        
+        // Also save to backend to ensure consistency
+        const savePipeToBackend = async () => {
+          try {
+            await fetch('/api/artifacts/pipe', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ content: pipeContent })
+            });
+          } catch (err) {
+            console.error('Failed to save pipe to backend:', err);
+          }
+        };
+        savePipeToBackend();
       } else if ((artifact.type as string) === 'code') {
         // For code artifacts, use default behavior
         setViewMode(getDefaultViewMode(artifact))
@@ -103,13 +127,20 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           const { content } = await planResponse.json()
           setPlanContent(content)
         }
+
+        // Load saved pipe
+        const pipeResponse = await fetch('/api/artifacts/pipe')
+        if (pipeResponse.ok) {
+          const { content } = await pipeResponse.json()
+          setPipeContent(content)
+        }
       } catch (err) {
         console.error('Failed to load initial data:', err)
       }
     }
 
     loadInitialData()
-  }, [activeArtifact, selectArtifact])
+  }, [activeArtifact, selectArtifact, showAllArtifacts])
 
   // Update displayed artifacts when showAllArtifacts changes
   useEffect(() => {
@@ -768,6 +799,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     setEditorContent,
     planContent,
     setPlanContent,
+    pipeContent,
+    setPipeContent,
     addArtifact,
     isRunning,
     setIsRunning,

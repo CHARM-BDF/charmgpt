@@ -13,6 +13,8 @@ export const artifactContextValue: ArtifactContextType = {
   setEditorContent: () => undefined,
   planContent: '',
   setPlanContent: () => undefined,
+  pipeContent: '',
+  setPipeContent: () => undefined,
   addArtifact: async () => ({} as Artifact), // Return empty artifact to satisfy Promise<Artifact>
   isRunning: false,
   setIsRunning: () => undefined,

@@ -1,10 +1,10 @@
 import { createContext } from 'react'
 
-export type EditorMode = 'code' | 'plan'
+export type EditorMode = 'code' | 'plan' | 'pipe'
 export type ViewMode = 'plot' | 'data' | 'output'
 export type CodeLanguage = 'python' | 'r'
 
-export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data'
+export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data' | 'plan' | 'pipe'
 
 /**
  * Gets the display name for a file by removing the runId prefix.
@@ -92,6 +92,8 @@ export interface ArtifactContextType {
   setEditorContent: (content: string) => void
   planContent: string
   setPlanContent: (content: string) => void
+  pipeContent: string
+  setPipeContent: (content: string) => void
   addArtifact: (artifact: Omit<Artifact, 'id' | 'timestamp'>) => Promise<Artifact>
   isRunning: boolean
   setIsRunning: (running: boolean) => void

@@ -36,6 +36,7 @@ export default function CodeEditor() {
 		runArtifact,
 		editorContent,
 		planContent,
+		pipeContent,
 		isRunning,
 		setIsRunning,
 		handleChat,
@@ -71,8 +72,11 @@ export default function CodeEditor() {
 		newMode: EditorMode
 	) => {
 		if (newMode !== null && newMode !== mode) {
-			// If switching from code to plan, save the code content
-			if (mode === 'code' && newMode === 'plan' && activeArtifact && editorContent) {
+			// Save the current content before switching modes
+			// This ensures that users don't lose their work when switching between modes
+			
+			// If switching from code mode, save the code content
+			if (mode === 'code' && activeArtifact && editorContent) {
 				// Only update if the code has changed
 				if (activeArtifact.code !== editorContent) {
 					// Update the active artifact with the current code
@@ -88,8 +92,38 @@ export default function CodeEditor() {
 							pinned: true
 						});
 					} catch (err) {
-						console.error('Failed to save code before switching to plan mode:', err);
+						console.error('Failed to save code before switching modes:', err);
 					}
+				}
+			}
+			
+			// If switching from plan mode, save the plan content to backend
+			if (mode === 'plan') {
+				try {
+					await fetch('/api/artifacts/plan', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({ content: planContent })
+					});
+				} catch (err) {
+					console.error('Failed to save plan content before switching modes:', err);
+				}
+			}
+			
+			// If switching from pipe mode, save the pipe content to backend
+			if (mode === 'pipe') {
+				try {
+					await fetch('/api/artifacts/pipe', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({ content: pipeContent })
+					});
+				} catch (err) {
+					console.error('Failed to save pipe content before switching modes:', err);
 				}
 			}
 			
@@ -118,14 +152,12 @@ export default function CodeEditor() {
 	};
 
 	const handleSave = () => {
-		setSaveDialogOpen(true);
-		// Default name based on first line or content preview
-		const content = mode === 'code' ? editorContent : planContent;
-		const firstLine = content.split('\n')[0].trim();
-		const defaultName = firstLine 
-			? firstLine.substring(0, 30) + (firstLine.length > 30 ? '...' : '')
-			: `${mode === 'code' ? 'Code' : 'Plan'} ${new Date().toLocaleTimeString()}`;
+		// Generate a default name based on the current mode and time
+		const defaultName = activeArtifact?.name 
+			? `${activeArtifact.name} (copy)`
+			: `${mode === 'code' ? 'Code' : mode === 'plan' ? 'Plan' : 'Pipe'} ${new Date().toLocaleTimeString()}`;
 		setArtifactName(defaultName);
+		setSaveDialogOpen(true);
 	};
 
 	const handleSaveConfirm = async () => {
@@ -146,7 +178,7 @@ export default function CodeEditor() {
 					var2line_end: {},
 					pinned: true,
 				});
-			} else {
+			} else if (mode === 'plan') {
 				// Save as plan artifact
 				// Use a type assertion to work around TypeScript limitations
 				const planArtifact = {
@@ -161,6 +193,21 @@ export default function CodeEditor() {
 				};
 				// @ts-expect-error - TypeScript doesn't understand plan artifacts yet
 				await addArtifact(planArtifact);
+			} else {
+				// Save as pipe artifact
+				// Use a type assertion to work around TypeScript limitations
+				const pipeArtifact = {
+					type: 'pipe',
+					name: artifactName,
+					content: pipeContent,
+					source: 'user',
+					var2val: {},
+					var2line: {},
+					var2line_end: {},
+					pinned: true,
+				};
+				// @ts-expect-error - TypeScript doesn't understand pipe artifacts yet
+				await addArtifact(pipeArtifact);
 			}
 
 			setSaveDialogOpen(false);
@@ -193,6 +240,7 @@ export default function CodeEditor() {
 						aria-label="editor mode"
 						size="small"
 					>
+						<ToggleButton value="pipe">Pipe</ToggleButton>
 						<ToggleButton value="plan">Plan</ToggleButton>
 						<ToggleButton value="code">Code</ToggleButton>
 					</ToggleButtonGroup>
@@ -321,7 +369,7 @@ export default function CodeEditor() {
 			</Box>
 
 			<Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-				<DialogTitle>Save {mode === 'code' ? 'Code' : 'Plan'}</DialogTitle>
+				<DialogTitle>Save {mode === 'code' ? 'Code' : mode === 'plan' ? 'Plan' : 'Pipe'}</DialogTitle>
 				<DialogContent>
 					<TextField
 						autoFocus
