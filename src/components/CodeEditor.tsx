@@ -213,7 +213,7 @@ export default function CodeEditor() {
 			if (recentArtifacts.length > 0) {
 				recentArtifacts.forEach((artifact) => {
 					prompt += `Previous step created the following artifact:\n`;
-					prompt += formatArtifact(artifact);
+					prompt += formatArtifact(artifact, true);
 					prompt += '\n';
 				});
 			} else {
@@ -345,7 +345,7 @@ export default function CodeEditor() {
 							if (recentArtifacts.length > 0) {
 								recentArtifacts.forEach((artifact) => {
 									prompt += `Previous step created the following artifact:\n`;
-									prompt += formatArtifact(artifact);
+									prompt += formatArtifact(artifact, true);
 									prompt += '\n';
 								});
 							} else {
