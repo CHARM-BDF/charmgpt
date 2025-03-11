@@ -251,4 +251,33 @@ router.get('/plan', async (req, res) => {
   }
 })
 
+router.post('/pipe', async (req, res) => {
+  try {
+    const { content } = req.body
+    const pipeFile = path.join(docker.getTempDir(), 'pipe.md')
+    await fs.writeFile(pipeFile, content)
+    res.json({ success: true })
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to save pipe' })
+  }
+})
+
+router.get('/pipe', async (req, res) => {
+  try {
+    const pipeFile = path.join(docker.getTempDir(), 'pipe.md')
+    try {
+      const content = await fs.readFile(pipeFile, 'utf-8')
+      res.json({ content })
+    } catch (err) {
+      void err
+      // If file doesn't exist, return empty content
+      res.json({ content: '' })
+    }
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to load pipe' })
+  }
+})
+
 export default router 
