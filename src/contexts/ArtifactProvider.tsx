@@ -26,6 +26,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [isRunning, setIsRunning] = useState(false)
   const [selectedStep, setSelectedStep] = useState('')
   const [showAllArtifacts, setShowAllArtifacts] = useState(false)
+  // Track artifacts created in the current session
+  const [currentSessionArtifacts, setCurrentSessionArtifacts] = useState<Set<number>>(new Set())
 
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
@@ -114,7 +116,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     if (allArtifacts.length > 0) {
       const displayArtifacts = showAllArtifacts 
         ? allArtifacts 
-        : allArtifacts.filter(a => a.pinned);
+        : allArtifacts.filter(a => a.pinned || currentSessionArtifacts.has(a.id));
       
       setArtifacts(displayArtifacts)
       
@@ -125,7 +127,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         selectArtifact(sortedArtifacts[0]);
       }
     }
-  }, [showAllArtifacts, allArtifacts, activeArtifact, selectArtifact])
+  }, [showAllArtifacts, allArtifacts, activeArtifact, selectArtifact, currentSessionArtifacts])
 
   // Define a type for new artifacts without id and timestamp
   type NewArtifact = Omit<Artifact, 'id' | 'timestamp'> & {
@@ -145,6 +147,15 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     
     return Date.now() * 1000;
   }, []);
+
+  // Add a function to ensure the artifacts list shows pinned artifacts and current session artifacts
+  const ensureCorrectArtifactsDisplayed = useCallback(() => {
+    if (!showAllArtifacts && allArtifacts.length > 0) {
+      // When in "Pinned Only" mode, show pinned artifacts and current session artifacts
+      const filteredArtifacts = allArtifacts.filter(a => a.pinned || currentSessionArtifacts.has(a.id));
+      setArtifacts(filteredArtifacts);
+    }
+  }, [showAllArtifacts, allArtifacts, currentSessionArtifacts]);
 
   // Add toggleShowAllArtifacts function
   const toggleShowAllArtifacts = useCallback(() => {
@@ -189,16 +200,27 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       var2line_end: artifact.var2line_end || {}
     }
 
-    // Add to UI state - both allArtifacts and filtered artifacts
-    setAllArtifacts(prev => [...prev, newArtifact]);
+    // Check if this artifact already exists in allArtifacts (by ID)
+    const artifactExists = allArtifacts.some(a => a.id === newArtifact.id);
     
-    // Only add to visible artifacts if it should be visible
-    if (showAllArtifacts || newArtifact.pinned) {
+    if (!artifactExists) {
+      // Add to UI state - both allArtifacts and filtered artifacts
+      setAllArtifacts(prev => [...prev, newArtifact]);
+      
+      // Add to current session artifacts
+      setCurrentSessionArtifacts(prev => {
+        const newSet = new Set(prev);
+        newSet.add(newArtifact.id);
+        return newSet;
+      });
+      
+      // Add to visible artifacts
       setArtifacts(prev => [...prev, newArtifact]);
     } else {
-      // If we're adding an unpinned artifact and in pinned-only mode,
-      // switch to show all artifacts
-      setShowAllArtifacts(true);
+      console.log(`Artifact with ID ${newArtifact.id} already exists, not adding duplicate`);
+      
+      // Ensure the artifacts list is correctly filtered
+      ensureCorrectArtifactsDisplayed();
     }
 
     // Set as active artifact
@@ -245,7 +267,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     
     // Return the new artifact for chaining
     return newArtifact;
-  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent, showAllArtifacts])
+  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent, allArtifacts, ensureCorrectArtifactsDisplayed])
 
   const runArtifact = useCallback(async (
     code: string, 
