@@ -207,16 +207,12 @@ export default function CodeEditor() {
 		if (currentStepIndex > 0) {
 			prompt += `I've already completed the previous steps and here are the results:\n\n`;
 			
-			// Filter artifacts to only include those created after the pipeline started and only code artifacts
-			const pipelineStartTime = pipelineExecutionRef.current.startTime || 0;
-			const relevantArtifacts = [...artifacts]
-				.filter(artifact => artifact.timestamp > pipelineStartTime && artifact.type === 'code')
-				.sort((a, b) => b.timestamp - a.timestamp)
-				.slice(0, 3);
+			// Get the step artifacts tracked in pipelineExecutionRef
+			const stepArtifacts = pipelineExecutionRef.current.stepArtifacts || [];
 			
-			if (relevantArtifacts.length > 0) {
-				prompt += `Found ${relevantArtifacts.length} relevant artifacts from previous steps:\n\n`;
-				relevantArtifacts.forEach((artifact) => {
+			if (stepArtifacts.length > 0) {
+				prompt += `Found ${stepArtifacts.length} relevant artifacts from previous steps:\n\n`;
+				stepArtifacts.forEach((artifact) => {
 					prompt += `Previous step created the following artifact:\n`;
 					prompt += formatArtifact(artifact, true);
 					prompt += '\n';
@@ -228,6 +224,9 @@ export default function CodeEditor() {
 		
 		prompt += `Please help me execute ${currentStep.title} specifically. Focus only on this step for now, and provide detailed results that I can use for the next steps.`;
 		
+		// Record the timestamp before executing the step
+		const stepStartTime = Date.now();
+
 		// Execute the step
 		setIsRunning(true);
 		try {
@@ -237,6 +236,22 @@ export default function CodeEditor() {
 			
 			// If the step was successful, check if there are more steps
 			if (success) {
+				// Find new artifacts created during this step
+				const newArtifacts = [...artifacts]
+					.filter(artifact => artifact.timestamp > stepStartTime && artifact.type === 'code')
+					.sort((a, b) => b.timestamp - a.timestamp);
+				
+				// Add the most recent artifact to the step artifacts list
+				if (newArtifacts.length > 0) {
+					if (!pipelineExecutionRef.current.stepArtifacts) {
+						pipelineExecutionRef.current.stepArtifacts = [];
+					}
+					pipelineExecutionRef.current.stepArtifacts.push(newArtifacts[0]);
+					console.log(`Added artifact from step ${currentStepIndex + 1} to step artifacts list. Total artifacts: ${pipelineExecutionRef.current.stepArtifacts.length}`);
+				} else {
+					console.log(`No new artifacts found for step ${currentStepIndex + 1}`);
+				}
+				
 				// Move to the next step
 				pipelineExecutionRef.current.currentStepIndex++;
 				
@@ -246,11 +261,9 @@ export default function CodeEditor() {
 					pipelineExecutionRef.current.isExecuting = false;
 					setCurrentPipelineStep(1); // Reset to first step for next execution
 				} else {
-					// Schedule the next step execution with a small delay
+					// Schedule the next step execution without delay
 					console.log(`Scheduling next step (${pipelineExecutionRef.current.currentStepIndex + 1}) execution`);
-					setTimeout(() => {
-						executeNextStep();
-					}, 1000);
+					executeNextStep();
 				}
 			} else {
 				// If the step failed, stop the pipeline execution
@@ -335,8 +348,8 @@ export default function CodeEditor() {
 						// Get the step title
 						const stepTitle = stepToExecute.title;
 						
-						// Record the execution start time
-						const executionStartTime = Date.now();
+						// Record the timestamp before executing the step
+						const stepStartTime = Date.now();
 						
 						// Log which step we're executing
 						console.log(`Executing single step: ${stepTitle} (Step ${stepIndex + 1} of ${steps.length})`);
@@ -348,18 +361,22 @@ export default function CodeEditor() {
 						if (stepIndex > 0) {
 							prompt += `I've already completed the previous steps and here are the results:\n\n`;
 							
-							// Define a session start time (10 minutes ago) to filter artifacts
-							const sessionStartTime = executionStartTime - (10 * 60 * 1000); // 10 minutes ago
+							// Initialize pipeline execution ref if it doesn't exist
+							if (!pipelineExecutionRef.current) {
+								pipelineExecutionRef.current = {
+									isExecuting: false,
+									steps,
+									currentStepIndex: stepIndex,
+									stepArtifacts: []
+								};
+							}
 							
-							// Filter artifacts to only include those created in this session and only code artifacts
-							const sessionArtifacts = [...artifacts]
-								.filter(artifact => artifact.timestamp > sessionStartTime && artifact.type === 'code')
-								.sort((a, b) => b.timestamp - a.timestamp)
-								.slice(0, 3);
+							// Get the step artifacts tracked in pipelineExecutionRef
+							const stepArtifacts = pipelineExecutionRef.current.stepArtifacts || [];
 							
-							if (sessionArtifacts.length > 0) {
-								prompt += `Found ${sessionArtifacts.length} relevant artifacts from previous steps:\n\n`;
-								sessionArtifacts.forEach((artifact) => {
+							if (stepArtifacts.length > 0) {
+								prompt += `Found ${stepArtifacts.length} relevant artifacts from previous steps:\n\n`;
+								stepArtifacts.forEach((artifact) => {
 									prompt += `Previous step created the following artifact:\n`;
 									prompt += formatArtifact(artifact, true);
 									prompt += '\n';
@@ -373,6 +390,32 @@ export default function CodeEditor() {
 						
 						// Send the prompt to the chat
 						await handleChat(prompt);
+						
+						// Find new artifacts created during this step
+						const newArtifacts = [...artifacts]
+							.filter(artifact => artifact.timestamp > stepStartTime && artifact.type === 'code')
+							.sort((a, b) => b.timestamp - a.timestamp);
+						
+						// Add the most recent artifact to the step artifacts list
+						if (newArtifacts.length > 0) {
+							if (!pipelineExecutionRef.current) {
+								pipelineExecutionRef.current = {
+									isExecuting: false,
+									steps,
+									currentStepIndex: stepIndex,
+									stepArtifacts: []
+								};
+							}
+							
+							if (!pipelineExecutionRef.current.stepArtifacts) {
+								pipelineExecutionRef.current.stepArtifacts = [];
+							}
+							
+							pipelineExecutionRef.current.stepArtifacts.push(newArtifacts[0]);
+							console.log(`Added artifact from single-step execution to step artifacts list. Total artifacts: ${pipelineExecutionRef.current.stepArtifacts.length}`);
+						} else {
+							console.log(`No new artifacts found for single-step execution`);
+						}
 					} finally {
 						setIsRunning(false);
 					}
