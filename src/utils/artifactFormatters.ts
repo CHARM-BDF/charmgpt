@@ -9,7 +9,16 @@ export function formatArtifact(artifact: Artifact, output_only: boolean = false)
   let artifactSummary = `## Artifact ${getDisplayName(artifact)}`;
   
   if (output_only) {
-    artifactSummary += `\n` + artifact.output + `\n`;
+    // When output_only is true, only include content before "__RESULTS__"
+    let output = artifact.output || '';
+    const resultsMarkerIndex = output.indexOf('__RESULTS__');
+    
+    // If the marker exists, only include content before it
+    if (resultsMarkerIndex !== -1) {
+      output = output.substring(0, resultsMarkerIndex).trim();
+    }
+    
+    artifactSummary += `\n` + output + `\n`;
     return artifactSummary;
   }
   
