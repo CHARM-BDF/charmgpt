@@ -778,7 +778,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       const response = await chatWithLLM(msg)
 
       // Process response and create artifacts in order
-      await parseCodeFromResponse(response, docString || '(plan only)\n\n'+msg)
+      await parseCodeFromResponse(response, docString || message ||'(plan only)\n\n'+msg)
       return true
     } catch (err) {
       console.error('Chat error:', err)
