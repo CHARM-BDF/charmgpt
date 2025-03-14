@@ -449,6 +449,31 @@ export default function CodeEditor() {
 				
 				console.log(`Current artifact is part of a pipeline (Step ${activeArtifact.pipelineStep} of ${activeArtifact.pipelineTotalSteps})`);
 				
+				// First, save the current code to the artifact
+				if (editorContent && activeArtifact.code !== editorContent) {
+					console.log(`[DEBUG] Saving modified code to artifact before pipeline execution`);
+					
+					// Extract the pipeline title if available
+					const pipelineTitle = activeArtifact.pipelineTitle || '';
+					const stepTitle = activeArtifact.pipelineStepTitle || '';
+					
+					// Update the artifact with the modified code but keep pipeline metadata
+					const updatedArtifact = {
+						...activeArtifact,
+						// Preserve the pipeline metadata comment if it exists
+						code: editorContent.includes('# Pipeline:') ? editorContent : 
+							`# Pipeline: ${pipelineTitle || 'Unnamed Pipeline'}\n# Step: ${activeArtifact.pipelineStep} of ${activeArtifact.pipelineTotalSteps} - ${stepTitle}\n\n${editorContent}`
+					};
+					
+					try {
+						// Update the artifact with the modified code
+						await updateArtifact(updatedArtifact);
+						console.log(`[DEBUG] Updated artifact with modified code:`, updatedArtifact.id);
+					} catch (error) {
+						console.error(`[DEBUG] Failed to update artifact with modified code:`, error);
+					}
+				}
+				
 				// Switch to pipe mode to execute the pipeline
 				await handleModeChange({} as React.MouseEvent<HTMLElement>, 'pipe');
 				
@@ -470,28 +495,36 @@ export default function CodeEditor() {
 					typeof a.pipelineStep === 'number'
 				).sort((a, b) => (a.pipelineStep || 0) - (b.pipelineStep || 0));
 				
-				// Initialize pipeline execution starting from the current artifact's step
+				// Find artifacts from previous steps only (not including the current step)
+				const previousStepArtifacts = pipelineArtifacts.filter(a => 
+					(a.pipelineStep || 0) < (activeArtifact.pipelineStep || 0)
+				);
+				
+				console.log(`[DEBUG] Found ${previousStepArtifacts.length} artifacts from previous steps`);
+				
+				// Initialize pipeline execution to re-run the current step
+				// We use currentStepIndex = activeArtifact.pipelineStep - 1 because executeNextStep will execute the step at currentStepIndex + 1
 				pipelineExecutionRef.current = {
 					isExecuting: true,
 					steps,
-					currentStepIndex: activeArtifact.pipelineStep, // Start from the next step
-					stepArtifacts: pipelineArtifacts,
+					currentStepIndex: (activeArtifact.pipelineStep || 1) - 1, // Set to execute the current step again
+					stepArtifacts: previousStepArtifacts, // Only include artifacts from previous steps
 					startTime: Date.now(),
 					isPaused: false
 				};
 				
 				// Make sure the UI shows the correct step (1-indexed for display)
-				setCurrentPipelineStep(activeArtifact.pipelineStep + 1);
+				setCurrentPipelineStep(activeArtifact.pipelineStep || 1);
 				
-				console.log(`[DEBUG] Resuming pipeline from artifact:`, {
+				console.log(`[DEBUG] Re-executing pipeline step ${activeArtifact.pipelineStep || 1} with user-modified code:`, {
 					pipelineTitle: activeArtifact.pipelineTitle,
-					currentStep: activeArtifact.pipelineStep,
-					nextStep: activeArtifact.pipelineStep + 1,
-					totalSteps: activeArtifact.pipelineTotalSteps,
-					artifactsCount: pipelineArtifacts.length
+					currentStep: activeArtifact.pipelineStep || 1,
+					totalSteps: activeArtifact.pipelineTotalSteps || 1,
+					previousArtifactsCount: previousStepArtifacts.length,
+					codeModified: activeArtifact.code !== editorContent
 				});
 				
-				// Start execution from the next step
+				// Start execution of the current step
 				executeNextStep();
 				return;
 			}
