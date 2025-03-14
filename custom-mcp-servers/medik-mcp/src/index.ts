@@ -24,6 +24,7 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
     try {
         // Check if server is initialized
         console.error(`[medik-mcp] [MEDIK-STEP 0] Server object type: ${typeof server}`);
+        console.error('[medik-mcp] [MEDIK-STEP 0] Server object: ',server);
         console.error(`[medik-mcp] [MEDIK-STEP 0] Has sendLoggingMessage: ${typeof server.sendLoggingMessage === 'function'}`);
         
         // Create log payload
@@ -491,7 +492,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     },
                 });
                 
-                console.error(`MEDIK: Starting CAID node filtering process on ${queryResult.length} results`);
+                // console.error(`MEDIK: Star ting CAID node filtering process on ${queryResult.length} results`);
                 
                 try {
                     console.error(`MEDIK: Calling formatKnowledgeGraphArtifact with ${queryResult.length} results`);

@@ -9,7 +9,7 @@ const logsDir = path.join(workspaceRoot, 'logs', 'data');
 // Ensure logs directory exists
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
-  console.error(`MEDIK FORMATTER: Created logs directory at ${logsDir}`);
+  console.log(`MEDIK FORMATTER: Created logs directory at ${logsDir}`);
 }
 
 // Define types for the knowledge graph data structure
@@ -193,8 +193,8 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
   const DELAY_MS = 500; // 500ms delay between batches
   const NODE_NORM_API = 'https://nodenorm.ci.transltr.io/1.5/get_normalized_nodes';
   
-  console.error(`MEDIK FORMATTER: Normalizing ${curies.length} nodes using Node Normalizer API`);
-  console.error(`MEDIK FORMATTER: First few CURIEs to normalize: ${curies.slice(0, 5).join(', ')}${curies.length > 5 ? '...' : ''}`);
+  console.log(`MEDIK FORMATTER: Normalizing ${curies.length} nodes using Node Normalizer API`);
+  console.log(`MEDIK FORMATTER: First few CURIEs to normalize: ${curies.slice(0, 5).join(', ')}${curies.length > 5 ? '...' : ''}`);
   
   // Create a map to store the normalized data
   const normalizedMap = new Map<string, any>();
@@ -202,7 +202,7 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
   // Process in batches
   for (let i = 0; i < curies.length; i += BATCH_SIZE) {
     const batchCuries = curies.slice(i, i + BATCH_SIZE);
-    console.error(`MEDIK FORMATTER: Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(curies.length/BATCH_SIZE)} (${batchCuries.length} nodes)`);
+    console.log(`MEDIK FORMATTER: Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(curies.length/BATCH_SIZE)} (${batchCuries.length} nodes)`);
     
     try {
       // Build the URL with query parameters
@@ -215,7 +215,7 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
       url.searchParams.append('description', 'true');
       url.searchParams.append('individual_types', 'true');
       
-      console.error(`MEDIK FORMATTER: Making request to Node Normalizer API: ${url.toString().substring(0, 100)}...`);
+      console.log(`MEDIK FORMATTER: Making request to Node Normalizer API: ${url.toString().substring(0, 100)}...`);
       
       // Make the request
       const response = await fetch(url.toString(), {
@@ -226,24 +226,24 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
       });
       
       if (!response.ok) {
-        console.error(`MEDIK FORMATTER: Error from Node Normalizer API: ${response.status} ${response.statusText}`);
-        console.error(`MEDIK FORMATTER: Response body: ${await response.text()}`);
+        console.log(`MEDIK FORMATTER: Error from Node Normalizer API: ${response.status} ${response.statusText}`);
+        console.log(`MEDIK FORMATTER: Response body: ${await response.text()}`);
         continue;
       }
       
       const data: NodeNormResponse = await response.json();
-      console.error(`MEDIK FORMATTER: Received response from Node Normalizer API with ${Object.keys(data).length} normalized nodes`);
+      console.log(`MEDIK FORMATTER: Received response from Node Normalizer API with ${Object.keys(data).length} normalized nodes`);
       
       // Log a sample of the response
       const sampleKey = Object.keys(data)[0];
       if (sampleKey) {
-        console.error(`MEDIK FORMATTER: Sample normalized data for ${sampleKey}:`, JSON.stringify(data[sampleKey], null, 2));
+        console.log(`MEDIK FORMATTER: Sample normalized data for ${sampleKey}:`, JSON.stringify(data[sampleKey], null, 2));
       }
       
       // Add the normalized data to the map, filtering out null values
       for (const [curie, normData] of Object.entries(data)) {
         if (normData === null) {
-          console.error(`MEDIK FORMATTER: Node Normalizer returned null for ${curie}, will keep original node data`);
+          console.log(`MEDIK FORMATTER: Node Normalizer returned null for ${curie}, will keep original node data`);
           // Don't add null values to the map - this will make normalizedMap.get() return undefined
           // which is already handled in the node processing logic
           continue;
@@ -253,16 +253,16 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
       
       // Add a delay between batches to avoid overwhelming the API
       if (i + BATCH_SIZE < curies.length) {
-        console.error(`MEDIK FORMATTER: Waiting ${DELAY_MS}ms before next batch`);
+        console.log(`MEDIK FORMATTER: Waiting ${DELAY_MS}ms before next batch`);
         await new Promise(resolve => setTimeout(resolve, DELAY_MS));
       }
     } catch (error) {
-      console.error(`MEDIK FORMATTER: Error normalizing nodes: ${error instanceof Error ? error.message : String(error)}`);
-      console.error(`MEDIK FORMATTER: Error stack: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
+      console.log(`MEDIK FORMATTER: Error normalizing nodes: ${error instanceof Error ? error.message : String(error)}`);
+      console.log(`MEDIK FORMATTER: Error stack: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
     }
   }
   
-  console.error(`MEDIK FORMATTER: Successfully normalized ${normalizedMap.size} out of ${curies.length} nodes`);
+  console.log(`MEDIK FORMATTER: Successfully normalized ${normalizedMap.size} out of ${curies.length} nodes`);
   return normalizedMap;
 }
 
@@ -289,20 +289,20 @@ export function formatKnowledgeGraphArtifact(
       queryParams,
       results: queryResults
     }, null, 2));
-    console.error(`MEDIK FORMATTER: Saved raw data to ${rawDataPath}`);
+    console.log(`MEDIK FORMATTER: Saved raw data to ${rawDataPath}`);
   } catch (error) {
-    console.error(`MEDIK FORMATTER: Error saving raw data: ${error}`);
-    console.error(`MEDIK FORMATTER: Current working directory: ${process.cwd()}`);
-    console.error(`MEDIK FORMATTER: Attempted to save to: ${logsDir}`);
+    console.log(`MEDIK FORMATTER: Error saving raw data: ${error}`);
+    console.log(`MEDIK FORMATTER: Current working directory: ${process.cwd()}`);
+    console.log(`MEDIK FORMATTER: Attempted to save to: ${logsDir}`);
   }
 
   // Log the raw data before processing
-  console.error(`MEDIK FORMATTER: Processing ${queryResults.length} raw results`);
-  console.error(`MEDIK FORMATTER: Query params:`, JSON.stringify(queryParams, null, 2));
+  console.log(`MEDIK FORMATTER: Processing ${queryResults.length} raw results`);
+  console.log(`MEDIK FORMATTER: Query params:`, JSON.stringify(queryParams, null, 2));
   
   // Sample the first few results to avoid excessive logging
   if (queryResults.length > 0) {
-    console.error(`MEDIK FORMATTER: Sample of first result:`, JSON.stringify(queryResults[0], null, 2));
+    console.log(`MEDIK FORMATTER: Sample of first result:`, JSON.stringify(queryResults[0], null, 2));
   }
   
   // Track unique CAID nodes that will be filtered out
@@ -331,7 +331,7 @@ export function formatKnowledgeGraphArtifact(
     
     // Filter out transcribed_from edges
     if (predicate === 'transcribed_from') {
-      console.error(`MEDIK FORMATTER: Filtering out transcribed_from edge: ${sourceId} -> ${targetId}`);
+      console.log(`MEDIK FORMATTER: Filtering out transcribed_from edge: ${sourceId} -> ${targetId}`);
       return false;
     }
     
@@ -341,7 +341,7 @@ export function formatKnowledgeGraphArtifact(
   const filteredCount = originalCount - filteredResults.length;
   const filteredNodeCount = caidNodes.size;
   
-  console.error(`MEDIK FORMATTER: After filtering: ${filteredResults.length} results remain (removed ${filteredCount} results [${caidNodes.size} CAID nodes and transcribed_from edges])`);
+  console.log(`MEDIK FORMATTER: After filtering: ${filteredResults.length} results remain (removed ${filteredCount} results [${caidNodes.size} CAID nodes and transcribed_from edges])`);
   
   // Initialize the knowledge graph structure
   const graph: KnowledgeGraph = {
@@ -423,8 +423,8 @@ export function formatKnowledgeGraphArtifact(
   
   // Normalize the nodes asynchronously and then continue processing
   return normalizeNodes(nodeIds).then(normalizedMap => {
-    console.error(`MEDIK FORMATTER: Applying normalized IDs to ${nodes.length} nodes`);
-    console.error(`MEDIK FORMATTER: Normalized map contains ${normalizedMap.size} entries`);
+    // console.log(`MEDIK FORMATTER: Applying normalized IDs to ${nodes.length} nodes`);
+    // console.log(`MEDIK FORMATTER: Normalized map contains ${normalizedMap.size} entries`);
     
     // Track ID changes for updating links
     const idMap = new Map<string, string>();
@@ -435,16 +435,16 @@ export function formatKnowledgeGraphArtifact(
     
     // First pass: Apply normalized IDs to nodes and identify duplicates
     nodes.forEach(node => {
-      console.error(`MEDIK FORMATTER: Processing node ${node.id}`);
+      console.log(`MEDIK FORMATTER: Processing node ${node.id}`);
       const normData = normalizedMap.get(node.id);
       
       if (!normData) {
-        console.error(`MEDIK FORMATTER: No normalized data found for ${node.id}`);
+        console.log(`MEDIK FORMATTER: No normalized data found for ${node.id}`);
         return;
       }
       
       if (!normData.id) {
-        console.error(`MEDIK FORMATTER: Normalized data for ${node.id} does not contain id field:`, JSON.stringify(normData, null, 2));
+        console.log(`MEDIK FORMATTER: Normalized data for ${node.id} does not contain id field:`, JSON.stringify(normData, null, 2));
         return;
       }
       
@@ -473,22 +473,22 @@ export function formatKnowledgeGraphArtifact(
         // Preserve color if it exists on the node being merged
         if (node.color && !existingNode.color) {
           existingNode.color = node.color;
-          console.error(`MEDIK FORMATTER: Copied color ${node.color} from merged node ${originalId} to ${normalizedId}`);
+          // console.log(`MEDIK FORMATTER: Copied color ${node.color} from merged node ${originalId} to ${normalizedId}`);
         }
         
         // If the node being merged has an entity type but the existing node doesn't, copy it
         if (node.entityType && !existingNode.entityType) {
           existingNode.entityType = node.entityType;
-          console.error(`MEDIK FORMATTER: Copied entity type ${node.entityType} from merged node ${originalId} to ${normalizedId}`);
+          // console.log(`MEDIK FORMATTER: Copied entity type ${node.entityType} from merged node ${originalId} to ${normalizedId}`);
           
           // Set color based on entity type if not already set
           if (!existingNode.color) {
             existingNode.color = getColorForEntityType(existingNode.entityType);
-            console.error(`MEDIK FORMATTER: Set color ${existingNode.color} based on entity type ${existingNode.entityType} for merged node ${normalizedId}`);
+            console.log(`MEDIK FORMATTER: Set color ${existingNode.color} based on entity type ${existingNode.entityType} for merged node ${normalizedId}`);
           }
         }
         
-        console.error(`MEDIK FORMATTER: Merged node ${originalId} into existing node ${normalizedId}`);
+        console.log(`MEDIK FORMATTER: Merged node ${originalId} into existing node ${normalizedId}`);
       } else {
         // This is a new normalized ID
         // Update the node with normalized data
@@ -517,18 +517,18 @@ export function formatKnowledgeGraphArtifact(
         node.color = getColorForEntityType(biolinkEntityType);
         
         // Log the entity type determination and color
-        console.error(`MEDIK FORMATTER: Determined entity type for ${node.id}: ${biolinkEntityType} (color: ${node.color}) (from ${normData.type?.slice(0, 3).join(', ')}${normData.type && normData.type.length > 3 ? '...' : ''})`);
+        console.log(`MEDIK FORMATTER: Determined entity type for ${node.id}: ${biolinkEntityType} (color: ${node.color}) (from ${normData.type?.slice(0, 3).join(', ')}${normData.type && normData.type.length > 3 ? '...' : ''})`);
         
         // Add to merged nodes map
         mergedNodes.set(normalizedId, node);
         normalizedCount++;
         
-        console.error(`MEDIK FORMATTER: Normalized ${originalId} to ${normalizedId}`);
+        console.log(`MEDIK FORMATTER: Normalized ${originalId} to ${normalizedId}`);
       }
     });
     
-    console.error(`MEDIK FORMATTER: Successfully normalized to ${mergedNodes.size} unique nodes from ${nodes.length} original nodes`);
-    console.error(`MEDIK FORMATTER: ID map contains ${idMap.size} entries`);
+    console.log(`MEDIK FORMATTER: Successfully normalized to ${mergedNodes.size} unique nodes from ${nodes.length} original nodes`);
+    console.log(`MEDIK FORMATTER: ID map contains ${idMap.size} entries`);
     
     // Update links with new node IDs
     let updatedLinkCount = 0;
@@ -536,18 +536,18 @@ export function formatKnowledgeGraphArtifact(
       if (idMap.has(link.source)) {
         const oldSource = link.source;
         link.source = idMap.get(link.source)!;
-        console.error(`MEDIK FORMATTER: Updated link source from ${oldSource} to ${link.source}`);
+        console.log(`MEDIK FORMATTER: Updated link source from ${oldSource} to ${link.source}`);
         updatedLinkCount++;
       }
       if (idMap.has(link.target)) {
         const oldTarget = link.target;
         link.target = idMap.get(link.target)!;
-        console.error(`MEDIK FORMATTER: Updated link target from ${oldTarget} to ${link.target}`);
+        console.log(`MEDIK FORMATTER: Updated link target from ${oldTarget} to ${link.target}`);
         updatedLinkCount++;
       }
     });
     
-    console.error(`MEDIK FORMATTER: Updated ${updatedLinkCount} link endpoints`);
+    console.log(`MEDIK FORMATTER: Updated ${updatedLinkCount} link endpoints`);
     
     // Update the graph with merged nodes
     graph.nodes = Array.from(mergedNodes.values());
@@ -557,16 +557,16 @@ export function formatKnowledgeGraphArtifact(
       // Make sure startingId is an array
       if (!node.startingId) {
         node.startingId = [node.id];
-        console.error(`MEDIK FORMATTER: Fixed missing startingId for node ${node.id}`);
+        console.log(`MEDIK FORMATTER: Fixed missing startingId for node ${node.id}`);
       } else if (!Array.isArray(node.startingId)) {
         node.startingId = [node.startingId];
-        console.error(`MEDIK FORMATTER: Converted startingId to array for node ${node.id}`);
+        console.log(`MEDIK FORMATTER: Converted startingId to array for node ${node.id}`);
       }
       
       // Make sure color is set based on entity type
       if (!node.color && node.entityType) {
         node.color = getColorForEntityType(node.entityType);
-        console.error(`MEDIK FORMATTER: Added missing color for node ${node.id} based on entity type ${node.entityType}: ${node.color}`);
+        console.log(`MEDIK FORMATTER: Added missing color for node ${node.id} based on entity type ${node.entityType}: ${node.color}`);
       } else if (!node.color) {
         // If no entity type, use the group to determine a color
         const entityType = node.group === 1 ? 'Drug' :
@@ -576,14 +576,14 @@ export function formatKnowledgeGraphArtifact(
                           node.group === 5 ? 'Reaction' :
                           node.group === 6 ? 'Cancer Concept' : 'Other';
         node.color = getColorForEntityType(entityType);
-        console.error(`MEDIK FORMATTER: Added missing color for node ${node.id} based on group ${node.group}: ${node.color}`);
+        console.log(`MEDIK FORMATTER: Added missing color for node ${node.id} based on group ${node.group}: ${node.color}`);
       }
     });
     
     // Log the final nodes after ensuring colors and startingId arrays
-    console.error(`MEDIK FORMATTER: Final nodes after ensuring colors and startingId arrays:`);
+    console.log(`MEDIK FORMATTER: Final nodes after ensuring colors and startingId arrays:`);
     graph.nodes.slice(0, 3).forEach((node, index) => {
-      console.error(`MEDIK FORMATTER: Node ${index + 1}:`, JSON.stringify({
+      console.log(`MEDIK FORMATTER: Node ${index + 1}:`, JSON.stringify({
         id: node.id,
         name: node.name,
         entityType: node.entityType,
@@ -594,13 +594,13 @@ export function formatKnowledgeGraphArtifact(
     
     // Log a sample of the final nodes
     if (graph.nodes.length > 0) {
-      console.error(`MEDIK FORMATTER: Sample of final node:`, JSON.stringify(graph.nodes[0], null, 2));
+      console.log(`MEDIK FORMATTER: Sample of final node:`, JSON.stringify(graph.nodes[0], null, 2));
     }
     
     // Final verification that all nodes have colors
     const nodesWithoutColor = graph.nodes.filter(node => !node.color);
     if (nodesWithoutColor.length > 0) {
-      console.error(`MEDIK FORMATTER: WARNING - Found ${nodesWithoutColor.length} nodes without color property. Fixing...`);
+      console.log(`MEDIK FORMATTER: WARNING - Found ${nodesWithoutColor.length} nodes without color property. Fixing...`);
       nodesWithoutColor.forEach(node => {
         // Determine color based on entity type or group
         if (node.entityType) {
@@ -614,14 +614,14 @@ export function formatKnowledgeGraphArtifact(
                             node.group === 6 ? 'Cancer Concept' : 'Other';
           node.color = getColorForEntityType(entityType);
         }
-        console.error(`MEDIK FORMATTER: Fixed missing color for node ${node.id}: ${node.color}`);
+        console.log(`MEDIK FORMATTER: Fixed missing color for node ${node.id}: ${node.color}`);
       });
     } else {
-      console.error(`MEDIK FORMATTER: All nodes have color property. Good!`);
+      console.log(`MEDIK FORMATTER: All nodes have color property. Good!`);
     }
     
     // Final check before returning the graph
-    console.error(`MEDIK FORMATTER: Performing final verification of node properties before returning graph...`);
+    console.log(`MEDIK FORMATTER: Performing final verification of node properties before returning graph...`);
     const finalNodeCheck = graph.nodes.map(node => {
       // Create a deep copy to avoid modifying the original
       const nodeCopy = { ...node };
@@ -629,20 +629,20 @@ export function formatKnowledgeGraphArtifact(
       // Ensure startingId is an array
       if (!nodeCopy.startingId) {
         nodeCopy.startingId = [nodeCopy.id];
-        console.error(`MEDIK FORMATTER: Final check - Fixed missing startingId for node ${nodeCopy.id}`);
+        console.log(`MEDIK FORMATTER: Final check - Fixed missing startingId for node ${nodeCopy.id}`);
       } else if (!Array.isArray(nodeCopy.startingId)) {
         nodeCopy.startingId = [nodeCopy.startingId];
-        console.error(`MEDIK FORMATTER: Final check - Converted startingId to array for node ${nodeCopy.id}`);
+        console.log(`MEDIK FORMATTER: Final check - Converted startingId to array for node ${nodeCopy.id}`);
       }
       
       // Ensure color is set
       if (!nodeCopy.color) {
         if (nodeCopy.entityType) {
           nodeCopy.color = getColorForEntityType(nodeCopy.entityType);
-          console.error(`MEDIK FORMATTER: Final check - Added missing color for node ${nodeCopy.id} based on entity type ${nodeCopy.entityType}: ${nodeCopy.color}`);
+          console.log(`MEDIK FORMATTER: Final check - Added missing color for node ${nodeCopy.id} based on entity type ${nodeCopy.entityType}: ${nodeCopy.color}`);
         } else {
           nodeCopy.color = getColorForEntityType('Other');
-          console.error(`MEDIK FORMATTER: Final check - Added default color for node ${nodeCopy.id} with no entity type: ${nodeCopy.color}`);
+          console.log(`MEDIK FORMATTER: Final check - Added default color for node ${nodeCopy.id} with no entity type: ${nodeCopy.color}`);
         }
       }
       
@@ -653,9 +653,9 @@ export function formatKnowledgeGraphArtifact(
     graph.nodes = finalNodeCheck;
     
     // Log the final graph structure
-    console.error(`MEDIK FORMATTER: Final graph structure - ${graph.nodes.length} nodes and ${graph.links.length} links`);
+    console.log(`MEDIK FORMATTER: Final graph structure - ${graph.nodes.length} nodes and ${graph.links.length} links`);
     if (graph.nodes.length > 0) {
-      console.error(`MEDIK FORMATTER: First node in final graph:`, JSON.stringify({
+      console.log(`MEDIK FORMATTER: First node in final graph:`, JSON.stringify({
         id: graph.nodes[0].id,
         name: graph.nodes[0].name,
         entityType: graph.nodes[0].entityType,
@@ -725,7 +725,7 @@ Identify any patterns or insights based solely on what the graph shows, and then
       content: JSON.stringify(graph)
     };
     
-    console.error(`MEDIK FORMATTER: Completed formatting with ${relationships.length} relationships`);
+    console.log(`MEDIK FORMATTER: Completed formatting with ${relationships.length} relationships`);
     
     // Before returning, save the formatted data with absolute path
     try {
@@ -742,11 +742,11 @@ Identify any patterns or insights based solely on what the graph shows, and then
           finalLinkCount: graph.links.length
         }
       }, null, 2));
-      console.error(`MEDIK FORMATTER: Saved formatted data to ${formattedDataPath}`);
+      console.log(`MEDIK FORMATTER: Saved formatted data to ${formattedDataPath}`);
     } catch (error) {
-      console.error(`MEDIK FORMATTER: Error saving formatted data: ${error}`);
-      console.error(`MEDIK FORMATTER: Current working directory: ${process.cwd()}`);
-      console.error(`MEDIK FORMATTER: Attempted to save to: ${logsDir}`);
+      console.log(`MEDIK FORMATTER: Error saving formatted data: ${error}`);
+      console.log(`MEDIK FORMATTER: Current working directory: ${process.cwd()}`);
+      console.log(`MEDIK FORMATTER: Attempted to save to: ${logsDir}`);
     }
 
     return {

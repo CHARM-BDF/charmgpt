@@ -313,20 +313,25 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       }
       
       // Ensure we have valid coordinates for THREE.js - add z if missing
-      const nodeWithPosition = {
-        ...node,
-        // If x or y are undefined/NaN, don't set them (let Reagraph calculate them)
-        // If they exist, ensure they're valid numbers
-        x: node.x !== undefined ? (isNaN(node.x) ? undefined : node.x) : undefined,
-        y: node.y !== undefined ? (isNaN(node.y) ? undefined : node.y) : undefined,
-        // Always set z to 0 for 2D layouts, if x/y are defined
-        z: (node.x !== undefined && !isNaN(node.x) && node.y !== undefined && !isNaN(node.y)) ? 0 : undefined
-      };
+      // const nodeWithPosition = {
+      //   ...node,
+      //   // Always provide valid numerical coordinates
+      //   // Instead of undefined values, use 0 as default
+      //   x: node.x !== undefined && !isNaN(node.x) ? node.x : 0,
+      //   y: node.y !== undefined && !isNaN(node.y) ? node.y : 0,
+      //   // Use a small non-zero value for z to avoid numerical precision issues
+      //   z: 0.1,
+      //   // Remove all velocity components since they're not needed for static 2D display
+      //   // and can cause NaN errors
+      //   vx: undefined,
+      //   vy: undefined,
+      //   vz: undefined
+      // };
       
       return {
         id: node.id,
         label: node.name,
-        data: { ...nodeWithPosition }, // Use the validated position data
+        // data: { ...nodeWithPosition }, // Use the validated position data
         // Include both color and fill properties
         color: colorValue,
         fill: colorValue,
