@@ -77,6 +77,11 @@ export interface Artifact {
   // Parent-child relationship fields
   parentId?: number
   blockIndex?: number
+  // Pipeline-related fields
+  pipelineStep?: number
+  pipelineTotalSteps?: number
+  pipelineTitle?: string
+  pipelineStepTitle?: string
 }
 
 export interface ArtifactContextType {

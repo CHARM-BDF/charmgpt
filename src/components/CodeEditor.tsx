@@ -45,6 +45,7 @@ export default function CodeEditor() {
 		handleChat,
 		addArtifact,
 		artifacts,
+		updateArtifact,
 	} = useArtifact();
 
 	const [language, setLanguage] = useState<CodeLanguage>('python');
@@ -59,11 +60,14 @@ export default function CodeEditor() {
 		currentStepIndex: number;
 		stepArtifacts: Artifact[];
 		startTime?: number;
+		isPaused: boolean;
+		lastError?: string;
 	}>({
 		isExecuting: false,
 		steps: [],
 		currentStepIndex: 0,
-		stepArtifacts: []
+		stepArtifacts: [],
+		isPaused: false
 	});
 	
 	const theme = useTheme();
@@ -340,10 +344,40 @@ export default function CodeEditor() {
 						pipelineExecutionRef.current.stepArtifacts = [];
 					}
 					
+					// Get the most recent artifact
+					const mostRecentArtifact = combinedArtifacts[0];
+					
+					// Extract the pipeline title if available
+					const pipelineTitle = getPipelineTitle(pipeContent);
+					
+					// Add pipeline metadata to the artifact
+					try {
+						// Update the artifact with pipeline metadata
+						const updatedArtifact = {
+							...mostRecentArtifact,
+							name: `${pipelineTitle ? pipelineTitle + ' - ' : ''}${currentStep.title} (Result)`,
+							// Add metadata as a comment in the code
+							code: mostRecentArtifact.code ? 
+								`# Pipeline: ${pipelineTitle || 'Unnamed Pipeline'}\n# Step: ${currentStepIndex + 1} of ${pipelineExecutionRef.current.steps.length} - ${currentStep.title}\n\n${mostRecentArtifact.code}` : 
+								mostRecentArtifact.code,
+							// Store pipeline info in the artifact
+							pipelineStep: currentStepIndex + 1,
+							pipelineTotalSteps: pipelineExecutionRef.current.steps.length,
+							pipelineTitle: pipelineTitle,
+							pipelineStepTitle: currentStep.title
+						};
+						
+						// Update the artifact with the pipeline metadata
+						await updateArtifact(updatedArtifact);
+						console.log(`[DEBUG] Step ${currentStepIndex + 1}: Updated artifact with pipeline metadata:`, updatedArtifact);
+					} catch (error) {
+						console.error(`[DEBUG] Step ${currentStepIndex + 1}: Failed to update artifact with pipeline metadata:`, error);
+					}
+					
 					// Add the most recent artifact to the step artifacts list
-					pipelineExecutionRef.current.stepArtifacts.push(combinedArtifacts[0]);
+					pipelineExecutionRef.current.stepArtifacts.push(mostRecentArtifact);
 					console.log(`[DEBUG] Step ${currentStepIndex + 1}: Added artifact to stepArtifacts:`, 
-						{ id: combinedArtifacts[0].id, name: combinedArtifacts[0].name, type: combinedArtifacts[0].type });
+						{ id: mostRecentArtifact.id, name: mostRecentArtifact.name, type: mostRecentArtifact.type });
 				} else {
 					console.log(`[DEBUG] Step ${currentStepIndex + 1}: No new artifacts found, stopping pipeline execution`);
 					// If no new artifacts were found, stop the pipeline execution
@@ -394,8 +428,75 @@ export default function CodeEditor() {
 		};
 	}, []);
 
+	// Helper function to extract the pipeline title from the content
+	const getPipelineTitle = (content: string): string => {
+		const lines = content.split('\n');
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+			if (trimmedLine.startsWith('# ') && !trimmedLine.startsWith('## ')) {
+				return trimmedLine.substring(2).trim();
+			}
+		}
+		return '';
+	};
+
 	const handleRun = async () => {
 		if (mode === 'code') {
+			// Check if the current artifact is part of a pipeline
+			if (activeArtifact && 
+				typeof activeArtifact.pipelineStep === 'number' && 
+				typeof activeArtifact.pipelineTotalSteps === 'number') {
+				
+				console.log(`Current artifact is part of a pipeline (Step ${activeArtifact.pipelineStep} of ${activeArtifact.pipelineTotalSteps})`);
+				
+				// Switch to pipe mode to execute the pipeline
+				await handleModeChange({} as React.MouseEvent<HTMLElement>, 'pipe');
+				
+				// Parse the pipeline steps
+				const steps = parsePipelineSteps(pipeContent);
+				
+				if (steps.length === 0) {
+					alert('No steps found in the pipeline. Please define steps using "## Step X:" format.');
+					return;
+				}
+				
+				// Set the current step indicator
+				setPipelineSteps(steps);
+				
+				// Find all artifacts from this pipeline
+				const pipelineArtifacts = artifacts.filter(a => 
+					a.type === 'code' && 
+					a.pipelineTitle === activeArtifact.pipelineTitle &&
+					typeof a.pipelineStep === 'number'
+				).sort((a, b) => (a.pipelineStep || 0) - (b.pipelineStep || 0));
+				
+				// Initialize pipeline execution starting from the current artifact's step
+				pipelineExecutionRef.current = {
+					isExecuting: true,
+					steps,
+					currentStepIndex: activeArtifact.pipelineStep, // Start from the next step
+					stepArtifacts: pipelineArtifacts,
+					startTime: Date.now(),
+					isPaused: false
+				};
+				
+				// Make sure the UI shows the correct step (1-indexed for display)
+				setCurrentPipelineStep(activeArtifact.pipelineStep + 1);
+				
+				console.log(`[DEBUG] Resuming pipeline from artifact:`, {
+					pipelineTitle: activeArtifact.pipelineTitle,
+					currentStep: activeArtifact.pipelineStep,
+					nextStep: activeArtifact.pipelineStep + 1,
+					totalSteps: activeArtifact.pipelineTotalSteps,
+					artifactsCount: pipelineArtifacts.length
+				});
+				
+				// Start execution from the next step
+				executeNextStep();
+				return;
+			}
+			
+			// Regular code execution if not part of a pipeline
 			await runArtifact(editorContent, language);
 		} else if (mode === 'plan') {
 			// In plan mode, send to chat
@@ -407,6 +508,22 @@ export default function CodeEditor() {
 				setIsRunning(false);
 			}
 		} else if (mode === 'pipe') {
+			// Check if there's a paused pipeline execution that can be resumed
+			if (pipelineExecutionRef.current && pipelineExecutionRef.current.isPaused) {
+				console.log('Resuming paused pipeline execution from step', pipelineExecutionRef.current.currentStepIndex + 1);
+				
+				// Clear the pause state and error
+				pipelineExecutionRef.current.isPaused = false;
+				pipelineExecutionRef.current.lastError = undefined;
+				
+				// Set the executing flag back to true
+				pipelineExecutionRef.current.isExecuting = true;
+				
+				// Resume execution
+				executeNextStep();
+				return;
+			}
+			
 			// In pipe mode, parse the pipeline and execute all steps sequentially
 			try {
 				// Parse the pipeline steps
@@ -438,7 +555,8 @@ export default function CodeEditor() {
 					steps,
 					currentStepIndex: 0,
 					stepArtifacts: [],
-					startTime: Date.now() // Add timestamp when pipeline starts
+					startTime: Date.now(),
+					isPaused: false
 				};
 				
 				console.log(`[DEBUG] Initialized new pipelineExecutionRef:`, {
