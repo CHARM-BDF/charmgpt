@@ -302,43 +302,15 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       // Get entity type from node
       const entityType = (node as any).entityType || 'Other';
       
-      // Log any nodes with NaN coordinates
-      if (node.x !== undefined && isNaN(node.x) || node.y !== undefined && isNaN(node.y)) {
-        console.warn('Found node with NaN coordinates:', {
-          id: node.id,
-          name: node.name,
-          x: node.x,
-          y: node.y
-        });
-      }
-      
-      // Ensure we have valid coordinates for THREE.js - add z if missing
-      // const nodeWithPosition = {
-      //   ...node,
-      //   // Always provide valid numerical coordinates
-      //   // Instead of undefined values, use 0 as default
-      //   x: node.x !== undefined && !isNaN(node.x) ? node.x : 0,
-      //   y: node.y !== undefined && !isNaN(node.y) ? node.y : 0,
-      //   // Use a small non-zero value for z to avoid numerical precision issues
-      //   z: 0.1,
-      //   // Remove all velocity components since they're not needed for static 2D display
-      //   // and can cause NaN errors
-      //   vx: undefined,
-      //   vy: undefined,
-      //   vz: undefined
-      // };
-      
       return {
         id: node.id,
         label: node.name,
-        // data: { ...nodeWithPosition }, // Use the validated position data
-        // Include both color and fill properties
         color: colorValue,
         fill: colorValue,
-        // Use node.val for size if available
         size: node.val || 1,
-        // Add entityType directly to the node object
-        entityType
+        entityType,
+        startingId: node.startingId,
+        metadata: node.metadata
       };
     });
     
@@ -961,11 +933,17 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const handleNodeClick = (node: any, props?: any, event?: any) => {
     // Check if Control key (or Command key on Mac) is pressed
     if (event && (event.ctrlKey || event.metaKey)) {
-      // Format node data
-      const nodeText = `${node.label} (${node.id})`;
+      // Format node data with comprehensive information
+      const nodeInfo = [
+        `${node.label} (${node.id})`,
+        node.entityType ? `Type: ${node.entityType}` : '',
+        node.startingId ? `Original IDs: ${node.startingId.join(', ')}` : '',
+        node.metadata?.description ? `Description: ${node.metadata.description}` : '',
+        node.metadata?.type ? `Types: ${node.metadata.type.join(', ')}` : ''
+      ].filter(Boolean).join('\n');
       
       // Update chat input with append=true to add to existing text
-      updateChatInput(nodeText, true);
+      updateChatInput(nodeInfo, true);
       
       // Pin the graph if not already pinned
       if (artifactId && !isPinned) {
@@ -975,7 +953,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       // Show notification
       setNotification({
         show: true,
-        message: `Graph pinned! "${node.label}" added to chat input.`
+        message: `Graph pinned! Node information added to chat input.`
       });
       
       // Hide notification after 3 seconds

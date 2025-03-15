@@ -312,12 +312,54 @@ export function formatKnowledgeGraphArtifact(
   
   // First pass: identify all CAID nodes
   queryResults.forEach(result => {
-    const [sourceId, , , targetId] = result;
-    if (sourceId && shouldFilterNode(sourceId)) {
-      caidNodes.add(sourceId);
+    const [sourceId, sourceName, predicate, targetId] = result;
+    
+    // Helper function to process IDs
+    const processId = (id: string) => {
+      // Check if it's a UniProtKB ID with version
+      if (id.startsWith('UniProtKB:') && id.includes('-')) {
+        const [baseId] = id.split('-');
+        return baseId; // Return unversioned ID for normalization
+      }
+      return id;
+    };
+    
+    if (sourceId) {
+      const normalizedId = processId(sourceId);
+      if (normalizedId !== sourceId) {
+        // If this is a versioned ID, update the node in nodeMap
+        const node = nodeMap.get(sourceId);
+        if (node) {
+          nodeMap.set(normalizedId, {
+            ...node,
+            id: normalizedId,
+            startingId: [sourceId] // Keep the versioned ID in startingId
+          });
+          nodeMap.delete(sourceId); // Remove the old entry
+        }
+      }
+      if (shouldFilterNode(sourceId)) {
+        caidNodes.add(sourceId);
+      }
     }
-    if (targetId && shouldFilterNode(targetId)) {
-      caidNodes.add(targetId);
+    
+    if (targetId) {
+      const normalizedId = processId(targetId);
+      if (normalizedId !== targetId) {
+        // If this is a versioned ID, update the node in nodeMap
+        const node = nodeMap.get(targetId);
+        if (node) {
+          nodeMap.set(normalizedId, {
+            ...node,
+            id: normalizedId,
+            startingId: [targetId] // Keep the versioned ID in startingId
+          });
+          nodeMap.delete(targetId); // Remove the old entry
+        }
+      }
+      if (shouldFilterNode(targetId)) {
+        caidNodes.add(targetId);
+      }
     }
   });
   
@@ -369,42 +411,70 @@ export function formatKnowledgeGraphArtifact(
       return;
     }
     
+    // Helper function to process IDs
+    const processId = (id: string) => {
+      // Check if it's a UniProtKB ID with version
+      if (id.startsWith('UniProtKB:') && id.includes('-')) {
+        const [baseId] = id.split('-');
+        return baseId; // Return unversioned ID for normalization
+      }
+      return id;
+    };
+
     // Add human-readable relationship
     const readablePredicate = formatPredicate(predicate);
     relationships.push(`${sourceName} ${readablePredicate} ${targetName}`);
     
     // Process source node
-    if (!nodeMap.has(sourceId)) {
+    const sourceNormalizedId = processId(sourceId);
+    if (!nodeMap.has(sourceNormalizedId)) {
       const { type, group } = getEntityTypeAndGroup(sourceId);
-      nodeMap.set(sourceId, {
-        id: sourceId,
-        startingId: [sourceId], // Store the original ID as an array
+      nodeMap.set(sourceNormalizedId, {
+        id: sourceNormalizedId,
+        startingId: [sourceId], // Store the original versioned ID
         name: sourceName,
         group,
         entityType: type
       });
+    } else if (sourceId !== sourceNormalizedId) {
+      // If this is a different version of the same node, add to startingId
+      const existingNode = nodeMap.get(sourceNormalizedId)!;
+      if (!existingNode.startingId) {
+        existingNode.startingId = [sourceId];
+      } else if (!existingNode.startingId.includes(sourceId)) {
+        existingNode.startingId.push(sourceId);
+      }
     }
     
     // Process target node
-    if (!nodeMap.has(targetId)) {
+    const targetNormalizedId = processId(targetId);
+    if (!nodeMap.has(targetNormalizedId)) {
       const { type, group } = getEntityTypeAndGroup(targetId);
-      nodeMap.set(targetId, {
-        id: targetId,
-        startingId: [targetId], // Store the original ID as an array
+      nodeMap.set(targetNormalizedId, {
+        id: targetNormalizedId,
+        startingId: [targetId], // Store the original versioned ID
         name: targetName,
         group,
         entityType: type
       });
+    } else if (targetId !== targetNormalizedId) {
+      // If this is a different version of the same node, add to startingId
+      const existingNode = nodeMap.get(targetNormalizedId)!;
+      if (!existingNode.startingId) {
+        existingNode.startingId = [targetId];
+      } else if (!existingNode.startingId.includes(targetId)) {
+        existingNode.startingId.push(targetId);
+      }
     }
     
     // Update connection counts
-    connectionCounts.set(sourceId, (connectionCounts.get(sourceId) || 0) + 1);
-    connectionCounts.set(targetId, (connectionCounts.get(targetId) || 0) + 1);
+    connectionCounts.set(sourceNormalizedId, (connectionCounts.get(sourceNormalizedId) || 0) + 1);
+    connectionCounts.set(targetNormalizedId, (connectionCounts.get(targetNormalizedId) || 0) + 1);
     
-    // Add link
+    // Add link using normalized IDs
     graph.links.push({
-      source: sourceId,
-      target: targetId,
+      source: sourceNormalizedId,
+      target: targetNormalizedId,
       label: readablePredicate,
       value: 1,
       evidence: Array.isArray(evidence) ? evidence : []
@@ -464,9 +534,15 @@ export function formatKnowledgeGraphArtifact(
         
         // Add the original ID to the startingId array of the existing node
         if (node.startingId && node.startingId.length > 0) {
-          existingNode.startingId = [...(existingNode.startingId || []), ...node.startingId];
+          // Ensure we don't add duplicate startingIds
+          const newStartingIds = node.startingId.filter(id => !existingNode.startingId?.includes(id));
+          existingNode.startingId = [...(existingNode.startingId || []), ...newStartingIds];
         } else {
-          existingNode.startingId = [...(existingNode.startingId || []), originalId];
+          // If no startingId array, use the original ID
+          const originalId = node.id;
+          if (!existingNode.startingId?.includes(originalId)) {
+            existingNode.startingId = [...(existingNode.startingId || []), originalId];
+          }
         }
         
         // Update connection count (will be used for node size)
@@ -475,22 +551,19 @@ export function formatKnowledgeGraphArtifact(
         // Preserve color if it exists on the node being merged
         if (node.color && !existingNode.color) {
           existingNode.color = node.color;
-          // console.log(`MEDIK FORMATTER: Copied color ${node.color} from merged node ${originalId} to ${normalizedId}`);
         }
         
         // If the node being merged has an entity type but the existing node doesn't, copy it
         if (node.entityType && !existingNode.entityType) {
           existingNode.entityType = node.entityType;
-          // console.log(`MEDIK FORMATTER: Copied entity type ${node.entityType} from merged node ${originalId} to ${normalizedId}`);
           
           // Set color based on entity type if not already set
           if (!existingNode.color) {
             existingNode.color = getColorForEntityType(existingNode.entityType);
-            console.log(`MEDIK FORMATTER: Set color ${existingNode.color} based on entity type ${existingNode.entityType} for merged node ${normalizedId}`);
           }
         }
         
-        console.log(`MEDIK FORMATTER: Merged node ${originalId} into existing node ${normalizedId}`);
+        console.log(`MEDIK FORMATTER: Merged node ${node.id} into existing node ${normalizedId} with startingIds: ${existingNode.startingId?.join(', ')}`);
       } else {
         // This is a new normalized ID
         // Update the node with normalized data
