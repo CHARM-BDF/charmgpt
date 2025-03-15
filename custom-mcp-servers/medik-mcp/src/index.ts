@@ -6,7 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { createInterface } from 'readline';
-import { formatKnowledgeGraphArtifact } from "./formatters.js";
+import { formatKnowledgeGraphArtifact, formatNetworkNeighborhood } from "./formatters.js";
 import { randomUUID } from 'crypto';
 
 // Define log levels type
@@ -90,6 +90,11 @@ const QueryRequestSchema = z.object({
     e1: z.string().describe("X->Known or Known->X, for subject unknown or object unknown respectively."),
     e2: z.string().describe("A biolink predicate such as biolink:treats, from the biolink list."),
     e3: z.string().describe("A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.")
+});
+
+// Define validation schema for network-neighborhood tool
+const NetworkNeighborhoodRequestSchema = z.object({
+    curies: z.array(z.string()).min(2).describe("Array of CURIEs (at least 2) representing genes or proteins.")
 });
 
 // Define validation schema for get-everything tool
@@ -225,17 +230,46 @@ export async function runBidirectionalQuery(params: {
     });
     
     try {
-        // Make the API request
-        const queryResult = await makeMediKanrenRequest<QueryResponse>({
-            curie
+        // Make X->Known query (find things that point TO our curie)
+        const xToKnownResult = await makeMediKanrenRequest<QueryResponse>({
+            e1: 'X->Known',
+            e2: 'biolink:related_to',
+            e3: curie
         });
+
+        // Make Known->X query (find things that our curie points TO)
+        const knownToXResult = await makeMediKanrenRequest<QueryResponse>({
+            e1: 'Known->X',
+            e2: 'biolink:related_to',
+            e3: curie
+        });
+
+        // Combine results
+        let combinedResults: any[] = [];
         
-        if (!queryResult) {
+        if (Array.isArray(xToKnownResult)) {
+            combinedResults = [...combinedResults, ...xToKnownResult];
+        }
+        
+        if (Array.isArray(knownToXResult)) {
+            combinedResults = [...combinedResults, ...knownToXResult];
+        }
+
+        // Deduplicate results based on source, predicate, and target
+        const deduplicatedResults = combinedResults.filter((result, index, self) =>
+            index === self.findIndex((r) => (
+                r[0] === result[0] && // source
+                r[2] === result[2] && // predicate
+                r[3] === result[3]    // target
+            ))
+        );
+        
+        if (deduplicatedResults.length === 0) {
             // Log query failure with structured logging
             sendStructuredLog(server, 'error', `Bidirectional query failed for ${curie}`, {
                 curie,
                 queryType: 'bidirectional',
-                error: 'No result returned from API',
+                error: 'No results returned from either query',
                 timestamp: new Date().toISOString()
             });
             
@@ -243,7 +277,7 @@ export async function runBidirectionalQuery(params: {
             return null;
         }
         
-        return queryResult;
+        return deduplicatedResults;
     } catch (error) {
         // Log error with structured logging
         sendStructuredLog(server, 'error', `Error in bidirectional query for ${curie}`, {
@@ -255,6 +289,35 @@ export async function runBidirectionalQuery(params: {
         });
         
         console.error(`MEDIK: Query error:`, error);
+        return null;
+    }
+}
+
+// Function to run network neighborhood query
+export async function runNetworkNeighborhoodQuery(params: {
+    curies: string[]
+}): Promise<QueryResponse | null> {
+    const { curies } = params;
+    
+    // Log query start
+    console.error(`[medik-mcp] MEDIK: NEW NETWORK NEIGHBORHOOD QUERY STARTED AT ${new Date().toISOString()}`);
+    console.error(`[medik-mcp] MEDIK: Query for genes: ${curies.join(', ')}`);
+    
+    try {
+        // Collect all results
+        const allResults = [];
+        
+        // Query each CURIE
+        for (const curie of curies) {
+            const queryResult = await runBidirectionalQuery({ curie });
+            if (Array.isArray(queryResult)) {
+                allResults.push(...queryResult);
+            }
+        }
+        
+        return allResults;
+    } catch (error) {
+        console.error(`[medik-mcp] MEDIK: Network neighborhood query error:`, error);
         return null;
     }
 }
@@ -297,6 +360,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                         }
                     },
                     required: ["curie"],
+                },
+            },
+            {
+                name: "network-neighborhood",
+                description: "Find genes or proteins that are neighbors in the network.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        curies: {
+                            type: "array",
+                            items: {
+                                type: "string",
+                                description: "Array of CURIEs (at least 2) representing genes or proteins.",
+                            },
+                            minItems: 2,
+                            description: "Array of CURIEs (at least 2) representing genes or proteins.",
+                        },
+                    },
+                    required: ["curies"],
                 },
             }
         ],
@@ -539,6 +621,121 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                             {
                                 type: "text",
                                 text: `Error formatting knowledge graph: ${error}`,
+                            },
+                        ],
+                    };
+                }
+            } else {
+                // Handle error response
+                console.error(`MEDIK: Query returned an error:`, queryResult);
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Query error: ${queryResult.error}`,
+                        },
+                    ],
+                };
+            }
+        } else if (toolName === "network-neighborhood") {
+            // Validate parameters
+            const { curies } = NetworkNeighborhoodRequestSchema.parse(toolArgs);
+            
+            // Add explicit logging for testing
+            sendStructuredLog(server, 'info', `Processing network-neighborhood request for ${curies.join(', ')}`, {
+                curies,
+                toolName,
+                timestamp: new Date().toISOString()
+            });
+            
+            console.error(`MEDIK: Query: network-neighborhood for ${curies.join(', ')}`);
+            
+            // Add a clear boundary marker for the start of a new query
+            console.error("\n\n========================================");
+            console.error(`MEDIK: NEW NETWORK NEIGHBORHOOD QUERY STARTED AT ${new Date().toISOString()}`);
+            console.error(`MEDIK: Query: network-neighborhood for ${curies.join(', ')}`);
+            console.error("========================================\n");
+            
+            if (DEBUG) {
+                console.error('MEDIK: Parsed arguments:', { curies });
+            }
+        
+            const queryResult = await runNetworkNeighborhoodQuery({ curies });
+        
+            if (!queryResult) {
+                console.error("========================================");
+                console.error(`MEDIK: NETWORK NEIGHBORHOOD QUERY FAILED AT ${new Date().toISOString()}`);
+                console.error("========================================\n");
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: "Failed to retrieve network-neighborhood query results. Please check the server logs for details.",
+                        },
+                    ],
+                };
+            }
+            
+            // Check if the result is an array (successful query) or an error
+            if (Array.isArray(queryResult)) {
+                // Log that we're filtering CAID nodes
+                server.sendLoggingMessage({
+                    level: "info",
+                    data: {
+                        message: "MEDIK: Filtering out nodes with CAID: prefix from network-neighborhood query results",
+                        originalResultCount: queryResult.length
+                    },
+                });
+                
+                // console.error(`MEDIK: Star ting CAID node filtering process on ${queryResult.length} results`);
+                
+                try {
+                    console.error(`MEDIK: Calling formatNetworkNeighborhood with ${queryResult.length} results`);
+                    
+                    // Format the query results into a knowledge graph artifact
+                    const formattingPromise = formatNetworkNeighborhood(queryResult, curies);
+                    console.error(`MEDIK: Got Promise from formatNetworkNeighborhood, waiting for resolution...`);
+                    
+                    // Wait for the Promise to resolve
+                    const formattedResult = await formattingPromise;
+                    console.error(`MEDIK: Promise resolved successfully, got formatted result`);
+                    
+                    // Log the filtering results
+                    if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
+                        console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
+                        server.sendLoggingMessage({
+                            level: "info",
+                            data: {
+                                message: `MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique nodes with CAID: prefix`,
+                                filteredCount: formattedResult.filteredCount,
+                                filteredNodeCount: formattedResult.filteredNodeCount,
+                                remainingCount: queryResult.length - formattedResult.filteredCount
+                            },
+                        });
+                    } else {
+                        console.error(`MEDIK: No CAID nodes found in the results`);
+                    }
+                    
+                    // Log the content and artifacts
+                    console.error(`MEDIK: Formatted result has ${formattedResult.content.length} content items and ${formattedResult.artifacts?.length || 0} artifacts`);
+                    
+                    // Add a clear boundary marker for the end of a successful query
+                    console.error("\n========================================");
+                    console.error(`MEDIK: QUERY COMPLETED SUCCESSFULLY AT ${new Date().toISOString()}`);
+                    console.error("========================================\n");
+                    
+                    // Return the formatted result as a ServerResult
+                    return {
+                        content: formattedResult.content,
+                        artifacts: formattedResult.artifacts
+                    };
+                } catch (error) {
+                    console.error(`MEDIK: Error formatting results:`, error);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error formatting results: ${error instanceof Error ? error.message : 'Unknown error'}`,
                             },
                         ],
                     };

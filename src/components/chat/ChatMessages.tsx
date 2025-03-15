@@ -279,7 +279,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                             {hasStatusUpdates(message) && (
                               <div className="mb-3">
                                 <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 font-mono">
-                                  {Array.isArray(message.statusUpdates) && message.statusUpdates.map((update) => (
+                                  {message.statusUpdates && Array.isArray(message.statusUpdates) && message.statusUpdates.map((update) => (
                                     <div key={update.id} className="mb-1 last:mb-0">
                                       <span className="opacity-70 mr-2">
                                         {(typeof update.timestamp === 'string' ? new Date(update.timestamp) : update.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
@@ -298,7 +298,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                           // For completed messages
                           <>
                             {/* Status Updates Section */}
-                            {message.statusUpdates && message.statusUpdates.length > 0 && (
+                            {message.statusUpdates && Array.isArray(message.statusUpdates) && message.statusUpdates.length > 0 && (
                               <div className="mt-2">
                                 {/* Only show collapse button when not streaming */}
                                 {!message.thinking && (

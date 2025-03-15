@@ -73,6 +73,8 @@ interface FormattedResult {
     text: string;
   }[];
   artifacts?: KnowledgeGraphArtifact[];
+  filteredCount?: number;
+  filteredNodeCount?: number;
 }
 
 // Helper function to check if a node ID should be filtered out
@@ -760,5 +762,84 @@ Identify any patterns or insights based solely on what the graph shows, and then
       filteredCount,
       filteredNodeCount
     };
+  });
+}
+
+/**
+ * Formats the network neighborhood for a group of genes/proteins
+ * 
+ * @param queryResults - Combined results from bidirectional queries
+ * @param startCuries - Array of starting CURIEs (genes/proteins)
+ * @returns A Promise that resolves to an object with content (text) and artifacts (knowledge graph)
+ */
+export function formatNetworkNeighborhood(
+  queryResults: any[],
+  startCuries: string[]
+): Promise<FormattedResult> {
+  const startingNodeIds = new Set(startCuries);
+  
+  // Track which nodes are connected to which starting nodes
+  const nodeConnections = new Map<string, Set<string>>();
+  
+  // Process each result to build connections map
+  queryResults.forEach(result => {
+    const [sourceId, sourceName, predicate, targetId, targetName] = result;
+    
+    // Skip if missing essential data
+    if (!sourceId || !targetId) {
+      return;
+    }
+    
+    // If source is a starting node, record that target is connected to it
+    if (startingNodeIds.has(sourceId)) {
+      if (!nodeConnections.has(targetId)) {
+        nodeConnections.set(targetId, new Set());
+      }
+      nodeConnections.get(targetId)!.add(sourceId);
+    }
+    
+    // If target is a starting node, record that source is connected to it
+    if (startingNodeIds.has(targetId)) {
+      if (!nodeConnections.has(sourceId)) {
+        nodeConnections.set(sourceId, new Set());
+      }
+      nodeConnections.get(sourceId)!.add(targetId);
+    }
+  });
+  
+  // Filter results to keep only:
+  // 1. Relationships between starting nodes
+  // 2. Relationships to nodes connected to 2+ starting nodes
+  const filteredResults = queryResults.filter(result => {
+    const [sourceId, sourceName, predicate, targetId, targetName] = result;
+    
+    // Always keep relationships between starting nodes
+    if (startingNodeIds.has(sourceId) && startingNodeIds.has(targetId)) {
+      return true;
+    }
+    
+    // Keep if source is a starting node and target is connected to 2+ starting nodes
+    if (startingNodeIds.has(sourceId) && 
+        nodeConnections.has(targetId) && 
+        nodeConnections.get(targetId)!.size >= 2) {
+      return true;
+    }
+    
+    // Keep if target is a starting node and source is connected to 2+ starting nodes
+    if (startingNodeIds.has(targetId) && 
+        nodeConnections.has(sourceId) && 
+        nodeConnections.get(sourceId)!.size >= 2) {
+      return true;
+    }
+    
+    // Otherwise, filter it out
+    return false;
+  });
+  
+  // Use the existing formatKnowledgeGraphArtifact function with modified parameters
+  return formatKnowledgeGraphArtifact(filteredResults, {
+    e1: "NetworkNeighborhood",
+    e2: "network-connections",
+    e3: startCuries.join(',')
   });
 } 
