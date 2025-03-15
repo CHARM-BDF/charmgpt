@@ -62,6 +62,7 @@ export default function CodeEditor() {
 		startTime?: number;
 		isPaused: boolean;
 		lastError?: string;
+		userModifiedArtifact?: Artifact;
 	}>({
 		isExecuting: false,
 		steps: [],
@@ -217,36 +218,8 @@ export default function CodeEditor() {
 			? `${pipelineTitle} - ${currentStep.title}`
 			: currentStep.title;
 		
-		// Create a prompt that includes the pipeline context and focuses on the current step
-		let prompt = `I'm working on a pipeline with the following steps:\n\n${pipeContent}\n\n`;
-		
-		// Simple condition: if we're not on the first step (index 0), include previous artifacts
-		if (currentStepIndex > 0) {
-			prompt += `I've already completed the previous steps and here are the results:\n\n`;
-			
-			// Get the step artifacts tracked in pipelineExecutionRef
-			const stepArtifacts = pipelineExecutionRef.current.stepArtifacts || [];
-			console.log(`[DEBUG] Step ${currentStepIndex + 1}: Found ${stepArtifacts.length} step artifacts in pipelineExecutionRef:`, 
-				stepArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
-			
-			if (stepArtifacts.length > 0) {
-				prompt += `Found ${stepArtifacts.length} relevant artifacts from previous steps:\n\n`;
-				stepArtifacts.forEach((artifact) => {
-					prompt += `Previous step created the following artifact:\n`;
-					prompt += formatArtifact(artifact, true);
-					prompt += '\n';
-				});
-			} else {
-				prompt += `No relevant artifacts were created by previous steps.\n\n`;
-			}
-		}
-		
-		// Add the docstring one-liner to the prompt
-		prompt += `Please help me execute ${currentStep.title} specifically. Focus only on this step for now, and provide detailed results that I can use for the next steps.\n\n`;
-		
-		// Record the timestamp before executing the step
-		const stepStartTime = Date.now();
-		console.log(`[DEBUG] Step ${currentStepIndex + 1}: Recording start time ${stepStartTime}`);
+		// Check if we have a user-modified artifact for this step
+		const userModifiedArtifact = pipelineExecutionRef.current.userModifiedArtifact;
 		
 		// Store the current artifacts for comparison after execution
 		const artifactsBeforeExecution = [...artifacts];
@@ -254,11 +227,115 @@ export default function CodeEditor() {
 		console.log(`[DEBUG] Step ${currentStepIndex + 1}: All artifacts before execution (${artifactsBeforeExecution.length}):`, 
 			artifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
 		
+		// Record the timestamp before executing the step
+		const stepStartTime = Date.now();
+		console.log(`[DEBUG] Step ${currentStepIndex + 1}: Recording start time ${stepStartTime}`);
+		
 		// Execute the step
 		setIsRunning(true);
 		try {
-			console.log(`Sending prompt for step ${currentStepIndex + 1} with docstring: "${docstringOneLiner}"`);
-			const success = await handleChat(prompt, docstringOneLiner);
+			let success = false;
+			
+			// If we have a user-modified artifact, use it directly instead of generating new code
+			if (userModifiedArtifact && userModifiedArtifact.pipelineStep === currentStepIndex + 1) {
+				console.log(`[DEBUG] Step ${currentStepIndex + 1}: Using user-modified code directly:`, userModifiedArtifact.id);
+				
+				// Extract the pipeline title if available
+				const pipelineTitle = getPipelineTitle(pipeContent);
+				
+				// Run the user-modified code directly
+				if (userModifiedArtifact.code) {
+					// Get the actual modified code from the editor content, not the original artifact
+					// This ensures we're using the latest user changes
+					const modifiedCode = editorContent || userModifiedArtifact.code;
+					
+					// Create a new artifact name based on the pipeline step
+					const artifactName = `${pipelineTitle ? pipelineTitle + ' - ' : ''}${currentStep.title} (Modified)`;
+					
+					// Create a new artifact with the user-modified code
+					const newArtifact = {
+						type: 'code' as const,
+						name: artifactName,
+						code: modifiedCode.includes('# Pipeline:') ? modifiedCode : 
+							`# Pipeline: ${pipelineTitle || 'Unnamed Pipeline'}\n# Step: ${currentStepIndex + 1} of ${pipelineExecutionRef.current.steps.length} - ${currentStep.title}\n\n${modifiedCode}`,
+						output: '',
+						language: userModifiedArtifact.language || 'python',
+						source: 'user',
+						var2val: {},
+						var2line: {},
+						var2line_end: {},
+						pipelineStep: currentStepIndex + 1,
+						pipelineTotalSteps: pipelineExecutionRef.current.steps.length,
+						pipelineTitle: pipelineTitle,
+						pipelineStepTitle: currentStep.title
+					};
+					
+					// Add the new artifact
+					try {
+						// Add the artifact and get the result with ID
+						const createdArtifact = await addArtifact(newArtifact);
+						console.log(`[DEBUG] Step ${currentStepIndex + 1}: Created new artifact from user-modified code:`, createdArtifact.id);
+						
+						// Now run the code to get the results - use the modified code from the new artifact
+						if (createdArtifact.code) {
+							await runArtifact(createdArtifact.code, createdArtifact.language || 'python');
+							success = true;
+						} else {
+							console.error(`[DEBUG] Step ${currentStepIndex + 1}: Created artifact has no code`);
+							success = false;
+						}
+						
+						// Add the created artifact to the step artifacts list
+						if (!pipelineExecutionRef.current.stepArtifacts) {
+							pipelineExecutionRef.current.stepArtifacts = [];
+						}
+						pipelineExecutionRef.current.stepArtifacts.push(createdArtifact);
+						console.log(`[DEBUG] Step ${currentStepIndex + 1}: Added user-modified artifact to stepArtifacts:`, 
+							{ id: createdArtifact.id, name: createdArtifact.name, type: createdArtifact.type });
+					} catch (error) {
+						console.error(`[DEBUG] Step ${currentStepIndex + 1}: Failed to create artifact from user-modified code:`, error);
+						success = false;
+					}
+				} else {
+					console.error(`[DEBUG] Step ${currentStepIndex + 1}: User-modified artifact has no code`);
+					success = false;
+				}
+				
+				// Clear the user-modified artifact reference since we've used it
+				pipelineExecutionRef.current.userModifiedArtifact = undefined;
+			} else {
+				// Create a prompt that includes the pipeline context and focuses on the current step
+				let prompt = `I'm working on a pipeline with the following steps:\n\n${pipeContent}\n\n`;
+				
+				// Simple condition: if we're not on the first step (index 0), include previous artifacts
+				if (currentStepIndex > 0) {
+					prompt += `I've already completed the previous steps and here are the results:\n\n`;
+					
+					// Get the step artifacts tracked in pipelineExecutionRef
+					const stepArtifacts = pipelineExecutionRef.current.stepArtifacts || [];
+					console.log(`[DEBUG] Step ${currentStepIndex + 1}: Found ${stepArtifacts.length} step artifacts in pipelineExecutionRef:`, 
+						stepArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+					
+					if (stepArtifacts.length > 0) {
+						prompt += `Found ${stepArtifacts.length} relevant artifacts from previous steps:\n\n`;
+						stepArtifacts.forEach((artifact) => {
+							prompt += `Previous step created the following artifact:\n`;
+							prompt += formatArtifact(artifact, true);
+							prompt += '\n';
+						});
+					} else {
+						prompt += `No relevant artifacts were created by previous steps.\n\n`;
+					}
+				}
+				
+				// Add the docstring one-liner to the prompt
+				prompt += `Please help me execute ${currentStep.title} specifically. Focus only on this step for now, and provide detailed results that I can use for the next steps.\n\n`;
+				
+				// Generate code for this step using the AI
+				console.log(`Sending prompt for step ${currentStepIndex + 1} with docstring: "${docstringOneLiner}"`);
+				success = await handleChat(prompt, docstringOneLiner);
+			}
+			
 			console.log(`Step ${currentStepIndex + 1} execution ${success ? 'succeeded' : 'failed'}`);
 			
 			// If the step was successful, check if there are more steps
@@ -288,6 +365,32 @@ export default function CodeEditor() {
 				// Log all artifacts after execution for debugging
 				console.log(`[DEBUG] Step ${currentStepIndex + 1}: All artifacts after execution (${latestArtifacts.length}):`, 
 					latestArtifacts.map(a => ({ id: a.id, name: a.name, type: a.type, timestamp: a.timestamp })));
+				
+				// Check if we already have an artifact for this step in the stepArtifacts array
+				// This prevents duplicate executions of the same step
+				const existingStepArtifact = pipelineExecutionRef.current.stepArtifacts.find(
+					a => a.pipelineStep === currentStepIndex + 1
+				);
+				
+				if (existingStepArtifact) {
+					console.log(`[DEBUG] Step ${currentStepIndex + 1}: Already have an artifact for this step:`, 
+						{ id: existingStepArtifact.id, name: existingStepArtifact.name });
+					
+					// Move to the next step without creating a new artifact
+					pipelineExecutionRef.current.currentStepIndex++;
+					
+					// If we've completed all steps, finish the pipeline execution
+					if (pipelineExecutionRef.current.currentStepIndex >= pipelineExecutionRef.current.steps.length) {
+						console.log('Pipeline execution completed!');
+						pipelineExecutionRef.current.isExecuting = false;
+						setCurrentPipelineStep(1); // Reset to first step for next execution
+					} else {
+						// Schedule the next step execution without delay
+						console.log(`Scheduling next step (${pipelineExecutionRef.current.currentStepIndex + 1}) execution`);
+						executeNextStep();
+					}
+					return; // Skip the rest of the artifact processing
+				}
 				
 				// Log artifact types for debugging
 				const artifactTypes = latestArtifacts.reduce((acc, a) => {
@@ -370,14 +473,20 @@ export default function CodeEditor() {
 						// Update the artifact with the pipeline metadata
 						await updateArtifact(updatedArtifact);
 						console.log(`[DEBUG] Step ${currentStepIndex + 1}: Updated artifact with pipeline metadata:`, updatedArtifact);
+						
+						// Add the updated artifact to the step artifacts list
+						// Make sure we're adding the updated artifact with pipeline metadata
+						pipelineExecutionRef.current.stepArtifacts.push(updatedArtifact);
+						console.log(`[DEBUG] Step ${currentStepIndex + 1}: Added artifact to stepArtifacts:`, 
+							{ id: updatedArtifact.id, name: updatedArtifact.name, type: updatedArtifact.type });
 					} catch (error) {
 						console.error(`[DEBUG] Step ${currentStepIndex + 1}: Failed to update artifact with pipeline metadata:`, error);
+						
+						// Even if updating metadata fails, still add the original artifact to step artifacts
+						pipelineExecutionRef.current.stepArtifacts.push(mostRecentArtifact);
+						console.log(`[DEBUG] Step ${currentStepIndex + 1}: Added original artifact to stepArtifacts due to metadata update failure:`, 
+							{ id: mostRecentArtifact.id, name: mostRecentArtifact.name, type: mostRecentArtifact.type });
 					}
-					
-					// Add the most recent artifact to the step artifacts list
-					pipelineExecutionRef.current.stepArtifacts.push(mostRecentArtifact);
-					console.log(`[DEBUG] Step ${currentStepIndex + 1}: Added artifact to stepArtifacts:`, 
-						{ id: mostRecentArtifact.id, name: mostRecentArtifact.name, type: mostRecentArtifact.type });
 				} else {
 					console.log(`[DEBUG] Step ${currentStepIndex + 1}: No new artifacts found, stopping pipeline execution`);
 					// If no new artifacts were found, stop the pipeline execution
@@ -510,7 +619,8 @@ export default function CodeEditor() {
 					currentStepIndex: (activeArtifact.pipelineStep || 1) - 1, // Set to execute the current step again
 					stepArtifacts: previousStepArtifacts, // Only include artifacts from previous steps
 					startTime: Date.now(),
-					isPaused: false
+					isPaused: false,
+					userModifiedArtifact: activeArtifact // Store the user-modified artifact
 				};
 				
 				// Make sure the UI shows the correct step (1-indexed for display)
@@ -521,7 +631,8 @@ export default function CodeEditor() {
 					currentStep: activeArtifact.pipelineStep || 1,
 					totalSteps: activeArtifact.pipelineTotalSteps || 1,
 					previousArtifactsCount: previousStepArtifacts.length,
-					codeModified: activeArtifact.code !== editorContent
+					codeModified: activeArtifact.code !== editorContent,
+					userModifiedArtifactId: activeArtifact.id
 				});
 				
 				// Start execution of the current step
