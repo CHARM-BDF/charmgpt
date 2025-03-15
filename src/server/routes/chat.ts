@@ -87,6 +87,12 @@ router.post('/', async (req: Request<{}, {}, {
     loggingService.logRequest(req);
 
     const { message, history, blockedServers = [], pinnedGraph } = req.body;
+    // Add debug logging for blocked servers
+    console.log('\n=== BLOCKED SERVERS DEBUG ===');
+    console.log('Received blocked servers:', blockedServers);
+    console.log('Number of blocked servers:', blockedServers.length);
+    console.log('================================\n');
+
     let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
 

@@ -93,9 +93,20 @@ export const useMCPStore = create<MCPStoreState>()(
             },
             getBlockedServers: () => {
                 const state = get();
-                return state.servers
+                const blockedServers = state.servers
                     .filter(server => server.status === 'blocked')
                     .map(server => server.name);
+                
+                // Add debug logging
+                console.log('\n=== GET BLOCKED SERVERS DEBUG ===');
+                console.log('Current server states:');
+                state.servers.forEach(server => {
+                    console.log(`${server.name}: ${server.status} (Running: ${server.isRunning})`);
+                });
+                console.log('Returning blocked servers:', blockedServers);
+                console.log('================================\n');
+                
+                return blockedServers;
             },
             handleGraphCommand: async (command: GraphCommand) => {
                 const chatStore = useChatStore.getState();

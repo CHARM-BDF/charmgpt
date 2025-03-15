@@ -195,8 +195,7 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
   const DELAY_MS = 500; // 500ms delay between batches
   const NODE_NORM_API = 'https://nodenorm.ci.transltr.io/1.5/get_normalized_nodes';
   
-  console.log(`MEDIK FORMATTER: Normalizing ${curies.length} nodes using Node Normalizer API`);
-  console.log(`MEDIK FORMATTER: First few CURIEs to normalize: ${curies.slice(0, 5).join(', ')}${curies.length > 5 ? '...' : ''}`);
+  console.log(`MEDIK FORMATTER: Normalizing ${curies.length} nodes`);
   
   // Create a map to store the normalized data
   const normalizedMap = new Map<string, any>();
@@ -204,7 +203,6 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
   // Process in batches
   for (let i = 0; i < curies.length; i += BATCH_SIZE) {
     const batchCuries = curies.slice(i, i + BATCH_SIZE);
-    console.log(`MEDIK FORMATTER: Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(curies.length/BATCH_SIZE)} (${batchCuries.length} nodes)`);
     
     try {
       // Build the URL with query parameters
@@ -217,7 +215,7 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
       url.searchParams.append('description', 'true');
       url.searchParams.append('individual_types', 'true');
       
-      console.log(`MEDIK FORMATTER: Making request to Node Normalizer API: ${url.toString().substring(0, 100)}...`);
+      console.log(`MEDIK FORMATTER: Making request to: ${url.toString()}`);
       
       // Make the request
       const response = await fetch(url.toString(), {
@@ -229,38 +227,25 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
       
       if (!response.ok) {
         console.log(`MEDIK FORMATTER: Error from Node Normalizer API: ${response.status} ${response.statusText}`);
-        console.log(`MEDIK FORMATTER: Response body: ${await response.text()}`);
         continue;
       }
       
       const data: NodeNormResponse = await response.json();
-      console.log(`MEDIK FORMATTER: Received response from Node Normalizer API with ${Object.keys(data).length} normalized nodes`);
-      
-      // Log a sample of the response
-      const sampleKey = Object.keys(data)[0];
-      if (sampleKey) {
-        console.log(`MEDIK FORMATTER: Sample normalized data for ${sampleKey}:`, JSON.stringify(data[sampleKey], null, 2));
-      }
+      console.log(`MEDIK FORMATTER: Received ${Object.keys(data).length} normalized nodes`);
       
       // Add the normalized data to the map, filtering out null values
       for (const [curie, normData] of Object.entries(data)) {
-        if (normData === null) {
-          console.log(`MEDIK FORMATTER: Node Normalizer returned null for ${curie}, will keep original node data`);
-          // Don't add null values to the map - this will make normalizedMap.get() return undefined
-          // which is already handled in the node processing logic
-          continue;
+        if (normData !== null) {
+          normalizedMap.set(curie, normData);
         }
-        normalizedMap.set(curie, normData);
       }
       
       // Add a delay between batches to avoid overwhelming the API
       if (i + BATCH_SIZE < curies.length) {
-        console.log(`MEDIK FORMATTER: Waiting ${DELAY_MS}ms before next batch`);
         await new Promise(resolve => setTimeout(resolve, DELAY_MS));
       }
     } catch (error) {
       console.log(`MEDIK FORMATTER: Error normalizing nodes: ${error instanceof Error ? error.message : String(error)}`);
-      console.log(`MEDIK FORMATTER: Error stack: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
     }
   }
   
@@ -309,6 +294,18 @@ export function formatKnowledgeGraphArtifact(
   
   // Track unique CAID nodes that will be filtered out
   const caidNodes = new Set<string>();
+  
+  // Initialize the knowledge graph structure
+  const graph: KnowledgeGraph = {
+    nodes: [],
+    links: []
+  };
+  
+  // Track unique nodes to avoid duplicates
+  const nodeMap = new Map<string, KnowledgeGraphNode>();
+  
+  // Track node connections for sizing
+  const connectionCounts = new Map<string, number>();
   
   // First pass: identify all CAID nodes
   queryResults.forEach(result => {
@@ -385,19 +382,7 @@ export function formatKnowledgeGraphArtifact(
   const filteredCount = originalCount - filteredResults.length;
   const filteredNodeCount = caidNodes.size;
   
-  console.log(`MEDIK FORMATTER: After filtering: ${filteredResults.length} results remain (removed ${filteredCount} results [${caidNodes.size} CAID nodes and transcribed_from edges])`);
-  
-  // Initialize the knowledge graph structure
-  const graph: KnowledgeGraph = {
-    nodes: [],
-    links: []
-  };
-  
-  // Track unique nodes to avoid duplicates
-  const nodeMap = new Map<string, KnowledgeGraphNode>();
-  
-  // Track node connections for sizing
-  const connectionCounts = new Map<string, number>();
+  console.log(`MEDIK FORMATTER: After filtering: ${filteredResults.length} results remain (removed ${filteredCount} results)`);
   
   // Process each result triple
   const relationships: string[] = [];

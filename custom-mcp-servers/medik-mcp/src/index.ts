@@ -24,7 +24,7 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
     try {
         // Check if server is initialized
         console.error(`[medik-mcp] [MEDIK-STEP 0] Server object type: ${typeof server}`);
-        console.error('[medik-mcp] [MEDIK-STEP 0] Server object: ',server);
+        // console.error('[medik-mcp] [MEDIK-STEP 0] Server object: ',server);
         console.error(`[medik-mcp] [MEDIK-STEP 0] Has sendLoggingMessage: ${typeof server.sendLoggingMessage === 'function'}`);
         
         // Create log payload
@@ -75,7 +75,9 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
 }
 
 // mediKanren API configuration
+// const MEDIKANREN_API_BASE = "https://medikanren.loca.lt/";
 const MEDIKANREN_API_BASE = "https://medikanren.metareflective.app";
+// https://medikanren.loca.lt/
 const DEBUG = true;
 
 // Define interface types for API responses
@@ -128,20 +130,8 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount 
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 1000; // 1 second between retries
     
-    sendStructuredLog(server, 'info', `Starting makeMediKanrenRequest (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`, {
-        params,
-        retryCount,
-        maxRetries: MAX_RETRIES
-    });
-    
-    // Add a 1 second pause before making the request
-    sendStructuredLog(server, 'debug', 'Adding 1 second pause before making request to mediKanren');
-    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-    
     const url = `${MEDIKANREN_API_BASE}/query`;
     
-    sendStructuredLog(server, 'debug', `Making request to: ${url}`);
-
     try {
         // Construct the URL with query parameters
         const queryParams = new URLSearchParams();
@@ -150,35 +140,35 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount 
         }
         
         const fullUrl = `${url}?${queryParams.toString()}`;
-        sendStructuredLog(server, 'debug', `Full URL: ${fullUrl}`);
+        console.error(`[medik-mcp] Making request to: ${fullUrl}`);
+        
+        // Set up Basic Authentication only for medikanren.loca.lt
+        const headers: Record<string, string> = {};
+        if (MEDIKANREN_API_BASE.includes('medikanren.loca.lt')) {
+            const username = ''; // Empty username as specified
+            const password = '138.26.202.195';
+            const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+            headers['Authorization'] = `Basic ${credentials}`;
+        }
         
         const response = await fetch(fullUrl, {
-            method: 'GET'
+            method: 'GET',
+            headers
         });
         
         if (!response.ok) {
-            const text = await response.text();
-            sendStructuredLog(server, 'error', `HTTP error response`, {
-                status: response.status,
-                responseText: text
-            });
+            console.error(`[medik-mcp] HTTP error! status: ${response.status}`);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
         return data as T;
     } catch (error) {
-        sendStructuredLog(server, 'error', `Error in request`, {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-        });
+        console.error(`[medik-mcp] Error in request: ${error instanceof Error ? error.message : String(error)}`);
         
         // If we haven't exceeded max retries, try again
         if (retryCount < MAX_RETRIES) {
-            sendStructuredLog(server, 'notice', `Retrying request`, {
-                attempt: retryCount + 2,
-                maxAttempts: MAX_RETRIES + 1
-            });
+            console.error(`[medik-mcp] Retrying request (attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
             return makeMediKanrenRequest<T>(params, retryCount + 1);
         }
         
@@ -194,9 +184,7 @@ export async function runQuery(params: {
 }): Promise<QueryResponse | null> {
     const { e1, e2, e3 } = params;
     
-    // Log query start
-    console.error(`[medik-mcp] MEDIK: NEW QUERY STARTED AT ${new Date().toISOString()}`);
-    console.error(`[medik-mcp] MEDIK: Query: ${e1} ${e2} ${e3}`);
+    console.error(`[medik-mcp] Query: ${e1} ${e2} ${e3}`);
     
     try {
         // Make the API request
@@ -205,13 +193,17 @@ export async function runQuery(params: {
         });
         
         if (!queryResult) {
-            console.error(`[medik-mcp] MEDIK: QUERY FAILED AT ${new Date().toISOString()}`);
+            console.error(`[medik-mcp] Query failed`);
             return null;
+        }
+        
+        if (Array.isArray(queryResult)) {
+            console.error(`[medik-mcp] Query returned ${queryResult.length} results`);
         }
         
         return queryResult;
     } catch (error) {
-        console.error(`[medik-mcp] MEDIK: Query error:`, error);
+        console.error(`[medik-mcp] Query error:`, error);
         return null;
     }
 }
@@ -222,12 +214,7 @@ export async function runBidirectionalQuery(params: {
 }): Promise<QueryResponse | null> {
     const { curie } = params;
     
-    // Log query start with structured logging
-    sendStructuredLog(server, 'info', `Starting bidirectional query for ${curie}`, {
-        curie,
-        queryType: 'bidirectional',
-        timestamp: new Date().toISOString()
-    });
+    console.error(`[medik-mcp] Starting bidirectional query for ${curie}`);
     
     try {
         // Make X->Known query (find things that point TO our curie)
@@ -265,30 +252,14 @@ export async function runBidirectionalQuery(params: {
         );
         
         if (deduplicatedResults.length === 0) {
-            // Log query failure with structured logging
-            sendStructuredLog(server, 'error', `Bidirectional query failed for ${curie}`, {
-                curie,
-                queryType: 'bidirectional',
-                error: 'No results returned from either query',
-                timestamp: new Date().toISOString()
-            });
-            
-            console.error(`MEDIK: BIDIRECTIONAL QUERY FAILED AT ${new Date().toISOString()}`);
+            console.error(`[medik-mcp] No results found for ${curie}`);
             return null;
         }
         
+        console.error(`[medik-mcp] Found ${deduplicatedResults.length} unique relationships`);
         return deduplicatedResults;
     } catch (error) {
-        // Log error with structured logging
-        sendStructuredLog(server, 'error', `Error in bidirectional query for ${curie}`, {
-            curie,
-            queryType: 'bidirectional',
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            timestamp: new Date().toISOString()
-        });
-        
-        console.error(`MEDIK: Query error:`, error);
+        console.error(`[medik-mcp] Error in bidirectional query: ${error instanceof Error ? error.message : String(error)}`);
         return null;
     }
 }
