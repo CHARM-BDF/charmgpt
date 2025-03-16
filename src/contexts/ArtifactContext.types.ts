@@ -180,7 +180,11 @@ export function generateArtifactSummary(
   }
 
   if (includeOutput && artifact.output && !artifact.dataFile) {
-    artifactSummary += `\n### Output\n\`\`\`\n${artifact.output}\`\`\`\n`
+    const output = artifact.output;
+    const truncatedOutput = output.includes('__RESULTS__') 
+      ? output.split('__RESULTS__')[0] 
+      : output;
+    artifactSummary += `\n### Output\n\`\`\`\n${truncatedOutput}\`\`\`\n`
   }
 
   if (includePlot && artifact.plotFile) {
