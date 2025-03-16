@@ -7,7 +7,8 @@ import {
   CodeLanguage,
   getDisplayName, 
   dataHeader, 
-  getDefaultViewMode
+  getDefaultViewMode,
+  generateArtifactSummary
 } from './ArtifactContext.types'
 import { chatWithLLM } from '../services/api'
 
@@ -734,6 +735,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       }
     } else {
       msg = await generateSummary()
+      if (activeArtifact) {
+        msg += '\n\n' + generateArtifactSummary(activeArtifact) + '\n\n';
+      }
     }
     if (message) {
       msg = '\n\nGiven:\n' + msg;
@@ -753,7 +757,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       console.error('Chat error:', err)
       return false
     }
-  }, [generateSummary, parseCodeFromResponse, planContent])
+  }, [generateSummary, parseCodeFromResponse, planContent, activeArtifact])
 
   const value = {
     artifacts,
