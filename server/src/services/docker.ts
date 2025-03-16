@@ -433,7 +433,7 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
         }
         var2line[var_name] = line_start
         var2line_end[var_name] = line_end
-        value_log_buffer += f"\\nSaved DataFrame {var_name} to {filename}"
+        # value_log_buffer += f"\\nSaved DataFrame {var_name} to {filename}"
     else:
         # Handle immediate values (numbers, strings, lists, etc)
         try:
@@ -448,7 +448,7 @@ def save_intermediate_value(value, var_name: str, line_start: int, line_end: int
             }
             var2line[var_name] = line_start
             var2line_end[var_name] = line_end
-            value_log_buffer += f"\\nSaved value {var_name} = {converted_value}"
+            # value_log_buffer += f"\\nSaved value {var_name} = {converted_value}"
         except:
             value_log_buffer += f"\\nCould not serialize value for {var_name}"
 
