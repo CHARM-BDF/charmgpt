@@ -531,6 +531,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                             text: "Failed to retrieve bidirectional query results. Please check the server logs for details.",
                         },
                     ],
+                    metadata: {
+                        querySuccess: false,
+                        bothDirectionsSuccessful: false,
+                        nodeCount: 0
+                    }
                 };
             }
             
@@ -544,8 +549,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                         originalResultCount: queryResult.length
                     },
                 });
-                
-                // console.error(`MEDIK: Star ting CAID node filtering process on ${queryResult.length} results`);
                 
                 try {
                     console.error(`MEDIK: Calling formatKnowledgeGraphArtifact with ${queryResult.length} results`);
@@ -566,24 +569,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     const formattedResult = await formattingPromise;
                     console.error(`MEDIK: Promise resolved successfully, got formatted result`);
                     
-                    // Log the filtering results
-                    if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
-                        console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
-                        server.sendLoggingMessage({
-                            level: "info",
-                            data: {
-                                message: `MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique nodes with CAID: prefix`,
-                                filteredCount: formattedResult.filteredCount,
-                                filteredNodeCount: formattedResult.filteredNodeCount,
-                                remainingCount: queryResult.length - formattedResult.filteredCount
-                            },
-                        });
-                    }
-                    
-                    // Return the formatted result
+                    // Add metadata about the query success and node count
+                    const metadata = {
+                        querySuccess: true,
+                        bothDirectionsSuccessful: true, // Since this is a bidirectional query and we got results
+                        nodeCount: JSON.parse(formattedResult.artifacts?.[0]?.content || '{"nodes":[]}').nodes.length,
+                        message: "Both forward and reverse queries were successful. No need to run this query again."
+                    };
+
+                    // Return the formatted result with metadata
                     return {
                         content: formattedResult.content,
-                        artifacts: formattedResult.artifacts
+                        artifacts: formattedResult.artifacts,
+                        metadata: metadata
                     };
                 } catch (error) {
                     console.error(`MEDIK: Error formatting knowledge graph:`, error);
@@ -594,6 +592,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                                 text: `Error formatting knowledge graph: ${error}`,
                             },
                         ],
+                        metadata: {
+                            querySuccess: false,
+                            bothDirectionsSuccessful: false,
+                            nodeCount: 0
+                        }
                     };
                 }
             } else {
@@ -606,6 +609,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                             text: `Query error: ${queryResult.error}`,
                         },
                     ],
+                    metadata: {
+                        querySuccess: false,
+                        bothDirectionsSuccessful: false,
+                        nodeCount: 0
+                    }
                 };
             }
         } else if (toolName === "network-neighborhood") {

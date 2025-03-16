@@ -754,7 +754,7 @@ export function formatKnowledgeGraphArtifact(
     let humanReadableText = `
 # Knowledge Graph: ${queryType} ${entityName} via ${relationshipType}
 
-${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\n\n' : ''}The graph includes the following relationships:
+${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\nBoth forward and reverse queries were successful - no need to run this query again.\n\n' : ''}The graph includes the following relationships:
 ${formattedRelationships}
 
 Identify any patterns or insights based solely on what the graph shows, and then offer your own insights such as other concepts that may be interesting to pursue based on the data and why.
@@ -765,7 +765,7 @@ Identify any patterns or insights based solely on what the graph shows, and then
       humanReadableText = `
 # Knowledge Graph: ${queryType} ${entityName} via ${relationshipType}
 
-${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\n\n' : ''}Note: ${filteredCount} relationships were filtered out from the results:
+${queryParams.e1 === 'Bidirectional' ? 'This is a comprehensive bidirectional query that includes both incoming and outgoing relationships.\nBoth forward and reverse queries were successful - no need to run this query again.\n\n' : ''}Note: ${filteredCount} relationships were filtered out from the results:
 - Relationships involving ${filteredNodeCount} unique nodes with CAID: prefix (these variants are typically less reliable or less established in the literature)
 - Edges with the 'transcribed_from' predicate (these represent basic transcription relationships)
 

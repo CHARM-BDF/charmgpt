@@ -211,6 +211,17 @@ router.post('/', async (req: Request<{}, {}, {
             );
 
             if (textContent) {
+              // If there's metadata, add it to the status updates
+              if ('metadata' in toolResult) {
+                const metadata = toolResult.metadata as any;
+                if (metadata.querySuccess) {
+                  sendStatusUpdate(`Query successful with ${metadata.nodeCount} nodes${metadata.bothDirectionsSuccessful ? ' (both directions complete)' : ''}`);
+                  if (metadata.message) {
+                    sendStatusUpdate(metadata.message);
+                  }
+                }
+              }
+
               messages.push({
                 role: 'user',
                 content: [{ type: 'text', text: textContent.text }]
