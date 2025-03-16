@@ -138,3 +138,58 @@ export const hasData = (artifact: Artifact): boolean => {
   })
   return result
 }
+
+/**
+ * Generates a markdown summary of an artifact's contents
+ * @param artifact - The artifact to summarize
+ * @param options - Configuration options for the summary
+ * @returns A markdown-formatted string summarizing the artifact
+ */
+export function generateArtifactSummary(
+  artifact: Artifact, 
+  options: { 
+    quoted?: boolean,
+    includeData?: boolean,
+    includeChat?: boolean,
+    includeCode?: boolean,
+    includeOutput?: boolean,
+    includePlot?: boolean
+  } = {}
+): string {
+  const {
+    quoted = false,
+    includeData = true,
+    includeChat = true,
+    includeCode = true,
+    includeOutput = true,
+    includePlot = true
+  } = options
+
+  let artifactSummary = `## Artifact ${getDisplayName(artifact)}`
+
+  if (includeData && artifact.dataFile) {
+    artifactSummary += `\n### Data Columns\n${dataHeader(artifact.dataFile)}\n`
+  }
+
+  if (includeChat && artifact.chatInput) {
+    artifactSummary += `\n### Chat Input\n${artifact.chatInput}\n`
+  }
+
+  if (includeCode && artifact.code) {
+    artifactSummary += `\n### Code\n\`\`\`python\n${artifact.code}\`\`\`\n`
+  }
+
+  if (includeOutput && artifact.output && !artifact.dataFile) {
+    artifactSummary += `\n### Output\n\`\`\`\n${artifact.output}\`\`\`\n`
+  }
+
+  if (includePlot && artifact.plotFile) {
+    artifactSummary += `\n### Plot\n![Plot](${artifact.plotFile})\n`
+  }
+
+  if (quoted) {
+    artifactSummary = `"""\n${artifactSummary}\n"""\n`
+  }
+
+  return artifactSummary
+}

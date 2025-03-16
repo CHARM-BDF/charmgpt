@@ -109,7 +109,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
 
     loadInitialData()
-  }, [activeArtifact, selectArtifact])
+  }, [activeArtifact, selectArtifact, showAllArtifacts])
 
   // Update displayed artifacts when showAllArtifacts changes
   useEffect(() => {
