@@ -164,7 +164,7 @@ router.post('/', async (req: Request<{}, {}, {
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
         messages: messageService.convertChatMessages(messages) as any,
-        temperature: 0.7,
+        temperature: 0.2,
         tools: tools,
       });
 

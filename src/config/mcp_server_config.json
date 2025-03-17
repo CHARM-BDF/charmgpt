@@ -75,6 +75,12 @@
         "./custom-mcp-servers/graphManipulate-mcp/dist/index.js"
       ],
       "timeout": 120000
+    },
+    "id-finder": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/id-finder-mcp/dist/index.js"
+      ]
     }
   }
 }

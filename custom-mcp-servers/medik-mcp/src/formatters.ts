@@ -144,6 +144,14 @@ function getEntityTypeFromBiolink(types: string[] | undefined): string {
     return 'Gene Group';
   }
   
+  // Check for diseases and phenotypes
+  if (types.includes('biolink:Disease') ||
+      types.includes('biolink:DiseaseOrPhenotypicFeature') ||
+      types.includes('biolink:PhenotypicFeature') ||
+      types.includes('biolink:Disease')) {
+    return 'Disease or Phenotype';
+  }
+  
   // Default case
   return 'Other';
 }
@@ -160,6 +168,7 @@ function getColorForEntityType(entityType: string): string {
     'Gene Group': '#34A853',     // Google Green
     'Chemical': '#FBBC05',       // Google Yellow
     'Disease': '#EA4335',        // Google Red
+    'Disease or Phenotype': '#EA4335',  // Same as Disease
     'Cellular Component': '#8E24AA', // Purple
     'Anatomical Structure': '#00ACC1', // Cyan
     'Drug': '#FB8C00',           // Orange
