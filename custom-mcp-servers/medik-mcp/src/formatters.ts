@@ -157,31 +157,6 @@ function getEntityTypeFromBiolink(types: string[] | undefined): string {
   return 'Other';
 }
 
-/**
- * Get a color for a specific entity type
- * @param entityType The entity type
- * @returns A hex color code
- */
-function getColorForEntityType(entityType: string): string {
-  // Define a color mapping for entity types
-  const colorMap: Record<string, string> = {
-    'Gene': '#4285F4',           // Google Blue
-    'Gene Group': '#34A853',     // Google Green
-    'Chemical': '#FBBC05',       // Google Yellow
-    'Disease': '#EA4335',        // Google Red
-    'Disease or Phenotype': '#EA4335',  // Same as Disease
-    'Cellular Component': '#8E24AA', // Purple
-    'Anatomical Structure': '#00ACC1', // Cyan
-    'Drug': '#FB8C00',           // Orange
-    'UMLS Concept': '#9E9E9E',   // Gray
-    'Cancer Concept': '#D81B60', // Pink
-    'Reaction': '#43A047',       // Green
-    'Other': '#757575'           // Dark Gray
-  };
-  
-  return colorMap[entityType] || colorMap['Other'];
-}
-
 // Helper function to make predicate human-readable
 function formatPredicate(predicate: string): string {
   // Remove the biolink: prefix
@@ -550,23 +525,11 @@ export function formatKnowledgeGraphArtifact(
           }
         }
         
+        // Preserve isStartingNode property - if either node is a starting node, the merged node should be too
+        existingNode.isStartingNode = existingNode.isStartingNode || node.isStartingNode;
+        
         // Update connection count (will be used for node size)
         existingNode.val = (existingNode.val || 0) + (node.val || 0);
-        
-        // Preserve color if it exists on the node being merged
-        if (node.color && !existingNode.color) {
-          existingNode.color = node.color;
-        }
-        
-        // If the node being merged has an entity type but the existing node doesn't, copy it
-        if (node.entityType && !existingNode.entityType) {
-          existingNode.entityType = node.entityType;
-          
-          // Set color based on entity type if not already set
-          if (!existingNode.color) {
-            existingNode.color = getColorForEntityType(existingNode.entityType);
-          }
-        }
         
         console.log(`MEDIK FORMATTER: Merged node ${node.id} into existing node ${normalizedId} with startingIds: ${existingNode.startingId?.join(', ')}`);
       } else {
@@ -593,11 +556,8 @@ export function formatKnowledgeGraphArtifact(
         // Update entity type with biolink-derived type
         node.entityType = biolinkEntityType;
         
-        // Assign color based on entity type
-        node.color = getColorForEntityType(biolinkEntityType);
-        
-        // Log the entity type determination and color
-        console.log(`MEDIK FORMATTER: Determined entity type for ${node.id}: ${biolinkEntityType} (color: ${node.color}) (from ${normData.type?.slice(0, 3).join(', ')}${normData.type && normData.type.length > 3 ? '...' : ''})`);
+        // Preserve isStartingNode property
+        node.isStartingNode = node.isStartingNode || false;
         
         // Add to merged nodes map
         mergedNodes.set(normalizedId, node);
@@ -642,22 +602,6 @@ export function formatKnowledgeGraphArtifact(
         node.startingId = [node.startingId];
         console.log(`MEDIK FORMATTER: Converted startingId to array for node ${node.id}`);
       }
-      
-      // Make sure color is set based on entity type
-      if (!node.color && node.entityType) {
-        node.color = getColorForEntityType(node.entityType);
-        console.log(`MEDIK FORMATTER: Added missing color for node ${node.id} based on entity type ${node.entityType}: ${node.color}`);
-      } else if (!node.color) {
-        // If no entity type, use the group to determine a color
-        const entityType = node.group === 1 ? 'Drug' :
-                          node.group === 2 ? 'Gene' :
-                          node.group === 3 ? 'Disease' :
-                          node.group === 4 ? 'UMLS Concept' :
-                          node.group === 5 ? 'Reaction' :
-                          node.group === 6 ? 'Cancer Concept' : 'Other';
-        node.color = getColorForEntityType(entityType);
-        console.log(`MEDIK FORMATTER: Added missing color for node ${node.id} based on group ${node.group}: ${node.color}`);
-      }
     });
     
     // Log the final nodes after ensuring colors and startingId arrays
@@ -667,7 +611,6 @@ export function formatKnowledgeGraphArtifact(
         id: node.id,
         name: node.name,
         entityType: node.entityType,
-        color: node.color,
         startingId: node.startingId
       }, null, 2));
     });
@@ -682,22 +625,11 @@ export function formatKnowledgeGraphArtifact(
     if (nodesWithoutColor.length > 0) {
       console.log(`MEDIK FORMATTER: WARNING - Found ${nodesWithoutColor.length} nodes without color property. Fixing...`);
       nodesWithoutColor.forEach(node => {
-        // Determine color based on entity type or group
-        if (node.entityType) {
-          node.color = getColorForEntityType(node.entityType);
-        } else {
-          const entityType = node.group === 1 ? 'Drug' :
-                            node.group === 2 ? 'Gene' :
-                            node.group === 3 ? 'Disease' :
-                            node.group === 4 ? 'UMLS Concept' :
-                            node.group === 5 ? 'Reaction' :
-                            node.group === 6 ? 'Cancer Concept' : 'Other';
-          node.color = getColorForEntityType(entityType);
-        }
-        console.log(`MEDIK FORMATTER: Fixed missing color for node ${node.id}: ${node.color}`);
+        // Just log that we're skipping color assignment as it's now handled by templates
+        console.log(`MEDIK FORMATTER: Node ${node.id} has no color - will be handled by templates`);
       });
     } else {
-      console.log(`MEDIK FORMATTER: All nodes have color property. Good!`);
+      console.log(`MEDIK FORMATTER: All nodes have required properties. Good!`);
     }
     
     // Final check before returning the graph
@@ -715,17 +647,6 @@ export function formatKnowledgeGraphArtifact(
         console.log(`MEDIK FORMATTER: Final check - Converted startingId to array for node ${nodeCopy.id}`);
       }
       
-      // Ensure color is set
-      if (!nodeCopy.color) {
-        if (nodeCopy.entityType) {
-          nodeCopy.color = getColorForEntityType(nodeCopy.entityType);
-          console.log(`MEDIK FORMATTER: Final check - Added missing color for node ${nodeCopy.id} based on entity type ${nodeCopy.entityType}: ${nodeCopy.color}`);
-        } else {
-          nodeCopy.color = getColorForEntityType('Other');
-          console.log(`MEDIK FORMATTER: Final check - Added default color for node ${nodeCopy.id} with no entity type: ${nodeCopy.color}`);
-        }
-      }
-      
       return nodeCopy;
     });
     
@@ -739,7 +660,6 @@ export function formatKnowledgeGraphArtifact(
         id: graph.nodes[0].id,
         name: graph.nodes[0].name,
         entityType: graph.nodes[0].entityType,
-        color: graph.nodes[0].color,
         startingId: graph.nodes[0].startingId
       }, null, 2));
     }

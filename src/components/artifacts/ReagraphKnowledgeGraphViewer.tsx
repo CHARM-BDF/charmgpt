@@ -1106,7 +1106,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           )}
         </div>
       </div>
-      <div ref={containerRef} className="w-full h-full flex-grow relative">
+      <div ref={containerRef} className="w-full h-full flex-grow relative" style={{ minWidth: '900px' }}>
         <NotificationPopup />
         {/* Tooltip for Ctrl/Cmd+Click functionality */}
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
