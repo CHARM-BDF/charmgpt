@@ -302,6 +302,12 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       // Get entity type from node
       const entityType = (node as any).entityType || 'Other';
       
+      // Create stroke properties based on isStartingNode
+      const strokeProps = node.isStartingNode ? {
+        stroke: '#000000',
+        strokeWidth: 3
+      } : {};
+      
       return {
         id: node.id,
         label: node.name,
@@ -310,7 +316,16 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         size: node.val || 1,
         entityType,
         startingId: node.startingId,
-        metadata: node.metadata
+        metadata: node.metadata,
+        ...strokeProps,
+        data: {
+          id: node.id,
+          color: colorValue,
+          entityType,
+          startingId: node.startingId,
+          metadata: node.metadata,
+          ...strokeProps
+        }
       };
     });
     
@@ -938,8 +953,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         `${node.label} (${node.id})`,
         node.entityType ? `Type: ${node.entityType}` : '',
         node.startingId ? `Original IDs: ${node.startingId.join(', ')}` : '',
-        node.metadata?.description ? `Description: ${node.metadata.description}` : '',
-        node.metadata?.type ? `Types: ${node.metadata.type.join(', ')}` : ''
+        node.metadata?.description ? `Description: ${node.metadata.description}` : ''
       ].filter(Boolean).join('\n');
       
       // Update chat input with append=true to add to existing text

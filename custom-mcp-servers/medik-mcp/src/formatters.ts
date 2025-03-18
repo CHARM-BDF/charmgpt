@@ -21,6 +21,7 @@ interface KnowledgeGraphNode {
   val?: number;
   color?: string;
   entityType?: string;
+  isStartingNode?: boolean;
   metadata?: {
     label?: string;
     description?: string;
@@ -271,7 +272,8 @@ async function normalizeNodes(curies: string[]): Promise<Map<string, any>> {
  */
 export function formatKnowledgeGraphArtifact(
   queryResults: any[],
-  queryParams: { e1: string; e2: string; e3: string }
+  queryParams: { e1: string; e2: string; e3: string },
+  startingNodeIds?: Set<string>
 ): Promise<FormattedResult & { filteredCount?: number; filteredNodeCount?: number }> {
   // Create timestamp and filename base
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -318,7 +320,7 @@ export function formatKnowledgeGraphArtifact(
   
   // First pass: identify all CAID nodes
   queryResults.forEach(result => {
-    const [sourceId, sourceName, predicate, targetId] = result;
+    const [sourceId, sourceName, predicate, targetId, targetName, _, evidence] = result;
     
     // Helper function to process IDs
     const processId = (id: string) => {
@@ -397,7 +399,6 @@ export function formatKnowledgeGraphArtifact(
   const relationships: string[] = [];
   
   filteredResults.forEach(result => {
-    // Extract the relevant parts of the triple
     const [sourceId, sourceName, predicate, targetId, targetName, _, evidence] = result;
     
     // Skip if missing essential data
@@ -428,7 +429,8 @@ export function formatKnowledgeGraphArtifact(
         startingId: [sourceId], // Store the original versioned ID
         name: sourceName,
         group,
-        entityType: type
+        entityType: type,
+        isStartingNode: startingNodeIds?.has(sourceId) // Set starting node flag
       });
     } else if (sourceId !== sourceNormalizedId) {
       // If this is a different version of the same node, add to startingId
@@ -437,6 +439,10 @@ export function formatKnowledgeGraphArtifact(
         existingNode.startingId = [sourceId];
       } else if (!existingNode.startingId.includes(sourceId)) {
         existingNode.startingId.push(sourceId);
+      }
+      // Preserve starting node status if this version is a starting node
+      if (startingNodeIds?.has(sourceId)) {
+        existingNode.isStartingNode = true;
       }
     }
     
@@ -449,7 +455,8 @@ export function formatKnowledgeGraphArtifact(
         startingId: [targetId], // Store the original versioned ID
         name: targetName,
         group,
-        entityType: type
+        entityType: type,
+        isStartingNode: startingNodeIds?.has(targetId) // Set starting node flag
       });
     } else if (targetId !== targetNormalizedId) {
       // If this is a different version of the same node, add to startingId
@@ -458,6 +465,10 @@ export function formatKnowledgeGraphArtifact(
         existingNode.startingId = [targetId];
       } else if (!existingNode.startingId.includes(targetId)) {
         existingNode.startingId.push(targetId);
+      }
+      // Preserve starting node status if this version is a starting node
+      if (startingNodeIds?.has(targetId)) {
+        existingNode.isStartingNode = true;
       }
     }
     
@@ -908,5 +919,5 @@ export function formatNetworkNeighborhood(
     e1: "NetworkNeighborhood",
     e2: "network-connections",
     e3: startCuries.join(',')
-  });
+  }, startingNodeIds); // Pass the starting node IDs to formatKnowledgeGraphArtifact
 } 
