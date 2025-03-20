@@ -26,6 +26,7 @@ import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode, CodeLanguage } from '../contexts/ArtifactContext.types';
 import { useState, useEffect } from 'react';
+import { DepsPanel } from '../components/DepsPanel';
 
 export default function CodeEditor() {
 	const {
@@ -193,6 +194,7 @@ export default function CodeEditor() {
 					>
 						<ToggleButton value="plan">Plan</ToggleButton>
 						<ToggleButton value="code">Code</ToggleButton>
+						<ToggleButton value="deps">Deps</ToggleButton>
 					</ToggleButtonGroup>
 
 					{/* Language selector - visible on desktop, hidden on mobile */}
@@ -315,7 +317,11 @@ export default function CodeEditor() {
 			</Menu>
 
 			<Box sx={{ flex: 1 }}>
-				<Editor language={language} />
+				{mode === 'deps' ? (
+					<DepsPanel artifact={activeArtifact} />
+				) : (
+					<Editor language={language} />
+				)}
 			</Box>
 
 			<Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
