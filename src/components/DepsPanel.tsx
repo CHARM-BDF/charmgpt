@@ -1,6 +1,14 @@
 import { Box, Typography } from '@mui/material';
 import { Artifact, ImmediateValue, FileValue } from '../contexts/ArtifactContext.types';
 import { useArtifact } from '../contexts/useArtifact';
+// Import icons
+import FilterListIcon from '@mui/icons-material/FilterList';
+import GroupWorkIcon from '@mui/icons-material/GroupWork';
+import MergeTypeIcon from '@mui/icons-material/MergeType';
+import SortIcon from '@mui/icons-material/Sort';
+import FunctionsIcon from '@mui/icons-material/Functions';
+import StorageIcon from '@mui/icons-material/Storage';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 
 interface TransformationInfo {
   operation: string;
@@ -47,6 +55,16 @@ function getTransformationInfo(
     comment: comment.trim() || undefined
   };
 }
+
+const operationIcons: Record<string, JSX.Element> = {
+  'Filter': <FilterListIcon fontSize="small" />,
+  'Group': <GroupWorkIcon fontSize="small" />,
+  'Join': <MergeTypeIcon fontSize="small" />,
+  'Sort': <SortIcon fontSize="small" />,
+  'Aggregation': <FunctionsIcon fontSize="small" />,
+  'Data Load': <StorageIcon fontSize="small" />,
+  'Assignment': <AssignmentIcon fontSize="small" />
+};
 
 export function DepsPanel({ artifact }: { artifact: Artifact | null }) {
   const { setSelectedStep, selectedStep } = useArtifact();
@@ -162,9 +180,11 @@ export function DepsPanel({ artifact }: { artifact: Artifact | null }) {
                   <Typography variant="subtitle2">
                     {variable.name}
                   </Typography>
-                  <Typography 
-                    variant="caption" 
+                  <Box 
                     sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
                       px: 1, 
                       py: 0.5, 
                       bgcolor: 'primary.main',
@@ -172,8 +192,11 @@ export function DepsPanel({ artifact }: { artifact: Artifact | null }) {
                       borderRadius: 1
                     }}
                   >
-                    {variable.info.operation}
-                  </Typography>
+                    {operationIcons[variable.info.operation]}
+                    <Typography variant="caption">
+                      {variable.info.operation}
+                    </Typography>
+                  </Box>
                 </Box>
 
                 {variable.info.comment && (
