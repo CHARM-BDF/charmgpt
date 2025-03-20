@@ -1,12 +1,54 @@
 import { Box, Typography } from '@mui/material';
-import { Artifact } from '../contexts/ArtifactContext.types';
+import { Artifact, ImmediateValue, FileValue } from '../contexts/ArtifactContext.types';
 import { useArtifact } from '../contexts/useArtifact';
 
-interface DepsPanelProps {
-  artifact: Artifact | null;
+interface TransformationInfo {
+  operation: string;
+  comment?: string;
 }
 
-export function DepsPanel({ artifact }: DepsPanelProps) {
+function getTransformationInfo(
+  code: string | undefined,
+  lineStart: number,
+  value: ImmediateValue | FileValue
+): TransformationInfo {
+  void value;
+  if (!code) return { operation: 'unknown' };
+
+  const lines = code.split('\n');
+  const line = lines[lineStart - 1];
+
+  // Look for comments above the transformation
+  let comment = '';
+  let currentLine = lineStart - 2; // Start from line above
+  while (currentLine >= 0 && lines[currentLine].trim().startsWith('#')) {
+    comment = lines[currentLine].trim().replace('#', '').trim() + '\n' + comment;
+    currentLine--;
+  }
+
+  // Determine operation type from code
+  let operation = 'Assignment';
+  if (line.includes('.filter(') || (line.includes('[') && line.includes(']'))) {
+    operation = 'Filter';
+  } else if (line.includes('.groupby(')) {
+    operation = 'Group';
+  } else if (line.includes('.merge(') || line.includes('.join(')) {
+    operation = 'Join';
+  } else if (line.includes('.sort_values(')) {
+    operation = 'Sort';
+  } else if (line.includes('.any()') || line.includes('.all()')) {
+    operation = 'Aggregation';
+  } else if (line.includes('read_csv')) {
+    operation = 'Data Load';
+  }
+
+  return { 
+    operation,
+    comment: comment.trim() || undefined
+  };
+}
+
+export function DepsPanel({ artifact }: { artifact: Artifact | null }) {
   const { setSelectedStep, selectedStep } = useArtifact();
 
   if (!artifact?.var2line || !artifact?.var2val) {
@@ -19,20 +61,25 @@ export function DepsPanel({ artifact }: DepsPanelProps) {
     );
   }
 
-  // Create a safe reference to the objects we'll use
   const var2line = artifact.var2line;
-  const var2line_end = artifact.var2line_end || {};
   const var2val = artifact.var2val;
 
-  // Sort variables by line number to show execution order
   const variables = Object.entries(var2line)
     .sort(([, a], [, b]) => a - b)
-    .map(([name]) => ({
-      name,
-      line: var2line[name],
-      lineEnd: var2line_end[name] || var2line[name],
-      value: var2val[name]
-    }));
+    .map(([name]) => {
+      const info = getTransformationInfo(
+        artifact.code,
+        var2line[name],
+        var2val[name]
+      );
+      
+      return {
+        name,
+        line: var2line[name],
+        value: var2val[name],
+        info
+      };
+    });
 
   return (
     <Box sx={{ p: 2, height: '100%', overflow: 'auto' }}>
@@ -44,12 +91,7 @@ export function DepsPanel({ artifact }: DepsPanelProps) {
         {variables.map((variable, index) => (
           <Box 
             key={variable.name}
-            sx={{ 
-              mb: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative'
-            }}
+            sx={{ mb: 2, display: 'flex', flexDirection: 'column', position: 'relative' }}
           >
             {/* Connection line */}
             {index < variables.length - 1 && (
@@ -68,7 +110,7 @@ export function DepsPanel({ artifact }: DepsPanelProps) {
               onClick={() => setSelectedStep(variable.name)}
               sx={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 gap: 2,
                 position: 'relative',
                 zIndex: 1,
@@ -81,27 +123,12 @@ export function DepsPanel({ artifact }: DepsPanelProps) {
                 }
               }}
             >
-              {/* Step indicator */}
-              <Box sx={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                bgcolor: selectedStep === variable.name ? 'primary.dark' : 'primary.main',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.875rem'
-              }}>
-                {index + 1}
-              </Box>
-              
               {/* Variable info */}
               <Box 
                 className="variable-info"
                 sx={{
                   flex: 1,
-                  p: 1,
+                  p: 1.5,
                   bgcolor: selectedStep === variable.name ? 'action.selected' : 'background.paper',
                   borderRadius: 1,
                   border: 1,
@@ -109,12 +136,35 @@ export function DepsPanel({ artifact }: DepsPanelProps) {
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Typography variant="subtitle2">
-                  {variable.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {variable.value.type === 'file' ? 'DataFrame' : 'Value'} • Line {variable.line}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="subtitle2">
+                    {variable.name}
+                  </Typography>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      px: 1, 
+                      py: 0.5, 
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      borderRadius: 1
+                    }}
+                  >
+                    {variable.info.operation}
+                  </Typography>
+                </Box>
+
+                {variable.info.comment && (
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary"
+                    sx={{ 
+                      whiteSpace: 'pre-line'  // Preserve line breaks in comments
+                    }}
+                  >
+                    {variable.info.comment}
+                  </Typography>
+                )}
               </Box>
             </Box>
           </Box>
