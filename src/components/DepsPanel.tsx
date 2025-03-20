@@ -101,7 +101,8 @@ export function DepsPanel({ artifact }: { artifact: Artifact | null }) {
                 top: '24px',
                 bottom: '-24px',
                 width: '2px',
-                bgcolor: 'divider'
+                bgcolor: 'divider',
+                zIndex: 0
               }} />
             )}
             
@@ -123,6 +124,25 @@ export function DepsPanel({ artifact }: { artifact: Artifact | null }) {
                 }
               }}
             >
+              {/* Step indicator */}
+              <Box sx={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                bgcolor: selectedStep === variable.name ? 'primary.dark' : 'primary.main',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.875rem',
+                flexShrink: 0,
+                mt: 1,
+                position: 'relative',
+                zIndex: 2
+              }}>
+                {index + 1}
+              </Box>
+              
               {/* Variable info */}
               <Box 
                 className="variable-info"
@@ -133,7 +153,9 @@ export function DepsPanel({ artifact }: { artifact: Artifact | null }) {
                   borderRadius: 1,
                   border: 1,
                   borderColor: selectedStep === variable.name ? 'primary.main' : 'divider',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  zIndex: 2
                 }}
               >
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
