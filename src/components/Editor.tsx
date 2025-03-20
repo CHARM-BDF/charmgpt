@@ -3,11 +3,9 @@ import { useArtifact } from '../contexts/useArtifact'
 import { Box, Typography } from '@mui/material'
 import MonacoEditor, { OnChange } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
-import { Artifact, ViewMode, generateArtifactSummary } from '../contexts/ArtifactContext.types'
+import { Artifact, ViewMode, generateArtifactSummary, CodeLanguage } from '../contexts/ArtifactContext.types'
 import { DataViewer } from './DataViewer'
 import '../styles/editor.css'
-
-type CodeLanguage = 'python' | 'r'
 
 interface EditorProps {
   language?: CodeLanguage;

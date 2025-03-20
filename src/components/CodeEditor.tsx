@@ -24,10 +24,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import MenuIcon from '@mui/icons-material/Menu';
 import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
-import { EditorMode } from '../contexts/ArtifactContext.types';
+import { EditorMode, CodeLanguage } from '../contexts/ArtifactContext.types';
 import { useState, useEffect } from 'react';
-
-type CodeLanguage = 'python' | 'r';
 
 export default function CodeEditor() {
 	const {
