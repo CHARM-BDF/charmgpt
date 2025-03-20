@@ -407,6 +407,12 @@ def convert_value(value):
     """Recursively convert values to JSON-serializable types"""
     if isinstance(value, (np.integer, np.floating)):
         return value.item()
+    elif isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    elif isinstance(value, pd.Series):
+        if value.dtype == bool:
+            return value.tolist()
+        return value.to_dict()
     elif isinstance(value, np.ndarray):
         return value.tolist()
     elif isinstance(value, range):
