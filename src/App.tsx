@@ -30,6 +30,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadIcon from '@mui/icons-material/Upload';
 import { TransitionProps } from '@mui/material/transitions';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const theme = createTheme({
 	// You can customize your theme here
@@ -86,6 +87,66 @@ function AppContent() {
 	const [mobileTab, setMobileTab] = useState(0);
 	const [chatOpen, setChatOpen] = useState(false);
 	const [uploadRef, setUploadRef] = useState<HTMLInputElement | null>(null);
+	const { name } = useParams();
+	const navigate = useNavigate();
+	const [isLoading, setIsLoading] = useState(false);
+
+	// Check for permalink on mount
+	useEffect(() => {
+		const loadPermalink = async () => {
+			if (!name || isLoading) return;
+
+			try {
+				setIsLoading(true);
+				// Check if permalink exists
+				const checkResponse = await fetch(`/api/artifacts/permalinks/${name}`);
+				const { exists } = await checkResponse.json();
+
+				if (!exists) {
+					// Silently redirect to main page if permalink doesn't exist
+					navigate('/', { replace: true });
+					return;
+				}
+
+				// Load permalink content
+				const loadResponse = await fetch(`/api/artifacts/permalinks/${name}/load`);
+				const { pinned, plan } = await loadResponse.json();
+
+				// Update artifacts and plan through the API
+				await fetch('/api/artifacts/pin', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						artifacts: pinned
+					})
+				});
+
+				await fetch('/api/artifacts/plan', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						content: plan
+					})
+				});
+
+				// Force a re-fetch of artifacts by navigating to home
+				navigate('/', { replace: true });
+
+			} catch (error) {
+				console.error('Failed to load permalink:', error);
+				// Silently redirect on error
+				navigate('/', { replace: true });
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		loadPermalink();
+	}, [name, navigate, isLoading]);
 
 	const handleTabChange = (
 		_event: React.SyntheticEvent,
