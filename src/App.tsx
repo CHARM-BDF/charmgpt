@@ -20,6 +20,7 @@ import ArtifactView from './components/ArtifactView';
 import { useEffect, useCallback, useRef, useState, forwardRef } from 'react';
 import { ArtifactProvider } from './contexts/ArtifactContext';
 import { useArtifact } from './contexts/useArtifact';
+import { Artifact } from './contexts/ArtifactContext.types';
 import {
 	Panel,
 	PanelGroup,
@@ -79,7 +80,7 @@ const Transition = forwardRef(function Transition(
 });
 
 function AppContent() {
-	const { runArtifact, editorContent } = useArtifact();
+	const { runArtifact, editorContent, updateArtifact } = useArtifact();
 	const mainPanelRef = useRef<ImperativePanelHandle>(null);
 	const editorPanelRef = useRef<ImperativePanelHandle>(null);
 	const rightPanelRef = useRef<ImperativePanelHandle>(null);
@@ -112,28 +113,36 @@ function AppContent() {
 				const loadResponse = await fetch(`/api/artifacts/permalinks/${name}/load`);
 				const { pinned, plan } = await loadResponse.json();
 
-				// Update artifacts and plan through the API
-				await fetch('/api/artifacts/pin', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						artifacts: pinned
-					})
-				});
+				// Update plan content and pinned artifacts
+				await Promise.all([
+					fetch('/api/artifacts/plan', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							content: plan
+						})
+					}),
+					...pinned.map((artifact: Artifact) => 
+						fetch('/api/artifacts/pin', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json'
+							},
+							body: JSON.stringify({
+								artifactId: artifact.id,
+								pinned: true,
+								artifact
+							})
+						}).then(() => {
+							// Update application state after pinning
+							updateArtifact({ ...artifact, pinned: true });
+						})
+					)
+				]);
 
-				await fetch('/api/artifacts/plan', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						content: plan
-					})
-				});
-
-				// Force a re-fetch of artifacts by navigating to home
+				// Navigate to home to show the loaded state
 				navigate('/', { replace: true });
 
 			} catch (error) {
@@ -146,7 +155,7 @@ function AppContent() {
 		};
 
 		loadPermalink();
-	}, [name, navigate, isLoading]);
+	}, [name, navigate, isLoading, updateArtifact]);
 
 	const handleTabChange = (
 		_event: React.SyntheticEvent,
