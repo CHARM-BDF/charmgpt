@@ -209,7 +209,9 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
 
     // Add workflow information if we're running a workflow
-    if (workflowState.isRunning && workflowState.steps.length > 0) {
+    // Only add if the artifact doesn't already have workflow information
+    if (workflowState.isRunning && workflowState.steps.length > 0 && 
+        (!newArtifact.workflowSteps || newArtifact.workflowStepIndex === undefined)) {
       newArtifact.workflowSteps = workflowState.steps;
       newArtifact.workflowStepIndex = workflowState.currentStepIndex;
     }
@@ -356,7 +358,10 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           var2val: result.var2val || {},
           var2line: result.var2line || {},
           var2line_end: result.var2line_end || {},
-          timestamp: currentTime // Update timestamp to current time
+          timestamp: currentTime, // Update timestamp to current time
+          // Preserve workflow information (if any) from activeArtifact
+          workflowSteps: activeArtifact.workflowSteps,
+          workflowStepIndex: activeArtifact.workflowStepIndex
         };
         
         // Update allArtifacts list
@@ -452,6 +457,13 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           blockIndex: options?.blockIndex
         }
         
+        // Only inherit workflow information from the active artifact if there's no active workflow
+        // Otherwise, workflow information will be added by addArtifact based on current workflow state
+        if (!workflowState.isRunning && activeArtifact?.workflowSteps && activeArtifact.workflowStepIndex !== undefined) {
+          newArtifact.workflowSteps = activeArtifact.workflowSteps;
+          newArtifact.workflowStepIndex = activeArtifact.workflowStepIndex;
+        }
+        
         // Add the new artifact
         await addArtifact(newArtifact)
       }
@@ -460,7 +472,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     } finally {
       setIsRunning(false)
     }
-  }, [isRunning, activeArtifact, addArtifact, showAllArtifacts, setViewMode])
+  }, [isRunning, activeArtifact, addArtifact, showAllArtifacts, setViewMode, workflowState.isRunning])
 
   const generateSummary = useCallback(async () => {
     // Group artifacts by their display name to get latest versions
