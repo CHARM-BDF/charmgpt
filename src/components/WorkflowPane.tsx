@@ -232,6 +232,17 @@ export default forwardRef<WorkflowPaneHandle, WorkflowPaneProps>(function Workfl
             >
               Load
             </Button>
+            {steps.length > 0 && (
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={resetWorkflow}
+                disabled={isSaving}
+                size="small"
+              >
+                Clear
+              </Button>
+            )}
           </Box>
         )}
       </Box>
@@ -349,21 +360,6 @@ export default forwardRef<WorkflowPaneHandle, WorkflowPaneProps>(function Workfl
           >
             Add Step
           </Button>
-          
-          {steps.length > 0 && (
-            <>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={resetWorkflow}
-                fullWidth
-                disabled={isSaving}
-                sx={{ mt: 1 }}
-              >
-                Clear All
-              </Button>
-            </>
-          )}
         </Box>
       )}
       
