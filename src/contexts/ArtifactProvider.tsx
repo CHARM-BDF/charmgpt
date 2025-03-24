@@ -64,6 +64,38 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           }
         };
         savePlanToBackend();
+      } else if ((artifact.type as string) === 'workflow') {
+        // For workflow artifacts, switch to flow mode and load steps
+        setMode('flow')
+        
+        // Load the workflow steps from the artifact
+        if (artifact.workflowSteps) {
+          console.log('Loading workflow steps from artifact:', artifact.workflowSteps);
+          
+          // Save current workflow steps to backend
+          const saveWorkflowToBackend = async () => {
+            try {
+              await fetch('/api/artifacts/workflow', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ steps: artifact.workflowSteps })
+              });
+              
+              // Update the workflow state
+              setWorkflowState(prev => ({
+                ...prev,
+                steps: artifact.workflowSteps || [],
+                currentStepIndex: -1, // Reset the index since we're not running
+                isRunning: false
+              }));
+            } catch (err) {
+              console.error('Failed to save workflow steps to backend:', err);
+            }
+          };
+          saveWorkflowToBackend();
+        }
       } else if ((artifact.type as string) === 'code') {
         // For code artifacts, use default behavior
         setViewMode(getDefaultViewMode(artifact))

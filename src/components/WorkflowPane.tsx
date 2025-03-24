@@ -38,6 +38,7 @@ import { SavedWorkflow } from '../contexts/ArtifactContext.types';
 export type WorkflowPaneHandle = {
   handleSave: () => Promise<boolean>;
   handleStart: () => Promise<boolean>;
+  refresh: () => Promise<void>;
 };
 
 // Define props type
@@ -63,7 +64,8 @@ export default forwardRef<WorkflowPaneHandle, WorkflowPaneProps>(function Workfl
     previousStep,
     resetWorkflow,
     isEditingEnabled,
-    saveWorkflowAsArtifact
+    saveWorkflowAsArtifact,
+    refreshSteps
   } = useWorkflow();
   
   // UI state
@@ -106,6 +108,14 @@ export default forwardRef<WorkflowPaneHandle, WorkflowPaneProps>(function Workfl
       } catch (error) {
         console.error('Error starting workflow:', error);
         return false;
+      }
+    },
+
+    refresh: async () => {
+      try {
+        await refreshSteps();
+      } catch (error) {
+        console.error('Error refreshing workflow steps:', error);
       }
     }
   }));

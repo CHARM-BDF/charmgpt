@@ -54,6 +54,25 @@ export const useWorkflow = () => {
     }
   }, [workflowState.steps, hasLoadedFromServer]);
 
+  // Force reload workflow steps from server
+  const refreshSteps = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/artifacts/workflow');
+      if (response.ok) {
+        const { steps } = await response.json();
+        console.log('Refreshed workflow steps from server:', steps);
+        if (steps && Array.isArray(steps)) {
+          setLocalSteps(steps);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing workflow steps from server:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
   // Save steps to server only when explicitly requested
   const saveWorkflowSteps = useCallback(async (steps: WorkflowStep[]) => {
     setIsSaving(true);
@@ -262,5 +281,6 @@ export const useWorkflow = () => {
     previousStep,
     resetWorkflow: clearSteps,
     isEditingEnabled: !workflowState.isRunning, // Editing is only allowed when not running
+    refreshSteps,
   };
 }; 

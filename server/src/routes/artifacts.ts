@@ -323,45 +323,64 @@ router.post('/permalinks/:name', async (req, res) => {
   }
 });
 
-// Workflow steps endpoints
+// Workflow endpoints
+// @ts-expect-error - Express router type definition issue with async handlers
 router.post('/workflow', async (req, res) => {
   try {
     const { steps } = req.body
+    console.log('Saving workflow steps:', steps)
+    
+    if (!steps || !Array.isArray(steps)) {
+      console.error('Invalid workflow steps format in POST request:', steps)
+      return res.status(400).json({ error: 'Invalid workflow steps format. Expected an array.' })
+    }
+    
     const workflowFile = path.join(docker.getTempDir(), 'workflow.json')
-    await fs.writeFile(workflowFile, JSON.stringify(steps))
-    res.json({ success: true })
+    await fs.writeFile(workflowFile, JSON.stringify({ steps }))
+    return res.json({ success: true })
   } catch (error) {
-    void error
-    res.status(500).json({ error: 'Failed to save workflow steps' })
+    console.error('Failed to save workflow steps:', error)
+    return res.status(500).json({ error: 'Failed to save workflow steps' })
   }
 })
 
+// @ts-expect-error - Express router type definition issue with async handlers
 router.get('/workflow', async (req, res) => {
   try {
     const workflowFile = path.join(docker.getTempDir(), 'workflow.json')
+    
+    // Check if file exists
+    try {
+      await fs.access(workflowFile)
+    } catch (_err) {
+      void _err
+      // File doesn't exist, return empty steps
+      console.log('Workflow file not found, returning empty steps')
+      return res.json({ steps: [] })
+    }
+    
     try {
       const content = await fs.readFile(workflowFile, 'utf-8')
-      try {
-        const steps = JSON.parse(content)
-        // Validate that steps is an array
-        if (!Array.isArray(steps)) {
-          console.error('Invalid workflow steps format:', steps)
-          res.json({ steps: [] })
-          return
-        }
-        res.json({ steps })
-      } catch (parseError) {
-        console.error('Error parsing workflow JSON:', parseError)
-        res.json({ steps: [] })
+      const parsed = JSON.parse(content)
+      
+      // Handle both formats: { steps: [...] } and directly [...]
+      if (parsed.steps && Array.isArray(parsed.steps)) {
+        console.log('Loaded workflow steps:', parsed.steps.length)
+        return res.json({ steps: parsed.steps })
+      } else if (Array.isArray(parsed)) {
+        console.log('Loaded workflow steps (array format):', parsed.length)
+        return res.json({ steps: parsed })
+      } else {
+        console.error('Invalid workflow steps format:', parsed)
+        return res.json({ steps: [] })
       }
-    } catch (err) {
-      void err
-      // If file doesn't exist, return empty steps array
-      res.json({ steps: [] })
+    } catch (parseError) {
+      console.error('Error parsing workflow JSON:', parseError)
+      return res.json({ steps: [] })
     }
   } catch (error) {
-    void error
-    res.status(500).json({ error: 'Failed to load workflow steps' })
+    console.error('Failed to load workflow steps:', error)
+    return res.status(500).json({ error: 'Failed to load workflow steps' })
   }
 })
 

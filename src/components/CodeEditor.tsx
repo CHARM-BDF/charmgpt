@@ -75,6 +75,13 @@ export default function CodeEditor() {
 		}
 	}, [activeArtifact]);
 
+	// When activeArtifact changes, refresh workflow if in flow mode
+	useEffect(() => {
+		if (mode === 'flow' && workflowPaneRef.current) {
+			workflowPaneRef.current.refresh();
+		}
+	}, [activeArtifact, mode]);
+
 	const handleModeChange = async (
 		_: React.MouseEvent<HTMLElement>,
 		newMode: EditorMode
