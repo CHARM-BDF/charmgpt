@@ -29,9 +29,9 @@ import MenuIcon from '@mui/icons-material/Menu';
 import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode, CodeLanguage } from '../contexts/ArtifactContext.types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DepsPanel } from '../components/DepsPanel';
-import WorkflowPane from '../components/WorkflowPane';
+import WorkflowPane, { WorkflowPaneHandle } from '../components/WorkflowPane';
 
 export default function CodeEditor() {
 	const {
@@ -56,6 +56,9 @@ export default function CodeEditor() {
 	
 	const theme = useTheme();
 	const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+	
+	// Create a ref for the WorkflowPane component
+	const workflowPaneRef = useRef<WorkflowPaneHandle>(null);
 	
 	const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
 		setMenuAnchorEl(event.currentTarget);
@@ -111,7 +114,7 @@ export default function CodeEditor() {
 	const handleRun = async () => {
 		if (mode === 'code') {
 			await runArtifact(editorContent, language);
-		} else {
+		} else if (mode === 'plan') {
 			// In plan mode, send to chat
 			// Set isRunning manually since we're not using runArtifact yet
 			setIsRunning(true);
@@ -120,10 +123,24 @@ export default function CodeEditor() {
 			} finally {
 				setIsRunning(false);
 			}
+		} else if (mode === 'flow') {
+			// In workflow mode, start the workflow
+			if (workflowPaneRef.current) {
+				workflowPaneRef.current.handleStart();
+			}
 		}
 	};
 
 	const handleSave = () => {
+		// If in workflow mode, use the workflow's save function
+		if (mode === 'flow') {
+			if (workflowPaneRef.current) {
+				workflowPaneRef.current.handleSave();
+			}
+			return;
+		}
+		
+		// Regular save dialog for other modes
 		setSaveDialogOpen(true);
 		setCreatePermalink(false);
 		setPermalinkUrl(null);
@@ -342,7 +359,7 @@ export default function CodeEditor() {
 					<DepsPanel artifact={activeArtifact} />
 				) :
 				mode === 'flow' ? (
-					<WorkflowPane />
+					<WorkflowPane ref={workflowPaneRef} />
 				) :
 				(
 					<Editor language={language} />

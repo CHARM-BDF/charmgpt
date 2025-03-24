@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { 
   Box, 
   Typography, 
@@ -25,17 +25,28 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import SaveIcon from '@mui/icons-material/Save';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import SaveIcon from '@mui/icons-material/Save';
 import { useWorkflow } from '../hooks/useWorkflow';
 import { SavedWorkflow } from '../contexts/ArtifactContext.types';
 
-export default function WorkflowPane() {
+// Export the handle type for parent components to use
+export type WorkflowPaneHandle = {
+  handleSave: () => Promise<boolean>;
+  handleStart: () => Promise<boolean>;
+};
+
+// Define props type
+type WorkflowPaneProps = {
+  className?: string; // Optional dummy prop to satisfy TypeScript
+};
+
+export default forwardRef<WorkflowPaneHandle, WorkflowPaneProps>(function WorkflowPane(props, ref) {
+  void props;
   const {
     steps,
     savedWorkflows,
@@ -45,57 +56,60 @@ export default function WorkflowPane() {
     addStep,
     removeStep,
     moveStep,
-    saveWorkflowSteps,
-    saveWorkflowAsArtifact,
     loadWorkflow,
     deleteWorkflow,
     startWorkflow,
     nextStep,
     previousStep,
     resetWorkflow,
-    isEditingEnabled
+    isEditingEnabled,
+    saveWorkflowAsArtifact
   } = useWorkflow();
   
   // UI state
   const [showSaveMessage, setShowSaveMessage] = React.useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = React.useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = React.useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = React.useState(false);
   const [workflowName, setWorkflowName] = React.useState('');
-  const [saveError, setSaveError] = React.useState('');
   const [messageText, setMessageText] = React.useState('');
   
   // Menu state for saved workflow items
   const [menuAnchorEl, setMenuAnchorEl] = React.useState<null | HTMLElement>(null);
   const [selectedWorkflow, setSelectedWorkflow] = React.useState<SavedWorkflow | null>(null);
 
-  const handleStartWorkflow = async () => {
-    // Validate steps before starting
-    const validSteps = steps.filter(step => step.prompt.trim().length > 0);
-    if (validSteps.length === 0) {
-      alert('Please add at least one step with content before starting the workflow');
-      return;
-    }
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    handleSave: async () => {
+      try {
+        // When the save button is clicked, open the save dialog 
+        // instead of silently saving
+        handleOpenSaveDialog();
+        return true;
+      } catch (error) {
+        console.error('Error in handleSave:', error);
+        return false;
+      }
+    },
     
-    // Start workflow with valid steps only
-    await startWorkflow(validSteps);
-  };
-  
-  const handleSaveSteps = async () => {
-    await saveWorkflowSteps(steps);
-    setMessageText('Workflow steps saved');
-    setShowSaveMessage(true);
-  };
-  
-  const handleOpenSaveDialog = () => {
-    setWorkflowName('');
-    setSaveError('');
-    setSaveDialogOpen(true);
-  };
-  
-  const handleCloseSaveDialog = () => {
-    setSaveDialogOpen(false);
-  };
-  
+    handleStart: async () => {
+      // Validate steps before starting
+      const validSteps = steps.filter(step => step.prompt.trim().length > 0);
+      if (validSteps.length === 0) {
+        alert('Please add at least one step with content before starting the workflow');
+        return false;
+      }
+      
+      // Start workflow with valid steps only
+      try {
+        await startWorkflow(validSteps);
+        return true;
+      } catch (error) {
+        console.error('Error starting workflow:', error);
+        return false;
+      }
+    }
+  }));
+
   const handleOpenLoadDialog = () => {
     setLoadDialogOpen(true);
   };
@@ -104,27 +118,17 @@ export default function WorkflowPane() {
     setLoadDialogOpen(false);
   };
   
-  const handleSaveWorkflow = async () => {
-    if (!workflowName.trim()) {
-      setSaveError('Please enter a name for this workflow');
-      return;
-    }
-    
-    const success = await saveWorkflowAsArtifact(workflowName);
-    if (success) {
-      setMessageText(`Workflow "${workflowName}" saved successfully`);
-      setShowSaveMessage(true);
-      setSaveDialogOpen(false);
-    } else {
-      setSaveError('Failed to save workflow');
-    }
-  };
-  
   const handleLoadWorkflow = async (workflow: SavedWorkflow) => {
-    await loadWorkflow(workflow);
-    setLoadDialogOpen(false);
-    setMessageText(`Workflow "${workflow.name}" loaded`);
-    setShowSaveMessage(true);
+    console.log('Loading workflow:', workflow);
+    try {
+      const result = await loadWorkflow(workflow);
+      console.log('Load workflow result:', result);
+      setLoadDialogOpen(false);
+      setMessageText(`Workflow "${workflow.name}" loaded`);
+      setShowSaveMessage(true);
+    } catch (error) {
+      console.error('Error in handleLoadWorkflow:', error);
+    }
   };
   
   const handleOpenWorkflowMenu = (event: React.MouseEvent<HTMLButtonElement>, workflow: SavedWorkflow) => {
@@ -147,6 +151,36 @@ export default function WorkflowPane() {
   
   const handleCloseSnackbar = () => {
     setShowSaveMessage(false);
+  };
+
+  const handleOpenSaveDialog = () => {
+    if (steps.length === 0 || steps.every(s => !s.prompt.trim())) {
+      alert('Please add at least one step with content before saving a workflow');
+      return;
+    }
+    setWorkflowName('');
+    setSaveDialogOpen(true);
+  };
+  
+  const handleCloseSaveDialog = () => {
+    setSaveDialogOpen(false);
+  };
+  
+  const handleSaveWorkflow = async () => {
+    if (!workflowName.trim()) return;
+    
+    try {
+      console.log('Saving workflow as:', workflowName);
+      const result = await saveWorkflowAsArtifact(workflowName);
+      console.log('Save workflow result:', result);
+      if (result) {
+        setMessageText(`Workflow "${workflowName}" saved successfully`);
+        setShowSaveMessage(true);
+        setSaveDialogOpen(false);
+      }
+    } catch (error) {
+      console.error('Error saving workflow:', error);
+    }
   };
 
   // Format date for display
@@ -189,28 +223,6 @@ export default function WorkflowPane() {
           </Box>
         ) : (
           <Box sx={{ display: 'flex', gap: 1 }}>
-            {steps.length > 0 && (
-              <>
-                <Button
-                  variant="outlined"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSaveSteps}
-                  disabled={isSaving}
-                  size="small"
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<SaveIcon />}
-                  onClick={handleOpenSaveDialog}
-                  disabled={isSaving || steps.length === 0 || steps.every(s => !s.prompt.trim())}
-                  size="small"
-                >
-                  Save As...
-                </Button>
-              </>
-            )}
             <Button
               variant="outlined"
               startIcon={<FolderOpenIcon />}
@@ -219,14 +231,6 @@ export default function WorkflowPane() {
               size="small"
             >
               Load
-            </Button>
-            <Button 
-              variant="contained" 
-              startIcon={<PlayArrowIcon />} 
-              onClick={handleStartWorkflow}
-              disabled={steps.length === 0 || steps.every(s => !s.prompt.trim()) || isSaving}
-            >
-              Start Workflow
             </Button>
           </Box>
         )}
@@ -350,16 +354,6 @@ export default function WorkflowPane() {
             <>
               <Button
                 variant="outlined"
-                startIcon={<SaveIcon />}
-                onClick={handleSaveSteps}
-                disabled={isSaving}
-                fullWidth
-                sx={{ mt: 1 }}
-              >
-                Save Changes
-              </Button>
-              <Button
-                variant="outlined"
                 color="error"
                 onClick={resetWorkflow}
                 fullWidth
@@ -372,40 +366,6 @@ export default function WorkflowPane() {
           )}
         </Box>
       )}
-      
-      {/* Save Workflow Dialog */}
-      <Dialog open={saveDialogOpen} onClose={handleCloseSaveDialog}>
-        <DialogTitle>Save Workflow Template</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Workflow Name"
-            fullWidth
-            value={workflowName}
-            onChange={(e) => setWorkflowName(e.target.value)}
-            error={!!saveError}
-            helperText={saveError}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SaveIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseSaveDialog}>Cancel</Button>
-          <Button 
-            onClick={handleSaveWorkflow} 
-            color="primary" 
-            disabled={!workflowName.trim() || isSaving}
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
       
       {/* Load Workflow Dialog with fixed ListItem */}
       <Dialog 
@@ -460,6 +420,38 @@ export default function WorkflowPane() {
         </MenuItem>
       </Menu>
       
+      {/* Save Workflow Dialog */}
+      <Dialog open={saveDialogOpen} onClose={handleCloseSaveDialog}>
+        <DialogTitle>Save Workflow</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Workflow Name"
+            fullWidth
+            value={workflowName}
+            onChange={(e) => setWorkflowName(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SaveIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseSaveDialog}>Cancel</Button>
+          <Button 
+            onClick={handleSaveWorkflow} 
+            color="primary" 
+            disabled={!workflowName.trim() || isSaving}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
       {/* Notification Snackbar */}
       <Snackbar
         open={showSaveMessage}
@@ -469,4 +461,4 @@ export default function WorkflowPane() {
       />
     </Box>
   );
-} 
+}); 

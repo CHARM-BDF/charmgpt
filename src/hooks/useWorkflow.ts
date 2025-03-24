@@ -30,8 +30,10 @@ export const useWorkflow = () => {
     const loadSavedWorkflows = async () => {
       try {
         const response = await fetch('/api/artifacts/saved-workflows');
+        console.log('Load saved workflows response:', response);
         if (response.ok) {
           const { workflows } = await response.json();
+          console.log('Loaded workflows:', workflows);
           if (workflows && Array.isArray(workflows)) {
             setSavedWorkflows(workflows);
           }
