@@ -88,7 +88,7 @@ export interface WorkflowState {
   steps: WorkflowStep[];
   currentStepIndex: number;
   isRunning: boolean;
-  timestamp: number; // Time when workflow started or advanced, used to filter relevant artifacts
+  lastRelevantArtifactId: number; // ID of the last artifact that isn't a chat, used to track when to move to next step
 }
 
 export interface ArtifactContextType {

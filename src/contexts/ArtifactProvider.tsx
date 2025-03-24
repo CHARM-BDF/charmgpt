@@ -35,7 +35,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     steps: [],
     currentStepIndex: -1,
     isRunning: false,
-    timestamp: 0
+    lastRelevantArtifactId: 0
   });
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
@@ -224,6 +224,14 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       
       // Add to visible artifacts
       setArtifacts(prev => [...prev, newArtifact]);
+      
+      // If we're in a workflow and this is a non-chat artifact, update the lastRelevantArtifactId
+      if (workflowState.isRunning && newArtifact.type !== 'chat') {
+        setWorkflowState(prev => ({
+          ...prev,
+          lastRelevantArtifactId: newArtifact.id
+        }));
+      }
     } else {
       console.log(`Artifact with ID ${newArtifact.id} already exists, not adding duplicate`);
       
@@ -275,7 +283,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     
     // Return the new artifact for chaining
     return newArtifact;
-  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent, allArtifacts, ensureCorrectArtifactsDisplayed])
+  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent, allArtifacts, ensureCorrectArtifactsDisplayed, workflowState.isRunning])
 
   const runArtifact = useCallback(async (
     code: string, 
@@ -798,7 +806,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     try {
       // Get artifacts from previous steps that match the expected types
       const previousArtifacts = previousStep ? artifacts
-        .filter(a => a.timestamp > workflowState.timestamp) // Only consider artifacts created after last advance step
+        .filter(a => a.id > workflowState.lastRelevantArtifactId) // Only consider artifacts created after the last relevant one
+        .filter(a => a.type !== 'chat') // Explicitly exclude chat artifacts
         .filter(a => previousStep.expectedArtifacts?.some(type => type === a.type))
         : [];
 
@@ -811,6 +820,11 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
         }
       }
 
+      setWorkflowState(prev => ({
+        ...prev,
+        lastRelevantArtifactId: 0
+      }))
+
       // Run the step through chat with context
       const success = await handleChat(currentStep.prompt, context);
       
@@ -821,8 +835,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           setWorkflowState(prev => ({
             ...prev,
             currentStepIndex: nextIndex,
-            isRunning: true,
-            timestamp: Date.now()
+            isRunning: true
           }));
         } else {
           // We've completed all steps
@@ -846,15 +859,20 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       steps,
       currentStepIndex: 0,
       isRunning: true,
-      timestamp: Date.now()
+      lastRelevantArtifactId: 1 // hack to get the first artifact to be considered relevant
     })
   }, []);
 
+  // This useEffect advances to the next step when a new non-chat artifact is created
   useEffect(() => {
-    if (workflowState.isRunning) {
-      nextStep();
+    if (workflowState.isRunning && workflowState.lastRelevantArtifactId > 0) {
+      // Use a short delay to let any other state updates complete
+      const timer = setTimeout(() => {
+        nextStep();
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [workflowState.currentStepIndex, workflowState.isRunning, nextStep]);
+  }, [workflowState.lastRelevantArtifactId, workflowState.isRunning, workflowState.currentStepIndex, nextStep]);
 
   const previousStep = useCallback(() => {
     setWorkflowState(prev => ({
@@ -868,7 +886,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       steps: [],
       currentStepIndex: -1,
       isRunning: false,
-      timestamp: 0
+      lastRelevantArtifactId: 0
     });
   }, []);
 
