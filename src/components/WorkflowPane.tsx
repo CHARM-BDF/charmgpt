@@ -33,6 +33,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import SaveIcon from '@mui/icons-material/Save';
 import { useWorkflow } from '../hooks/useWorkflow';
 import { SavedWorkflow } from '../contexts/ArtifactContext.types';
+import { WorkflowProgressBar } from './WorkflowProgressBar';
 
 // Export the handle type for parent components to use
 export type WorkflowPaneHandle = {
@@ -270,12 +271,16 @@ export default forwardRef<WorkflowPaneHandle, WorkflowPaneProps>(function Workfl
       {workflowState.isRunning && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
-            Current Step: {workflowState.currentStepIndex + 1} of {workflowState.steps.length}
+            {workflowState.currentStepIndex >= workflowState.steps.length ? (
+              "Workflow completed"
+            ) : (
+              `Executing step ${workflowState.currentStepIndex + 1} of ${workflowState.steps.length}`
+            )}
           </Typography>
-          <LinearProgress 
-            variant="determinate" 
-            value={((workflowState.currentStepIndex + 1) / workflowState.steps.length) * 100} 
-            sx={{ height: 10, borderRadius: 5 }}
+          <WorkflowProgressBar 
+            steps={workflowState.steps}
+            currentStepIndex={workflowState.currentStepIndex}
+            isRunning={workflowState.isRunning && workflowState.currentStepIndex < workflowState.steps.length}
           />
         </Box>
       )}

@@ -12,6 +12,7 @@ import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useArtifact } from '../contexts/useArtifact';
 import { WorkflowStep } from '../contexts/ArtifactContext.types';
+import { WorkflowProgressBar } from './WorkflowProgressBar';
 
 interface WorkflowInterfaceProps {
   steps: WorkflowStep[];
@@ -45,17 +46,6 @@ export default function WorkflowInterface({ steps }: WorkflowInterfaceProps) {
     // TODO: Implement pause functionality
   };
 
-  const progress = workflowState.currentStepIndex >= 0
-    ? ((workflowState.currentStepIndex) / steps.length) * 100
-    : 0;
-
-  // If we're at or beyond the last step, set progress to 100%
-  const finalProgress = workflowState.currentStepIndex >= steps.length ? 100 : progress;
-
-  // Calculate segment size and positions for animation
-  const segmentSize = 100 / steps.length;
-  const currentSegmentStart = workflowState.currentStepIndex * segmentSize;
-
   return (
     <Paper sx={{ p: 2, mb: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -71,43 +61,12 @@ export default function WorkflowInterface({ steps }: WorkflowInterfaceProps) {
         </Typography>
       </Box>
 
-      <Box sx={{ position: 'relative', height: 4, mb: 2, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
-        {/* Base progress bar for completed steps */}
-        <Box 
-          sx={{ 
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: `${finalProgress}%`,
-            bgcolor: 'primary.main',
-            transition: 'width 0.3s ease'
-          }}
+      <Box sx={{ mb: 2 }}>
+        <WorkflowProgressBar
+          steps={workflowState.steps.length > 0 ? workflowState.steps : steps}
+          currentStepIndex={workflowState.currentStepIndex}
+          isRunning={workflowState.isRunning && workflowState.currentStepIndex < workflowState.steps.length}
         />
-        
-        {/* Animated segment for current step */}
-        {workflowState.isRunning && workflowState.currentStepIndex < steps.length && (
-          <Box
-            sx={{
-              position: 'absolute',
-              left: `${currentSegmentStart}%`,
-              top: 0,
-              bottom: 0,
-              width: `${segmentSize}%`,
-              background: 'linear-gradient(90deg, rgba(25,118,210,0.6) 0%, rgba(25,118,210,0.9) 50%, rgba(25,118,210,0.6) 100%)',
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 1.5s infinite',
-              '@keyframes shimmer': {
-                '0%': {
-                  backgroundPosition: '100% 0',
-                },
-                '100%': {
-                  backgroundPosition: '0% 0',
-                },
-              },
-            }}
-          />
-        )}
       </Box>
 
       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>

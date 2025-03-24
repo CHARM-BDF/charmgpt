@@ -6,11 +6,11 @@ import {
 	CircularProgress,
 	useTheme,
 	useMediaQuery,
-	LinearProgress
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import { useState } from 'react';
 import { useArtifact } from '../contexts/useArtifact';
+import { WorkflowProgressBar } from './WorkflowProgressBar';
 
 interface Message {
 	role: 'user' | 'assistant';
@@ -74,10 +74,10 @@ export default function ChatInterface() {
 							Step {workflowState.currentStepIndex + 1} of {workflowState.steps.length}
 						</Typography>
 					</Box>
-					<LinearProgress 
-						variant="determinate"
-						value={((workflowState.currentStepIndex + 1) / workflowState.steps.length) * 100}
-						sx={{ height: 4, borderRadius: 2 }}
+					<WorkflowProgressBar 
+						steps={workflowState.steps}
+						currentStepIndex={workflowState.currentStepIndex}
+						isRunning={workflowState.isRunning && workflowState.currentStepIndex < workflowState.steps.length}
 					/>
 				</Box>
 			)}
