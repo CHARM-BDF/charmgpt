@@ -323,4 +323,149 @@ router.post('/permalinks/:name', async (req, res) => {
   }
 });
 
+// Workflow steps endpoints
+router.post('/workflow', async (req, res) => {
+  try {
+    const { steps } = req.body
+    const workflowFile = path.join(docker.getTempDir(), 'workflow.json')
+    await fs.writeFile(workflowFile, JSON.stringify(steps))
+    res.json({ success: true })
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to save workflow steps' })
+  }
+})
+
+router.get('/workflow', async (req, res) => {
+  try {
+    const workflowFile = path.join(docker.getTempDir(), 'workflow.json')
+    try {
+      const content = await fs.readFile(workflowFile, 'utf-8')
+      try {
+        const steps = JSON.parse(content)
+        // Validate that steps is an array
+        if (!Array.isArray(steps)) {
+          console.error('Invalid workflow steps format:', steps)
+          res.json({ steps: [] })
+          return
+        }
+        res.json({ steps })
+      } catch (parseError) {
+        console.error('Error parsing workflow JSON:', parseError)
+        res.json({ steps: [] })
+      }
+    } catch (err) {
+      void err
+      // If file doesn't exist, return empty steps array
+      res.json({ steps: [] })
+    }
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to load workflow steps' })
+  }
+})
+
+// Saved workflows endpoints
+router.post('/saved-workflows', async (req, res) => {
+  try {
+    const { workflow } = req.body
+    const savedWorkflowsFile = path.join(docker.getTempDir(), 'saved-workflows.json')
+    
+    // Load existing workflows
+    let workflows = []
+    try {
+      const content = await fs.readFile(savedWorkflowsFile, 'utf-8')
+      workflows = JSON.parse(content)
+      if (!Array.isArray(workflows)) {
+        workflows = []
+      }
+    } catch (err) {
+      // File doesn't exist or is invalid, start with empty array
+      void err
+      workflows = []
+    }
+    
+    // Add new workflow
+    workflows.push(workflow)
+    
+    // Save back to file
+    await fs.writeFile(savedWorkflowsFile, JSON.stringify(workflows))
+    
+    res.json({ success: true })
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to save workflow' })
+  }
+})
+
+router.get('/saved-workflows', async (req, res) => {
+  try {
+    const savedWorkflowsFile = path.join(docker.getTempDir(), 'saved-workflows.json')
+    try {
+      const content = await fs.readFile(savedWorkflowsFile, 'utf-8')
+      try {
+        const workflows = JSON.parse(content)
+        // Validate that workflows is an array
+        if (!Array.isArray(workflows)) {
+          console.error('Invalid saved workflows format:', workflows)
+          res.json({ workflows: [] })
+          return
+        }
+        res.json({ workflows })
+      } catch (parseError) {
+        console.error('Error parsing saved workflows JSON:', parseError)
+        res.json({ workflows: [] })
+      }
+    } catch (err) {
+      void err
+      // If file doesn't exist, return empty array
+      res.json({ workflows: [] })
+    }
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to load saved workflows' })
+  }
+})
+
+router.post('/saved-workflows/delete', async (req, res) => {
+  try {
+    const { name, createdAt } = req.body
+    const savedWorkflowsFile = path.join(docker.getTempDir(), 'saved-workflows.json')
+    
+    // Load existing workflows
+    let workflows = []
+    try {
+      const content = await fs.readFile(savedWorkflowsFile, 'utf-8')
+      workflows = JSON.parse(content)
+      if (!Array.isArray(workflows)) {
+        workflows = []
+      }
+    } catch (err) {
+      // File doesn't exist or is invalid
+      void err
+      res.status(404).json({ error: 'No saved workflows found' })
+      return
+    }
+    
+    // Filter out the workflow to delete
+    const filteredWorkflows = workflows.filter(w => 
+      !(w.name === name && w.createdAt === createdAt)
+    )
+    
+    if (filteredWorkflows.length === workflows.length) {
+      // Nothing was removed
+      res.status(404).json({ error: 'Workflow not found' })
+      return
+    }
+    
+    // Save back to file
+    await fs.writeFile(savedWorkflowsFile, JSON.stringify(filteredWorkflows))
+    
+    res.json({ success: true })
+  } catch (error) {
+    void error
+    res.status(500).json({ error: 'Failed to delete workflow' })
+  }
+})
+
 export default router 

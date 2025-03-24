@@ -4,7 +4,7 @@ export type EditorMode = 'code' | 'plan' | 'deps' | 'flow'
 export type ViewMode = 'plot' | 'data' | 'output'
 export type CodeLanguage = 'python' | 'r'
 
-export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data'
+export type ArtifactType = 'chat' | 'code' | 'visualization' | 'data' | 'workflow' | 'plan'
 
 /**
  * Gets the display name for a file by removing the runId prefix.
@@ -91,6 +91,12 @@ export interface WorkflowState {
   currentStepIndex: number;
   isRunning: boolean;
   lastRelevantArtifactId: number; // ID of the last artifact that isn't a chat, used to track when to move to next step
+}
+
+export interface SavedWorkflow {
+  name: string;
+  steps: WorkflowStep[];
+  createdAt: number;
 }
 
 export interface ArtifactContextType {
