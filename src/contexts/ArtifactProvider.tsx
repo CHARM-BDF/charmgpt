@@ -36,7 +36,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     currentStepIndex: -1,
     isRunning: false
   });
-
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
     
@@ -774,34 +773,40 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [generateSummary, parseCodeFromResponse, planContent, activeArtifact]);
 
   const nextStep = useCallback(async () => {
+    console.log("Next step!");
     const { steps, currentStepIndex } = workflowState;
     
     // Safety check for steps array
     if (!steps || steps.length === 0) {
+      console.log("No steps:", steps);
       setWorkflowState(prev => ({ ...prev, isRunning: false }));
       return;
     }
 
     // Safety check for currentStepIndex
     if (currentStepIndex < 0 || currentStepIndex >= steps.length) {
+      console.log("Invalid step index!");
       setWorkflowState(prev => ({ ...prev, isRunning: false }));
       return;
     }
 
     const currentStep = steps[currentStepIndex];
+    const previousStep = currentStepIndex > 0 ? steps[currentStepIndex - 1] : null;
 
+    console.log("Next step:", currentStepIndex, currentStep);
     try {
       // Get artifacts from previous steps that match the expected types
-      const previousArtifacts = artifacts
+      const previousArtifacts = previousStep ? artifacts
         .filter(a => a.timestamp > Date.now() - 10000) // Only consider recent artifacts
-        .filter(a => currentStep.expectedArtifacts?.some(type => type === a.type));
+        .filter(a => previousStep.expectedArtifacts?.some(type => type === a.type))
+        : [];
 
-      // Build context from previous artifacts using generateArtifactSummary
+      // Build context from previous artifacts
       let context = '';
       if (previousArtifacts.length > 0) {
         context = '\n\nPrevious step outputs:\n';
         for (const artifact of previousArtifacts) {
-          context += generateArtifactSummary(artifact, {}) + '\n';
+          context += generateArtifactSummary(artifact, {includeData: true, includeChat: false, includeCode: false, includeOutput: true, includePlot: false}) + '\n';
         }
       }
 
@@ -834,36 +839,19 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   }, [workflowState, handleChat, artifacts]);
 
   const startWorkflow = useCallback(async (steps: WorkflowStep[]) => {
-    // Safety check for steps
-    if (!steps || steps.length === 0) {
-      return;
-    }
-
-    // Reset workflow state
+    console.log("Start workflow:", steps);
     setWorkflowState({
       steps,
       currentStepIndex: 0,
       isRunning: true
-    });
+    })
   }, []);
 
-  // Start the workflow after state is updated
   useEffect(() => {
-    // Only run nextStep if workflow is running and we haven't reached the end
-    if (workflowState.isRunning && 
-        workflowState.steps.length > 0 && 
-        workflowState.currentStepIndex >= 0 && 
-        workflowState.currentStepIndex < workflowState.steps.length) {
+    if (workflowState.isRunning) {
       nextStep();
-    } else if (workflowState.currentStepIndex >= workflowState.steps.length) {
-      // If we somehow exceeded the steps length, correct it and stop running
-      setWorkflowState(prev => ({
-        ...prev,
-        currentStepIndex: prev.steps.length - 1,
-        isRunning: false
-      }));
     }
-  }, [workflowState.isRunning, workflowState.currentStepIndex, workflowState.steps.length, nextStep]);
+  }, [workflowState, nextStep]);
 
   const previousStep = useCallback(() => {
     setWorkflowState(prev => ({
