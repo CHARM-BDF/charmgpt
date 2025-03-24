@@ -841,6 +841,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           // We've completed all steps
           setWorkflowState(prev => ({
             ...prev,
+            currentStepIndex: steps.length, // Set to steps.length to indicate completion
             isRunning: false
           }));
         }
