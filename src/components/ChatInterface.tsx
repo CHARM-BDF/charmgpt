@@ -6,11 +6,11 @@ import {
 	CircularProgress,
 	useTheme,
 	useMediaQuery,
+	LinearProgress
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import { useState } from 'react';
 import { useArtifact } from '../contexts/useArtifact';
-import WorkflowInterface from './WorkflowInterface';
 
 interface Message {
 	role: 'user' | 'assistant';
@@ -63,9 +63,23 @@ export default function ChatInterface() {
 				overflow: 'hidden',
 			}}
 		>
-			{/* Workflow Interface */}
-			{workflowState.steps.length > 0 && (
-				<WorkflowInterface steps={workflowState.steps} />
+			{/* Compact Workflow Progress Indicator - only shown when workflow is running */}
+			{workflowState.isRunning && workflowState.steps.length > 0 && (
+				<Box sx={{ px: 2, pt: 2, pb: 1 }}>
+					<Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+						<Typography variant="caption" color="text.secondary">
+							Workflow in progress
+						</Typography>
+						<Typography variant="caption">
+							Step {workflowState.currentStepIndex + 1} of {workflowState.steps.length}
+						</Typography>
+					</Box>
+					<LinearProgress 
+						variant="determinate"
+						value={((workflowState.currentStepIndex + 1) / workflowState.steps.length) * 100}
+						sx={{ height: 4, borderRadius: 2 }}
+					/>
+				</Box>
 			)}
 
 			{/* Messages area */}
