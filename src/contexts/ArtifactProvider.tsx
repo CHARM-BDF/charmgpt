@@ -787,6 +787,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     if (context) {
       // If context is provided, use it directly
       msg = context;
+      msg = "\n";
+      msg += await generateSummary();
     } else if (planContent.trim()) {
       // Otherwise, use plan content if available
       msg = planContent;
