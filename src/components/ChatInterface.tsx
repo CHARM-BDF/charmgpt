@@ -10,6 +10,7 @@ import {
 import SendIcon from '@mui/icons-material/Send';
 import { useState } from 'react';
 import { useArtifact } from '../contexts/useArtifact';
+import WorkflowInterface from './WorkflowInterface';
 
 interface Message {
 	role: 'user' | 'assistant';
@@ -20,7 +21,7 @@ export default function ChatInterface() {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [input, setInput] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
-	const { handleChat } = useArtifact();
+	const { handleChat, workflowState } = useArtifact();
 	const theme = useTheme();
 	const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -62,6 +63,11 @@ export default function ChatInterface() {
 				overflow: 'hidden',
 			}}
 		>
+			{/* Workflow Interface */}
+			{workflowState.steps.length > 0 && (
+				<WorkflowInterface steps={workflowState.steps} />
+			)}
+
 			{/* Messages area */}
 			<Box
 				sx={{

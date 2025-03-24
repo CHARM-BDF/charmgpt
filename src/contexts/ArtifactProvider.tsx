@@ -8,7 +8,9 @@ import {
   getDisplayName, 
   dataHeader, 
   getDefaultViewMode,
-  generateArtifactSummary
+  generateArtifactSummary,
+  WorkflowStep,
+  WorkflowState
 } from './ArtifactContext.types'
 import { chatWithLLM } from '../services/api'
 
@@ -29,6 +31,11 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [showAllArtifacts, setShowAllArtifacts] = useState(false)
   // Track artifacts created in the current session
   const [currentSessionArtifacts, setCurrentSessionArtifacts] = useState<Set<number>>(new Set())
+  const [workflowState, setWorkflowState] = useState<WorkflowState>({
+    steps: [],
+    currentStepIndex: -1,
+    isRunning: false
+  });
 
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
@@ -716,10 +723,15 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     }
   }, [setMode, setEditorContent, runArtifact, addArtifact, editorContent])
 
-  const handleChat = useCallback(async (message?: string): Promise<boolean> => {
+  const handleChat = useCallback(async (message?: string, context?: string): Promise<boolean> => {
     let msg = "";
-    if (planContent.trim()) {
-      msg = planContent
+    
+    if (context) {
+      // If context is provided, use it directly
+      msg = context;
+    } else if (planContent.trim()) {
+      // Otherwise, use plan content if available
+      msg = planContent;
       // Save to server
       try {
         await fetch('/api/artifacts/plan', {
@@ -728,36 +740,145 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ content: planContent })
-        })
+        });
       } catch (err) {
-        console.error('Failed to save plan:', err)
-        return false
+        console.error('Failed to save plan:', err);
+        return false;
       }
     } else {
-      msg = await generateSummary()
+      // If no context or plan, use summary
+      msg = await generateSummary();
       if (activeArtifact) {
         msg += '\n\n' + generateArtifactSummary(activeArtifact) + '\n\n';
       }
     }
+
+    // Add the message if provided
     if (message) {
       msg = '\n\nGiven:\n' + msg;
-      msg += '\n\nAnswer:\n'
-      msg += message
+      msg += '\n\nAnswer:\n' + message;
     }
-    msg = msg.trim()
 
+    msg = msg.trim();
     console.log("Chat message:", msg);
-    try {
-      const response = await chatWithLLM(msg)
 
+    try {
+      const response = await chatWithLLM(msg);
       // Process response and create artifacts in order
-      await parseCodeFromResponse(response, message || '(plan only)\n\n'+msg)
-      return true
+      await parseCodeFromResponse(response, message || '(plan only)\n\n' + msg);
+      return true;
     } catch (err) {
-      console.error('Chat error:', err)
-      return false
+      console.error('Chat error:', err);
+      return false;
     }
-  }, [generateSummary, parseCodeFromResponse, planContent, activeArtifact])
+  }, [generateSummary, parseCodeFromResponse, planContent, activeArtifact]);
+
+  const nextStep = useCallback(async () => {
+    const { steps, currentStepIndex } = workflowState;
+    
+    // Safety check for steps array
+    if (!steps || steps.length === 0) {
+      setWorkflowState(prev => ({ ...prev, isRunning: false }));
+      return;
+    }
+
+    // Safety check for currentStepIndex
+    if (currentStepIndex < 0 || currentStepIndex >= steps.length) {
+      setWorkflowState(prev => ({ ...prev, isRunning: false }));
+      return;
+    }
+
+    const currentStep = steps[currentStepIndex];
+
+    try {
+      // Get artifacts from previous steps that match the expected types
+      const previousArtifacts = artifacts
+        .filter(a => a.timestamp > Date.now() - 10000) // Only consider recent artifacts
+        .filter(a => currentStep.expectedArtifacts?.some(type => type === a.type));
+
+      // Build context from previous artifacts using generateArtifactSummary
+      let context = '';
+      if (previousArtifacts.length > 0) {
+        context = '\n\nPrevious step outputs:\n';
+        for (const artifact of previousArtifacts) {
+          context += generateArtifactSummary(artifact, {}) + '\n';
+        }
+      }
+
+      // Run the step through chat with context
+      const success = await handleChat(currentStep.prompt, context);
+      
+      if (success) {
+        // Only advance to next step if this one completed successfully and we haven't reached the end
+        const nextIndex = currentStepIndex + 1;
+        if (nextIndex < steps.length) {
+          setWorkflowState(prev => ({
+            ...prev,
+            currentStepIndex: nextIndex,
+            isRunning: true // Keep running
+          }));
+        } else {
+          // We've completed all steps
+          setWorkflowState(prev => ({
+            ...prev,
+            isRunning: false
+          }));
+        }
+      } else {
+        // Stop workflow on failure
+        setWorkflowState(prev => ({ ...prev, isRunning: false }));
+      }
+    } catch {
+      setWorkflowState(prev => ({ ...prev, isRunning: false }));
+    }
+  }, [workflowState, handleChat, artifacts]);
+
+  const startWorkflow = useCallback(async (steps: WorkflowStep[]) => {
+    // Safety check for steps
+    if (!steps || steps.length === 0) {
+      return;
+    }
+
+    // Reset workflow state
+    setWorkflowState({
+      steps,
+      currentStepIndex: 0,
+      isRunning: true
+    });
+  }, []);
+
+  // Start the workflow after state is updated
+  useEffect(() => {
+    // Only run nextStep if workflow is running and we haven't reached the end
+    if (workflowState.isRunning && 
+        workflowState.steps.length > 0 && 
+        workflowState.currentStepIndex >= 0 && 
+        workflowState.currentStepIndex < workflowState.steps.length) {
+      nextStep();
+    } else if (workflowState.currentStepIndex >= workflowState.steps.length) {
+      // If we somehow exceeded the steps length, correct it and stop running
+      setWorkflowState(prev => ({
+        ...prev,
+        currentStepIndex: prev.steps.length - 1,
+        isRunning: false
+      }));
+    }
+  }, [workflowState.isRunning, workflowState.currentStepIndex, workflowState.steps.length, nextStep]);
+
+  const previousStep = useCallback(() => {
+    setWorkflowState(prev => ({
+      ...prev,
+      currentStepIndex: Math.max(0, prev.currentStepIndex - 1)
+    }));
+  }, []);
+
+  const resetWorkflow = useCallback(() => {
+    setWorkflowState({
+      steps: [],
+      currentStepIndex: -1,
+      isRunning: false
+    });
+  }, []);
 
   const value = {
     artifacts,
@@ -782,7 +903,12 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     selectedStep,
     setSelectedStep,
     showAllArtifacts,
-    toggleShowAllArtifacts
+    toggleShowAllArtifacts,
+    workflowState,
+    startWorkflow,
+    nextStep,
+    previousStep,
+    resetWorkflow
   }
 
   return (

@@ -31,6 +31,7 @@ import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode, CodeLanguage } from '../contexts/ArtifactContext.types';
 import { useState, useEffect } from 'react';
 import { DepsPanel } from '../components/DepsPanel';
+import WorkflowPane from '../components/WorkflowPane';
 
 export default function CodeEditor() {
 	const {
@@ -211,6 +212,7 @@ export default function CodeEditor() {
 						aria-label="editor mode"
 						size="small"
 					>
+						<ToggleButton value="flow">Flow</ToggleButton>
 						<ToggleButton value="plan">Plan</ToggleButton>
 						<ToggleButton value="code">Code</ToggleButton>
 						<ToggleButton value="deps">Deps</ToggleButton>
@@ -338,7 +340,11 @@ export default function CodeEditor() {
 			<Box sx={{ flex: 1 }}>
 				{mode === 'deps' ? (
 					<DepsPanel artifact={activeArtifact} />
-				) : (
+				) :
+				mode === 'flow' ? (
+					<WorkflowPane />
+				) :
+				(
 					<Editor language={language} />
 				)}
 			</Box>

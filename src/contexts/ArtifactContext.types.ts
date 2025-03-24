@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 
-export type EditorMode = 'code' | 'plan' | 'deps'
+export type EditorMode = 'code' | 'plan' | 'deps' | 'flow'
 export type ViewMode = 'plot' | 'data' | 'output'
 export type CodeLanguage = 'python' | 'r'
 
@@ -79,6 +79,17 @@ export interface Artifact {
   blockIndex?: number
 }
 
+export interface WorkflowStep {
+  prompt: string;
+  expectedArtifacts?: ArtifactType[];
+}
+
+export interface WorkflowState {
+  steps: WorkflowStep[];
+  currentStepIndex: number;
+  isRunning: boolean;
+}
+
 export interface ArtifactContextType {
   artifacts: Artifact[]
   activeArtifact: Artifact | null
@@ -103,6 +114,11 @@ export interface ArtifactContextType {
   setSelectedStep: (step: string) => void
   showAllArtifacts: boolean
   toggleShowAllArtifacts: () => void
+  workflowState: WorkflowState;
+  startWorkflow: (steps: WorkflowStep[]) => Promise<void>;
+  nextStep: () => Promise<void>;
+  previousStep: () => void;
+  resetWorkflow: () => void;
 }
 
 export const ArtifactContext = createContext<ArtifactContextType | undefined>(undefined)
