@@ -77,6 +77,9 @@ export interface Artifact {
   // Parent-child relationship fields
   parentId?: number
   blockIndex?: number
+  // Workflow-related fields
+  workflowSteps?: WorkflowStep[]
+  workflowStepIndex?: number
 }
 
 export interface WorkflowStep {
@@ -117,6 +120,7 @@ export interface ArtifactContextType {
   toggleShowAllArtifacts: () => void
   workflowState: WorkflowState;
   startWorkflow: (steps: WorkflowStep[]) => Promise<void>;
+  resumeWorkflow: (artifact: Artifact) => Promise<boolean>;
   nextStep: () => Promise<void>;
   previousStep: () => void;
   resetWorkflow: () => void;

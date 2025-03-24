@@ -10,6 +10,7 @@ import {
 	ToggleButton,
 	Tooltip,
 	Typography,
+	Chip,
 } from '@mui/material';
 import { useArtifact } from '../contexts/useArtifact';
 import UploadIcon from '@mui/icons-material/Upload';
@@ -19,9 +20,11 @@ import {
 	ArtifactType,
 	getDisplayName,
 	hasData,
+	Artifact
 } from '../contexts/ArtifactContext.types';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import HistoryIcon from '@mui/icons-material/History';
 
 interface UploadResponse {
@@ -34,6 +37,84 @@ interface UploadResponse {
 
 interface ArtifactListProps {
 	uploadRefCallback?: (node: HTMLInputElement | null) => void;
+}
+
+// ArtifactCard component to display a single artifact with workflow resume option
+function ArtifactCard({ 
+	artifact,
+	isActive,
+	onSelect,
+	onTogglePin,
+	onResumeWorkflow
+}: { 
+	artifact: Artifact, 
+	isActive: boolean,
+	onSelect: () => void,
+	onTogglePin: () => void,
+	onResumeWorkflow: () => void
+}) {
+	const hasWorkflow = artifact.workflowSteps && artifact.workflowStepIndex !== undefined;
+	
+	return (
+		<ListItem
+			key={`artifact-${artifact.id}`}
+			disablePadding
+			secondaryAction={
+				<Box sx={{ display: 'flex', alignItems: 'center' }}>
+					{hasWorkflow && (
+						<Tooltip title={`Resume workflow (Step ${artifact.workflowStepIndex! + 1} of ${artifact.workflowSteps!.length})`}>
+							<IconButton
+								edge='end'
+								onClick={(e) => {
+									e.stopPropagation();
+									onResumeWorkflow();
+								}}
+								size="small"
+								sx={{ mr: 1 }}
+							>
+								<PlayArrowIcon fontSize="small" />
+							</IconButton>
+						</Tooltip>
+					)}
+					<IconButton
+						edge='end'
+						onClick={(e) => {
+							e.stopPropagation();
+							onTogglePin();
+						}}
+					>
+						{artifact.pinned ? (
+							<PushPinIcon />
+						) : (
+							<PushPinOutlinedIcon />
+						)}
+					</IconButton>
+				</Box>
+			}
+		>
+			<ListItemButton
+				selected={isActive}
+				onClick={onSelect}
+			>
+				<ListItemText
+					primary={
+						<Box sx={{ display: 'flex', alignItems: 'center' }}>
+							<Typography component="span">{artifact.name}</Typography>
+							{hasWorkflow && (
+								<Chip 
+									label={`Step ${artifact.workflowStepIndex! + 1}`} 
+									size="small" 
+									variant="outlined"
+									sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
+								/>
+							)}
+						</Box>
+					}
+					secondary={new Date(artifact.timestamp).toLocaleString()}
+				/>
+			</ListItemButton>
+		</ListItem>
+	);
 }
 
 export default function ArtifactList({
@@ -49,6 +130,7 @@ export default function ArtifactList({
 		togglePin,
 		showAllArtifacts,
 		toggleShowAllArtifacts,
+		resumeWorkflow,
 	} = useArtifact();
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -267,35 +349,15 @@ export default function ArtifactList({
 					{[...artifacts]
 						.sort((a, b) => b.timestamp - a.timestamp)
 						.map((artifact) => (
-						<ListItem
-							key={`artifact-${artifact.id}`}
-							disablePadding
-							secondaryAction={
-								<IconButton
-									edge='end'
-									onClick={() => togglePin(artifact.id)}
-								>
-									{artifact.pinned ? (
-										<PushPinIcon />
-									) : (
-										<PushPinOutlinedIcon />
-									)}
-								</IconButton>
-							}
-						>
-							<ListItemButton
-								selected={activeArtifact?.id === artifact.id}
-								onClick={() => selectArtifact(artifact)}
-							>
-								<ListItemText
-									primary={artifact.name}
-									secondary={new Date(
-										artifact.timestamp
-									).toLocaleString()}
-								/>
-							</ListItemButton>
-						</ListItem>
-					))}
+							<ArtifactCard
+								key={`artifact-${artifact.id}`}
+								artifact={artifact}
+								isActive={activeArtifact?.id === artifact.id}
+								onSelect={() => selectArtifact(artifact)}
+								onTogglePin={() => togglePin(artifact.id)}
+								onResumeWorkflow={() => resumeWorkflow(artifact)}
+							/>
+						))}
 				</List>
 			)}
 		</Box>

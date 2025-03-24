@@ -208,6 +208,12 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       var2line_end: artifact.var2line_end || {}
     }
 
+    // Add workflow information if we're running a workflow
+    if (workflowState.isRunning && workflowState.steps.length > 0) {
+      newArtifact.workflowSteps = workflowState.steps;
+      newArtifact.workflowStepIndex = workflowState.currentStepIndex;
+    }
+
     // Check if this artifact already exists in allArtifacts (by ID)
     const artifactExists = allArtifacts.some(a => a.id === newArtifact.id);
     
@@ -283,7 +289,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     
     // Return the new artifact for chaining
     return newArtifact;
-  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent, allArtifacts, ensureCorrectArtifactsDisplayed, workflowState.isRunning])
+  }, [generateUniqueId, setActiveArtifact, setViewMode, setMode, setPlanContent, allArtifacts, ensureCorrectArtifactsDisplayed, workflowState.isRunning, workflowState.steps, workflowState.currentStepIndex])
 
   const runArtifact = useCallback(async (
     code: string, 
@@ -902,6 +908,25 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     });
   }, []);
 
+  // Add the resumeWorkflow function to continue a workflow from an artifact
+  const resumeWorkflow = useCallback(async (artifact: Artifact): Promise<boolean> => {
+    // Make sure this artifact has workflow information
+    if (!artifact.workflowSteps || artifact.workflowStepIndex === undefined) {
+      console.error('Cannot resume workflow: artifact does not contain workflow information');
+      return false;
+    }
+
+    // Set the workflow state to the stored state plus one step
+    setWorkflowState({
+      steps: artifact.workflowSteps,
+      currentStepIndex: artifact.workflowStepIndex + 1, // Move to the next step
+      isRunning: true,
+      lastRelevantArtifactId: artifact.id // Use this artifact as the latest relevant one
+    });
+
+    return true;
+  }, []);
+
   const value = {
     artifacts,
     activeArtifact,
@@ -928,6 +953,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     toggleShowAllArtifacts,
     workflowState,
     startWorkflow,
+    resumeWorkflow,
     nextStep,
     previousStep,
     resetWorkflow

@@ -23,5 +23,16 @@ export const artifactContextValue: ArtifactContextType = {
   selectedStep: '',
   setSelectedStep: () => undefined,
   showAllArtifacts: false,
-  toggleShowAllArtifacts: () => undefined
+  toggleShowAllArtifacts: () => undefined,
+  workflowState: {
+    steps: [],
+    currentStepIndex: -1,
+    isRunning: false,
+    lastRelevantArtifactId: 0
+  },
+  startWorkflow: async () => undefined,
+  resumeWorkflow: async () => false,
+  nextStep: async () => undefined,
+  previousStep: () => undefined,
+  resetWorkflow: () => undefined
 } 
