@@ -856,12 +856,23 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
 
   const startWorkflow = useCallback(async (steps: WorkflowStep[]) => {
     console.log("Start workflow:", steps);
+    
+    // Clear any previous lastRelevantArtifactId to prevent immediate advancement
+    // Reset workflow state completely before starting
     setWorkflowState({
       steps,
       currentStepIndex: 0,
       isRunning: true,
-      lastRelevantArtifactId: 1 // hack to get the first artifact to be considered relevant
-    })
+      lastRelevantArtifactId: 0 // Start with 0, will be set to relevant ID when first step runs
+    });
+    
+    // Short delay before setting the lastRelevantArtifactId to trigger the first step
+    setTimeout(() => {
+      setWorkflowState(prev => ({
+        ...prev,
+        lastRelevantArtifactId: 1 // Now set to 1 to trigger the first step
+      }));
+    }, 100);
   }, []);
 
   // This useEffect advances to the next step when a new non-chat artifact is created
