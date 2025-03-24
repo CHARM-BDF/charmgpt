@@ -54,6 +54,8 @@ function ArtifactCard({
 	onResumeWorkflow: () => void
 }) {
 	const hasWorkflow = artifact.workflowSteps && artifact.workflowStepIndex !== undefined;
+	// Determine if this is the last step in the workflow
+	const isLastStep = hasWorkflow && artifact.workflowStepIndex! >= artifact.workflowSteps!.length - 1;
 	
 	return (
 		<ListItem
@@ -62,18 +64,24 @@ function ArtifactCard({
 			secondaryAction={
 				<Box sx={{ display: 'flex', alignItems: 'center' }}>
 					{hasWorkflow && (
-						<Tooltip title={`Resume workflow (Step ${artifact.workflowStepIndex! + 1} of ${artifact.workflowSteps!.length})`}>
-							<IconButton
-								edge='end'
-								onClick={(e) => {
-									e.stopPropagation();
-									onResumeWorkflow();
-								}}
-								size="small"
-								sx={{ mr: 1 }}
-							>
-								<PlayArrowIcon fontSize="small" />
-							</IconButton>
+						<Tooltip title={isLastStep ? 
+							"Workflow complete - final step" : 
+							`Resume workflow (Step ${artifact.workflowStepIndex! + 1} of ${artifact.workflowSteps!.length})`
+						}>
+							<span> {/* Wrapper to allow tooltip on disabled button */}
+								<IconButton
+									edge='end'
+									onClick={(e) => {
+										e.stopPropagation();
+										if (!isLastStep) onResumeWorkflow();
+									}}
+									size="small"
+									sx={{ mr: 1 }}
+									disabled={isLastStep}
+								>
+									<PlayArrowIcon fontSize="small" />
+								</IconButton>
+							</span>
 						</Tooltip>
 					)}
 					<IconButton
@@ -102,7 +110,8 @@ function ArtifactCard({
 							<Typography component="span">{artifact.name}</Typography>
 							{hasWorkflow && (
 								<Chip 
-									label={`Step ${artifact.workflowStepIndex! + 1}`} 
+									label={isLastStep ? "Final Step" : `Step ${artifact.workflowStepIndex! + 1}`}
+									color={isLastStep ? "success" : "default"}
 									size="small" 
 									variant="outlined"
 									sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
