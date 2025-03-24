@@ -88,6 +88,7 @@ export interface WorkflowState {
   steps: WorkflowStep[];
   currentStepIndex: number;
   isRunning: boolean;
+  timestamp: number; // Time when workflow started or advanced, used to filter relevant artifacts
 }
 
 export interface ArtifactContextType {

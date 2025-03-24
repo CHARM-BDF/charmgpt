@@ -34,7 +34,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
   const [workflowState, setWorkflowState] = useState<WorkflowState>({
     steps: [],
     currentStepIndex: -1,
-    isRunning: false
+    isRunning: false,
+    timestamp: 0
   });
   const selectArtifact = useCallback((artifact: Artifact | null) => {
     setActiveArtifact(artifact)
@@ -797,7 +798,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     try {
       // Get artifacts from previous steps that match the expected types
       const previousArtifacts = previousStep ? artifacts
-        .filter(a => a.timestamp > Date.now() - 10000) // Only consider recent artifacts
+        .filter(a => a.timestamp > workflowState.timestamp) // Only consider artifacts created after last advance step
         .filter(a => previousStep.expectedArtifacts?.some(type => type === a.type))
         : [];
 
@@ -820,7 +821,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
           setWorkflowState(prev => ({
             ...prev,
             currentStepIndex: nextIndex,
-            isRunning: true // Keep running
+            isRunning: true,
+            timestamp: Date.now()
           }));
         } else {
           // We've completed all steps
@@ -843,7 +845,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     setWorkflowState({
       steps,
       currentStepIndex: 0,
-      isRunning: true
+      isRunning: true,
+      timestamp: Date.now()
     })
   }, []);
 
@@ -851,7 +854,7 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     if (workflowState.isRunning) {
       nextStep();
     }
-  }, [workflowState, nextStep]);
+  }, [workflowState.currentStepIndex, workflowState.isRunning, nextStep]);
 
   const previousStep = useCallback(() => {
     setWorkflowState(prev => ({
@@ -864,7 +867,8 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
     setWorkflowState({
       steps: [],
       currentStepIndex: -1,
-      isRunning: false
+      isRunning: false,
+      timestamp: 0
     });
   }, []);
 
