@@ -20,6 +20,7 @@ import ArtifactView from './components/ArtifactView';
 import { useEffect, useCallback, useRef, useState, forwardRef } from 'react';
 import { ArtifactProvider } from './contexts/ArtifactContext';
 import { useArtifact } from './contexts/useArtifact';
+import { Artifact } from './contexts/ArtifactContext.types';
 import {
 	Panel,
 	PanelGroup,
@@ -30,6 +31,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadIcon from '@mui/icons-material/Upload';
 import { TransitionProps } from '@mui/material/transitions';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const theme = createTheme({
 	// You can customize your theme here
@@ -78,7 +80,7 @@ const Transition = forwardRef(function Transition(
 });
 
 function AppContent() {
-	const { runArtifact, editorContent } = useArtifact();
+	const { runArtifact, editorContent, updateArtifact } = useArtifact();
 	const mainPanelRef = useRef<ImperativePanelHandle>(null);
 	const editorPanelRef = useRef<ImperativePanelHandle>(null);
 	const rightPanelRef = useRef<ImperativePanelHandle>(null);
@@ -86,6 +88,74 @@ function AppContent() {
 	const [mobileTab, setMobileTab] = useState(0);
 	const [chatOpen, setChatOpen] = useState(false);
 	const [uploadRef, setUploadRef] = useState<HTMLInputElement | null>(null);
+	const { name } = useParams();
+	const navigate = useNavigate();
+	const [isLoading, setIsLoading] = useState(false);
+
+	// Check for permalink on mount
+	useEffect(() => {
+		const loadPermalink = async () => {
+			if (!name || isLoading) return;
+
+			try {
+				setIsLoading(true);
+				// Check if permalink exists
+				const checkResponse = await fetch(`/api/artifacts/permalinks/${name}`);
+				const { exists } = await checkResponse.json();
+
+				if (!exists) {
+					// Silently redirect to main page if permalink doesn't exist
+					navigate('/', { replace: true });
+					return;
+				}
+
+				// Load permalink content
+				const loadResponse = await fetch(`/api/artifacts/permalinks/${name}/load`);
+				const { pinned, plan } = await loadResponse.json();
+
+				// Update plan content and pinned artifacts
+				await Promise.all([
+					fetch('/api/artifacts/plan', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							content: plan
+						})
+					}),
+					...pinned.map((artifact: Artifact) => 
+						fetch('/api/artifacts/pin', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json'
+							},
+							body: JSON.stringify({
+								artifactId: artifact.id,
+								pinned: true,
+								artifact
+							})
+						}).then(() => {
+							// Update application state after pinning
+							updateArtifact({ ...artifact, pinned: true });
+						})
+					)
+				]);
+
+				// Navigate to home to show the loaded state
+				navigate('/', { replace: true });
+
+			} catch (error) {
+				console.error('Failed to load permalink:', error);
+				// Silently redirect on error
+				navigate('/', { replace: true });
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		loadPermalink();
+	}, [name, navigate, isLoading, updateArtifact]);
 
 	const handleTabChange = (
 		_event: React.SyntheticEvent,

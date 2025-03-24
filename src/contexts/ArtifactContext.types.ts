@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 
-export type EditorMode = 'code' | 'plan'
+export type EditorMode = 'code' | 'plan' | 'deps'
 export type ViewMode = 'plot' | 'data' | 'output'
 export type CodeLanguage = 'python' | 'r'
 

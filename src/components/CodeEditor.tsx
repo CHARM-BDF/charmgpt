@@ -18,6 +18,10 @@ import {
 	Menu,
 	useMediaQuery,
 	useTheme,
+	FormControlLabel,
+	Checkbox,
+	Link,
+	Snackbar,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SaveIcon from '@mui/icons-material/Save';
@@ -26,6 +30,7 @@ import Editor from './Editor';
 import { useArtifact } from '../contexts/useArtifact';
 import { EditorMode, CodeLanguage } from '../contexts/ArtifactContext.types';
 import { useState, useEffect } from 'react';
+import { DepsPanel } from '../components/DepsPanel';
 
 export default function CodeEditor() {
 	const {
@@ -45,6 +50,8 @@ export default function CodeEditor() {
 	const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 	const [artifactName, setArtifactName] = useState('');
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+	const [createPermalink, setCreatePermalink] = useState(false);
+	const [permalinkUrl, setPermalinkUrl] = useState<string | null>(null);
 	
 	const theme = useTheme();
 	const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -117,6 +124,8 @@ export default function CodeEditor() {
 
 	const handleSave = () => {
 		setSaveDialogOpen(true);
+		setCreatePermalink(false);
+		setPermalinkUrl(null);
 		// Default name based on first line or content preview
 		const content = mode === 'code' ? editorContent : planContent;
 		const firstLine = content.split('\n')[0].trim();
@@ -130,7 +139,20 @@ export default function CodeEditor() {
 		if (!artifactName) return;
 
 		try {
-			if (mode === 'code') {
+
+			// If creating permalink, save current state
+			if (createPermalink) {
+				const response = await fetch(`/api/artifacts/permalinks/${artifactName}`, {
+					method: 'POST'
+				});
+				
+				if (response.ok) {
+					// Set the permalink URL for display
+					const url = new URL(window.location.href);
+					url.pathname = `/link/${artifactName}`;
+					setPermalinkUrl(url.toString());
+				}
+			} else if (mode === 'code') {
 				// Save as code artifact
 				await addArtifact({
 					type: 'code',
@@ -146,7 +168,6 @@ export default function CodeEditor() {
 				});
 			} else {
 				// Save as plan artifact
-				// Use a type assertion to work around TypeScript limitations
 				const planArtifact = {
 					type: 'plan',
 					name: artifactName,
@@ -164,8 +185,7 @@ export default function CodeEditor() {
 			setSaveDialogOpen(false);
 			setArtifactName('');
 		} catch (error) {
-			console.error('Failed to save artifact:', error);
-			// You could add error handling UI here
+			console.error('Failed to save:', error);
 		}
 	};
 
@@ -193,6 +213,7 @@ export default function CodeEditor() {
 					>
 						<ToggleButton value="plan">Plan</ToggleButton>
 						<ToggleButton value="code">Code</ToggleButton>
+						<ToggleButton value="deps">Deps</ToggleButton>
 					</ToggleButtonGroup>
 
 					{/* Language selector - visible on desktop, hidden on mobile */}
@@ -315,20 +336,35 @@ export default function CodeEditor() {
 			</Menu>
 
 			<Box sx={{ flex: 1 }}>
-				<Editor language={language} />
+				{mode === 'deps' ? (
+					<DepsPanel artifact={activeArtifact} />
+				) : (
+					<Editor language={language} />
+				)}
 			</Box>
 
 			<Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-				<DialogTitle>Save {mode === 'code' ? 'Code' : 'Plan'}</DialogTitle>
+				<DialogTitle>Save Permalink or {mode === 'code' ? 'Code' : 'Plan'}</DialogTitle>
 				<DialogContent>
-					<TextField
-						autoFocus
-						margin="dense"
-						label="Name"
-						fullWidth
-						value={artifactName}
-						onChange={(e) => setArtifactName(e.target.value)}
-					/>
+					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}>
+						<TextField
+							autoFocus
+							margin="dense"
+							label="Name"
+							fullWidth
+							value={artifactName}
+							onChange={(e) => setArtifactName(e.target.value)}
+						/>
+						<FormControlLabel
+							control={
+								<Checkbox
+									checked={createPermalink}
+									onChange={(e) => setCreatePermalink(e.target.checked)}
+								/>
+							}
+							label="Create Permalink"
+						/>
+					</Box>
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
@@ -337,6 +373,27 @@ export default function CodeEditor() {
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			{/* Permalink URL Snackbar */}
+			<Snackbar
+				open={!!permalinkUrl}
+				autoHideDuration={6000}
+				onClose={() => setPermalinkUrl(null)}
+				message={
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						<span>Permalink created:</span>
+						<Link
+							href={permalinkUrl || '#'}
+							target="_blank"
+							rel="noopener"
+							color="inherit"
+							sx={{ wordBreak: 'break-all' }}
+						>
+							{permalinkUrl}
+						</Link>
+					</Box>
+				}
+			/>
 		</Box>
 	);
 }

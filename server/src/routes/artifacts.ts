@@ -251,4 +251,76 @@ router.get('/plan', async (req, res) => {
   }
 })
 
+// Check if permalink exists
+router.get('/permalinks/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const permalinkDir = path.join(docker.getTempDir(), 'permalinks', name);
+    
+    try {
+      await fs.access(permalinkDir);
+      res.json({ exists: true });
+    } catch {
+      res.json({ exists: false });
+    }
+  } catch (error) {
+    void error;
+    res.status(500).json({ error: 'Failed to check permalink' });
+  }
+});
+
+// Load permalink content
+router.get('/permalinks/:name/load', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const permalinkDir = path.join(docker.getTempDir(), 'permalinks', name);
+    
+    // Read pinned.json and plan.md
+    const [pinnedContent, planContent] = await Promise.all([
+      fs.readFile(path.join(permalinkDir, 'pinned.json'), 'utf-8'),
+      fs.readFile(path.join(permalinkDir, 'plan.md'), 'utf-8')
+    ]);
+    
+    res.json({
+      pinned: JSON.parse(pinnedContent),
+      plan: planContent
+    });
+  } catch (error) {
+    void error;
+    res.status(500).json({ error: 'Failed to load permalink' });
+  }
+});
+
+// Save permalink
+router.post('/permalinks/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const permalinkDir = path.join(docker.getTempDir(), 'permalinks', name);
+    
+    // Create permalink directory
+    await fs.mkdir(permalinkDir, { recursive: true });
+    
+    // Get current pinned artifacts and plan
+    const [pinnedArtifacts, planContent] = await Promise.all([
+      fs.readFile(ARTIFACTS_FILE, 'utf-8'),
+      fs.readFile(path.join(docker.getTempDir(), 'plan.md'), 'utf-8')
+    ]);
+    
+    // Save to permalink directory
+    await Promise.all([
+      fs.writeFile(path.join(permalinkDir, 'pinned.json'), pinnedArtifacts),
+      fs.writeFile(path.join(permalinkDir, 'plan.md'), planContent),
+      fs.writeFile(path.join(permalinkDir, 'metadata.json'), JSON.stringify({
+        createdAt: Date.now(),
+        name
+      }))
+    ]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    void error;
+    res.status(500).json({ error: 'Failed to save permalink' });
+  }
+});
+
 export default router 
