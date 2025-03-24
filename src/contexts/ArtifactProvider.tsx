@@ -826,7 +826,6 @@ export function ArtifactProvider({ children }: ArtifactProviderProps) {
       const previousArtifacts = previousStep ? artifacts
         .filter(a => a.id > workflowState.lastRelevantArtifactId) // Only consider artifacts created after the last relevant one
         .filter(a => a.type !== 'chat') // Explicitly exclude chat artifacts
-        .filter(a => previousStep.expectedArtifacts?.some(type => type === a.type))
         : [];
 
       // Build context from previous artifacts

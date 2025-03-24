@@ -84,7 +84,6 @@ export interface Artifact {
 
 export interface WorkflowStep {
   prompt: string;
-  expectedArtifacts?: ArtifactType[];
 }
 
 export interface WorkflowState {
