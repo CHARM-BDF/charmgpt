@@ -1,3 +1,4 @@
+import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { Artifact, ImmediateValue, FileValue } from '../contexts/ArtifactContext.types';
 import { useArtifact } from '../contexts/useArtifact';
@@ -56,7 +57,7 @@ function getTransformationInfo(
   };
 }
 
-const operationIcons: Record<string, JSX.Element> = {
+const operationIcons: Record<string, React.ReactNode> = {
   'Filter': <FilterListIcon fontSize="small" />,
   'Group': <GroupWorkIcon fontSize="small" />,
   'Join': <MergeTypeIcon fontSize="small" />,
