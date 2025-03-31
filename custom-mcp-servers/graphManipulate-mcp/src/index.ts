@@ -8,11 +8,11 @@ import { z } from "zod";
 import { v4 as uuidv4 } from 'uuid';
 
 // Add startup timestamp
-console.error(`GraphManipulate MCP Server starting at ${new Date().toISOString()}`);
+// console.error(`GraphManipulate MCP Server starting at ${new Date().toISOString()}`);
 
 // Add process info logging
-console.error(`Process ID: ${process.pid}, Node version: ${process.version}`);
-console.error(`Working directory: ${process.cwd()}`);
+// console.error(`Process ID: ${process.pid}, Node version: ${process.version}`);
+// console.error(`Working directory: ${process.cwd()}`);
 
 // Store for conversation context (in a real implementation, this would be a database)
 const conversationStore: Record<string, any[]> = {};
@@ -500,15 +500,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Start the server
 async function main() {
   try {
-    console.error(`Main function started at ${new Date().toISOString()}`);
+    // console.error(`Main function started at ${new Date().toISOString()}`);
     
-    console.error("Creating StdioServerTransport...");
+    // console.error("Creating StdioServerTransport...");
     const transport = new StdioServerTransport();
     
-    console.error("Connecting to transport...");
+    // console.error("Connecting to transport...");
     await server.connect(transport);
     
-    console.error("Server connected, now sending logging message...");
+    // console.error("Server connected, now sending logging message...");
     
     // Only send logging messages after the server is connected
     server.sendLoggingMessage({
@@ -518,8 +518,8 @@ async function main() {
       },
     });
     
-    console.error("GraphManipulate MCP Server running on stdio");
-    console.error(`Server initialization completed at ${new Date().toISOString()}`);
+    // console.error("GraphManipulate MCP Server running on stdio");
+    // console.error(`Server initialization completed at ${new Date().toISOString()}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error("Fatal error in main():", errorMessage);

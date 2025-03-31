@@ -20,7 +20,7 @@ import {
 } from './formatter.js';
 
 // Enable debug mode for verbose logging
-const DEBUG = true;
+const DEBUG = false;
 
 // Define log levels type
 type LogLevel = 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';

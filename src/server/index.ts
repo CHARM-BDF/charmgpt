@@ -47,12 +47,12 @@ app.locals.loggingService = loggingService;
 console.log('\n=== MCP Service Initialization ===');
 
 // Set up MCP log message handler BEFORE initializing clients
-console.log('[MCP-DEBUG] Setting up global log message handler');
+// console.log('[MCP-DEBUG] Setting up global log message handler');
 const globalLogHandler = (message: MCPLogMessage) => {
   const traceId = message.data?.traceId || randomUUID().split('-')[0];
-  console.log(`\n=== [GLOBAL-HANDLER:${traceId}] MCP LOG MESSAGE RECEIVED ===`);
+  // console.log(`\n=== [GLOBAL-HANDLER:${traceId}] MCP LOG MESSAGE RECEIVED ===`);
   
-  const timestamp = new Date().toISOString();
+  // const timestamp = new Date().toISOString();
   const logger = message.logger || 'MCP';
   const level = message.level;
   const messageText = message.data?.message || JSON.stringify(message.data);
@@ -60,15 +60,15 @@ const globalLogHandler = (message: MCPLogMessage) => {
   // Format for easy identification
   const formattedMessage = `[${logger}:${traceId}] [${level.toUpperCase()}] ${messageText}`;
   
-  console.log(`[GLOBAL-HANDLER:${traceId}] Timestamp: ${timestamp}`);
-  console.log(`[GLOBAL-HANDLER:${traceId}] Logger: ${logger}`);
-  console.log(`[GLOBAL-HANDLER:${traceId}] Level: ${level}`);
-  console.log(`[GLOBAL-HANDLER:${traceId}] Message: ${messageText}`);
+  // console.log(`[GLOBAL-HANDLER:${traceId}] Timestamp: ${timestamp}`);
+  // console.log(`[GLOBAL-HANDLER:${traceId}] Logger: ${logger} -- ${messageText}`);
+  // console.log(`[GLOBAL-HANDLER:${traceId}] Level: ${level}`);
+  // console.log(`[GLOBAL-HANDLER:${traceId}] Message: ${messageText}`);
   
   // Standard log output
   console.log(`[SERVER] ${formattedMessage}`);
   
-  console.log(`=== [GLOBAL-HANDLER:${traceId}] END LOG MESSAGE ===\n`);
+  // console.log(`=== [GLOBAL-HANDLER:${traceId}] END LOG MESSAGE ===\n`);
 };
 
 // Set the global handler
@@ -77,7 +77,7 @@ mcpService.setLogMessageHandler(globalLogHandler);
 // Store the global handler for routes to access
 app.locals.globalLogHandler = globalLogHandler;
 
-console.log('[MCP-DEBUG] Global log message handler registered');
+// console.log('[MCP-DEBUG] Global log message handler registered');
 
 // Initialize MCP service
 try {
@@ -126,8 +126,8 @@ app.listen(port, () => {
   console.log(`API running at http://localhost:${port}`);
   
   // Send a test log message after a short delay
-  setTimeout(() => {
-    console.log('\n[SERVER] Sending test log message to verify log handler...');
-    mcpService.sendTestLogMessage();
-  }, 5000);
+  // setTimeout(() => {
+  //   console.log('\n[SERVER] Sending test log message to verify log handler...');
+  //   mcpService.sendTestLogMessage();
+  // }, 5000);
 }); 

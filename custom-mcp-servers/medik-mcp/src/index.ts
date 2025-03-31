@@ -14,20 +14,18 @@ type LogLevel = 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' |
 
 // Helper function for structured logging
 function sendStructuredLog(server: Server, level: LogLevel, message: string, metadata?: Record<string, unknown>) {
-    console.error(`[medik-mcp] [MEDIK-STEP 0] PREPARING TO SEND LOG: ${message}`);
+    if (DEBUG) console.error(`[medik-mcp] [MEDIK-STEP 0] PREPARING TO SEND LOG: ${message}`);
     const timestamp = new Date().toISOString();
-    const traceId = randomUUID().split('-')[0]; // Use imported randomUUID
+    const traceId = randomUUID().split('-')[0];
     
-    // Format the message
     const formattedMessage = `[medik-mcp] [${level.toUpperCase()}] [${traceId}] ${message}`;
     
     try {
-        // Check if server is initialized
-        console.error(`[medik-mcp] [MEDIK-STEP 0] Server object type: ${typeof server}`);
-        // console.error('[medik-mcp] [MEDIK-STEP 0] Server object: ',server);
-        console.error(`[medik-mcp] [MEDIK-STEP 0] Has sendLoggingMessage: ${typeof server.sendLoggingMessage === 'function'}`);
+        if (DEBUG) {
+            console.error(`[medik-mcp] [MEDIK-STEP 0] Server object type: ${typeof server}`);
+            console.error(`[medik-mcp] [MEDIK-STEP 0] Has sendLoggingMessage: ${typeof server.sendLoggingMessage === 'function'}`);
+        }
         
-        // Create log payload
         const logPayload = {
             level,
             logger: 'medik-mcp',
@@ -36,28 +34,17 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
                 timestamp: timestamp,
                 traceId: traceId,
                 level: level,
-                method: "logging/message", // Explicitly include the expected method name
+                method: "logging/message",
                 ...metadata
             },
         };
         
-        console.error(`[medik-mcp] [MEDIK-STEP 0] About to call server.sendLoggingMessage with payload: ${JSON.stringify(logPayload)}`);
+        if (DEBUG) console.error(`[medik-mcp] [MEDIK-STEP 0] About to call server.sendLoggingMessage with payload: ${JSON.stringify(logPayload)}`);
         
-        // Send through MCP logging system
         server.sendLoggingMessage(logPayload);
         
-        console.error(`[medik-mcp] [MEDIK-STEP 0] ✅ server.sendLoggingMessage completed without errors`);
-        
-        // Also log to console for debugging
-        if (DEBUG) {
-            console.error(`[medik-mcp] [MEDIK-DEBUG] Successfully sent log message through MCP`);
-            console.error(formattedMessage);
-            if (metadata && Object.keys(metadata).length > 0) {
-                console.error(`[medik-mcp] [${traceId}] Metadata:`, metadata);
-            }
-        }
+        if (DEBUG) console.error(`[medik-mcp] [MEDIK-STEP 0] ✅ server.sendLoggingMessage completed without errors`);
     } catch (error) {
-        // Log the error to console since MCP logging failed
         console.error(`[medik-mcp] [MEDIK-STEP 0] ❌ ERROR SENDING LOG:`, {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
@@ -66,7 +53,6 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
             metadata
         });
 
-        // Fall back to console.error
         console.error(formattedMessage);
         if (metadata && Object.keys(metadata).length > 0) {
             console.error(`[medik-mcp] [${traceId}] Metadata:`, metadata);
@@ -78,7 +64,7 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
 // const MEDIKANREN_API_BASE = "https://medikanren.loca.lt/";
 const MEDIKANREN_API_BASE = "https://medikanren.metareflective.app";
 // https://medikanren.loca.lt/
-const DEBUG = true;
+const DEBUG = false;  // Set to false to reduce logging
 
 // Define interface types for API responses
 interface QueryErrorResponse {
@@ -128,24 +114,22 @@ function debugLog(message: string, data?: any) {
 // Helper function for API requests
 async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount = 0): Promise<T | null> {
     const MAX_RETRIES = 3;
-    const RETRY_DELAY_MS = 1000; // 1 second between retries
+    const RETRY_DELAY_MS = 1000;
     
     const url = `${MEDIKANREN_API_BASE}/query`;
     
     try {
-        // Construct the URL with query parameters
         const queryParams = new URLSearchParams();
         for (const [key, value] of Object.entries(params)) {
             queryParams.append(key, value);
         }
         
         const fullUrl = `${url}?${queryParams.toString()}`;
-        console.error(`[medik-mcp] Making request to: ${fullUrl}`);
+        if (DEBUG) console.error(`[medik-mcp] Making request to: ${fullUrl}`);
         
-        // Set up Basic Authentication only for medikanren.loca.lt
         const headers: Record<string, string> = {};
         if (MEDIKANREN_API_BASE.includes('medikanren.loca.lt')) {
-            const username = ''; // Empty username as specified
+            const username = '';
             const password = '138.26.202.195';
             const credentials = Buffer.from(`${username}:${password}`).toString('base64');
             headers['Authorization'] = `Basic ${credentials}`;
@@ -166,9 +150,8 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount 
     } catch (error) {
         console.error(`[medik-mcp] Error in request: ${error instanceof Error ? error.message : String(error)}`);
         
-        // If we haven't exceeded max retries, try again
         if (retryCount < MAX_RETRIES) {
-            console.error(`[medik-mcp] Retrying request (attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
+            if (DEBUG) console.error(`[medik-mcp] Retrying request (attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
             return makeMediKanrenRequest<T>(params, retryCount + 1);
         }
         
@@ -184,10 +167,9 @@ export async function runQuery(params: {
 }): Promise<QueryResponse | null> {
     const { e1, e2, e3 } = params;
     
-    console.error(`[medik-mcp] Query: ${e1} ${e2} ${e3}`);
+    if (DEBUG) console.error(`[medik-mcp] Query: ${e1} ${e2} ${e3}`);
     
     try {
-        // Make the API request
         const queryResult = await makeMediKanrenRequest<QueryResponse>({
             e1, e2, e3
         });
@@ -197,7 +179,7 @@ export async function runQuery(params: {
             return null;
         }
         
-        if (Array.isArray(queryResult)) {
+        if (Array.isArray(queryResult) && DEBUG) {
             console.error(`[medik-mcp] Query returned ${queryResult.length} results`);
         }
         
@@ -214,24 +196,21 @@ export async function runBidirectionalQuery(params: {
 }): Promise<QueryResponse | null> {
     const { curie } = params;
     
-    console.error(`[medik-mcp] Starting bidirectional query for ${curie}`);
+    if (DEBUG) console.error(`[medik-mcp] Starting bidirectional query for ${curie}`);
     
     try {
-        // Make X->Known query (find things that point TO our curie)
         const xToKnownResult = await makeMediKanrenRequest<QueryResponse>({
             e1: 'X->Known',
             e2: 'biolink:related_to',
             e3: curie
         });
 
-        // Make Known->X query (find things that our curie points TO)
         const knownToXResult = await makeMediKanrenRequest<QueryResponse>({
             e1: 'Known->X',
             e2: 'biolink:related_to',
             e3: curie
         });
 
-        // Combine results
         let combinedResults: any[] = [];
         
         if (Array.isArray(xToKnownResult)) {
@@ -242,12 +221,11 @@ export async function runBidirectionalQuery(params: {
             combinedResults = [...combinedResults, ...knownToXResult];
         }
 
-        // Deduplicate results based on source, predicate, and target
         const deduplicatedResults = combinedResults.filter((result, index, self) =>
             index === self.findIndex((r) => (
-                r[0] === result[0] && // source
-                r[2] === result[2] && // predicate
-                r[3] === result[3]    // target
+                r[0] === result[0] &&
+                r[2] === result[2] &&
+                r[3] === result[3]
             ))
         );
         
@@ -256,7 +234,7 @@ export async function runBidirectionalQuery(params: {
             return null;
         }
         
-        console.error(`[medik-mcp] Found ${deduplicatedResults.length} unique relationships`);
+        if (DEBUG) console.error(`[medik-mcp] Found ${deduplicatedResults.length} unique relationships`);
         return deduplicatedResults;
     } catch (error) {
         console.error(`[medik-mcp] Error in bidirectional query: ${error instanceof Error ? error.message : String(error)}`);
@@ -270,15 +248,14 @@ export async function runNetworkNeighborhoodQuery(params: {
 }): Promise<QueryResponse | null> {
     const { curies } = params;
     
-    // Log query start
-    console.error(`[medik-mcp] MEDIK: NEW NETWORK NEIGHBORHOOD QUERY STARTED AT ${new Date().toISOString()}`);
-    console.error(`[medik-mcp] MEDIK: Query for genes: ${curies.join(', ')}`);
+    if (DEBUG) {
+        console.error(`[medik-mcp] MEDIK: NEW NETWORK NEIGHBORHOOD QUERY STARTED AT ${new Date().toISOString()}`);
+        console.error(`[medik-mcp] MEDIK: Query for genes: ${curies.join(', ')}`);
+    }
     
     try {
-        // Collect all results
         const allResults = [];
         
-        // Query each CURIE
         for (const curie of curies) {
             const queryResult = await runBidirectionalQuery({ curie });
             if (Array.isArray(queryResult)) {
@@ -375,22 +352,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
         if (toolName === "run-query") {
             const { e1, e2, e3 } = QueryRequestSchema.parse(toolArgs);
             
-            // Add a clear boundary marker for the start of a new query
-            console.error("\n\n========================================");
-            console.error(`MEDIK: NEW QUERY STARTED AT ${new Date().toISOString()}`);
-            console.error(`MEDIK: Query: ${e1} ${e2} ${e3}`);
-            console.error("========================================\n");
-            
             if (DEBUG) {
+                console.error("\n\n========================================");
+                console.error(`MEDIK: NEW QUERY STARTED AT ${new Date().toISOString()}`);
+                console.error(`MEDIK: Query: ${e1} ${e2} ${e3}`);
+                console.error("========================================\n");
                 console.error('MEDIK: Parsed arguments:', { e1, e2, e3 });
             }
         
             const queryResult = await runQuery({ e1, e2, e3 });
         
             if (!queryResult) {
-                console.error("========================================");
-                console.error(`MEDIK: QUERY FAILED AT ${new Date().toISOString()}`);
-                console.error("========================================\n");
+                if (DEBUG) {
+                    console.error("========================================");
+                    console.error(`MEDIK: QUERY FAILED AT ${new Date().toISOString()}`);
+                    console.error("========================================\n");
+                }
                 return {
                     content: [
                         {
@@ -401,9 +378,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                 };
             }
             
-            // Check if the result is an array (successful query) or an error
             if (Array.isArray(queryResult)) {
-                // Log that we're filtering CAID nodes
                 server.sendLoggingMessage({
                     level: "info",
                     data: {
@@ -412,22 +387,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     },
                 });
                 
-                console.error(`MEDIK: Starting CAID node filtering process on ${queryResult.length} results`);
+                if (DEBUG) console.error(`MEDIK: Starting CAID node filtering process on ${queryResult.length} results`);
                 
                 try {
-                    console.error(`MEDIK: Calling formatKnowledgeGraphArtifact with ${queryResult.length} results`);
+                    if (DEBUG) console.error(`MEDIK: Calling formatKnowledgeGraphArtifact with ${queryResult.length} results`);
                     
-                    // Format the query results into a knowledge graph artifact
                     const formattingPromise = formatKnowledgeGraphArtifact(queryResult, { e1, e2, e3 });
-                    console.error(`MEDIK: Got Promise from formatKnowledgeGraphArtifact, waiting for resolution...`);
+                    if (DEBUG) console.error(`MEDIK: Got Promise from formatKnowledgeGraphArtifact, waiting for resolution...`);
                     
-                    // Wait for the Promise to resolve
                     const formattedResult = await formattingPromise;
-                    console.error(`MEDIK: Promise resolved successfully, got formatted result`);
+                    if (DEBUG) console.error(`MEDIK: Promise resolved successfully, got formatted result`);
                     
-                    // Log the filtering results
                     if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
-                        console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
+                        if (DEBUG) console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
                         server.sendLoggingMessage({
                             level: "info",
                             data: {
@@ -437,29 +409,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                                 remainingCount: queryResult.length - formattedResult.filteredCount
                             },
                         });
-                    } else {
+                    } else if (DEBUG) {
                         console.error(`MEDIK: No CAID nodes found in the results`);
                     }
                     
-                    // Log the content and artifacts
-                    console.error(`MEDIK: Formatted result has ${formattedResult.content.length} content items and ${formattedResult.artifacts?.length || 0} artifacts`);
+                    if (DEBUG) {
+                        console.error(`MEDIK: Formatted result has ${formattedResult.content.length} content items and ${formattedResult.artifacts?.length || 0} artifacts`);
+                        console.error("\n========================================");
+                        console.error(`MEDIK: QUERY COMPLETED SUCCESSFULLY AT ${new Date().toISOString()}`);
+                        console.error("========================================\n");
+                    }
                     
-                    // Add a clear boundary marker for the end of a successful query
-                    console.error("\n========================================");
-                    console.error(`MEDIK: QUERY COMPLETED SUCCESSFULLY AT ${new Date().toISOString()}`);
-                    console.error("========================================\n");
-                    
-                    // Return the formatted result as a ServerResult
                     return {
                         content: formattedResult.content,
                         artifacts: formattedResult.artifacts
                     };
                 } catch (error) {
                     console.error(`MEDIK: Error formatting results: ${error instanceof Error ? error.message : String(error)}`);
-                    console.error(`MEDIK: Error stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
-                    console.error("========================================");
-                    console.error(`MEDIK: QUERY ERROR AT ${new Date().toISOString()}: Error formatting results`);
-                    console.error("========================================\n");
+                    if (DEBUG) {
+                        console.error(`MEDIK: Error stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
+                        console.error("========================================");
+                        console.error(`MEDIK: QUERY ERROR AT ${new Date().toISOString()}: Error formatting results`);
+                        console.error("========================================\n");
+                    }
                     return {
                         content: [
                             {
@@ -757,144 +729,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
 
 // Start the server
 async function main() {
-    console.error('[medik-mcp] [MEDIK-INIT] Starting MCP server initialization');
     const transport = new StdioServerTransport();
-    console.error('[medik-mcp] [MEDIK-INIT] Created StdioServerTransport');
     
     try {
-        console.error('[medik-mcp] [MEDIK-INIT] Connecting server to transport');
         await server.connect(transport);
-        console.error('[medik-mcp] [MEDIK-INIT] Server connected successfully');
         
-        // Check server capabilities
-        console.error('[medik-mcp] [MEDIK-INIT] Checking server capabilities');
-        console.error(`[medik-mcp] [MEDIK-INIT] Server object: ${typeof server}`);
-        console.error(`[medik-mcp] [MEDIK-INIT] sendLoggingMessage method available: ${typeof server.sendLoggingMessage === 'function'}`);
-        
-        // Basic server start log
         sendStructuredLog(server, 'info', 'Server started', {
             transport: 'stdio',
             timestamp: new Date().toISOString()
         });
         
-        // Add a small delay to ensure connection is fully established
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Send special diagnostic logs to test notification pathway
-        console.error('\n[medik-mcp] [DIAGNOSTIC] Starting diagnostic notification tests');
-        
-        // Use a unique ID for this diagnostic test session
         const diagnosticId = randomUUID().slice(0, 8);
         
         try {
-            console.error(`[medik-mcp] [DIAGNOSTIC:${diagnosticId}] Sending diagnostic logs`);
-            
-            // First, using the structured log function
-            console.error(`[medik-mcp] [DIAGNOSTIC:${diagnosticId}] Test 1: Regular log via sendStructuredLog`);
-            sendStructuredLog(server, 'info', `DIAGNOSTIC TEST #1: Regular structured log ${diagnosticId}`, {
-                diagnosticId,
-                testType: 'regular',
-                diagnosticTimestamp: new Date().toISOString()
-            });
-            
-            // Wait briefly
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Second, using the direct method
-            console.error(`[medik-mcp] [DIAGNOSTIC:${diagnosticId}] Test 2: Direct server.sendLoggingMessage call`);
-            server.sendLoggingMessage({
-                level: 'info',
-                logger: 'medik-mcp-DIAGNOSTIC',
-                data: {
-                    message: `[medik-mcp] [DIAGNOSTIC:${diagnosticId}] Test 2: Direct logging message`,
-                    timestamp: new Date().toISOString(),
-                    diagnosticId: diagnosticId,
-                    method: "logging/message"
-                }
-            });
-            
-            console.error(`[medik-mcp] [DIAGNOSTIC:${diagnosticId}] Diagnostic tests complete`);
-        } catch (error) {
-            console.error(`[medik-mcp] [DIAGNOSTIC:${diagnosticId}] Error during diagnostic tests:`, {
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined
-            });
-        }
-        
-        // Send test logs at different levels
-        try {
-            console.error('[medik-mcp] [MEDIK-INIT] Sending test logs at different levels');
-            
-            // Send a log at each level
-            const levels: LogLevel[] = ['debug', 'info', 'notice', 'warning', 'error'];
-            for (const level of levels) {
-                console.error(`[medik-mcp] [MEDIK-INIT] Sending test ${level} message`);
-                sendStructuredLog(server, level, `Test message for ${level} level`, {
-                    testId: randomUUID().slice(0, 8),
-                    testLevel: level
-                });
-                
-                // Small delay between logs
-                await new Promise(resolve => setTimeout(resolve, 100));
+            if (DEBUG) {
+                console.error(`[medik-mcp] [MEDIK-INIT] Starting server diagnostic - ${diagnosticId}`);
+                console.error(`[medik-mcp] [MEDIK-INIT] Server object available: ${!!server}`);
+                console.error(`[medik-mcp] [MEDIK-INIT] sendLoggingMessage method available: ${typeof server.sendLoggingMessage === 'function'}`);
             }
-            
-            console.error('[medik-mcp] [MEDIK-INIT] All test log messages sent');
-        } catch (error) {
-            console.error('[medik-mcp] [MEDIK-INIT] Error sending test logs', {
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined
-            });
-            
-            // Try direct server logging
-            try {
-                console.error('[medik-mcp] [MEDIK-INIT] Attempting direct server.sendLoggingMessage');
-                server.sendLoggingMessage({
-                    level: 'error',
-                    logger: 'medik-mcp',
-                    data: {
-                        message: `[medik-mcp] [MEDIK-ERROR] ${error instanceof Error ? error.message : String(error)}`,
-                        timestamp: new Date().toISOString(),
-                        stack: error instanceof Error ? error.stack : undefined,
-                        method: "logging/message"
-                    }
-                });
-                console.error('[medik-mcp] [MEDIK-INIT] Direct logging message sent');
-            } catch (directError) {
-                console.error('[medik-mcp] [MEDIK-INIT] Error with direct server logging:', {
-                    error: directError instanceof Error ? directError.message : String(directError),
-                    stack: directError instanceof Error ? directError.stack : undefined
-                });
-            }
-            
-            // Log the error using our server
-            try {
-                console.error('[medik-mcp] [MEDIK-INIT] Using server.sendLoggingMessage for error');
-                server.sendLoggingMessage({
-                    level: 'error',
-                    logger: 'medik-mcp',
-                    data: {
-                        message: `[medik-mcp] [MEDIK-ERROR] ${error instanceof Error ? error.message : String(error)}`,
-                        timestamp: new Date().toISOString(),
-                        stack: error instanceof Error ? error.stack : undefined,
-                        method: "logging/message"
-                    }
-                });
-            } catch (logError) {
-                console.error('[medik-mcp] [MEDIK-ERROR] Failed to log error through server', {
-                    originalError: error instanceof Error ? error.message : String(error),
-                    logError: logError instanceof Error ? logError.message : String(logError)
-                });
-            }
-        }
-        
-        // Add diagnostic testing for the logging system
-        try {
-            console.error(`[medik-mcp] [MEDIK-INIT] Starting server diagnostic - ${diagnosticId}`);
-            console.error(`[medik-mcp] [MEDIK-INIT] Server object available: ${!!server}`);
-            console.error(`[medik-mcp] [MEDIK-INIT] sendLoggingMessage method available: ${typeof server.sendLoggingMessage === 'function'}`);
-            
-            // Run diagnostic tests for logging
-            // ... existing code ...
         } catch (error) {
             console.error(`[medik-mcp] [MEDIK-INIT] Error during server diagnostic tests:`, {
                 error: error instanceof Error ? error.message : String(error),
