@@ -46,8 +46,13 @@ export async function fetchWebPage(args: FetchWebPageArgs): Promise<FetchWebPage
     const contentType = response.headers.get('content-type') || 'text/html';
     const content = await response.text();
 
-    // Basic validation that we got HTML content
-    if (!content.includes('<!DOCTYPE html>') && !content.includes('<html')) {
+    // Log what we got back
+    console.log('Content type:', contentType);
+    console.log('First 100 characters:', content.substring(0, 100));
+
+    // More lenient HTML validation
+    if (!content.includes('<html') && !content.includes('<body') && !content.includes('<div')) {
+      console.log('Content does not appear to be HTML. Full content:', content);
       throw new Error('Response does not appear to be HTML content');
     }
 

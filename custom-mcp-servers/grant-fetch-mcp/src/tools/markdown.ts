@@ -12,6 +12,8 @@ interface ConvertToMarkdownResult {
 
 type TurndownNode = {
   textContent?: string;
+  nodeName?: string;
+  parentNode?: TurndownNode;
 };
 
 export async function convertToMarkdown(args: ConvertToMarkdownArgs): Promise<ConvertToMarkdownResult> {
@@ -28,6 +30,14 @@ export async function convertToMarkdown(args: ConvertToMarkdownArgs): Promise<Co
 
   // Use GitHub Flavored Markdown plugin for tables and other GFM features
   turndownService.use(gfm);
+
+  // Ignore scripts, styles, and comments
+  ['script', 'style'].forEach(tag => {
+    turndownService.addRule(tag, {
+      filter: (node: TurndownNode) => node.nodeName?.toLowerCase() === tag,
+      replacement: () => ''
+    });
+  });
 
   // Custom rules for grant-specific content
   turndownService.addRule('grantNumber', {
@@ -55,6 +65,23 @@ export async function convertToMarkdown(args: ConvertToMarkdownArgs): Promise<Co
     }
   });
 
+  // Custom rule for section headers
+  turndownService.addRule('sectionHeaders', {
+    filter: (node: TurndownNode): boolean => {
+      const text = node.textContent || '';
+      return (
+        node.nodeName === 'H1' ||
+        node.nodeName === 'H2' ||
+        node.nodeName === 'H3' ||
+        text.match(/^Part \d+\./) !== null
+      );
+    },
+    replacement: (content: string): string => {
+      // Ensure proper spacing around headers
+      return `\n\n# ${content.trim()}\n\n`;
+    }
+  });
+
   try {
     const markdown = turndownService.turndown(html);
 
@@ -72,7 +99,17 @@ export async function convertToMarkdown(args: ConvertToMarkdownArgs): Promise<Co
         }
         return line;
       })
-      .join('\n');
+      .join('\n')
+      // Remove any remaining script-like content
+      .replace(/\(function\(.*?\)\);?/gs, '')
+      // Clean up any double spaces
+      .replace(/ {2,}/g, ' ')
+      // Clean up any lines that are just whitespace
+      .replace(/^\s+$/gm, '')
+      // Remove any remaining empty lines at the start
+      .replace(/^\n+/, '')
+      // Ensure only double line breaks between sections
+      .replace(/\n{3,}/g, '\n\n');
 
     return {
       markdown: cleanedMarkdown
