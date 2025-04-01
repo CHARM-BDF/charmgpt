@@ -124,6 +124,7 @@ app.listen(port, () => {
   const timestamp = now.toLocaleString();
   console.log(`Server started at: ${timestamp}`);
   console.log(`API running at http://localhost:${port}`);
+  console.log(`Client running at http://localhost:5173`);
   
   // Send a test log message after a short delay
   // setTimeout(() => {
