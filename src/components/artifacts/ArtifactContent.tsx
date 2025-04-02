@@ -3,6 +3,7 @@ import { Artifact } from '../../types/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
@@ -221,10 +222,21 @@ export const ArtifactContent: React.FC<{
           .split('\n')
           .map(line => line.trimStart())
           .join('\n');
+
+        // Debug logging
+        console.log('Content being passed to ReactMarkdown:', {
+          contentLength: trimmedContent.length,
+          tableIndex: trimmedContent.indexOf('<table'),
+          sample: trimmedContent.substring(trimmedContent.indexOf('<table'), trimmedContent.indexOf('<table') + 100)
+        });
+
         return (
           <div className="prose max-w-none dark:prose-invert">
             <ReactMarkdown 
               remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw as any]}
+              skipHtml={false}
+              rawSourcePos={true}
               components={{
                 h1: ({node, children, ...props}: any) => (
                   <h1 className="font-display text-2xl font-extrabold mb-4 mt-6 text-gray-900 dark:text-gray-100 tracking-tight" {...props}>{children}</h1>
@@ -302,6 +314,74 @@ export const ArtifactContent: React.FC<{
                       </div>
                     </div>
                   );
+                },
+                table: ({node, children, ...props}: any) => {
+                  // Debug logging
+                  console.log('Table component props:', {
+                    nodeType: node?.type,
+                    childrenType: typeof children,
+                    childrenContent: children,
+                    hasTableTag: String(children || '').includes('<table'),
+                    props
+                  });
+
+                  // Check if this is an HTML table by looking at the className
+                  if (props.className && props.className.includes('table')) {
+                    console.log('Rendering HTML table with props:', props);
+                    return (
+                      <table className={`${props.className} border`}>
+                        {children}
+                      </table>
+                    );
+                  }
+                  
+                  // Regular markdown table
+                  console.log('Rendering markdown table');
+                  return <table className="min-w-full border" {...props}>{children}</table>;
+                },
+                thead: ({node, ...props}: any) => (
+                  <thead {...props} />
+                ),
+                tr: ({node, ...props}: any) => (
+                  <tr {...props} />
+                ),
+                th: ({node, ...props}: any) => (
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 border" {...props} />
+                ),
+                td: ({node, ...props}: any) => (
+                  <td className="px-4 py-2 text-sm text-gray-900 border" {...props} />
+                ),
+                div: ({node, ...props}: any) => <div {...props} />,
+                html: ({children, ...props}: any) => {
+                  console.log('HTML component received:', {
+                    childrenType: typeof children,
+                    childrenContent: children?.substring?.(0, 100),
+                    props
+                  });
+                  
+                  if (children && children.includes('<table')) {
+                    // Add border classes to the table HTML
+                    const styledHtml = children.replace(
+                      '<table class="',
+                      '<table class=" text-gray-900 border" '
+                    ).replace(
+                      '<td',
+                      '<td class="text-gray-900 border"'
+                    ).replace(
+                      '<th',
+                      '<th class="text-gray-900 border"'
+                    );
+                    
+                    return (
+                      <div 
+                        className="my-4 overflow-x-auto"
+                        dangerouslySetInnerHTML={{ 
+                          __html: sanitizeHTML(styledHtml)
+                        }} 
+                      />
+                    );
+                  }
+                  return null;
                 }
               }}
             >
