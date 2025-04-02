@@ -55,6 +55,7 @@ export interface StoreFormat {
     content: string;
     position: number;
     language?: string;
+    metadata?: Record<string, unknown>;
   }>;
 }
 
@@ -216,6 +217,37 @@ export class MessageService {
 
     console.log(`New artifacts count: ${artifacts.length}`);
     console.log(`Knowledge graph artifact added at position: ${artifacts.length - 1}`);
+
+    return {
+      ...storeResponse,
+      artifacts
+    };
+  }
+
+  formatResponseWithMarkdown(storeResponse: StoreFormat, grantMarkdown: any): StoreFormat {
+    if (!grantMarkdown) {
+      return storeResponse;
+    }
+
+    const markdownId = crypto.randomUUID();
+    const artifacts = storeResponse.artifacts || [];
+    
+    // Add the markdown artifact
+    artifacts.push({
+      id: markdownId,
+      artifactId: markdownId,
+      type: "text/markdown",
+      title: grantMarkdown.title || "NIH Grant Details",
+      content: grantMarkdown.content,
+      position: artifacts.length,
+      language: "markdown",
+      metadata: grantMarkdown.metadata
+    });
+
+    // Add button to conversation
+    const conversation = storeResponse.conversation || '';
+    const button = this.createArtifactButton(markdownId, "text/markdown", grantMarkdown.title || "NIH Grant Details");
+    storeResponse.conversation = `${conversation}\n\n${button}`;
 
     return {
       ...storeResponse,

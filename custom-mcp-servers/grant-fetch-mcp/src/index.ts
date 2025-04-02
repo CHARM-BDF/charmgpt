@@ -24,16 +24,16 @@ const logger = {
   }
 };
 
-// Define the tools
-const FETCH_WEBPAGE_TOOL = {
-  name: "fetch_webpage",
-  description: "Fetches content from a webpage, with focus on grant pages. Specifically pages from the NIH. This is an example: https://grants.nih.gov/grants/guide/rfa-files/RFA-TR-25-002.html. Returns the raw HTML content along with metadata.",
+// Define the tool
+const FETCH_GRANT_TOOL = {
+  name: "fetch_grant",
+  description: "Fetches an NIH grant page and converts it to markdown format. Example URL: https://grants.nih.gov/grants/guide/rfa-files/RFA-TR-25-002.html. Returns both a markdown artifact for display and an analysis-ready version with instructions for the LLM.",
   inputSchema: {
     type: "object",
     properties: {
       url: {
         type: "string",
-        description: "URL of the webpage to fetch"
+        description: "URL of the NIH grant page to fetch"
       },
       timeout: {
         type: "number",
@@ -42,26 +42,6 @@ const FETCH_WEBPAGE_TOOL = {
       }
     },
     required: ["url"]
-  }
-};
-
-const HTML_TO_MARKDOWN_TOOL = {
-  name: "html_to_markdown",
-  description: "Converts HTML content to Markdown format, preserving structure and formatting important for grant information.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      html: {
-        type: "string",
-        description: "HTML content to convert"
-      },
-      preserveTables: {
-        type: "boolean",
-        description: "Whether to preserve table formatting",
-        default: true
-      }
-    },
-    required: ["html"]
   }
 };
 
@@ -83,37 +63,22 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   logger.info("Received tool listing request");
   return {
-    tools: [FETCH_WEBPAGE_TOOL, HTML_TO_MARKDOWN_TOOL],
+    tools: [FETCH_GRANT_TOOL],
   };
 });
 
-interface FetchWebPageArgs {
+interface FetchGrantArgs {
   url: string;
   timeout?: number;
 }
 
-interface HtmlToMarkdownArgs {
-  html: string;
-  preserveTables?: boolean;
-}
-
-function isFetchWebPageArgs(args: unknown): args is FetchWebPageArgs {
+function isFetchGrantArgs(args: unknown): args is FetchGrantArgs {
   return (
     typeof args === 'object' &&
     args !== null &&
     'url' in args &&
     typeof (args as any).url === 'string' &&
     (typeof (args as any).timeout === 'undefined' || typeof (args as any).timeout === 'number')
-  );
-}
-
-function isHtmlToMarkdownArgs(args: unknown): args is HtmlToMarkdownArgs {
-  return (
-    typeof args === 'object' &&
-    args !== null &&
-    'html' in args &&
-    typeof (args as any).html === 'string' &&
-    (typeof (args as any).preserveTables === 'undefined' || typeof (args as any).preserveTables === 'boolean')
   );
 }
 
@@ -125,64 +90,64 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     const { name, arguments: args } = request.params;
 
-    switch (name) {
-      case "fetch_webpage": {
-        if (!isFetchWebPageArgs(args)) {
-          throw new Error('Invalid or missing arguments for fetch_webpage');
-        }
-        const result = await fetchWebPage(args);
-        return {
-          content: [{
-            type: "text",
-            text: result.content,
-            metadata: {
-              url: args.url,
-              contentType: result.contentType,
-              statusCode: result.statusCode
-            }
-          }],
-          isError: false,
-        };
-      }
+    if (name !== "fetch_grant") {
+      throw new Error(`Unknown tool: ${name}`);
+    }
 
-      case "html_to_markdown": {
-        if (!isHtmlToMarkdownArgs(args)) {
-          throw new Error('Invalid or missing arguments for html_to_markdown');
-        }
-        const result = await convertToMarkdown(args);
-        
-        // Create a version with instructions for the LLM
-        const llmVersion = `# Grant Analysis Instructions
-Please analyze this grant and provide:
+    if (!isFetchGrantArgs(args)) {
+      throw new Error('Invalid or missing arguments for fetch_grant');
+    }
+
+    // Step 1: Fetch the webpage
+    logger.info("Fetching grant page...");
+    const fetchResult = await fetchWebPage(args);
+
+    // Step 2: Convert to markdown
+    logger.info("Converting to markdown...");
+    const markdownResult = await convertToMarkdown({
+      html: fetchResult.content,
+      preserveTables: true
+    });
+
+    // Create the LLM analysis version with instructions
+    const llmVersion = `# Grant Analysis Instructions
+Please analyze this NIH grant opportunity and provide:
 1. Key objectives and specific aims
 2. Funding amount and duration
 3. Eligibility requirements
 4. Critical deadlines
 5. Any unique or notable requirements
+6. Participating organizations and components
 
 Here is the grant content:
 
-${result.markdown}`;
+${markdownResult.markdown}`;
 
-        return {
-          content: [{
-            type: "text",
-            text: llmVersion,
-            forModel: true
-          }],
-          artifacts: [{
-            type: "text/markdown",
-            id: randomUUID(),
-            title: "Grant Details - Markdown Version",
-            content: result.markdown
-          }],
-          isError: false,
-        };
-      }
+    // Return both the artifact and LLM version
+    return {
+      content: [{
+        type: "text",
+        text: llmVersion,
+        forModel: true,
+        metadata: {
+          url: args.url,
+          contentType: fetchResult.contentType,
+          statusCode: fetchResult.statusCode
+        }
+      }],
+      grantMarkdown: {
+        type: "text/markdown",
+        title: "NIH Grant Details",
+        content: markdownResult.markdown,
+        metadata: {
+          source: args.url,
+          contentType: fetchResult.contentType,
+          convertedAt: new Date().toISOString()
+        }
+      },
+      isError: false
+    };
 
-      default:
-        throw new Error(`Unknown tool: ${name}`);
-    }
   } catch (error) {
     logger.error("Error during tool execution:", error);
     return {

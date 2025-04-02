@@ -261,6 +261,12 @@ router.post('/', async (req: Request<{}, {}, {
               }
             }
 
+            // Handle grant markdown if present
+            if ('grantMarkdown' in toolResult && toolResult.grantMarkdown) {
+              // Store the grant markdown
+              (messages as any).grantMarkdown = toolResult.grantMarkdown;
+            }
+
             // Handle knowledge graph artifacts if present
             if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
               // Find any knowledge graph artifacts in the response
@@ -416,6 +422,15 @@ router.post('/', async (req: Request<{}, {}, {
       storeResponse = messageService.formatResponseWithBibliography(
         storeResponse, 
         (messages as any).bibliography
+      );
+    }
+
+    // Handle grant markdown if present
+    if ((messages as any).grantMarkdown) {
+      sendStatusUpdate('Adding grant markdown...');
+      storeResponse = messageService.formatResponseWithMarkdown(
+        storeResponse, 
+        (messages as any).grantMarkdown
       );
     }
 
