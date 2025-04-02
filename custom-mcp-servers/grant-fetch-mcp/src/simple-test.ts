@@ -7,7 +7,7 @@ async function simpleTest() {
   try {
     // Step 1: Fetch the webpage
     console.log('Fetching NIH grant page...');
-    const fetchResult = await fetchWebPage({ url: 'https://grants.nih.gov/grants/guide/pa-files/PAR-25-140.html' });
+    const fetchResult = await fetchWebPage({ url: 'https://grants.nih.gov/grants/guide/rfa-files/RFA-TR-25-002.html' });
     
     console.log('\n=== HTML Response Details ===');
     console.log('Content Type:', fetchResult.contentType);

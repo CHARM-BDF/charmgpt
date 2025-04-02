@@ -6,6 +6,7 @@ declare module 'turndown' {
       bulletListMarker?: '-' | '+' | '*';
       codeBlockStyle?: 'indented' | 'fenced';
       emDelimiter?: '_' | '*';
+      strongDelimiter?: '**' | '__';
     }
 
     interface Node {

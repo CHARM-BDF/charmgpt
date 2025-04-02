@@ -1,4 +1,5 @@
- **PAR-25-140: In-Depth Phenotyping and Research Using IMPC-Generated Knockout Mouse Strains Exhibiting Embryonic or Perinatal Lethality or Subviability (R01 Clinical Trial Not Allowed)** 
+# RFA-TR-25-002: Preclinical Proof of Concept Studies for Rare Diseases (R21 Clinical Trial Not Allowed)
+       
 
 **March 31, 2025**
 
@@ -6,7 +7,7 @@ This funding opportunity was updated to align with agency priorities. Carefully 
 
 Department of Health and Human Services
 
-# # # Part 1. Overview Information
+# Part 1. Overview Information
 
 Participating Organization(s)
 
@@ -14,37 +15,30 @@ National Institutes of Health ([NIH](http://www.nih.gov))
 
 Components of Participating Organizations
 
-Eunice Kennedy Shriver National Institute of Child Health and Human Development ([NICHD](https://www.nichd.nih.gov/))
-
-National Institute of Dental and Craniofacial Research ([NIDCR](https://www.nidcr.nih.gov/))
-
-All applications to this funding opportunity announcement should fall within the mission of the Institutes/Centers. The following NIH Offices may co-fund applications assigned to those Institutes/Centers.
-
-Office of Research on Women's Health ([ORWH](https://orwh.od.nih.gov/))
+National Center for Advancing Translational Sciences ([NCATS](https://ncats.nih.gov/))
 
 Funding Opportunity Title
 
-In-Depth Phenotyping and Research Using IMPC-Generated Knockout Mouse Strains Exhibiting Embryonic or Perinatal Lethality or Subviability (R01 Clinical Trial Not Allowed)
+Preclinical Proof of Concept Studies for Rare Diseases (R21 Clinical Trial Not Allowed)
 
 Activity Code
 
-[R01](//grants.nih.gov/grants/funding/ac_search_results.htm?text_curr=r01&Search.x=0&Search.y=0&Search_Type=Activity) Research Project Grant
-
-**
+[R21](//grants.nih.gov/grants/funding/ac_search_results.htm?text_curr=r21&Search.x=0&Search.y=0&Search_Type=Activity) Exploratory/Developmental Research Grant
 
 Announcement Type
 
-**Reissue of **PAR-23-074**
-******
+Reissue of [RFA-TR-24-023](https://grants.nih.gov/grants/guide/rfa-files/RFA-TR-24-023.html)  
 
 Related Notices
 
-****- **March 31, 2025** - This funding opportunity was updated to align with agency priorities. Carefully reread the full funding opportunity and make any needed adjustments to your application prior to submission.
-****April 4, 2024** - Overview of Grant Application and Review Changes for Due Dates on or after January 25, 2025. See Notice **NOT-OD-24-084**.******August 31, 2022**\- Implementation Changes for Genomic Data Sharing Plans Included with Applications Due on or after January 25, 2023. See Notice **NOT-OD-22-198**.******August 5, 2022**\- Implementation Details for the NIH Data Management and Sharing Policy. See Notice **NOT-OD-22-189**.**********
+-   **March 31, 2025** - This funding opportunity was updated to align with agency priorities. Carefully reread the full funding opportunity and make any needed adjustments to your application prior to submission.
+-   **April 4, 2024** - Overview of Grant Application and Review Changes for Due Dates on or after January 25, 2025. See Notice [NOT-OD-24-084](https://grants.nih.gov/grants/guide/notice-files/NOT-OD-24-084.html).
+-   **August 31, 2022**\- Implementation Changes for Genomic Data Sharing Plans Included with Applications Due on or after January 25, 2023. See Notice [NOT-OD-22-198](https://grants.nih.gov/grants/guide/notice-files/not-od-22-198.html).
+-   **August 5, 2022**\- Implementation Details for the NIH Data Management and Sharing Policy. See Notice [NOT-OD-22-189](https://grants.nih.gov/grants/guide/notice-files/NOT-OD-22-189.html).
 
 Funding Opportunity Number (FON)
 
-****PAR-25-140******
+RFA-TR-25-002
 
 Companion Funding Opportunity
 
@@ -52,46 +46,44 @@ None
 
 Number of Applications
 
-See [Section III. 3. Additional Information on Eligibility](#_3._Additional_Information).
+See Section III. 3. Additional Information on Eligibility.
 
 Assistance Listing Number(s)
 
-93.865, 93.313, 93.121
+93.350
 
 Funding Opportunity Purpose
 
-The purpose of this Notice of Funding Opportunity (NOFO) is to encourage applications to phenotype and/or perform research on embryonic lethal knockout (KO) mouse strains being generated through the International Mouse Phenotyping Consortium (IMPC) of which the NIH Knockout Mouse Phenotyping Program (KOMP2) is a member. The mission of IMPC is to generate a comprehensive catalogue of mammalian gene function that will provide the foundation for functional analyses of human genetic variation. The current (July 19, 2022) IMPC data release includes phenotypic data for 8260 knockout genes. Overall, the IMPC hopes to generate a null mutant and undertake broad-based phenotyping for every gene in the mouse genome. About 30% of these strains are expected to be either embryonic or perinatal lethal, or subviable. However, a large portion of homozygous lethal mutations are expected to have viable heterozygous phenotypes. The scientific community has the unique opportunity to leverage these mouse strains while they are being created and bred as part of the IMPC adult mouse phenotyping effort to perform additional in-depth phenotyping and research.
+This notice of funding opportunity (NOFO) provides funding to conduct efficacy studies in an established rare disease preclinical model to demonstrate that a proposed therapeutic agent warrants further development. In addition to preclinical efficacy, accompanying pharmacodynamic and pharmacokinetic studies would be supported. Therapeutic agents include small molecules, biologics or biotechnology-derived products. The goal of this NOFO is to spur therapeutic development for a variety of rare diseases by advancing projects to the point where they would attract subsequent investment supporting full Investigational New Drug (IND) application development or progression to clinical trials in the case of repurposing or repositioning.   
 
-# Key Dates
+## Key Dates
 
 Posted Date
 
-November 06, 2024
+December 06, 2024
 
 Open Date (Earliest Submission Date)
 
-May 05, 2025
+May 02, 2025
 
 Letter of Intent Due Date(s)
 
-30 days prior to application due date
-
-The following table includes NIH [standard due dates](https://grants.nih.gov/grants/how-to-apply-application-guide/due-dates-and-submission-policies/due-dates.htm) marked with an asterisk.
+May 1, 2025; May 1, 2026
 
 | Application Due Dates | Review and Award Cycles |
 | --- | --- |
 | New | Renewal / Resubmission / Revision (as allowed) | AIDS - New/Renewal/Resubmission/Revision, as allowed | Scientific Merit Review | Advisory Council Review | Earliest Start Date |
 | --- | --- | --- | --- | --- | --- |
-| June 05, 2025 \* | July 05, 2025 \* | Not Applicable | November 2025 | January 2026 | April 2026 |
-| October 05, 2025 \* | November 05, 2025 \* | Not Applicable | March 2026 | May 2026 | July 2026 |
+| June 02, 2025 | June 02, 2025 | Not Applicable | October 2025 | January 2026 | April 2026 |
+| June 02, 2026 | June 02, 2026 | Not Applicable | October 2026 | January 2027 | April 2027 |
 
-All applications are due by 5:00 PM local time of applicant organization.
+All applications are due by 5:00 PM local time of applicant organization. 
 
 Applicants are encouraged to apply early to allow adequate time to make any corrections to errors found in the application during the submission process by the due date.
 
 Expiration Date
 
-January 08, 2026
+June 03, 2026
 
 Due Dates for E.O. 12372
 
@@ -107,87 +99,80 @@ Conformance to all requirements (both in the Application Guide and the NOFO) is 
 
 There are several options available to submit your application through Grants.gov to NIH and Department of Health and Human Services partners. You **must** use one of these submission options to access the application forms for this opportunity.
 
-1. Use the NIH ASSIST system to prepare, submit and track your application online.
-
-2. Use an institutional system-to-system (S2S) solution to prepare and submit your application to Grants.gov and [eRA Commons](https://public.era.nih.gov/commons/) to track your application. Check with your institutional officials regarding availability.
-
-3. Use [Grants.gov](https://grants.gov/search-grants?oppStatuses=closed | archived | posted | forecasted&fon=PAR-25-140) Workspace to prepare and submit your application and [eRA Commons](http://public.era.nih.gov/commons/) to track your application.
+1.  Use the NIH ASSIST system to prepare, submit and track your application online.
+    
+2.  Use an institutional system-to-system (S2S) solution to prepare and submit your application to Grants.gov and [eRA Commons](https://public.era.nih.gov/commons/) to track your application. Check with your institutional officials regarding availability.  
+      
+    
+3.  Use [Grants.gov](https://grants.gov/search-grants?oppStatuses=closed|archived|posted|forecasted&fon=RFA-TR-25-002) Workspace to prepare and submit your application and [eRA Commons](http://public.era.nih.gov/commons/) to track your application.
+  
+  
 
 Table of Contents
 
-# # Part 1. Overview Information
+# Part 1. Overview Information
 
 [Key Dates](#_Key Dates)
 
-# # Part 2. Full Text of Announcement
+# Part 2. Full Text of Announcement
 
-[Section I. Notice of Funding Opportunity Description](#_Section I. Notice of Funding Opportunity Description)
+## Section I. Notice of Funding Opportunity Description
 
-[Section II. Award Information](#_Section II. Award Information)
+## Section II. Award Information
 
-[Section III. Eligibility Information](#_Section III. Eligibility Information)
+## Section III. Eligibility Information
 
-[Section IV. Application and Submission Information](#_Section IV. Application and Submission Information)
+## Section IV. Application and Submission Information
 
-[Section V. Application Review Information](#_Section V. Application Review Information)
+## Section V. Application Review Information
 
-[Section VI. Award Administration Information](#_Section VI. Award Administration Information)
+## Section VI. Award Administration Information
 
-[Section VII. Agency Contacts](#_Section VII. Agency Contacts)
+## Section VII. Agency Contacts
 
-[Section VIII. Other Information](#_Section VIII. Other Information)
+## Section VIII. Other Information
 
-# # Part 2. Full Text of Announcement
+  
 
-# Section I. Notice of Funding Opportunity Description
+# Part 2. Full Text of Announcement
 
-### # **Purpose**
+## Section I. Notice of Funding Opportunity Description
 
-The purpose of this Notice of Funding Opportunity (NOFO) is two-fold: 1) to encourage submission of applications to do more in-depth phenotyping on investigator-selected cohorts of embryonic lethal or subviable Knockout (KO) mouse strains generated by the International Mouse Phenotyping Consortium (IMPC) of which the NIH Knockout Mouse Phenotyping Program (KOMP) is a member; and, 2) to encourage submission of applications to use investigator-selected embryonic lethal, perinatal lethal, or subviable IMPC-generated KO mouse strains in hypothesis-driven research focused on placental defects, structural birth defects, and/or fertility issues. The KOMP2 Program is in its final phase (2022-2027) of production and primary phenotyping of KO strains, and it is anticipated that the number of available strains for analyses by the research community will increase substantially.
+**Background and Funding Purpose**
 
-In-depth phenotyping and further research using embryonic lethal, perinatal lethal, and subviable KO mouse strains are of strategic importance for several reasons. Most obviously, these genes are critical to embryonic growth, differentiation, and organogenesis. Early lethals have defects in pre- and peri-implantation processes in embryonic or extra-embryonic tissues. Mid-gestational lethals have defects in organogenesis. Lethality in the fetal or immediate perinatal periods (late lethals) indicates failures in the transition to adult functioning organ systems. These mouse strains are extremely useful as models for a range of congenital human diseases, structural birth defects, infertility, and spontaneous miscarriage. Viable heterozygote alleles are likely to be widely represented in human disease because of their haploinsufficiency or dominant phenotypic effects. So, there is significant and complementary value in also phenotyping heterozygote mutants of these KO strains for clinical phenotypes.
+The NIH supports research on a broad range of diseases that are defined as rare; that is, diseases affecting fewer than 200,000 individuals in the United States. While individually, each rare disease affects a limited number of individuals, when viewed collectively, rare diseases represent a significant unmet medical need. Approximately 30 million people in the United States are living with one of the estimated 10,000 rare diseases; many of which affect children and are serious or life-threatening. Despite advances in our understanding of the mechanisms of many rare diseases, and large investments by pharmaceutical and biotech industries, effective treatments are available for fewer than 5% of diseases. This dearth is a result of myriad interconnected factors including: 1) low disease prevalence resulting in fewer patients, clinicians, researchers; 2) fewer resources given a smaller market size; 3) high developmental failure rates resulting from a lack of high-quality preclinical data in disease-specific models.
 
-**Background**
+Further, the transition from early drug discovery efforts (assay development, high-throughput screening, counter/orthogonal screening, medicinal optimization) to full IND-enabling work is hampered by a lack of funding to support high-quality efficacy testing. These pharmacology studies are expensive, particularly when the studies are designed for rigorous evaluation that would support progression to an IND-enabling enterprise. This results in significant delays in development of potential therapeutics and leaves projects without a path forward. In order to address these issues, the National Center for Advancing Translational Sciences (NCATS) invites applications aiming to develop or repurpose therapeutics to treat a rare disease with an unmet medical need. It is the intent of this opportunity to fund a diverse set of applications focused on a variety of rare disease indications.
 
-The mouse has long been an important mammalian model system for the study of gene function in human health and disease. Mouse mutants with phenotypes that mimic human traits have served as critical research tools in understanding the genetics underlying mammalian biology. Equally important, mouse mutants have been the tools used to begin to understand gene function and pathways as the science has moved from gene identification to mammalian functional genomics.
+**Research Objectives and Scope**
 
-In 2006, the Trans-NIH Knockout Mouse Project (KOMP) was launched with the goal of generating KO mutations in 8,500 genes in C57BL/6 mouse lines by deleting all or most of the exons in target genes or producing knockout-first conditional ready alleles. Together with the European Conditional Mouse Mutagenesis Program (EUCOMM) and the North American Conditional Mouse Mutagenesis Program (NorCOMM), these efforts produced knock out embryonic stem cells for 18,000 protein coding genes, as well as live mouse lines, frozen embryos and sperm, and vectors which are available from public repositories under the auspices of the International Knockout Mouse Consortium (IKMC). The first phase of the KOMP program was completed in 2011.
+This notice of funding opportunity (NOFO) solicits applications that propose to conduct efficacy studies in an established rare disease preclinical model to demonstrate proof of concept that a proposed therapeutic agent warrants further development. In addition to preclinical efficacy, accompanying pharmacodynamic (PD) and pharmacokinetic (PK) studies would be supported. In preclinical efficacy studies, a combination of efficacy, (PD) and (PK) measures are warranted to determine the feasibility of a candidate therapeutic agent to serve as a starting point for further therapy development. Combined measures of PK and PD greatly increase the understanding of the in vivo efficacy of the therapeutic agent by exploring the relationship between the concentration of the agent at the site of action and the resulting efficacy measures.
 
-In 2011 the KOMP program was expanded as the Knockout Mouse Phenotyping Program (KOMP2), funded as a joint trans-NIH and Common Fund program, with the goal of generating and phenotyping mice strains. Since its launch, KOMP2 integrated operations with other members of the International Mouse Phenotyping Consortium (IMPC). Adoption of CRISPR technology in 2014 greatly increased the efficiency of this program. The current (July 19, 2022) IMPC data release includes phenotype data for 8260 knockout genes.
+For the purposes of this NOFO, efficacy measures reflect the effects of the therapeutic agent on endpoints that are closely tied to the desired clinical endpoints, but do not necessarily reflect target engagement. While PD measures may also reflect the effects of the therapeutic agent on endpoints closely tied to the desired clinical endpoint, they must also reflect target engagement. PK measurements reflect the body’s effect on the absorption, metabolism, distribution and excretion of the therapeutic agent. While not required, PK to provide evidence that the therapeutic agent has the potential to be therapeutically viable and support the robustness of the efficacy data, is encouraged, if the limited R21 budget can accommodate such studies.
 
-The current phase of the KOMP2 program was funded in 2022 to extend the trans-NIH program for additional five years (2022-2027). The purpose is to support production of approximately 1,200 mutant mouse lines using CRISPR/Cas9 technology and perform a series of phenotyping assays; representing substantive contribution to completion of all high priority mouse:human orthologs.
+Efficacy studies should be conducted in an established and validated rare disease model. These models may include both in vivo models and/or in advanced in vitro models (e.g. tissue chip/microphysiologic systems). Data supporting relevance and validation of the model to the indicated rare disease should be included in the application. Funding will not be provided for model development; evidence supporting access to the model, in suitable numbers to support rigorous efficacy studies, must be provided.  A letter of support if the animals will be provided by a collaborator, or a quote for purchase must be included in the Letters of Support attachment.    
 
-**Scope**
+To ensure both the relevance of the proposed development of the therapeutic agent, as well as the disease model, a plan for a partnership with a rare disease steering/oversight committee is required to submit to this NOFO. However, neither the members of the committee nor the organizations that might partner should be named in the application This committee may be formed de novo with members having appropriate disease relevant expertise and/or experience and could include a potential financial backer. The plan should include only a description of the type of individuals (expertise, patients and/or advocates, foundation representatives – do NOT name the foundation, etc.) and the planned interactions with the scientific team will need to be clearly described as an Other Attachment as part of the application.  
 
-A tiered triage approach to the phenotyping of embryonic lethal KO strains to facilitate flexibility in experimental design and economize on breeding strategies is in place. Primary tier screening begins with a careful evaluation of genotype ratios during breeding to generate adult cohorts for the adult phenotyping pipeline. A mid-gestation stage of E12.5 is the initial reference time point for a "first look" at strains deemed embryonic lethal or subviable and for assessment of developmental anomalies. Based on the E12.5 analysis, embryos are triaged for further analyses at either earlier or later time points (e.g., E9.5 or E14.5 in KOMP or E18.5 across other IMPC centers) as recommended by the Bloomsbury Report. The established phenotyping pipeline includes collection of robust, three-dimensional imaging datasets that are accessible and free to be mined through the IMPC data portal ([http://www.mousephenotype.org/data/embryo](http://www.mousephenotype.org/data/embryo "Link to Non-U.S. Government Site")). In addition to the embryonic lethal KO strains, it is important to note two other cohorts of interest: the estimated 15% of perinatal lethal KO strains and 10% of subviable KO strains. These represent cohorts for further study as these are likely to represent models of human structural birth defects as well.
+Further, developing therapeutics requires a multidisciplinary approach. It is encouraged that academic investigators should form collaborations with those knowledgeable in the therapeutic development process, as well as those familiar with the desired properties of the end therapeutic product (such as biostatisticians, technical experts and clinicians). Applicants should consider how they will identify and foster relationships with potential licensing and commercialization partners early in the therapy development process once an award is made. Investigators are expected to work closely with their institutional technology transfer officials, if applicable, to ensure that royalty agreements, patent filings, and all other necessary intellectual property (IP) arrangements are completed in a timely manner and that commercialization plans are developed and updated over the course of the project. 
 
-Depending upon the data available from the embryonic lethal pipeline primary tier screening being performed by the IMPC centers, investigators may consider three options when applying for funding through this NOFO:
+**Applications Not Responsive to this NOFO**
 
-- Pursue non-hypothesis-driven, non-mechanistic secondary- and/or tertiary tier screening on a select cohort of IMPC-generated KO strains using various approaches. 1) Studies could focus upon the acquisition of more detailed morphological information with any of a variety of 3D imaging modalities (e.g., magnetic resonance, µCT, high resolution epifluorescence microscopy, OPT, and optical coherence tomography). It is impossible to dictate the "best" stage or modality for imaging to discover novel phenotypes as developmental processes vary by embryonic stage and the interests of the investigators should dictate these aspects. The IMPC will continue to play a leadership role in standardizing operating procedures for 3D imaging of embryos in the same manner that they have developed the common protocols for adult phenotyping. Potential applicants are encouraged to visit the IMPC website for updated information \[[http://www.mousephenotype.org/data/embryo](http://www.mousephenotype.org/data/embryo/oLink%20to%20Non-U.S.%20Government%20Site "Link to Non-U.S. Government Site")\]. 2) An optional approach for characterization of gene function would be to perform mRNA expression profiling using RNA sequencing (RNAseq) of embryonic tissues to measure global perturbations caused by the KO. Sequencing technologies are continuously evolving; therefore, it is conceivable that this could be applied to embryonic mouse screening, too. 3)Tertiary tier screening would involve more focused phenotyping of strains of interest to individual investigators. These types of analyses could include, but are not limited to, more detailed immunohistochemistry, laser capture micro-dissection, or the development of cell-based assays.
-- Pursue a combination of non-hypothesis-driven, non-mechanistic secondary tier screening on a select cohort of IMPC-generated KO strains and hypothesis-driven aim(s) on selected strains. As the KOMP2 phenotyping effort continues (current phase, 2022-2027), it is clear that there will be a significant increase in phenotypic data available on embryonic lethal, perinatal lethal, and subviable KO strains. In an effort to encourage the further use of these data and strains, applications that make use of these IMPC-generated strains, further the phenotyping effort, and incorporate hypothesis-driven research aim(s) will be considered under this FOA. For these studies applicants can use a combination of IMPC and other resources to address their hypothesis.
-- Pursue strictly hypothesis-driven research on a select cohort of KOMP-IMPC-generated embryonic lethal, perinatal lethal, and/or subviable KO strains. Applications that have hypothesis-driven aim(s) to study the underlying mechanisms resulting in embryonic lethality, and/or perinatal lethality and/or subviability will also be considered under this FOA. For these studies applicants can use a combination of IMPC and other resources to address their hypothesis.
+The following types of studies are not responsive to this NOFO. Applications proposing such studies will be considered non-responsive and will not be reviewed or considered for funding.
 
-**Research Interests of Participating Institutes**
+Please note: The scope of this NOFO differs from [RFA-TR-23-016](https://grants.nih.gov/grants/guide/rfa-files/RFA-TR-23-016.html). Both New and Resubmission applications must meet the scope of this NOFO. See non-responsiveness criteria below for restrictions on scope:
 
-The participating NIH Institutes have provided a brief outline of their interests as they relate to the goals of this NOFO. These mission statements are intended to indicate the breadth of the biomedical areas of interest.
+-   Studies which do not clearly address a rare disease, defined as diseases affecting fewer than 200,000 individuals in the U.S. Evidence supporting rare disease classification may include references confirming the prevalence and additional information if the disease has been granted orphan status by the FDA.
+-   Applications requesting support for development of the rare disease model.
+-   Applications focused on rare cancers. Applicants focused on rare cancers should seek guidance from NCI’s [Preclinical Therapeutics Grants Branch](https://dtp.cancer.gov/organization/ptgb/default.htm) within the Developmental Therapeutics Program at the Division of Cancer Treatment and Diagnosis. 
 
-**NICHD**
+See 
 
-The NICHD is interested in the evaluation and use of embryonic lethal, perinatal lethal, and subviable KO strains exhibiting structural and other defects in embryonic development. This includes, but is not restricted to, defects affecting post-implantation development, gastrulation and organogenesis, especially those that affect multiple organ systems; limb, neural, cardio-vascular, musculoskeletal, urogenital, digestive, and respiratory. Additionally, understanding potential links between fertility status and any co-morbid conditions in the subviable KO strains would be of interest. Finally, evaluation and use of KO lines with defects in trophoblast development, allantois-chorion fusion, or other aspects of placental development or function are of interest. The focus should be on the determination of placental etiology resulting in embryonic lethality at the pathohistological and molecular levels as well as delineating the possible regulatory mechanism(s) affected by loss of gene function.
+## Section VIII. Other Information
 
-**NIDCR**
+ for award authorities and regulations.
 
-The NIDCR supports research into all areas of dental, oral, and craniofacial biology including but not limited to: aspects of craniofacial development such as neural crest migration and the regulation and disorders thereof; mineralized tissues; and, salivary gland development and function. Studies characterizing embryonic, perinatal, and adult phenotypes of KO mice relevant to dental, oral, and craniofacial biology are welcome.
-
-**ORWH**
-
-The Office of Research on Women’s Health (ORWH) is part of the NIH Office of the Director, and works in partnership with the 28 NIH Institutes, Centers, and Offices (ICOs) to ensure that women's health research is part of the NIH scientific framework and supported throughout the biomedical enterprise. ORWH uses a multidimensional framework to represent the intersection of factors that underlie patterns of disease and determinants of health outcomes in populations.
-
-ORWH is interested in supporting biomedical research that considers sex influences and includes adequate plans for collecting and reporting sex-specific data. There is a crucial need to address sex and/or gender influences in basic, translational, interdisciplinary, behavioral, clinical, and/or health services research relevant to women's health, and, where appropriate, include both sexes to better understand the influence of sex as a biological variable ([SABV](https://orwh.od.nih.gov/sites/orwh/files/docs/NOT-OD-15-102_Guidance.pdf)) on health and disease. Integrating the purposeful accounting for SABV in biomedical research, from the most basic to the clinical and applied efforts, will fill gaps in our knowledge, and will inform more effective and personalized approaches for women and men. For additional guidance, please review the 2024-2028 NIH-Wide Strategic Plan for the Health of Women ([https://orwh.od.nih.gov/about/trans-nih-strategic-plan-womens-health-research](https://orwh.od.nih.gov/about/trans-nih-strategic-plan-womens-health-research)).
-
-See [Section VIII. Other Information](#_Section_VIII._Other) for award authorities and regulations.
-
-# Section II. Award Information
+## Section II. Award Information
 
 Funding Instrument
 
@@ -195,10 +180,8 @@ Grant: A financial assistance mechanism providing money, property, or both to an
 
 Application Types Allowed
 
-New
-Renewal
-Resubmission
-Revision
+New  
+Resubmission - Resubmission of Applications submitted to RFA-TR-23-016, RFA-TR-24-023 and this NOFO  
 
 The [OER Glossary](//grants.nih.gov/grants/guide/url_redirect.php?id=11116) and the How to Apply Application Guide provide details on these application types. Only those application types listed here are allowed for this NOFO.
 
@@ -210,67 +193,67 @@ Not Allowed: Only accepting applications that do not propose clinical trials.
 
 Funds Available and Anticipated Number of Awards
 
-The number of awards is contingent upon NIH appropriations and the submission of a sufficient number of meritorious applications.
+The NIH intends to commit up to $1,200,000 in FY26, contingent upon receiving scientifically meritorious applications. 3-5 awards are anticipated from this solicitation. Future year amounts will depend on annual appropriations. 
 
 Award Budget
 
-Budgets with direct costs of up to $499,999 per year may be requested.
+The combined budget for direct costs for the two-year project period may not exceed $275,000. No more than $200,000 may be requested in any single year. 
 
 Award Project Period
 
-The scope of the proposed project should determine the project period. The maximum project period is 5 years.
+The total project period may not exceed 2 years.
 
 NIH grants policies as described in the [NIH Grants Policy Statement](//grants.nih.gov/grants/guide/url_redirect.php?id=11120) will apply to the applications submitted and awards made from this NOFO.
 
-# Section III. Eligibility Information
+## Section III. Eligibility Information
 
-### # 1\. Eligible Applicants
+## 1\. Eligible Applicants
 
 Eligible Organizations
 
 Higher Education Institutions
 
-- Public/State Controlled Institutions of Higher Education
-- Private Institutions of Higher Education
+-   Public/State Controlled Institutions of Higher Education
+-   Private Institutions of Higher Education
 
 Nonprofits Other Than Institutions of Higher Education
 
-- Nonprofits with 501(c)(3) IRS Status (Other than Institutions of Higher Education)
-- Nonprofits without 501(c)(3) IRS Status (Other than Institutions of Higher Education)
+-   Nonprofits with 501(c)(3) IRS Status (Other than Institutions of Higher Education)
+-   Nonprofits without 501(c)(3) IRS Status (Other than Institutions of Higher Education)
 
 For-Profit Organizations
 
-- Small Businesses
-- For-Profit Organizations (Other than Small Businesses)
+-   Small Businesses
+-   For-Profit Organizations (Other than Small Businesses)
 
 Local Governments
 
-- State Governments
-- County Governments
-- City or Township Governments
-- Special District Governments
-- Indian/Native American Tribal Governments (Federally Recognized)
-- Indian/Native American Tribal Governments (Other than Federally Recognized).
+-   State Governments
+-   County Governments
+-   City or Township Governments
+-   Special District Governments
+-   Indian/Native American Tribal Governments (Federally Recognized)
+-   Indian/Native American Tribal Governments (Other than Federally Recognized).
 
 Federal Governments
 
-- Eligible Agencies of the Federal Government
-- U.S. Territory or Possession
+-   Eligible Agencies of the Federal Government
+
+### U.S. Territory or Possession
 
 Other
 
-- Independent School Districts
-- Public Housing Authorities/Indian Housing Authorities
-- Native American Tribal Organizations (other than Federally recognized tribal governments)
-- Faith-based or Community-based Organizations
-- Regional Organizations
-- Non-domestic (non-U.S.) Entities (Foreign Organizations)
+-   Independent School Districts
+-   Public Housing Authorities/Indian Housing Authorities
+-   Native American Tribal Organizations (other than Federally recognized tribal governments)
+-   Faith-based or Community-based Organizations
+-   Regional Organizations
 
 Foreign Organizations
 
-Non-domestic (non-U.S.) Entities (Foreign Organizations) **are** eligible to apply.
+Non-domestic (non-U.S.) Entities (Foreign Organizations) **are not** eligible to apply.
 
-Non-domestic (non-U.S.) components of U.S. Organizations **are** eligible to apply.
+Non-domestic (non-U.S.) components of U.S. Organizations **are not** eligible to apply.
 
 Foreign components, as [defined in the NIH Grants Policy Statement](//grants.nih.gov/grants/guide/url_redirect.php?id=11118), **are** allowed.
 
@@ -280,11 +263,11 @@ Required Registrations
 
 Applicant organizations must complete and maintain the following registrations as described in the How to Apply- Application Guide to be eligible to apply for or receive an award. All registrations must be completed prior to the application being submitted. Registration can take 6 weeks or more, so applicants should begin the registration process as soon as possible. Failure to complete registrations in advance of a due date is not a valid reason for a late submission, please reference the [NIH Grants Policy Statement Section 2.3.9.2 Electronically Submitted Applications](//grants.nih.gov/grants/guide/url_redirect.php?id=82423) for additional information.
 
-- [System for Award Management (SAM) –](https://grants.nih.gov/grants/guide/url_redirect.php?id=82390) Applicants must complete and maintain an active registration, **which requires renewal at least annually**. The renewal process may require as much time as the initial registration. SAM registration includes the assignment of a Commercial and Government Entity (CAGE) Code for domestic organizations which have not already been assigned a CAGE Code.
-- [NATO Commercial and Government Entity (NCAGE) Code](//grants.nih.gov/grants/guide/url_redirect.php?id=11176) – Foreign organizations must obtain an NCAGE code (in lieu of a CAGE code) in order to register in SAM.
-- Unique Entity Identifier (UEI) - A UEI is issued as part of the SAM.gov registration process. The same UEI must be used for all registrations, as well as on the grant application.
-- [eRA Commons](https://grants.nih.gov/grants/guide/url_redirect.php?id=11123) - Once the unique organization identifier is established, organizations can register with eRA Commons in tandem with completing their Grants.gov registrations; all registrations must be in place by time of submission. eRA Commons requires organizations to identify at least one Signing Official (SO) and at least one Program Director/Principal Investigator (PD/PI) account in order to submit an application.
-- [Grants.gov](//grants.nih.gov/grants/guide/url_redirect.php?id=82300) – Applicants must have an active SAM registration in order to complete the Grants.gov registration.
+-   [System for Award Management (SAM) –](https://grants.nih.gov/grants/guide/url_redirect.php?id=82390) Applicants must complete and maintain an active registration, **which requires renewal at least annually**. The renewal process may require as much time as the initial registration. SAM registration includes the assignment of a Commercial and Government Entity (CAGE) Code for domestic organizations which have not already been assigned a CAGE Code.
+    -   [NATO Commercial and Government Entity (NCAGE) Code](//grants.nih.gov/grants/guide/url_redirect.php?id=11176) – Foreign organizations must obtain an NCAGE code (in lieu of a CAGE code) in order to register in SAM.
+    -   Unique Entity Identifier (UEI) - A UEI is issued as part of the SAM.gov registration process. The same UEI must be used for all registrations, as well as on the grant application.
+-   [eRA Commons](https://grants.nih.gov/grants/guide/url_redirect.php?id=11123) - Once the unique organization identifier is established, organizations can register with eRA Commons in tandem with completing their Grants.gov registrations; all registrations must be in place by time of submission. eRA Commons requires organizations to identify at least one Signing Official (SO) and at least one Program Director/Principal Investigator (PD/PI) account in order to submit an application.
+-   [Grants.gov](//grants.nih.gov/grants/guide/url_redirect.php?id=82300) – Applicants must have an active SAM registration in order to complete the Grants.gov registration.
 
 **Program Directors/Principal Investigators (PD(s)/PI(s))**
 
@@ -296,11 +279,11 @@ Any individual(s) with the skills, knowledge, and resources necessary to carry o
 
 For institutions/organizations proposing multiple PDs/PIs, visit the Multiple Program Director/Principal Investigator Policy and submission details in the Senior/Key Person Profile (Expanded) Component of the How to Apply-Application Guide.
 
-### # 2\. Cost Sharing
+## 2\. Cost Sharing
 
 This NOFO does not require cost sharing as defined in the [NIH Grants Policy Statement Section 1.2 Definition of Terms](//grants.nih.gov/grants/guide/url_redirect.php?id=11126).
 
-### # 3\. Additional Information on Eligibility
+## 3\. Additional Information on Eligibility
 
 Number of Applications
 
@@ -308,44 +291,43 @@ Applicant organizations may submit more than one application, provided that each
 
 The NIH will not accept duplicate or highly overlapping applications under review at the same time, per [NIH Grants Policy Statement Section 2.3.7.4 Submission of Resubmission Application](//grants.nih.gov/grants/guide/url_redirect.php?id=82415). This means that the NIH will not accept:
 
-- A new (A0) application that is submitted before issuance of the summary statement from the review of an overlapping new (A0) or resubmission (A1) application.
-- A resubmission (A1) application that is submitted before issuance of the summary statement from the review of the previous new (A0) application.
-- An application that has substantial overlap with another application pending appeal of initial peer review (see [NIH Grants Policy Statement 2.3.9.4 Similar, Essentially Identical, or Identical Applications](//grants.nih.gov/grants/guide/url_redirect.php?id=82423)).
+-   A new (A0) application that is submitted before issuance of the summary statement from the review of an overlapping new (A0) or resubmission (A1) application.
+-   A resubmission (A1) application that is submitted before issuance of the summary statement from the review of the previous new (A0) application.
+-   An application that has substantial overlap with another application pending appeal of initial peer review (see [NIH Grants Policy Statement 2.3.9.4 Similar, Essentially Identical, or Identical Applications](//grants.nih.gov/grants/guide/url_redirect.php?id=82423)).
 
-# Section IV. Application and Submission Information
+## Section IV. Application and Submission Information
 
-### # 1\. Requesting an Application Package
+## 1\. Requesting an Application Package
 
 The application forms package specific to this opportunity must be accessed through ASSIST, Grants.gov Workspace or an institutional system-to-system solution. Links to apply using ASSIST or Grants.gov Workspace are available in Part 1 of this NOFO. See your administrative office for instructions if you plan to use an institutional system-to-system solution.
 
-### # 2\. Content and Form of Application Submission
+## 2\. Content and Form of Application Submission
 
 It is critical that applicants follow the instructions in the Research (R) Instructions in the [How to Apply - Application Guide](https://grants.nih.gov/grants/guide/url_redirect.php?id=82400) except where instructed in this notice of funding opportunity to do otherwise. Conformance to the requirements in the Application Guide is required and strictly enforced. Applications that are out of compliance with these instructions may be delayed or not accepted for review.
 
-Letter of Intent
+#### Letter of Intent
 
 Although a letter of intent is not required, is not binding, and does not enter into the review of a subsequent application, the information that it contains allows IC staff to estimate the potential review workload and plan the review.
 
-By the date listed in
+By the date listed in 
 
 # Part 1. Overview Information
 
 , prospective applicants are asked to submit a letter of intent that includes the following information:
 
-- Descriptive title of proposed activity
-- Name(s), address(es), and telephone number(s) of the PD(s)/PI(s)
-- Names of other key personnel
-- Participating institution(s)
-- Number and title of this funding opportunity
+-   Descriptive title of proposed activity
+-   Name(s), address(es), and telephone number(s) of the PD(s)/PI(s)
+-   Names of other key personnel
+-   Participating institution(s)
+-   Number and title of this funding opportunity
 
 The letter of intent should be sent to:
 
-Mahua Mukhopadhyay, PhD
-Eunice Kennedy Shriver National Institute of Child Health and Human Development (NICHD)
-Telephone: 301-435-6886
-Email: [\[email protected\]](/cdn-cgi/l/email-protection#28455d434047584945684549414406464140064f475e)
+NCATS Letters of Intent  
+301-827-9549  
+[\[email protected\]](/cdn-cgi/l/email-protection#1e707d7f6a6d727b6a6a7b6c6d717877706a7b706a5e737f77723070777630797168) 
 
-### # Page Limitations
+#### Page Limitations
 
 All page limitations described in the [How to Apply- Application Guide](https://grants.nih.gov/grants/how-to-apply-application-guide.html) and the [Table of Page Limits](https://grants.nih.gov/grants/guide/url_redirect.php?id=61134) must be followed.
 
@@ -353,63 +335,69 @@ Instructions for Application Submission
 
 The following section supplements the instructions found in the [How to Apply- Application Guide](https://grants.nih.gov/grants/how-to-apply-application-guide.html) and should be used for preparing an application to this NOFO.
 
-### # SF424(R&R) Cover
+#### SF424(R&R) Cover
 
 All instructions in the [How to Apply - Application Guide](https://grants.nih.gov/grants/guide/url_redirect.php?id=82400) must be followed.
 
-### # SF424(R&R) Project/Performance Site Locations
+#### SF424(R&R) Project/Performance Site Locations
 
 All instructions in the How to Apply- Application Guide must be followed.
 
-### # SF424(R&R) Other Project Information
+#### SF424(R&R) Other Project Information
 
 All instructions in the How to Apply- Application Guide must be followed.
 
-### # SF424(R&R) Senior/Key Person Profile
+**Other Attachments:** The application must include the following attachment. Please use the filename suggested below. The filename provided for each document added to the section “Other Attachments” will be the name used for the bookmark in the electronic application in eRA Commons. Each attachment is limited to 1-page maximum.  
+ 
+
+**Readiness of Agent (1-page maximum)**   
+A detailed overview demonstrating the readiness of the agent for thorough efficacy testing is required to submit to this NOFO. This can include any data supporting selection of the therapeutic agent and any prior art thus far collected (i.e. prior screening data, suitable potency and selectivity, optimization of formulation or pharmacokinetic characteristics, etc.). Applications lacking a Readiness of Agent attachment will not be reviewed.
+
+  
+**Partnership Plan (1-page maximum)**  
+A plan for a partnership with a rare disease steering/oversight committee is required to submit to this NOFO. However, neither the members of the committee nor the organizations that might partner should be named in the application This committee may be formed de novo with members having appropriate disease relevant expertise and/or experience and could include a potential financial backer. Please include only a description of the type of individuals (expertise, patients and/or advocates, foundation representatives – do NOT name the foundation, etc.) Please clearly describe the planned interactions between this committee and the scientific team. Letters of support from committee members will be requested as part of the just-in-time package prior to issuing an award. Applications lacking a Partnership Plan attachment will not be reviewed.
+
+#### SF424(R&R) Senior/Key Person Profile
 
 All instructions in the How to Apply- Application Guide must be followed.
 
-### # R&R or Modular Budget
+#### R&R or Modular Budget
 
 All instructions in the How to Apply- Application Guide must be followed.
 
-### # R&R Subaward Budget
+#### R&R Subaward Budget
 
 All instructions in the How to Apply-Application Guide must be followed.
 
-### # PHS 398 Cover Page Supplement
+#### PHS 398 Cover Page Supplement
 
 All instructions in the How to Apply- Application Guide must be followed.
 
-### # PHS 398 Research Plan
+#### PHS 398 Research Plan
 
 All instructions in the How to Apply- Application Guide must be followed, with the following additional instructions:
 
-**Research Strategy:**
+Evidence Supporting Rare Disease Classification – The Significance section of the Research Strategy must include a paragraph with the heading, "Evidence Supporting Rare Disease Classification". If the application does not include the following information, then it will be considered non-responsive and will not be reviewed. This section should provide the evidence that the disease/condition being studied is classified as a rare disease; i.e., there are 200,000 or fewer patients in the U.S. This section may include one or more references confirming the prevalence of the disease/condition that is the primary focus of the research application. If the disease/condition has been granted orphan status by the FDA, provide this information in this paragraph. 
 
-Applicants must clearly justify the approach they choose (non-hypothesis driven secondary screening, hypothesis-driven research, or a combination of the two) and how the chosen approach will utilize the KOMP2/IMPC resources.
+Biological Rationale - The Research Strategy section should include a background section that clearly outlines the biological and therapeutic rationale for the application, including: 1) a description of the biological rationale linking the proposed therapeutic target and the rare disease of interest, 2) evidence for unmet medical need in the therapeutic disease area, 3) a brief description of any pertinent history for therapeutic development in the disease area, and 4) a summary of the project status, including data supporting the readiness of the therapeutic agents to be tested for efficacy (i.e. optimization of formulation or pharmacokinetic characteristics). 
 
-**Letters of Support:** Applicants are encouraged to include a letter of support for deposition of phenotypic data to a public database.  Funds can be included in the requested budget to cover the cost.
+Therapeutic Rationale – The Research Strategy should provide the data supporting selection of the therapeutic agent and any prior art thus far collected. A summary of the project status should provide compelling preclinical evidence that a therapeutic candidate is ready to be tested for efficacy (i.e. prior screening data, suitable potency and selectivity, optimization of formulation or pharmacokinetic characteristics, etc.). 
+
+Rare Disease Model – The research strategy section must include a description of the rare disease model to be utilized, including validation of the model and evidence supporting relevance to the rare disease in question. Access to the model, in sufficient numbers to support testing, should be clearly described in the application. A letter of support if the animals will be provided by a collaborator, or a quote for purchase must be included in the Letters of Support attachment. 
 
 **Resource Sharing Plan**: Individuals are required to comply with the instructions for the Resource Sharing Plans as provided in the How to Apply- Application Guide.
 
-Applicants are required to comply with the instructions in the SF424 (R&R) Application Guide, with the following modifications:
-
-- NICHD expects that biospecimens resulting from NICHD-funded research will be shared with the wider scientific community to the extent feasible and in a timely manner. Researchers can submit information about the location and availability of biospecimens to the DASH catalog, if applicable.
-- NICHD expect that tools, workflows, and/or pipelines created or used with support from this NOFO will be shared with the wider scientific community in a timely manner that would enable other researchers to replicate and build on for future research efforts. Plans should align to open-source practices and other NIH Best Practices for Software Sharing ([https://datascience.nih.gov/tools-and-analytics/best-practices-for-sharing-research-software-faq](https://datascience.nih.gov/tools-and-analytics/best-practices-for-sharing-research-software-faq)) as much as possible.
-- The Resource Sharing Plan will be considered during peer review and by program staff as award decisions are being made as appropriate and consistent with achieving the goals of the program.
-
-**Other Plan(s):**
+**Other Plan(s):** 
 
 All instructions in the How to Apply-Application Guide must be followed, with the following additional instructions:
 
-- All applicants planning research (funded or conducted in whole or in part by NIH) that results in the generation of scientific data are required to comply with the instructions for the Data Management and Sharing Plan. All applications, regardless of the amount of direct costs requested for any one year, must address a Data Management and Sharing Plan.
+-   All applicants planning research (funded or conducted in whole or in part by NIH) that results in the generation of scientific data are required to comply with the instructions for the Data Management and Sharing Plan. All applications, regardless of the amount of direct costs requested for any one year, must address a Data Management and Sharing Plan.
 
 **Appendix:** Only limited Appendix materials are allowed. Follow all instructions for the Appendix as described in the How to Apply- Application Guide.
 
-- No publications or other material, with the exception of blank questionnaires or blank surveys, may be included in the Appendix.
+-   No publications or other material, with the exception of blank questionnaires or blank surveys, may be included in the Appendix.
 
-### # PHS Human Subjects and Clinical Trials Information
+#### PHS Human Subjects and Clinical Trials Information
 
 When involving human subjects research, clinical research, and/or NIH-defined clinical trials (and when applicable, clinical trials research experience) follow all instructions for the PHS Human Subjects and Clinical Trials Information form in the How to Apply- Application Guide, with the following additional instructions:
 
@@ -423,19 +411,15 @@ All instructions in the How to Apply- Application Guide must be followed.
 
 Note: [Delayed onset](https://grants.nih.gov/grants/glossary.htm#DelayedOnsetStudy) does NOT apply to a study that can be described but will not start immediately (i.e., delayed start).All instructions in the How to Apply- Application Guide must be followed.
 
-### # PHS Assignment Request Form
+#### PHS Assignment Request Form
 
 All instructions in the How to Apply- Application Guide must be followed.
 
-### # Foreign Organizations
-
-Foreign (non-U.S.) organizations must follow policies described in the [NIH Grants Policy Statement](//grants.nih.gov/grants/guide/url_redirect.php?id=11137), and procedures for foreign organizations described throughout the How to Apply- Application Guide.
-
-### # 3\. Unique Entity Identifier and System for Award Management (SAM)
+## 3\. Unique Entity Identifier and System for Award Management (SAM)
 
 See Part 2. Section III.1 for information regarding the requirement for obtaining a unique entity identifier and for completing and maintaining active registrations in System for Award Management (SAM), NATO Commercial and Government Entity (NCAGE) Code (if applicable), eRA Commons, and Grants.gov
 
-### # 4\. Submission Dates and Times
+## 4\. Submission Dates and Times
 
 Part I. contains information about Key Dates and times. Applicants are encouraged to submit applications before the due date to ensure they have time to make any application corrections that might be necessary for successful submission. When a submission date falls on a weekend or [Federal holiday](https://grants.nih.gov/grants/guide/url_redirect.php?id=82380), the application deadline is automatically extended to the next business day.
 
@@ -445,17 +429,17 @@ Organizations must submit applications to [Grants.gov](//grants.nih.gov/grants/g
 
 Information on the submission process and a definition of on-time submission are provided in the How to Apply-Application Guide.
 
-### # 5\. Intergovernmental Review (E.O. 12372)
+## 5\. Intergovernmental Review (E.O. 12372)
 
 This initiative is not subject to [intergovernmental review.](https://grants.nih.gov/grants/policy/nihgps/html5/section_10/10.10.1_executive_orders.htm)
 
-### # 6\. Funding Restrictions
+## 6\. Funding Restrictions
 
 All NIH awards are subject to the terms and conditions, cost principles, and other considerations described in the [NIH Grants Policy Statement](//grants.nih.gov/grants/guide/url_redirect.php?id=11120).
 
 Pre-award costs are allowable only as described in the [NIH Grants Policy Statement Section 7.9.1 Selected Items of Cost.](//grants.nih.gov/grants/guide/url_redirect.php?id=11143)
 
-7\. Other Submission Requirements and Information
+## 7\. Other Submission Requirements and Information
 
 Applications must be submitted electronically following the instructions described in the How to Apply Application Guide. Paper applications will not be accepted.
 
@@ -471,23 +455,29 @@ The applicant organization must ensure that the unique entity identifier provide
 
 See [more tips](//grants.nih.gov/grants/guide/url_redirect.php?id=11146) for avoiding common errors.
 
-Upon receipt, applications will be evaluated for completeness and compliance with application instructions by the Center for Scientific Review, NIH. Applications that are incomplete or non-compliant will not be reviewed.
+Upon receipt, applications will be evaluated for completeness and compliance with application instructions by the Center for Scientific Review and responsiveness by [components of participating organizations](#_Components_of_Participating), NIH. Applications that are incomplete, non-compliant and/or nonresponsive will not be reviewed.
+
+In order to expedite review, applicants are requested to notify the NCATS Referral Office by email at [\[email protected\]](/cdn-cgi/l/email-protection#bcd2dfddc8cfced9dad9ceceddd0fcd1ddd5d092d2d5d492dbd3ca) when the application has been submitted. Please include the NOFO number and title, PD/PI name, and title of the application.
 
 Mandatory Disclosure
 
 Recipients or subrecipients must submit any information related to violations of federal criminal law involving fraud, bribery, or gratuity violations potentially affecting the federal award. See Mandatory Disclosures, [2 CFR 200.113](https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-B/section-200.113) and [NIH Grants Policy Statement Section 4.1.35](https://grants.nih.gov/grants/policy/nihgps/html5/section_4/4.1.35_mandatory_disclosures.htm).
 
-Send written disclosures to the NIH Chief Grants Management Officer listed on the Notice of Award for the IC that funded the award and to the [HHS Office of Inspector Grant Self Disclosure Program](https://oig.hhs.gov/compliance/self-disclosure-info/hhs-oig-grant-self-disclosure-program/) at [\[email protected\]](/cdn-cgi/l/email-protection#9ff8edfef1ebfbf6ecfcf3f0eceaedfaecdff0f6f8b1f7f7ecb1f8f0e9).
+Send written disclosures to the NIH Chief Grants Management Officer listed on the Notice of Award for the IC that funded the award and to the [HHS Office of Inspector Grant Self Disclosure Program](https://oig.hhs.gov/compliance/self-disclosure-info/hhs-oig-grant-self-disclosure-program/) at [\[email protected\]](/cdn-cgi/l/email-protection#533421323d27373a20303f3c2026213620133c3a347d3b3b207d343c25).
 
-### # Post Submission Materials
+#### Post Submission Materials
 
 Applicants are required to follow the instructions for post-submission materials, as described in [the policy](//grants.nih.gov/grants/guide/url_redirect.php?id=82299)
 
-# Section V. Application Review Information
+## Section V. Application Review Information
 
-### # 1\. Criteria
+## 1\. Criteria
 
 Only the review criteria described below will be considered in the review process. Applications submitted to the NIH in support of the [NIH mission](//grants.nih.gov/grants/guide/url_redirect.php?id=11149) are evaluated for scientific and technical merit through the NIH peer review system.
+
+For this particular announcement, note the following:
+
+The R21 exploratory/developmental grant supports investigation of novel scientific ideas or new model systems, tools, or technologies that have the potential for significant impact on biomedical or biobehavioral research. An R21 grant application need not have extensive background material or preliminary information. Accordingly, reviewers will emphasize the conceptual framework, the level of innovation, and the potential to significantly advance our knowledge or understanding. Appropriate justification for the proposed work can be provided through literature citations, data from other sources, or, when available, from investigator-generated data. Preliminary data are not required for R21 applications; however, they may be included if available.
 
 Overall Impact
 
@@ -495,56 +485,62 @@ Reviewers will provide an overall impact score to reflect their assessment of th
 
 Scored Review Criteria
 
-Reviewers will evaluate Factors 1, 2 and 3 in the determination of scientific merit, and in providing an overall impact score. In addition, Factors 1 and 2 will each receive a separate criterion score.
+Reviewers will evaluate Factors 1, 2 and 3 in the determination of scientific merit, and in providing an overall impact score. In addition, Factors 1 and 2 will each receive a separate criterion score. 
 
-Factor 1. Importance of the Research (Significance and Innovation)
+Factor 1. Importance of the Research (Significance and Innovation)   
 
 _**Significance**_
 
-- Evaluate the importance of the proposed research in the context of current scientific challenges and opportunities, either for advancing knowledge within the field, or more broadly. Assess whether the application addresses an important gap in knowledge in the field, would solve a critical problem, or create a valuable conceptual or technical advance.
-- Evaluate the rationale for undertaking the study, the rigor of the scientific background for the work (e.g., prior literature and/or preliminary data) and whether the scientific background justifies the proposed study.
+-   Evaluate the importance of the proposed research in the context of current scientific challenges and opportunities, either for advancing knowledge within the field, or more broadly. Assess whether the application addresses an important gap in knowledge in the field, would solve a critical problem, or create a valuable conceptual or technical advance.
+-   Evaluate the rationale for undertaking the study, the rigor of the scientific background for the work (e.g., prior literature and/or preliminary data) and whether the scientific background justifies the proposed study.
 
 _**Innovation**_
 
-- Evaluate the extent to which innovation influences the importance of undertaking the proposed research. Note that while technical or conceptual innovation can influence the importance of the proposed research, a project that is not applying novel concepts or approaches may be of critical importance for the field.
-- Evaluate whether the proposed work applies novel concepts, methods or technologies or uses existing concepts, methods, technologies in novel ways, to enhance the overall impact of the project.
+-   Evaluate the extent to which innovation influences the importance of undertaking the proposed research. Note that while technical or conceptual innovation can influence the importance of the proposed research, a project that is not applying novel concepts or approaches may be of critical importance for the field.
+-   Evaluate whether the proposed work applies novel concepts, methods or technologies or uses existing concepts, methods, technologies in novel ways, to enhance the overall impact of the project.
 
-**Specific to this NOFO:**
+_**Specific to this NOFO:**_
 
-Assess whether data generated will be of high value to the broad research community and enhance the KOMP2/IMPC resource.
+-   Evaluate the extent to which the application shows an understanding of the state of the field and the related therapeutic landscape.
+-   Evaluate the strength of the evidence validating the model's relevance for the particular rare disease and whether there is clear biological rationale linking the proposed therapeutic target and the rare disease of interest.
+-   Evaluate the extent to which the therapeutic agents are ready to be tested for efficacy, either in an in vivo or an advanced in vitro system. 
+-   While the approaches may not be innovative, evaluate the likelihood of bringing the field closer to a therapeutic that will be either a substantial improvement over existing therapeutics or is distinct from other therapeutic approaches currently available for the rare disease being targeted.
 
-Factor 2. Rigor and Feasibility (Approach)
+Factor 2. Rigor and Feasibility (Approach)   
 
 _**Approach**_
 
-- Evaluate the scientific quality of the proposed work. Evaluate the likelihood that compelling, reproducible findings will result (rigor) and assess whether the proposed studies can be done well and within the timeframes proposed (feasibility).
+-   Evaluate the scientific quality of the proposed work. Evaluate the likelihood that compelling, reproducible findings will result (rigor) and assess whether the proposed studies can be done well and within the timeframes proposed (feasibility).
 
 _**Rigor:**_
 
-- Evaluate the potential to produce unbiased, reproducible, robust data.
-- Evaluate the rigor of experimental design and whether appropriate controls are in place.
-- Evaluate whether the sample size is sufficient and well-justified.
-- Assess the quality of the plans for analysis, interpretation, and reporting of results.
-- Evaluate whether the investigators presented adequate plans to address relevant biological variables, such as sex or age, in the design, analysis, and reporting.
-- For applications involving human subjects or vertebrate animals, also evaluate:
-- the rigor of the intervention or study manipulation (if applicable to the study design).
-- whether outcome variables are justified.
-- whether the results will be generalizable or, in the case of a rare disease/special group, relevant to the particular subgroup.
-- whether the sample is appropriate and sufficiently diverse to address the proposed question(s).
-- For applications involving human subjects, including clinical trials, assess the adequacy of inclusion plans as appropriate for the scientific goals of the research. Considerations of appropriateness may include disease/condition/behavior incidence, prevalence, or population burden, population representation, and/or current state of the science.
+-   Evaluate the potential to produce unbiased, reproducible, robust data.
+-   Evaluate the rigor of experimental design and whether appropriate controls are in place.
+-   Evaluate whether the sample size is sufficient and well-justified.
+-   Assess the quality of the plans for analysis, interpretation, and reporting of results.
+-   Evaluate whether the investigators presented adequate plans to address relevant biological variables, such as sex or age, in the design, analysis, and reporting.
+-   For applications involving human subjects or vertebrate animals, also evaluate:
+    -   the rigor of the intervention or study manipulation (if applicable to the study design).
+    -   whether outcome variables are justified.
+    -   whether the results will be generalizable or, in the case of a rare disease/special group, relevant to the particular subgroup.
+    -   whether the sample is appropriate and sufficiently diverse to address the proposed question(s).
+-   For applications involving human subjects, including clinical trials, assess the adequacy of inclusion plans as appropriate for the scientific goals of the research. Considerations of appropriateness may include disease/condition/behavior incidence, prevalence, or population burden, population representation, and/or current state of the science.
 
 _**Feasibility:**_
 
-- Evaluate whether the proposed approach is sound and achievable, including plans to address problems or new challenges that emerge in the work. For proposed studies in which feasibility may be less certain, evaluate whether the uncertainty is balanced by the potential for major advances.
-- For applications involving human subjects, including clinical trials, evaluate the adequacy and feasibility of the plan to recruit and retain an appropriately diverse population of participants. Additionally, evaluate the likelihood of successfully achieving the proposed enrollment based on age, race, ethnicity, and sex.
-- For clinical trial applications, evaluate whether the study timeline and milestones are feasible.
+-   Evaluate whether the proposed approach is sound and achievable, including plans to address problems or new challenges that emerge in the work. For proposed studies in which feasibility may be less certain, evaluate whether the uncertainty is balanced by the potential for major advances.
+-   For applications involving human subjects, including clinical trials, evaluate the adequacy and feasibility of the plan to recruit and retain an appropriately diverse population of participants. Additionally, evaluate the likelihood of successfully achieving the proposed enrollment based on age, race, ethnicity, and sex.
+-   For clinical trial applications, evaluate whether the study timeline and milestones are feasible.
 
-**Specific to this NOFO:**
+_**Specific to this NOFO:**_
 
-- Evaluate if the approach is appropriate for non-hypothesis driven secondary or tertiary screening, and/or hypothesis-driven research using the KOMP/IMPC resource.
-- Evaluate if the approach is appropriate for effectively utilizing the KOMP2/IMPC resource by building upon the primary phenotyping of the IMPC mouse strains available to the community.
+-   Evaluate the extent to which the studies are designed for rigorous evaluation that would support progression to an IND-enabling enterprise.
+-   Evaluate to what extent the proposed efficacy study and PD measures are relevant to the proposed clinical indication.
+-   Evaluate the extent to which the in vivo or advanced in vitro models, and preclinical outcome measures to assess efficacy and/or PD, are optimal for the proposed clinical indication.
+-   Evaluate whether there is adequate availability of the model proposed for use to ensure success.
+-   Evaluate the extent to which the partnership plan is sufficiently detailed and appropriate.
 
-Factor 3. Expertise and Resources (Investigator(s) and Environment)
+Factor 3. Expertise and Resources (Investigator(s) and Environment)   
 
 _**Investigator(s)**_
 
@@ -554,33 +550,38 @@ _**Environment**_
 
 Evaluate whether the institutional resources are appropriate to ensure the successful execution of the proposed work.
 
+_**Specific to this NOFO:**_
+
+-   Evaluate the extent to which do the researchers demonstrate sufficient understanding of the experimental design concepts, including rigor and reproducibility, necessary for successful translation of preclinical and therapeutic discovery research to support progression to an IND-enabling enterprise.
+-   Evaluate the extent to which the research team and partners have appropriate knowledge and experience on the targeted rare disease. 
+
 Additional Review Criteria
 
 As applicable for the project proposed, reviewers will consider the following additional items while determining scientific and technical merit, but will not give criterion scores for these items, and should consider them in providing an overall impact score.
 
-Protections for Human Subjects
+Protections for Human Subjects   
 
 For research that involves human subjects but does not involve one of the categories of research that are exempt under 45 CFR Part 46, evaluate the justification for involvement of human subjects and the proposed protections from research risk relating to their participation according to the following five review criteria: 1) risk to subjects; 2) adequacy of protection against risks; 3) potential benefits to the subjects and others; 4) importance of the knowledge to be gained; and 5) data and safety monitoring for clinical trials.
 
 For research that involves human subjects and meets the criteria for one or more of the categories of research that are exempt under 45 CFR Part 46, evaluate: 1) the justification for the exemption; 2) human subjects involvement and characteristics; and 3) sources of materials. For additional information on review of the Human Subjects section, please refer to the [Guidelines for the Review of Human Subjects](https://grants.nih.gov/grants/guide/url_redirect.php?id=11175).
 
-Vertebrate Animals
+Vertebrate Animals   
 
 When the proposed research includes Vertebrate Animals, evaluate the involvement of live vertebrate animals according to the following criteria: (1) description of proposed procedures involving animals, including species, strains, ages, sex, and total number to be used; (2) justifications for the use of animals versus alternative models and for the appropriateness of the species proposed; (3) interventions to minimize discomfort, distress, pain and injury; and (4) justification for euthanasia method if NOT consistent with the AVMA Guidelines for the Euthanasia of Animals. For additional information on review of the Vertebrate Animals section, please refer to the [Worksheet for Review of the Vertebrate Animals Section](//grants.nih.gov/grants/guide/url_redirect.php?id=11150).
 
-Biohazards
+Biohazards   
 
 When the proposed research includes Biohazards, evaluate whether specific materials or procedures that will be used are significantly hazardous to research personnel and/or the environment, and whether adequate protection is proposed.
 
-Resubmissions
+Resubmissions   
 
 As applicable, evaluate the full application as now presented.
 
-Renewals
+Renewals   
 
 As applicable, evaluate the progress made in the last funding period.
 
-Revisions
+Revisions   
 
 As applicable, evaluate the appropriateness of the proposed expansion of the scope of the project.
 
@@ -588,58 +589,64 @@ Additional Review Considerations
 
 As applicable for the project proposed, reviewers will consider each of the following items, but will not give scores for these items, and should not consider them in providing an overall impact score.
 
-Authentication of Key Biological and/or Chemical Resources
+Authentication of Key Biological and/or Chemical Resources   
 
 For projects involving key biological and/or chemical resources, evaluate the brief plans proposed for identifying and ensuring the validity of those resources.
 
-Budget and Period of Support
+Budget and Period of Support   
 
 Evaluate whether the budget and the requested period of support are fully justified and reasonable in relation to the proposed research.
 
-### # 2\. Review and Selection Process
+## 2\. Review and Selection Process
 
-Applications will be evaluated for scientific and technical merit by (an) appropriate Scientific Review Group(s) convened by Center for Scientific Review (CSR), in accordance with [NIH peer review policy and procedures](//grants.nih.gov/grants/guide/url_redirect.php?id=11154), using the stated [review criteria](file:///C:/Users/mckenziene/AppData/Local/Microsoft/Windows/INetCache/Content.Outlook/13V4QPZR/Research%20Draft.doc#_1._Criteria). Assignment to a Scientific Review Group will be shown in the eRA Commons.
+Applications will be evaluated for scientific and technical merit by (an) appropriate Scientific Review Group(s) convened by NCATS, in accordance with [NIH peer review policy and procedures](//grants.nih.gov/grants/guide/url_redirect.php?id=11154), using the stated review criteria. Assignment to a Scientific Review Group will be shown in the eRA Commons.
 
 As part of the scientific peer review, all applications will receive a written critique.
 
 Applications may undergo a selection process in which only those applications deemed to have the highest scientific and technical merit (generally the top half of applications under review) will be discussed and assigned an overall impact score.
 
-Applications will be assigned on the basis of established PHS referral guidelines to the appropriate NIH Institute or Center. Applications will compete for available funds with all other recommended applications submitted in response to this NOFO. Following initial peer review, recommended applications will receive a second level of review by the appropriate national Advisory Council or Board. The following will be considered in making funding decisions:
+[Appeals](https://grants.nih.gov/grants/policy/nihgps/html5/section_2/2.4.2_appeals_of_initial_scientific_review.htm) of initial peer review will not be accepted for applications submitted in response to this NOFO.
 
-- Scientific and technical merit of the proposed project as determined by scientific peer review.
-- Availability of funds.
-- Relevance of the proposed project to program priorities.
+Applications will be assigned to the appropriate NIH Institute or Center. Applications will compete for available funds with all other recommended applications submitted in response to this NOFO. Following initial peer review, recommended applications will receive a second level of review by the NCATS Advisory Council. The following will be considered in making funding decisions:
+
+-   Scientific and technical merit of the proposed project as determined by scientific peer review.
+-   Availability of funds.
+-   Relevance of the proposed project to program priorities.
 
 If the application is under consideration for funding, NIH will request "just-in-time" information from the applicant as described in the [NIH Grants Policy Statement Section 2.5.1. Just-in-Time Procedures](//grants.nih.gov/grants/guide/url_redirect.php?id=82418). This request is not a Notice of Award nor should it be construed to be an indicator of possible funding.
 
 Prior to making an award, NIH reviews an applicant’s federal award history in SAM.gov to ensure sound business practices. An applicant can review and comment on any information in the Responsibility/Qualification records available in SAM.gov. NIH will consider any comments by the applicant in the Responsibility/Qualification records in SAM.gov to ascertain the applicant’s integrity, business ethics, and performance record of managing Federal awards per 2 CFR Part 200.206 “Federal awarding agency review of risk posed by applicants.” This provision will apply to all NIH grants and cooperative agreements except fellowships.
 
-### # 3\. Anticipated Announcement and Award Dates
+## 3\. Anticipated Announcement and Award Dates
 
 After the peer review of the application is completed, the PD/PI will be able to access his or her Summary Statement (written critique) via the [eRA Commons](//grants.nih.gov/grants/guide/url_redirect.php?id=11123). Refer to Part 1 for dates for peer review, advisory council review, and earliest start date.
 
 Information regarding the disposition of applications is available in the [NIH Grants Policy Statement Section 2.4.4 Disposition of Applications](//grants.nih.gov/grants/guide/url_redirect.php?id=82416).
 
-# Section VI. Award Administration Information
+## Section VI. Award Administration Information
 
-### # 1\. Award Notices
+## 1\. Award Notices
 
 A Notice of Award (NoA) is the official authorizing document notifying the applicant that an award has been made and that funds may be requested from the designated HHS payment system or office. The NoA is signed by the Grants Management Officer and emailed to the recipient’s business official.
 
 In accepting the award, the recipient agrees that any activities under the award are subject to all provisions currently in effect or implemented during the period of the award, other Department regulations and policies in effect at the time of the award, and applicable statutory provisions.
 
-Recipients must comply with any funding restrictions described in [Section IV.6. Funding Restrictions](#_6._Funding_Restrictions). Any pre-award costs incurred before receipt of the NoA are at the applicant's own risk.  For more information on the Notice of Award, please refer to the [NIH Grants Policy Statement Section 5. The Notice of Award](https://grants.nih.gov/grants/policy/nihgps/HTML5/section_5/5_the_notice_of_award.htm) and NIH Grants & Funding website, see [Award Process.](https://grants.nih.gov/grants/pre-award-process.htm#award)
+Recipients must comply with any funding restrictions described in 
+
+## Section IV.6. Funding Restrictions
+
+. Any pre-award costs incurred before receipt of the NoA are at the applicant's own risk.  For more information on the Notice of Award, please refer to the [NIH Grants Policy Statement Section 5. The Notice of Award](https://grants.nih.gov/grants/policy/nihgps/HTML5/section_5/5_the_notice_of_award.htm) and NIH Grants & Funding website, see [Award Process.](https://grants.nih.gov/grants/pre-award-process.htm#award)
 
 Institutional Review Board or Independent Ethics Committee Approval: Recipient institutions must ensure that protocols are reviewed by their IRB or IEC. To help ensure the safety of participants enrolled in NIH-funded studies, the recipient must provide NIH copies of documents related to all major changes in the status of ongoing protocols.
 
-### # 2\. Administrative and National Policy Requirements
+## 2\. Administrative and National Policy Requirements
 
 The following Federal wide and HHS-specific policy requirements apply to awards funded through NIH:
 
-- The rules listed at [2 CFR Part 200](https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200), Uniform Administrative Requirements, Cost Principles, and Audit Requirements for Federal Awards.
-- All NIH grant and cooperative agreement awards include the [NIH Grants Policy Statement](//grants.nih.gov/grants/guide/url_redirect.php?id=11120) as part of the terms and conditions in the Notice of Award (NoA). The NoA includes the requirements of this NOFO. For these terms of award, see the [NIH Grants Policy Statement Part II: Terms and Conditions of NIH Grant Awards, Subpart A: General](//grants.nih.gov/grants/guide/url_redirect.php?id=11120) and [Part II: Terms and Conditions of NIH Grant Awards, Subpart B: Terms and Conditions for Specific Types of Grants, Recipients, and Activities](//grants.nih.gov/grants/guide/url_redirect.php?id=11159).
-- If a recipient receives an award, the recipient must follow all applicable nondiscrimination laws. The recipient agrees to this when registering in SAM.gov. The recipient must also submit an Assurance of Compliance ([HHS-690](https://www.hhs.gov/sites/default/files/form-hhs690.pdf)). To learn more, see the [Laws and Regulations Enforced by the HHS Office for Civil Rights website](https://www.hhs.gov/civil-rights/for-providers/laws-regulations-guidance/laws/index.html).
-- HHS recognizes that NIH research projects are often limited in scope for many reasons that are nondiscriminatory, such as the principal investigator’s scientific interest, funding limitations, recruitment requirements, and other considerations. Thus, criteria in research protocols that target or exclude certain populations are warranted where nondiscriminatory justifications establish that such criteria are appropriate with respect to the health or safety of the subjects, the scientific study design, or the purpose of the research. For additional guidance regarding how the provisions apply to NIH grant programs, please contact the Scientific/Research Contact that is identified in Section VII under Agency Contacts of this NOFO.
+-   The rules listed at [2 CFR Part 200](https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200), Uniform Administrative Requirements, Cost Principles, and Audit Requirements for Federal Awards.
+-   All NIH grant and cooperative agreement awards include the [NIH Grants Policy Statement](//grants.nih.gov/grants/guide/url_redirect.php?id=11120) as part of the terms and conditions in the Notice of Award (NoA). The NoA includes the requirements of this NOFO. For these terms of award, see the [NIH Grants Policy Statement Part II: Terms and Conditions of NIH Grant Awards, Subpart A: General](//grants.nih.gov/grants/guide/url_redirect.php?id=11120) and [Part II: Terms and Conditions of NIH Grant Awards, Subpart B: Terms and Conditions for Specific Types of Grants, Recipients, and Activities](//grants.nih.gov/grants/guide/url_redirect.php?id=11159).
+-   If a recipient receives an award, the recipient must follow all applicable nondiscrimination laws. The recipient agrees to this when registering in SAM.gov. The recipient must also submit an Assurance of Compliance ([HHS-690](https://www.hhs.gov/sites/default/files/form-hhs690.pdf)). To learn more, see the [Laws and Regulations Enforced by the HHS Office for Civil Rights website](https://www.hhs.gov/civil-rights/for-providers/laws-regulations-guidance/laws/index.html).
+    -   HHS recognizes that NIH research projects are often limited in scope for many reasons that are nondiscriminatory, such as the principal investigator’s scientific interest, funding limitations, recruitment requirements, and other considerations. Thus, criteria in research protocols that target or exclude certain populations are warranted where nondiscriminatory justifications establish that such criteria are appropriate with respect to the health or safety of the subjects, the scientific study design, or the purpose of the research. For additional guidance regarding how the provisions apply to NIH grant programs, please contact the Scientific/Research Contact that is identified in Section VII under Agency Contacts of this NOFO.
 
 All federal statutes and regulations relevant to federal financial assistance, including those highlighted in [NIH Grants Policy Statement Section 4 Public Policy Requirements, Objectives and Other Appropriation Mandates.](https://grants.nih.gov/grants/policy/nihgps/HTML5/section_4/4_public_policy_requirements__objectives_and_other_appropriation_mandates.htm)
 
@@ -649,17 +656,17 @@ Cooperative Agreement Terms and Conditions of Award
 
 Not Applicable
 
-3\. Data Management and Sharing
+## 3\. Data Management and Sharing
 
 Consistent with the 2023 NIH Policy for Data Management and Sharing, when data management and sharing is applicable to the award, recipients will be required to adhere to the Data Management and Sharing requirements as outlined in the [NIH Grants Policy Statement](https://grants.nih.gov/grants/policy/nihgps/HTML5/section_8/8.2.3_sharing_research_resources.htm#Data). Upon the approval of a Data Management and Sharing Plan, it is required for recipients to implement the plan as described.
 
-### # 4\. Reporting
+## 4\. Reporting
 
 When multiple years are involved, recipients will be required to submit the [Research Performance Progress Report (RPPR)](//grants.nih.gov/grants/rppr/index.htm) annually and financial statements as required in the [NIH Grants Policy Statement Section 8.4.1 Reporting.](https://grants.nih.gov/grants/policy/nihgps/HTML5/section_8/8.4.1_reporting.htm) To learn more about post-award monitoring and reporting, see the NIH Grants & Funding website, see [Post-Award Monitoring and Reporting](https://grants.nih.gov/grants/guide/url_redirect.php?id=82428).
 
 A final RPPR, invention statement, and the expenditure data portion of the Federal Financial Report are required for closeout of an award, as described in the [NIH Grants Policy Statement Section 8.6 Closeout](//grants.nih.gov/grants/guide/url_redirect.php?id=82420). NIH NOFOs outline intended research goals and objectives. Post award, NIH will review and measure performance based on the details and outcomes that are shared within the RPPR, as described at 2 CFR Part 200.301.
 
-# Section VII. Agency Contacts
+## Section VII. Agency Contacts
 
 We encourage inquiries concerning this funding opportunity and welcome the opportunity to answer questions from potential applicants.
 
@@ -667,45 +674,39 @@ Application Submission Contacts
 
 eRA Service Desk (Questions regarding ASSIST, eRA Commons, application errors and warnings, documenting system problems that threaten submission by the due date, and post-submission issues)
 
-Finding Help Online: [https://www.era.nih.gov/need-help](https://www.era.nih.gov/need-help) (preferred method of contact)
-Telephone: 301-402-7469 or 866-504-9552 (Toll Free)General Grants Information (Questions regarding application instructions, application processes, and NIH grant resources)
-Email: [\[email protected\]](/cdn-cgi/l/email-protection#713603101f0502381f171e311f18195f161e07) (preferred method of contact)
-Telephone: 301-480-7075Grants.gov Customer Support (Questions regarding Grants.gov registration and Workspace)
-Contact Center Telephone: 800-518-4726
-Email: [\[email protected\]](/cdn-cgi/l/email-protection#26555356564954526641544748525508414950)
+Finding Help Online: [https://www.era.nih.gov/need-help](https://www.era.nih.gov/need-help) (preferred method of contact)  
+Telephone: 301-402-7469 or 866-504-9552 (Toll Free)
+
+General Grants Information (Questions regarding application instructions, application processes, and NIH grant resources)  
+Email: [\[email protected\]](/cdn-cgi/l/email-protection#551227343b21261c3b333a153b3c3d7b323a23) (preferred method of contact)  
+Telephone: 301-480-7075
+
+Grants.gov Customer Support (Questions regarding Grants.gov registration and Workspace)  
+Contact Center Telephone: 800-518-4726  
+Email: [\[email protected\]](/cdn-cgi/l/email-protection#8cfff9fcfce3fef8ccebfeede2f8ffa2ebe3fa)
 
 Scientific/Research Contact(s)
 
-Mahua Mukhopadhyay, PhD
-_Eunice Kennedy Shriver_ National Institute of Child Health and Human Development (NICHD)
-Telephone: 301-435-6886
-Email:[\[email protected\]](/cdn-cgi/l/email-protection#462b332d2e2936272b062b272f2a68282f2e68212930)Zubaida Saifudeen, Ph.D.
-National Institute of Dental and Craniofacial Research (NIDCR)
-Telephone: 301-827-3334
-Email:[\[email protected\]](/cdn-cgi/l/email-protection)
-Rajeev K Agarwal, PhD
-ORWH - Office of Research on Women's Health
-Phone: 301-451-7058
-E-mail: [\[email protected\]](/cdn-cgi/l/email-protection#305157514247515c42515a705d51595c1e5e59581e575f46)
+Steven T. Pittenger, Ph.D.  
+National Center for Advancing Translational Sciences (NCATS)  
+Telephone: 301-827-5810  
+[Email:\[email protected\]](Email:Steven.Pittenger@nih.gov) 
 
 Peer Review Contact(s)
 
-Maqsood Wani
-Center for Scientific Review
-Telephone:  (301) 435-2270
-Email:  [\[email protected\]](/cdn-cgi/l/email-protection#d9aeb8b7b0b4b8a8aa99b4b8b0b5f7b7b0b1f7beb6af)
+Marilyn Moore-Hoon, Ph.D.  
+National Center for Advancing Translational Sciences (NCATS)  
+Telephone: 301-827-9549  
+[E-mail:\[email protected\]](/cdn-cgi/l/email-protection#94d1b9f9f5fdf8aef9fbfbe6f1f9f5e6d4fafdfcbaf3fbe2)    
 
 Financial/Grants Management Contact(s)
 
-Hong Cao
-_Eunice Kennedy Shriver_ National Institute of Child Health and Human Development (NICHD)
-Telephone: 301-435-6999
-Email:[\[email protected\]](/cdn-cgi/l/email-protection#dab7bba8bdbba8bfaef4a3b5afb4bd9ab4b3b2f4bdb5ac)Gabriel Hidalgo
-National Institute of Dental and Craniofacial Research (NIDCR)
-Phone: 301-827-4630
-E-mail: [\[email protected\]](/cdn-cgi/l/email-protection)
+Leslie Le  
+National Center for Advancing Translational Sciences (NCATS)  
+Telephone: 301-435-0856  
+E-mail: [\[email protected\]](/cdn-cgi/l/email-protection#b0dcd5dcd5c3dcd9d5f0ddd1d9dc9eded9d89ed7dfc6)   
 
-# Section VIII. Other Information
+## Section VIII. Other Information
 
 Recently issued trans-NIH [policy notices](//grants.nih.gov/grants/guide/url_redirect.php?id=11163) may affect your application submission. A full list of policy notices published by NIH is provided in the [NIH Guide for Grants and Contracts](//grants.nih.gov/grants/guide/url_redirect.php?id=11164). All awards are subject to the terms and conditions, cost principles, and other considerations described in the [NIH Grants Policy Statement](//grants.nih.gov/grants/guide/url_redirect.php?id=11120).
 
@@ -715,16 +716,16 @@ Awards are made under the authorization of Sections 301 and 405 of the Public He
 
 ---
 
-[Weekly TOC for this Announcement](/grants/guide/WeeklyIndex.cfm?11-08-24)
+[Weekly TOC for this Announcement](/grants/guide/WeeklyIndex.cfm?12-06-24)  
 [NIH Funding Opportunities and Notices](/grants/guide/index.html)
 
 ---
 
-[![NIH Office of Extramural Research Logo](/images7/nih-oer-logo.jpg)](/grants/oer.htm)
+[![NIH Office of Extramural Research Logo](/images7/nih-oer-logo.jpg)](/grants/oer.htm)   
 
 [![Department of Health and Human Services (HHS) - Home Page](/images7/dhhs_sm.gif)](https://www.hhs.gov/)
 
-Department of Health
+Department of Health  
 and Human Services (HHS)
 
 [![USA.gov - Government Made Easy](/images7/USA_Gov_logo.gif)](https://www.usa.gov/)
