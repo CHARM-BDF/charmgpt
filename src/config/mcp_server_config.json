@@ -81,6 +81,12 @@
       "args": [
         "./custom-mcp-servers/id-finder-mcp/dist/index.js"
       ]
+    },
+    "grant-fetch": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/grant-fetch-mcp/dist/index.js"
+      ]
     }
   }
 }

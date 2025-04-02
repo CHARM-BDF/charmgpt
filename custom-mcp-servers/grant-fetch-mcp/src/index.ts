@@ -7,6 +7,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { fetchWebPage } from "./tools/fetch.js";
 import { convertToMarkdown } from "./tools/markdown.js";
+import { randomUUID } from "crypto";
 
 // Logger utility
 const logger = {
@@ -26,7 +27,7 @@ const logger = {
 // Define the tools
 const FETCH_WEBPAGE_TOOL = {
   name: "fetch_webpage",
-  description: "Fetches content from a webpage, with focus on grant pages. Returns the raw HTML content along with metadata.",
+  description: "Fetches content from a webpage, with focus on grant pages. Specifically pages from the NIH. This is an example: https://grants.nih.gov/grants/guide/rfa-files/RFA-TR-25-002.html. Returns the raw HTML content along with metadata.",
   inputSchema: {
     type: "object",
     properties: {
@@ -149,14 +150,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error('Invalid or missing arguments for html_to_markdown');
         }
         const result = await convertToMarkdown(args);
+        
+        // Create a version with instructions for the LLM
+        const llmVersion = `# Grant Analysis Instructions
+Please analyze this grant and provide:
+1. Key objectives and specific aims
+2. Funding amount and duration
+3. Eligibility requirements
+4. Critical deadlines
+5. Any unique or notable requirements
+
+Here is the grant content:
+
+${result.markdown}`;
+
         return {
           content: [{
             type: "text",
-            text: result.markdown,
-            metadata: {
-              originalLength: args.html.length,
-              markdownLength: result.markdown.length
-            }
+            text: llmVersion,
+            forModel: true
+          }],
+          artifacts: [{
+            type: "text/markdown",
+            id: randomUUID(),
+            title: "Grant Details - Markdown Version",
+            content: result.markdown
           }],
           isError: false,
         };
