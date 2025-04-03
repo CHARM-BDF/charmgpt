@@ -17,6 +17,7 @@ import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftI
 import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import KnowledgeGraphTestButton from '../artifacts/KnowledgeGraphTestButton';
+import { useModeStore } from '../../store/modeStore';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
@@ -24,6 +25,7 @@ export const ChatInterface: React.FC = () => {
   const [showFileManager, setShowFileManager] = useState(false);
   const [showTestingTools, setShowTestingTools] = useState(false);
   const storageService = useMemo(() => new APIStorageService(), []);
+  const { setMode, currentMode } = useModeStore();
   // const { activeServer } = useMCPStore();
   // console.log('ChatInterface: Rendering with showArtifactWindow:', showArtifactWindow);
   // console.log('ChatInterface: Current artifacts:', artifacts);
@@ -117,21 +119,47 @@ export const ChatInterface: React.FC = () => {
               {/* <MCPServerControl /> */}
             </div>
             <div className="flex items-center space-x-6">
-              {/* Grant Mode */}
-              <div className="flex flex-col items-center">
-                <div className="flex items-center">
-                  <button
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                    title="Grant Review Mode"
-                  >
-                    <img 
-                      src="/logos/grantmode_icon.png" 
-                      alt="Grant Mode" 
-                      className="w-8 h-8"
-                    />
-                  </button>
+              {/* Mode Buttons */}
+              <div className="flex space-x-4">
+                {/* Grant Mode - keeping existing button */}
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setMode('grant')}
+                      className={`p-1 rounded-full transition-colors ${
+                        currentMode === 'grant' 
+                          ? 'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/30' 
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      title="Grant Review Mode"
+                    >
+                      <img 
+                        src="/logos/grantmode_icon.png" 
+                        alt="Grant Mode" 
+                        className="w-8 h-8"
+                      />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Grant Mode</span>
                 </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Grant Mode</span>
+
+                {/* Research Mode */}
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setMode('research')}
+                      className={`p-1 rounded-full transition-colors ${
+                        currentMode === 'research' 
+                          ? 'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/30' 
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      title="Research Mode"
+                    >
+                      <BeakerIcon className="w-8 h-8 text-gray-700 dark:text-gray-300" />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Research Mode</span>
+                </div>
               </div>
 
               {/* Divider */}
