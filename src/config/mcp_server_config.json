@@ -87,6 +87,12 @@
       "args": [
         "./custom-mcp-servers/grant-fetch-mcp/dist/index.js"
       ]
+    },
+    "aims-review": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/aims-review-mcp/dist/index.js"
+      ]
     }
   }
 }

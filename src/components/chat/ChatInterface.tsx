@@ -117,11 +117,28 @@ export const ChatInterface: React.FC = () => {
               {/* <MCPServerControl /> */}
             </div>
             <div className="flex items-center space-x-6">
-              {/* Model Selection */}
-              <ModelSelector />
+              {/* Grant Mode */}
+              <div className="flex flex-col items-center">
+                <div className="flex items-center">
+                  <button
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    title="Grant Review Mode"
+                  >
+                    <img 
+                      src="/logos/grantmode_icon.png" 
+                      alt="Grant Mode" 
+                      className="w-8 h-8"
+                    />
+                  </button>
+                </div>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Grant Mode</span>
+              </div>
 
               {/* Divider */}
               <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+
+              {/* Model Selection */}
+              <ModelSelector />
 
               {/* Files Section */}
               <div className="flex flex-col items-center">
