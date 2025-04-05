@@ -1,21 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileEntry } from '../../types/fileManagement';
 // @ts-ignore - Heroicons type definitions mismatch
-import { FolderIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import { FolderIcon, PlusIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { useModeStore } from '../../store/modeStore';
+import { useProjectStore, Project } from '../../store/projectStore';
+import { useChatStore } from '../../store/chatStore';
+import { ProjectFilesTopDrawer } from './ProjectFilesTopDrawer';
 
 interface ProjectDrawerProps {
-  projectId: string;
   storageService: any; // We'll type this properly later
 }
 
-export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ projectId, storageService }) => {
+export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
+  const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { currentMode } = useModeStore();
+  const { projects, selectedProjectId, createProject, selectProject } = useProjectStore();
+  const { startNewConversation } = useChatStore();
 
   // Don't render if not in grant mode
   if (currentMode !== 'grant') {
@@ -39,12 +44,14 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ projectId, storage
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [isOpen]);
 
-  // Load project files
+  // Load project files when project is selected
   useEffect(() => {
     const loadFiles = async () => {
+      if (!selectedProjectId) return;
+      
       try {
         const projectFiles = await storageService.listFiles({
-          tags: [`project:${projectId}`]
+          tags: [`project:${selectedProjectId}`]
         });
         setFiles(projectFiles);
       } catch (error) {
@@ -52,17 +59,27 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ projectId, storage
       }
     };
     loadFiles();
-  }, [projectId, storageService]);
+  }, [selectedProjectId, storageService]);
+
+  const handleCreateProject = () => {
+    if (!newProjectName.trim()) return;
+    
+    const projectId = createProject(newProjectName, currentMode);
+    selectProject(projectId);
+    startNewConversation(); // Start a new chat for the project
+    setNewProjectName('');
+    setShowNewProjectDialog(false);
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !selectedProjectId) return;
 
     try {
       const content = await file.arrayBuffer();
       await storageService.createFile(new Uint8Array(content), {
         description: file.name,
-        tags: [`project:${projectId}`],
+        tags: [`project:${selectedProjectId}`],
         schema: {
           type: 'file',
           format: file.type || 'application/octet-stream'
@@ -71,7 +88,7 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ projectId, storage
       
       // Refresh file list
       const projectFiles = await storageService.listFiles({
-        tags: [`project:${projectId}`]
+        tags: [`project:${selectedProjectId}`]
       });
       setFiles(projectFiles);
     } catch (error) {
@@ -81,18 +98,17 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ projectId, storage
 
   return (
     <>
+      {/* Add ProjectFilesTopDrawer */}
+      <ProjectFilesTopDrawer
+        files={files}
+        selectedProjectId={selectedProjectId}
+        onFileUpload={handleFileUpload}
+      />
+
       {/* Trigger area */}
       <div
         ref={triggerRef}
         className="fixed right-0 top-[88px] w-5 h-[calc(100vh-96px)] z-40"
-      />
-      
-      {/* Hidden file input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        onChange={handleFileUpload}
       />
       
       {/* Drawer */}
@@ -108,31 +124,33 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ projectId, storage
         <div className="p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Project Files
+              Projects
             </h2>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => setShowNewProjectDialog(true)}
               className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
                        hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
                        flex items-center gap-1"
-              title="Upload File"
+              title="New Project"
             >
-              <ArrowUpTrayIcon className="w-5 h-5" />
+              <PlusIcon className="w-5 h-5" />
             </button>
           </div>
           
-          {/* File list */}
-          <div className="h-[calc(100vh-224px)] overflow-y-auto">
-            {files.map(file => (
-              <div
-                key={file.id}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          {/* Project list */}
+          <div className="space-y-2 mb-4">
+            {projects.map(project => (
+              <button
+                key={project.id}
+                onClick={() => selectProject(project.id)}
+                className={`w-full flex items-center gap-2 p-2 rounded-lg transition-colors
+                          ${selectedProjectId === project.id
+                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                            : 'hover:bg-gray-100 text-gray-700 dark:hover:bg-gray-700 dark:text-gray-300'}`}
               >
-                <FolderIcon className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                  {file.name}
-                </span>
-              </div>
+                <DocumentTextIcon className="w-5 h-5" />
+                <span className="text-sm truncate">{project.name}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -141,10 +159,43 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ projectId, storage
         <div className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity duration-300
                       ${isOpen ? 'opacity-0' : 'opacity-100'}`}>
           <div className="-rotate-90 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-            Project Files
+            Projects
           </div>
         </div>
       </div>
+
+      {/* New Project Dialog */}
+      {showNewProjectDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Create New Project
+            </h3>
+            <input
+              type="text"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder="Project name"
+              className="w-full p-2 border rounded-lg mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowNewProjectDialog(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateProject}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }; 

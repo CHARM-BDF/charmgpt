@@ -18,6 +18,7 @@ import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import KnowledgeGraphTestButton from '../artifacts/KnowledgeGraphTestButton';
 import { useModeStore } from '../../store/modeStore';
+import { ProjectDrawer } from '../projects/ProjectDrawer';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
@@ -121,7 +122,7 @@ export const ChatInterface: React.FC = () => {
             <div className="flex items-center space-x-6">
               {/* Mode Buttons */}
               <div className="flex space-x-4">
-                {/* Grant Mode - keeping existing button */}
+                {/* Grant Mode */}
                 <div className="flex flex-col items-center">
                   <div className="flex items-center">
                     <button
@@ -292,8 +293,14 @@ export const ChatInterface: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Conversation Drawer */}
-        <ConversationDrawer />
+        {/* Drawer - Conditional based on mode */}
+        {currentMode === 'grant' ? (
+          <ProjectDrawer 
+            storageService={storageService}
+          />
+        ) : (
+          <ConversationDrawer />
+        )}
 
         {/* File Manager Modal */}
         {showFileManager && (
@@ -330,7 +337,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Artifact Section */}
-        {showArtifactWindow && <ArtifactWindow />}
+        {showArtifactWindow && <ArtifactWindow storageService={storageService} />}
       </div>
 
       {/* Artifact Drawer - Always mounted, visibility controlled by showList */}

@@ -11,21 +11,51 @@ import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import { useChatStore } from '../../store/chatStore';
 import { useMCPStore } from '../../store/mcpStore';
 import { Pin, PinOff } from 'lucide-react';
+import { useProjectStore } from '../../store/projectStore';
+// @ts-ignore - Heroicons type definitions mismatch
+import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
 export const ArtifactContent: React.FC<{
   artifact: Artifact;
-}> = ({ artifact }) => {
+  storageService?: any;
+}> = ({ artifact, storageService }) => {
   const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph, setUseReagraph] = useState(true);
+  const [savingToProject, setSavingToProject] = useState(false);
   
   // Use selector functions to only subscribe to the specific state we need
   const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
   const pinnedGraphId = useChatStore(state => state.pinnedGraphId);
+  const { selectedProjectId } = useProjectStore();
   
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
   const isPinned = isKnowledgeGraph ? pinnedGraphId === artifact.id : false;
-  
+  const isMarkdown = artifact.type === 'text/markdown';
+
+  const handleSaveToProject = async () => {
+    if (!storageService || !selectedProjectId || !isMarkdown) return;
+    
+    try {
+      setSavingToProject(true);
+      const fileName = `${artifact.title || 'document'}.md`;
+      
+      await storageService.createFile(artifact.content, {
+        description: fileName,
+        tags: [`project:${selectedProjectId}`],
+        schema: {
+          type: 'file',
+          format: 'text/markdown'
+        }
+      });
+      
+      setSavingToProject(false);
+    } catch (error) {
+      console.error('Failed to save to project:', error);
+      setSavingToProject(false);
+    }
+  };
+
   const sanitizeHTML = (content: string) => {
     return DOMPurify.sanitize(content, {
       USE_PROFILES: { html: true, svg: true },
@@ -537,6 +567,18 @@ export const ArtifactContent: React.FC<{
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          {isMarkdown && selectedProjectId && (
+            <button
+              onClick={handleSaveToProject}
+              disabled={savingToProject}
+              className={`px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 
+                       border border-gray-300 dark:border-gray-600 rounded-md shadow-sm flex items-center gap-1
+                       ${savingToProject ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <DocumentArrowDownIcon className="w-4 h-4" />
+              {savingToProject ? 'Saving...' : 'Save to Project'}
+            </button>
+          )}
           {canToggleView && (
             <button
               onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}

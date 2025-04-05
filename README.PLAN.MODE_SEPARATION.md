@@ -79,19 +79,214 @@ Document how shared features behave differently in each mode:
 4. ⏳ UI/UX consistency
 5. ⏳ Performance impact assessment
 
-## Phase 4: Documentation Updates
+## Phase 4: Project Structure Implementation
 
-### 4.1 User Documentation
-1. ⏳ Update README files
-2. ⏳ Create mode-specific guides
-3. ⏳ Update troubleshooting guides
-4. ⏳ Add mode-specific examples
+### 4.1 Project Data Model
+Define the core project structure:
+```typescript
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  created: Date;
+  lastModified: Date;
+  type: 'grant' | 'research';
+  status: 'active' | 'archived' | 'completed';
+  metadata: {
+    grantType?: string;          // For grant projects
+    grantDeadline?: Date;        // For grant projects
+    researchArea?: string;       // For research projects
+    collaborators?: string[];    // For both types
+    tags?: string[];            // For categorization
+    customFields?: Record<string, any>; // For extensibility
+  };
+  // Sections organize both files and related conversations
+  sections: {
+    id: string;
+    name: string;
+    type: 'aims' | 'background' | 'methods' | 'results' | 'custom';
+    files: FileEntry[];
+    conversations: {
+      id: string;              // Reference to conversation in chat store
+      title: string;
+      lastUpdated: Date;
+      summary?: string;        // AI-generated or user-provided summary
+      context?: string;        // Section-specific context for the conversation
+      artifacts?: string[];    // IDs of artifacts generated in this conversation
+    }[];
+    notes?: string;           // Section-specific notes
+  }[];
+  // Project-wide conversations not tied to specific sections
+  conversations: {
+    id: string;
+    title: string;
+    type: 'planning' | 'review' | 'general';
+    lastUpdated: Date;
+    summary?: string;
+    artifacts?: string[];
+  }[];
+  relationships: {
+    relatedProjects?: string[];  // IDs of related projects
+    dependencies?: string[];     // IDs of projects this depends on
+    citations?: string[];       // References to other projects/papers
+  };
+}
 
-### 4.2 Developer Documentation
-1. ⏳ Document mode implementation
-2. ⏳ Update API documentation
-3. ⏳ Add mode-specific development guides
-4. ⏳ Update testing guidelines
+// Example of how conversations link back to projects
+interface ConversationMetadata {
+  id: string;
+  projectId?: string;     // Link to parent project if any
+  sectionId?: string;     // Link to specific section if any
+  type: 'project' | 'section' | 'standalone';
+  context?: {
+    projectName?: string;
+    sectionName?: string;
+    projectType?: 'grant' | 'research';
+  };
+}
+```
+
+### 4.2 Project Store Structure (Planned)
+- Project state management:
+  - ⏳ Active projects list
+  - ⏳ Project metadata
+  - ⏳ Project sections and organization
+  - ⏳ Project-conversation relationships
+  - ⏳ Project-specific settings
+  - ⏳ Conversation context management
+
+### 4.3 Project Operations (Planned)
+1. Project Lifecycle Management:
+   - Project Creation Flow:
+     ```typescript
+     interface ProjectInitialization {
+       // Initial Project Setup
+       step1_basics: {
+         name: string;
+         type: 'grant' | 'research';
+         description?: string;
+       };
+       // Template Selection (optional)
+       step2_template?: {
+         templateId?: string;
+         useDefaultSections: boolean;
+       };
+       // Initial Conversation Setup
+       step3_conversation: {
+         title: string;         // e.g., "Project Planning"
+         initialPrompt?: string; // Optional AI conversation starter
+         context: {
+           purpose: 'project_planning' | 'aims_definition' | 'custom';
+           customContext?: string;
+         };
+       };
+     }
+     ```
+
+   - Project Creation Results:
+     - New project created with basic metadata
+     - Initial sections created (from template or defaults)
+     - New conversation started in chat interface
+     - Project drawer updated to show new project
+     - Chat context set to new project
+
+   Other Lifecycle Operations:
+   - ⏳ Archive project
+   - ⏳ Complete project
+   - ⏳ Delete project
+   - ⏳ Clone/Template project
+
+2. Project Organization:
+   - ⏳ Create/Edit sections
+   - ⏳ Organize files within sections
+   - ⏳ Manage project metadata
+   - ⏳ Set project relationships
+
+3. Project Collaboration:
+   - ⏳ Add/Remove collaborators
+   - ⏳ Set permissions
+   - ⏳ Share project resources
+
+### 4.4 UI Components Needed
+1. Project Management:
+   - Project Creation:
+     - ⏳ "New Project" button in ProjectDrawer header
+     - ⏳ Project creation wizard dialog
+     - ⏳ Template selection interface
+     - ⏳ Initial conversation setup
+   - ⏳ Project dashboard
+   - ⏳ Project settings panel
+   - ⏳ Section manager
+
+2. File Organization:
+   - ⏳ Section-based file browser
+   - ⏳ File upload per section
+   - ⏳ Drag-and-drop organization
+
+3. Project Navigation:
+   - ⏳ Project breadcrumbs
+   - ⏳ Section navigation
+   - ⏳ Related projects view
+
+### 4.5 Storage Implementation (Planned)
+1. Project Data:
+   - ⏳ Project metadata storage
+   - ⏳ Section organization
+   - ⏳ File associations
+   - ⏳ Relationship mapping
+
+2. Data Migration:
+   - ⏳ Migrate existing tagged files
+   - ⏳ Create initial project structure
+   - ⏳ Set up default sections
+
+### 4.6 Project-Chat Integration
+1. Project Creation Flow:
+   ```mermaid
+   graph TD
+     A[Click New Project] --> B[Open Creation Wizard]
+     B --> C[Enter Basic Info]
+     C --> D[Select Template]
+     D --> E[Setup Initial Chat]
+     E --> F[Create Project]
+     F --> G[Open New Chat]
+     G --> H[AI Starts Planning]
+   ```
+
+2. Chat Context Management:
+   - Chat knows current project context
+   - AI can access project metadata
+   - Conversations automatically tagged with project
+   - Artifacts saved to correct project section
+
+3. Project-Chat Synchronization:
+   - Chat updates reflect in project structure
+   - Project changes update chat context
+   - Artifacts automatically organized
+   - Cross-referencing between chats and files
+
+## Next Steps for Project Implementation
+1. Create project data model and types
+2. Implement project store with Zustand
+3. Add project creation and management
+4. Develop section-based organization
+5. Build project relationship system
+
+## Dependencies and Considerations
+1. Storage Service Integration:
+   - Extend current storage service for project structure
+   - Add project-specific queries and filters
+   - Implement section-based file organization
+
+2. Mode Integration:
+   - Project type based on current mode
+   - Mode-specific project templates
+   - Mode-specific section defaults
+
+3. Performance Considerations:
+   - Lazy loading of project data
+   - Efficient file organization
+   - Optimized relationship queries
 
 ## Current Status
 We are currently in Phase 1 and early Phase 3, with:
