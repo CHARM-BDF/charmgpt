@@ -44,22 +44,33 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [isOpen]);
 
-  // Load project files when project is selected
+  // Load project files when project is selected or when files are updated
+  const loadFiles = async () => {
+    if (!selectedProjectId) return;
+    
+    try {
+      const projectFiles = await storageService.listFiles({
+        tags: [`project:${selectedProjectId}`]
+      });
+      setFiles(projectFiles);
+    } catch (error) {
+      console.error('Error loading project files:', error);
+    }
+  };
+
+  // Load files when project is selected
   useEffect(() => {
-    const loadFiles = async () => {
-      if (!selectedProjectId) return;
-      
-      try {
-        const projectFiles = await storageService.listFiles({
-          tags: [`project:${selectedProjectId}`]
-        });
-        setFiles(projectFiles);
-      } catch (error) {
-        console.error('Error loading project files:', error);
-      }
-    };
     loadFiles();
-  }, [selectedProjectId, storageService]);
+  }, [selectedProjectId]);
+
+  // Set up polling for file updates
+  useEffect(() => {
+    if (!selectedProjectId) return;
+
+    const pollInterval = setInterval(loadFiles, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [selectedProjectId]);
 
   const handleCreateProject = () => {
     if (!newProjectName.trim()) return;
@@ -87,10 +98,7 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
       });
       
       // Refresh file list
-      const projectFiles = await storageService.listFiles({
-        tags: [`project:${selectedProjectId}`]
-      });
-      setFiles(projectFiles);
+      loadFiles();
     } catch (error) {
       console.error('Error uploading file:', error);
     }
