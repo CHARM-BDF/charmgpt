@@ -47,8 +47,14 @@ router.post('/files', upload.single('file'), async (req: Request, res: Response)
 
     const metadata = req.body.metadata ? JSON.parse(req.body.metadata) as FileMetadata : {};
     console.log('[STORAGE] Parsed metadata:', metadata);
+    console.log('[STORAGE] File tags:', metadata.tags || []);
     const fileId = path.basename(req.file.path);
     console.log('[STORAGE] Generated fileId:', fileId);
+
+    // Ensure tags array exists
+    if (!metadata.tags) {
+      metadata.tags = [];
+    }
 
     // Store metadata
     const metadataDir = path.join(process.cwd(), 'uploads', 'metadata');
@@ -62,7 +68,7 @@ router.post('/files', upload.single('file'), async (req: Request, res: Response)
       JSON.stringify(metadata, null, 2)
     );
 
-    loggingService.log('info', `File uploaded successfully: ${fileId}`);
+    loggingService.log('info', `File uploaded successfully: ${fileId} with tags: ${metadata.tags.join(', ')}`);
     res.status(201).json({ id: fileId });
   } catch (error) {
     const loggingService = req.app.locals.loggingService as LoggingService;
@@ -123,6 +129,7 @@ router.get('/files', async (req: Request, res: Response) => {
     const loggingService = req.app.locals.loggingService as LoggingService;
     const uploadDir = path.join(process.cwd(), 'uploads');
     const metadataDir = path.join(uploadDir, 'metadata');
+    const requestedTags = req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : [req.query.tags]) : [];
 
     if (!fs.existsSync(uploadDir)) {
       return res.json([]);
@@ -151,13 +158,21 @@ router.get('/files', async (req: Request, res: Response) => {
             size: stats.size,
             created: stats.birthtime,
             modified: stats.mtime,
-            metadata
+            metadata,
+            tags: metadata.tags || []
           };
         })
     );
 
-    loggingService.log('info', `Listed ${fileEntries.length} files`);
-    res.json(fileEntries);
+    // Filter by tags if any are requested
+    const filteredEntries = requestedTags.length > 0
+      ? fileEntries.filter(entry => 
+          requestedTags.every(tag => entry.tags.includes(tag))
+        )
+      : fileEntries;
+
+    loggingService.log('info', `Listed ${filteredEntries.length} files (filtered from ${fileEntries.length})`);
+    res.json(filteredEntries);
   } catch (error) {
     const loggingService = req.app.locals.loggingService as LoggingService;
     loggingService.logError(error as Error);
