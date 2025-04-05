@@ -104,6 +104,32 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
     }
   };
 
+  const handleFileDelete = async (fileId: string) => {
+    if (!window.confirm('Are you sure you want to delete this file?')) {
+      return;
+    }
+
+    try {
+      await storageService.deleteFile(fileId);
+      // Refresh file list
+      loadFiles();
+    } catch (error) {
+      console.error('Error deleting file:', error);
+    }
+  };
+
+  const handleFileRename = async (fileId: string, newName: string) => {
+    try {
+      const metadata = await storageService.getMetadata(fileId);
+      metadata.description = newName;
+      await storageService.updateMetadata(fileId, metadata);
+      // Refresh file list
+      loadFiles();
+    } catch (error) {
+      console.error('Error renaming file:', error);
+    }
+  };
+
   return (
     <>
       {/* Add ProjectFilesTopDrawer */}
@@ -111,6 +137,8 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
         files={files}
         selectedProjectId={selectedProjectId}
         onFileUpload={handleFileUpload}
+        onFileDelete={handleFileDelete}
+        onFileRename={handleFileRename}
       />
 
       {/* Trigger area */}

@@ -1,24 +1,42 @@
 import React, { useState, useRef } from 'react';
 import { FileEntry } from '../../types/fileManagement';
 // @ts-ignore - Heroicons type definitions mismatch
-import { FolderIcon, ArrowUpTrayIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { FolderIcon, ArrowUpTrayIcon, ChevronDownIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { useProjectStore } from '../../store/projectStore';
 
 interface ProjectFilesTopDrawerProps {
   files: FileEntry[];
   selectedProjectId: string | null;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  onFileDelete?: (fileId: string) => Promise<void>;
+  onFileRename?: (fileId: string, newName: string) => Promise<void>;
 }
 
 export const ProjectFilesTopDrawer: React.FC<ProjectFilesTopDrawerProps> = ({
   files,
   selectedProjectId,
   onFileUpload,
+  onFileDelete,
+  onFileRename
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [editingFileId, setEditingFileId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { getProject } = useProjectStore();
   const selectedProject = selectedProjectId ? getProject(selectedProjectId) : null;
+
+  const handleStartEdit = (file: FileEntry) => {
+    setEditingFileId(file.id);
+    setEditingName(file.name);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingFileId && onFileRename && editingName.trim()) {
+      await onFileRename(editingFileId, editingName.trim());
+      setEditingFileId(null);
+    }
+  };
 
   return (
     <div className="fixed left-0 top-[88px] z-50">
@@ -65,12 +83,52 @@ export const ProjectFilesTopDrawer: React.FC<ProjectFilesTopDrawerProps> = ({
             {files.map(file => (
               <div
                 key={file.id}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                className="flex items-center justify-between gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg group"
               >
-                <FolderIcon className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                  {file.name}
-                </span>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <FolderIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  {editingFileId === file.id ? (
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onBlur={handleSaveEdit}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                      className="flex-1 text-sm bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                      {file.name}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {onFileRename && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEdit(file);
+                      }}
+                      className="p-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400"
+                      title="Rename file"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                  {onFileDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onFileDelete(file.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+                      title="Delete file"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {files.length === 0 && (

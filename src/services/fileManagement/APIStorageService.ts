@@ -294,5 +294,10 @@ export class APIStorageService extends BaseStorageService {
         return response.json();
     }
 
+    async deleteFile(id: string): Promise<void> {
+        // Override base class to just delete directly instead of soft delete
+        await this.deleteContent(id);
+    }
+
     // Implement other abstract methods as needed...
 } 

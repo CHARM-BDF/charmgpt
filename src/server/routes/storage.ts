@@ -180,4 +180,33 @@ router.get('/files', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/storage/files/:id - Delete a file
+router.delete('/files/:id', async (req: Request, res: Response) => {
+  try {
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    const { id } = req.params;
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    const metadataDir = path.join(uploadDir, 'metadata');
+    const filePath = path.join(uploadDir, id);
+    const metadataPath = path.join(metadataDir, `${id}.json`);
+
+    // Delete file if exists
+    if (fs.existsSync(filePath)) {
+      await fs.promises.unlink(filePath);
+    }
+
+    // Delete metadata if exists
+    if (fs.existsSync(metadataPath)) {
+      await fs.promises.unlink(metadataPath);
+    }
+
+    loggingService.log('info', `File deleted: ${id}`);
+    res.status(200).json({ message: 'File deleted successfully' });
+  } catch (error) {
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    loggingService.logError(error as Error);
+    res.status(500).json({ error: 'Failed to delete file' });
+  }
+});
+
 export default router; 

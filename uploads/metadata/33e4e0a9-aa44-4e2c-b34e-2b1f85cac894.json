@@ -1,5 +1,5 @@
 {
-  "description": "NIH Grant Details.md",
+  "description": "RFA-HG-23.md",
   "schema": {
     "type": "file",
     "format": "text/markdown"
@@ -26,6 +26,14 @@
         "user": "system",
         "branch": "main",
         "parent": ""
+      },
+      {
+        "id": "d958f526-3a96-4a2c-a0cd-59aa6b28407c",
+        "timestamp": "2025-04-05T04:30:17.450Z",
+        "message": "Metadata update",
+        "user": "system",
+        "branch": "main",
+        "parent": "2e8daa70-fe95-41af-827d-6303d855cd93"
       }
     ]
   },
