@@ -49,9 +49,10 @@ export class FileSystemStorageService extends BaseStorageService {
     await fs.mkdir(this.relationshipsDir, { recursive: true });
   }
 
-  protected async writeContent(id: string, content: Buffer): Promise<void> {
+  protected async writeContent(id: string, content: Buffer): Promise<string> {
     const filePath = path.join(this.contentDir, id);
     await fs.writeFile(filePath, content);
+    return id;
   }
 
   protected async readContent(id: string): Promise<Buffer> {

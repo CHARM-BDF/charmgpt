@@ -7,6 +7,7 @@ import fs from 'fs';
 import chatRouter from './routes/chat';
 import ollamaRouter from './routes/ollama_mcp';
 import serverStatusRouter from './routes/server-status';
+import storageRouter from './routes/storage';
 import { MCPService, MCPLogMessage } from './services/mcp';
 import { LoggingService } from './services/logging';
 import { randomUUID } from 'crypto';
@@ -101,10 +102,23 @@ try {
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`[SERVER] ${req.method} ${req.url}`);
+  if (req.headers['content-type']) {
+    console.log(`[SERVER] Content-Type: ${req.headers['content-type']}`);
+  }
+  next();
+});
+
 // Mount routes
 app.use('/api/chat', chatRouter);
 app.use('/api/ollama', ollamaRouter);
 app.use('/api/server-status', serverStatusRouter);
+app.use('/api/storage', storageRouter);
 
 // Add cleanup handlers for graceful shutdown
 process.on('SIGINT', () => {

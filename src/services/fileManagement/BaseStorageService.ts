@@ -27,7 +27,7 @@ export abstract class BaseStorageService implements IStorageService {
     // to provide basic storage functionality
     // =============================================
     
-    protected abstract writeContent(id: string, content: Uint8Array, metadata: FileMetadata): Promise<void>;
+    protected abstract writeContent(id: string, content: Uint8Array, metadata: FileMetadata): Promise<string>;
     protected abstract readContent(id: string): Promise<Uint8Array>;
     protected abstract deleteContent(id: string): Promise<void>;
     protected abstract storeMetadata(id: string, metadata: FileMetadata): Promise<void>;
@@ -71,8 +71,9 @@ export abstract class BaseStorageService implements IStorageService {
             metadata: fileMetadata
         };
 
-        await this.writeContent(id, contentArray, fileMetadata);
-        await this.storeMetadata(id, entry.metadata);
+        const newId = await this.writeContent(id, contentArray, fileMetadata);
+        entry.id = newId; // Use the ID returned from the server
+        await this.storeMetadata(newId, entry.metadata);
 
         return entry;
     }

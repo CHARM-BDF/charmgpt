@@ -1,0 +1,44 @@
+{
+  "description": "NIH Grant Details.md",
+  "schema": {
+    "type": "file",
+    "format": "text/markdown"
+  },
+  "origin": {
+    "type": "upload",
+    "timestamp": "2025-04-05T02:30:34.196Z"
+  },
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0,
+    "branch": {
+      "name": "main",
+      "parent": "",
+      "created": "2025-04-05T02:30:34.196Z",
+      "description": "Initial version"
+    },
+    "history": [
+      {
+        "id": "d17745f3-4b53-406d-9443-ffacd959a8d2",
+        "timestamp": "2025-04-05T02:30:34.196Z",
+        "message": "Initial creation",
+        "user": "system",
+        "branch": "main",
+        "parent": ""
+      }
+    ]
+  },
+  "analysisInfo": {
+    "summary": {},
+    "quality": {
+      "nullCount": 0,
+      "duplicateCount": 0,
+      "errorCount": 0,
+      "completeness": 100
+    }
+  },
+  "tags": [
+    "project:3c1c69c4-83c8-4b7e-a798-68f9447aa80c"
+  ]
+}

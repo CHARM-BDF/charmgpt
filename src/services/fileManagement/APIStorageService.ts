@@ -13,9 +13,16 @@ export class APIStorageService extends BaseStorageService {
     constructor(baseUrl: string = '/api/storage') {
         super();
         this.baseUrl = baseUrl;
+        console.log('[APIStorageService] Initialized with baseUrl:', baseUrl);
     }
 
-    protected async writeContent(id: string, content: Uint8Array, metadata?: Partial<FileMetadata>): Promise<void> {
+    protected async writeContent(id: string, content: Uint8Array, metadata?: Partial<FileMetadata>): Promise<string> {
+        console.log('[APIStorageService] writeContent called with:', {
+            id,
+            contentLength: content.length,
+            metadata: metadata ? JSON.stringify(metadata) : 'undefined'
+        });
+
         const formData = new FormData();
         const blob = new Blob([content], { type: metadata?.schema?.format || 'application/octet-stream' });
         
@@ -35,12 +42,32 @@ export class APIStorageService extends BaseStorageService {
             },
             ...metadata
         }));
+
+        console.log('[APIStorageService] Making POST request to:', `${this.baseUrl}/files`);
         
-        // Use POST for initial file creation
-        await fetch(`${this.baseUrl}/files`, {
-            method: 'POST',
-            body: formData
-        });
+        try {
+            const response = await fetch(`${this.baseUrl}/files`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[APIStorageService] File upload failed:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorText
+                });
+                throw new Error(`File upload failed: ${response.status} ${response.statusText}`);
+            }
+            
+            const { id: newId } = await response.json();
+            console.log('[APIStorageService] File upload successful, got ID:', newId);
+            return newId;
+        } catch (error) {
+            console.error('[APIStorageService] Network error during file upload:', error);
+            throw error;
+        }
     }
 
     protected async readContent(id: string): Promise<Uint8Array> {
@@ -56,13 +83,37 @@ export class APIStorageService extends BaseStorageService {
     }
 
     protected async storeMetadata(id: string, metadata: FileMetadata): Promise<void> {
-        await fetch(`${this.baseUrl}/files/${id}/metadata`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(metadata)
+        console.log('[APIStorageService] storeMetadata called with:', {
+            id,
+            metadata: JSON.stringify(metadata)
         });
+
+        console.log('[APIStorageService] Making PUT request to:', `${this.baseUrl}/files/${id}/metadata`);
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/files/${id}/metadata`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(metadata)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[APIStorageService] Metadata update failed:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorText
+                });
+                throw new Error(`Metadata update failed: ${response.status} ${response.statusText}`);
+            }
+            
+            console.log('[APIStorageService] Metadata update successful');
+        } catch (error) {
+            console.error('[APIStorageService] Network error during metadata update:', error);
+            throw error;
+        }
     }
 
     protected async retrieveMetadata(id: string): Promise<FileMetadata> {
