@@ -1,18 +1,18 @@
-import express from 'express';
-import cors from 'cors';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+    CallToolRequestSchema,
+    ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { Anthropic } from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import path from 'path';
 
-// Load environment variables
-dotenv.config();
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Load environment variables from root directory
+dotenv.config({ 
+  path: path.resolve(__dirname, '../../../.env') 
+});
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -25,11 +25,11 @@ const REVIEW_PROMPT = `You are an expert NIH grant reviewer with extensive exper
 # **Guide to Specific Aims Page for NIH Application**
 
    
-The Specific Aims section is the most vital part of any NIH grant application. In this section, you must quickly gain the reviewers’ trust and confidence while simultaneously convincing them that your work is important to fund. You must also convey that you and your team are the best people to complete the work you’ve proposed. The Specific Aims section is central to your grant proposal. Therefore, **it should be the first section you write**. You may think of your Specific Aims page as an abbreviated version of the full grant. By having this page written and well- thought out, the remainder of grant application will be easier to write.
+The Specific Aims section is the most vital part of any NIH grant application. In this section, you must quickly gain the reviewers' trust and confidence while simultaneously convincing them that your work is important to fund. You must also convey that you and your team are the best people to complete the work you've proposed. The Specific Aims section is central to your grant proposal. Therefore, **it should be the first section you write**. You may think of your Specific Aims page as an abbreviated version of the full grant. By having this page written and well- thought out, the remainder of grant application will be easier to write.
 
 # **I.**     	**Introductory Paragraph:**
 
-In this paragraph, your goal should be to introduce your research subject to the reviewers and quickly capture their attention. This paragraph should describe the significant gap in knowledge that directly relates to the critical need the funding entity deals with. It is critical to know your funding entity’s mission statement and ensure the critical need you are trying to fill fits well within its mission. It should include the following information:
+In this paragraph, your goal should be to introduce your research subject to the reviewers and quickly capture their attention. This paragraph should describe the significant gap in knowledge that directly relates to the critical need the funding entity deals with. It is critical to know your funding entity's mission statement and ensure the critical need you are trying to fill fits well within its mission. It should include the following information:
 
 •  *First Sentence/Hook:* Explain WHAT your research topic is and WHY it is critical that you conduct the research.
 
@@ -51,7 +51,7 @@ There is some flexibility in this paragraph, depending upon how your proposal is
 
 •  *Hypothesis and Proposal Objectives:* Your proposal should contain both of these components, depending on the long-term goal. State your central hypothesis clearly, specifically, and with simple language. Describe how your project addresses the critical need, and clearly state the proposed solution. In general, avoid vague hypotheses because it will be unclear to the reviewers what you expect to determine with the proposed research.
 
-•  *Rationale:* Explain how you arrived at your central hypothesis (for example, using past studies and published literature). Briefly, state what your project’s completion would make possible (e.g., new therapeutics), and tie it to the funding entity’s mission.
+•  *Rationale:* Explain how you arrived at your central hypothesis (for example, using past studies and published literature). Briefly, state what your project's completion would make possible (e.g., new therapeutics), and tie it to the funding entity's mission.
 
 •  *Qualifications:* Briefly state why your experimental design and your team are the best to accomplish the research goals. You can mention factors such as your preliminary data, personnel qualifications, laboratory equipment, etc., but it is important to keep it concise.
 
@@ -85,7 +85,7 @@ Provide your review in markdown format, using appropriate headers and formatting
 const reviewTool = {
   name: "review_specific_aims",
   description: "Reviews NIH grant Specific Aims section using Anthropic AI, providing detailed feedback and recommendations",
-  parameters: {
+  inputSchema: {
     type: "object",
     properties: {
       aims_text: {
@@ -101,95 +101,159 @@ const reviewTool = {
   }
 };
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Tools listing endpoint
-app.get('/tools', (req, res) => {
-  res.json({ tools: [reviewTool] });
-});
-
-// Tool execution endpoint
-app.post('/tools/:toolName', async (req, res) => {
-  const { toolName } = req.params;
-  const { aims_text, rfa_text } = req.body;
-
-  if (toolName !== "review_specific_aims") {
-    return res.status(404).json({
-      content: [{
-        type: "text",
-        text: `Tool ${toolName} not found`
-      }],
-      isError: true
-    });
-  }
-
-  try {
-    // Validate input
-    if (!aims_text || !rfa_text) {
-      throw new Error("Missing required parameters: aims_text and rfa_text are required");
+// Create server instance
+const server = new Server(
+    {
+        name: "aims-review-mcp",
+        version: "1.0.0",
+    },
+    {
+        capabilities: {
+            tools: {},
+            logging: {}
+        },
     }
+);
 
-    // Format the prompt
-    const formattedPrompt = REVIEW_PROMPT
-      .replace("{aims_text}", aims_text)
-      .replace("{rfa_text}", rfa_text);
-
-    // Get review from Anthropic
-    const response = await anthropic.messages.create({
-      model: "claude-3-sonnet-20240229",
-      max_tokens: 4000,
-      temperature: 0.2,
-      messages: [{
-        role: "user",
-        content: formattedPrompt
-      }]
-    });
-
-    // Extract the review text from the response
-    const reviewText = response.content[0]?.type === 'text' 
-      ? response.content[0].text 
-      : 'Error: Unable to generate review text';
-
-    // Create artifact
-    const artifact = {
-      type: "text/markdown",
-      id: crypto.randomUUID(),
-      title: "NIH Specific Aims Review",
-      content: reviewText,
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        model: "claude-3-sonnet-20240229"
-      }
+// List available tools
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+        tools: [reviewTool],
     };
-
-    // Return response with both content and artifact
-    return res.json({
-      content: [{
-        type: "text",
-        text: "Review completed successfully. Click the attachment to view the detailed review.",
-        forModel: true
-      }],
-      artifacts: [artifact],
-      isError: false
-    });
-
-  } catch (error: unknown) {
-    console.error('Error in review_specific_aims:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return res.status(500).json({
-      content: [{
-        type: "text",
-        text: `Error generating review: ${errorMessage}`
-      }],
-      isError: true
-    });
-  }
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Aims Review MCP server running on port ${port}`);
+// Handle tool execution
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    try {
+        const toolName = request.params.name;
+        const toolArgs = request.params.arguments || {};
+
+        if (toolName !== "review_specific_aims") {
+            return {
+                content: [{
+                    type: "text",
+                    text: `Tool ${toolName} not found`
+                }],
+                isError: true
+            };
+        }
+
+        const { aims_text, rfa_text } = toolArgs;
+
+        // Validate input
+        if (!aims_text || !rfa_text) {
+            throw new Error("Missing required parameters: aims_text and rfa_text are required");
+        }
+
+        // Format the prompt
+        const formattedPrompt = REVIEW_PROMPT
+            .replace('{aims_text}', String(aims_text))
+            .replace('{rfa_text}', String(rfa_text));
+
+        // Get review from Anthropic
+        const response = await anthropic.messages.create({
+            model: "claude-3-sonnet-20240229",
+            max_tokens: 4000,
+            temperature: 0.2,
+            messages: [{
+                role: "user",
+                content: formattedPrompt
+            }]
+        });
+
+        // Extract the review text from the response
+        const reviewText = response.content[0]?.type === 'text' 
+            ? response.content[0].text 
+            : 'Error: Unable to generate review text';
+
+        // Create artifact
+        const artifact = {
+            type: "text/markdown",
+            id: crypto.randomUUID(),
+            title: "NIH Specific Aims Review",
+            content: reviewText,
+            metadata: {
+                generatedAt: new Date().toISOString(),
+                model: "claude-3-sonnet-20240229"
+            }
+        };
+
+        // Return response with both content and artifact
+        return {
+            content: [{
+                type: "text",
+                text: "Review completed successfully. Click the attachment to view the detailed review.",
+                forModel: true
+            }],
+            artifacts: [artifact]
+        };
+
+    } catch (error) {
+        console.error('Error in review_specific_aims:', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        return {
+            content: [{
+                type: "text",
+                text: `Error generating review: ${errorMessage}`
+            }],
+            isError: true
+        };
+    }
+});
+
+// Helper function for structured logging
+function sendStructuredLog(server: Server, level: 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency', message: string, metadata?: Record<string, unknown>) {
+    const timestamp = new Date().toISOString();
+    const traceId = crypto.randomUUID().split('-')[0];
+    
+    try {
+        server.sendLoggingMessage({
+            level,
+            logger: 'aims-review-mcp',
+            data: {
+                message: `[aims-review-mcp] [${level.toUpperCase()}] [${traceId}] ${message}`,
+                timestamp,
+                traceId,
+                ...metadata
+            },
+        });
+    } catch (error) {
+        console.error(`[aims-review-mcp] Error sending log:`, error);
+        console.error(`[aims-review-mcp] [${level.toUpperCase()}] [${traceId}] ${message}`);
+        if (metadata) {
+            console.error(`[aims-review-mcp] [${traceId}] Metadata:`, metadata);
+        }
+    }
+}
+
+// Start the server
+async function main() {
+    const transport = new StdioServerTransport();
+    
+    try {
+        await server.connect(transport);
+        
+        sendStructuredLog(server, 'info', 'Server started', {
+            transport: 'stdio',
+            timestamp: new Date().toISOString()
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const diagnosticId = crypto.randomUUID().slice(0, 8);
+        console.error(`[aims-review-mcp] Server initialization complete - ${diagnosticId}`);
+        
+    } catch (error) {
+        console.error('[aims-review-mcp] Fatal error during server initialization', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        });
+        throw error;
+    }
+}
+
+main().catch((error) => {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('[aims-review-mcp] Fatal error in main():', errorMessage);
+    process.exit(1);
 }); 
