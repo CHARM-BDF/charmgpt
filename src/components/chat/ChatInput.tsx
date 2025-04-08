@@ -1,12 +1,19 @@
-import React, { useRef, useEffect, KeyboardEvent, useState } from 'react';
+import React, { useRef, useEffect, KeyboardEvent, useState, ClipboardEvent } from 'react';
 import { useChatStore } from '../../store/chatStore';
+import { useProjectStore } from '../../store/projectStore';
+import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 
-export const ChatInput: React.FC = () => {
+interface ChatInputProps {
+  storageService: APIStorageService;
+}
+
+export const ChatInput: React.FC<ChatInputProps> = ({ storageService }) => {
   // Use selector functions to only subscribe to the specific state we need
   const chatInput = useChatStore(state => state.chatInput);
   const updateChatInput = useChatStore(state => state.updateChatInput);
   const addMessage = useChatStore(state => state.addMessage);
   const processMessage = useChatStore(state => state.processMessage);
+  const { selectedProjectId } = useProjectStore();
   
   // Local state for input to debounce updates to the store
   const [localInput, setLocalInput] = useState(chatInput);
@@ -91,6 +98,48 @@ export const ChatInput: React.FC = () => {
     }
   };
 
+  const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboardData = e.clipboardData;
+    const htmlContent = clipboardData.getData('text/html');
+    const plainText = clipboardData.getData('text/plain');
+    const content = htmlContent || plainText;
+
+    // Only save if content is longer than 500 characters and we have a selected project
+    if (content.length > 500 && selectedProjectId) {
+      const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+      const fileName = `Pasted text ${timestamp}`;
+
+      try {
+        const metadata = {
+          description: fileName,
+          schema: {
+            type: 'json' as const,
+            format: htmlContent ? 'text/html' : 'text/plain',
+            encoding: 'utf-8',
+            sampleData: ''
+          },
+          origin: {
+            type: 'upload' as const,
+            timestamp: new Date()
+          }
+        };
+
+        // Add project tag to the metadata before sending
+        const metadataWithTags = {
+          ...metadata,
+          tags: [`project:${selectedProjectId}`]
+        };
+
+        await storageService.createFile(content, metadataWithTags);
+
+        // Add a message to the chat indicating the file was saved
+        processMessage(`Saved pasted content as file: ${fileName}`);
+      } catch (error) {
+        console.error('Error saving pasted content:', error);
+      }
+    }
+  };
+
   return (
     <div className="sticky bottom-0 bg-gray-200 dark:bg-gray-900 shadow-lg">
       <div className="w-full max-w-4xl mx-auto px-4 flex">
@@ -100,6 +149,7 @@ export const ChatInput: React.FC = () => {
             value={localInput}
             onChange={(e) => debouncedUpdate(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className="w-full min-h-[96px] p-3 
                      border border-stone-200/80 dark:border-gray-600/80 
                      rounded-t-xl rounded-b-none

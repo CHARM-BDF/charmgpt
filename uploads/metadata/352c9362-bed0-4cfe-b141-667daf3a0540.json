@@ -1,0 +1,55 @@
+{
+  "description": "Pasted_gdoc_20250407_034629",
+  "schema": {
+    "type": "tabular",
+    "format": "text/html",
+    "encoding": "utf-8",
+    "sampleData": "<meta charset='utf-8'><meta charset=\"utf-8\"><b style=\"font-weight:normal;\" id=\"docs-internal-guid-6b",
+    "tabular": {
+      "rowCount": 1,
+      "columns": [
+        {
+          "name": "content",
+          "type": "string",
+          "nullable": false
+        }
+      ],
+      "hasHeader": false
+    }
+  },
+  "origin": {
+    "type": "upload",
+    "timestamp": "2025-04-07T03:46:29.469Z"
+  },
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0,
+    "branch": {
+      "name": "main",
+      "parent": "main",
+      "created": "2025-04-07T03:46:29.469Z",
+      "description": "Initial version"
+    },
+    "history": []
+  },
+  "analysisInfo": {
+    "summary": {
+      "categorical": {
+        "content": {
+          "uniqueCount": 1,
+          "topValues": [
+            "<meta charset='utf-8"
+          ],
+          "nullCount": 0
+        }
+      }
+    },
+    "quality": {
+      "nullCount": 0,
+      "duplicateCount": 0,
+      "errorCount": 0,
+      "completeness": 100
+    }
+  }
+}

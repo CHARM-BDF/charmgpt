@@ -25,7 +25,7 @@ export const ChatInterface: React.FC = () => {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
   const [showTestingTools, setShowTestingTools] = useState(false);
-  const storageService = useMemo(() => new APIStorageService(), []);
+  const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
   // const { activeServer } = useMCPStore();
   // console.log('ChatInterface: Rendering with showArtifactWindow:', showArtifactWindow);
@@ -331,7 +331,7 @@ export const ChatInterface: React.FC = () => {
                 <ChatMessages messages={messages} />
               </div>
             </div>
-            <ChatInput />
+            <ChatInput storageService={storageService} />
             {/* {activeServer && <MCPTools serverId={activeServer} onToolSelect={() => {}} onResourceSelect={() => {}} onPromptSelect={() => {}} />} */}
           </div>
         </div>

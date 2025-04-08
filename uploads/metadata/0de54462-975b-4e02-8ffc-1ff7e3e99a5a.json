@@ -1,0 +1,55 @@
+{
+  "description": "Pasted_html_20250407_033030",
+  "schema": {
+    "type": "tabular",
+    "format": "text/html",
+    "encoding": "utf-8",
+    "sampleData": "<meta charset='utf-8'><table class=\"stack-preview-container width-constrained\" style=\"box-sizing: bo",
+    "tabular": {
+      "rowCount": 1,
+      "columns": [
+        {
+          "name": "content",
+          "type": "string",
+          "nullable": false
+        }
+      ],
+      "hasHeader": false
+    }
+  },
+  "origin": {
+    "type": "upload",
+    "timestamp": "2025-04-07T03:30:30.781Z"
+  },
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0,
+    "branch": {
+      "name": "main",
+      "parent": "main",
+      "created": "2025-04-07T03:30:30.781Z",
+      "description": "Initial version"
+    },
+    "history": []
+  },
+  "analysisInfo": {
+    "summary": {
+      "categorical": {
+        "content": {
+          "uniqueCount": 1,
+          "topValues": [
+            "<meta charset='utf-8"
+          ],
+          "nullCount": 0
+        }
+      }
+    },
+    "quality": {
+      "nullCount": 0,
+      "duplicateCount": 0,
+      "errorCount": 0,
+      "completeness": 100
+    }
+  }
+}

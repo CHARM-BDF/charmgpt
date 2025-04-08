@@ -209,4 +209,26 @@ router.delete('/files/:id', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/storage/files/:id/content - Get file content
+router.get('/files/:id/content', async (req: Request, res: Response) => {
+  try {
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    const { id } = req.params;
+    const filePath = path.join(process.cwd(), 'uploads', id);
+
+    if (!fs.existsSync(filePath)) {
+      loggingService.log('error', `File not found: ${id}`);
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const content = await fs.promises.readFile(filePath);
+    loggingService.log('info', `File content retrieved: ${id}`);
+    res.send(content);
+  } catch (error) {
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    loggingService.logError(error as Error);
+    res.status(500).json({ error: 'Failed to get file content' });
+  }
+});
+
 export default router; 
