@@ -12,19 +12,21 @@ import { ModelSelector } from '../models/ModelSelector';
 import { ConversationDrawer } from '../conversations/ConversationDrawer';
 import BrainWaveCharmStatic from '../animations/BrainWaveCharmStatic';
 // @ts-ignore - Heroicons type definitions mismatch
-import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, BeakerIcon, FolderIcon } from '@heroicons/react/24/outline';
 // import { useMCPStore } from '../../store/mcpStore';
 import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import KnowledgeGraphTestButton from '../artifacts/KnowledgeGraphTestButton';
 import { useModeStore } from '../../store/modeStore';
 import { ProjectDrawer } from '../projects/ProjectDrawer';
+import { ProjectListView } from '../projects/ProjectListView';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
   const [showTestingTools, setShowTestingTools] = useState(false);
+  const [showProjectList, setShowProjectList] = useState(false);
   const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
   // const { activeServer } = useMCPStore();
@@ -142,6 +144,24 @@ export const ChatInterface: React.FC = () => {
                     </button>
                   </div>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Grant Mode</span>
+                </div>
+
+                {/* Project List Mode */}
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setShowProjectList(!showProjectList)}
+                      className={`p-1 rounded-full transition-colors ${
+                        showProjectList 
+                          ? 'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/30' 
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      title="Project List"
+                    >
+                      <FolderIcon className="w-8 h-8 text-gray-700 dark:text-gray-300" />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Projects</span>
                 </div>
 
                 {/* Research Mode */}
@@ -347,6 +367,10 @@ export const ChatInterface: React.FC = () => {
         isOpen={isStatusModalOpen}
         onClose={() => setIsStatusModalOpen(false)}
       />
+
+      {showProjectList && (
+        <ProjectListView onClose={() => setShowProjectList(false)} />
+      )}
     </div>
   );
 };
