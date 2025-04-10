@@ -5,9 +5,10 @@ import { APIStorageService } from '../../services/fileManagement/APIStorageServi
 
 interface ChatInputProps {
   storageService: APIStorageService;
+  onBack?: () => void;  // Add optional callback for transitioning back
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ storageService }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) => {
   // Use selector functions to only subscribe to the specific state we need
   const chatInput = useChatStore(state => state.chatInput);
   const updateChatInput = useChatStore(state => state.updateChatInput);
@@ -69,25 +70,41 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService }) => {
 
     console.log('ChatInput: Submitting message:', localInput);
     
-    // If we're in a project view, create a new conversation
+    // If we're in a project view, create a new conversation and transition
     if (selectedProjectId) {
       const conversationId = createNewChat();
       if (conversationId) {
         addConversationToProject(selectedProjectId, conversationId, `Project Chat ${new Date().toLocaleString()}`);
-      }
-    }
+        
+        // Add user message to chat store first
+        addMessage({
+          role: 'user',
+          content: localInput
+        });
 
-    // Add user message to chat store first
-    addMessage({
-      role: 'user',
-      content: localInput
-    });
-    
-    try {
-      await processMessage(localInput);
-      console.log('ChatInput: Message processed successfully');
-    } catch (error) {
-      console.error('ChatInput: Error processing message:', error);
+        // Transition to chat interface immediately
+        onBack?.();
+        
+        try {
+          await processMessage(localInput);
+          console.log('ChatInput: Message processed successfully');
+        } catch (error) {
+          console.error('ChatInput: Error processing message:', error);
+        }
+      }
+    } else {
+      // Regular chat flow without project
+      addMessage({
+        role: 'user',
+        content: localInput
+      });
+      
+      try {
+        await processMessage(localInput);
+        console.log('ChatInput: Message processed successfully');
+      } catch (error) {
+        console.error('ChatInput: Error processing message:', error);
+      }
     }
 
     // Clear the input after sending

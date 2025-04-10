@@ -751,7 +751,11 @@ export const useChatStore = create<ChatState>()(
                 artifacts: []
               }
             },
-            currentConversationId: id
+            currentConversationId: id,
+            // Clear artifacts and related state when starting new conversation
+            artifacts: [],
+            selectedArtifactId: null,
+            showArtifactWindow: false
           }));
           
           return id;

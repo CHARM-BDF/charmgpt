@@ -11,9 +11,10 @@ import { APIStorageService } from '../../services/fileManagement/APIStorageServi
 interface ProjectViewProps {
   projectId: string;
   onBack: () => void;
+  onClose: () => void;
 }
 
-export function ProjectView({ projectId, onBack }: ProjectViewProps) {
+export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
   const project = useProjectStore((state: { projects: Project[] }) => 
     state.projects.find((p: Project) => p.id === projectId)
   );
@@ -72,7 +73,7 @@ export function ProjectView({ projectId, onBack }: ProjectViewProps) {
           {/* Chat Input and Conversations */}
           <div className="mb-8">
             <div className="mb-4">
-              <ChatInput storageService={new APIStorageService()} />
+              <ChatInput storageService={new APIStorageService()} onBack={onClose} />
             </div>
             <h2 className="text-lg font-semibold mb-4">Previous Conversations</h2>
             {(project.conversations || []).length === 0 ? (
