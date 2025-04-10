@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ProjectView } from './ProjectView';
 
 interface ProjectListViewProps {
   onClose: () => void;
@@ -9,6 +10,20 @@ interface ProjectListViewProps {
 
 export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose }) => {
   const { projects, isLoading, error } = useProjectStore();
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  const selectedProject = selectedProjectId 
+    ? projects.find(p => p.id === selectedProjectId)
+    : null;
+
+  if (selectedProject) {
+    return (
+      <ProjectView 
+        project={selectedProject} 
+        onBack={() => setSelectedProjectId(null)} 
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-white dark:bg-gray-900 z-50">
@@ -51,7 +66,8 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose }) => 
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4"
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
+                onClick={() => setSelectedProjectId(project.id)}
               >
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{project.name}</h3>
                 <p className="mt-1 text-gray-500 dark:text-gray-400">{project.description}</p>
