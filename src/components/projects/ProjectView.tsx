@@ -1,114 +1,116 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Project } from '../../store/projectStore';
-// @ts-ignore - Heroicons type definitions mismatch
+// @ts-expect-error - Heroicons type definitions mismatch
 import { ArrowLeftIcon, StarIcon, EllipsisHorizontalIcon, LockClosedIcon, BookOpenIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useChatStore, ChatState } from '../../store/chatStore';
+import { useProjectStore } from '../../store/projectStore';
+import { ConversationState } from '../../types/chat';
+import { ChatInput } from '../chat/ChatInput';
+import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 
 interface ProjectViewProps {
-  project: Project;
+  projectId: string;
   onBack: () => void;
 }
 
-export const ProjectView: React.FC<ProjectViewProps> = ({ project, onBack }) => {
+export function ProjectView({ projectId, onBack }: ProjectViewProps) {
+  const project = useProjectStore((state: { projects: Project[] }) => 
+    state.projects.find((p: Project) => p.id === projectId)
+  );
+  const addConversationToProject = useProjectStore((state: { addConversationToProject: (projectId: string, conversationId: string, title: string) => void }) => 
+    state.addConversationToProject
+  );
+  const createNewChat = useChatStore((state: ChatState) => state.startNewConversation);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control') {
+        onBack();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
+
+  if (!project) {
+    return <div>Project not found</div>;
+  }
+
   return (
-    <div className="fixed inset-0 bg-white dark:bg-gray-900 z-50 overflow-y-auto">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-screen-2xl mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={onBack}
-              className="p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-            >
-              <ArrowLeftIcon className="h-5 w-5" />
-            </button>
-            <span className="text-sm text-gray-500 dark:text-gray-400">All projects</span>
-          </div>
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center space-x-4">
+          <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
+            <ArrowLeftIcon className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl font-semibold">{project.name}</h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button className="p-2 hover:bg-gray-100 rounded-full">
+            <StarIcon className="w-5 h-5" />
+          </button>
+          <button className="p-2 hover:bg-gray-100 rounded-full">
+            <EllipsisHorizontalIcon className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-screen-2xl mx-auto px-4 py-6">
-        <div className="flex">
-          {/* Left Column - Main Content */}
-          <div className="flex-1 pr-8">
-            {/* Project Title Section */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100">
-                  {project.name}
-                </h1>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                    <LockClosedIcon className="h-3 w-3 mr-1" />
-                    Private
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button className="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-                  <StarIcon className="h-5 w-5" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-                  <EllipsisHorizontalIcon className="h-5 w-5" />
-                </button>
-              </div>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Main content */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          {/* Project info */}
+          <div className="mb-8">
+            <div className="flex items-center space-x-2 mb-2">
+              <LockClosedIcon className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-500">Private project</span>
             </div>
-
-            {/* Project Description */}
-            <p className="mt-4 text-gray-600 dark:text-gray-300">
-              {project.description}
-            </p>
-
-            {/* Conversations Section */}
-            <div className="mt-8">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Conversations
-              </h2>
-              <div className="space-y-4">
-                {/* Example conversation card - replace with actual data */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Grant Proposal Review App
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Last message 8 days ago
-                  </p>
-                </div>
-              </div>
-            </div>
+            <p className="text-gray-600">{project.description || 'No description provided.'}</p>
           </div>
 
-          {/* Right Column - Project Knowledge */}
-          <div className="w-80">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Project knowledge
-                  </h2>
-                  <button className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-                    <PlusIcon className="h-5 w-5" />
-                  </button>
-                </div>
-                
-                {/* Project Instructions Section */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                    <span>Set project instructions</span>
-                    <span className="text-xs">Optional</span>
+          {/* Chat Input and Conversations */}
+          <div className="mb-8">
+            <div className="mb-4">
+              <ChatInput storageService={new APIStorageService()} />
+            </div>
+            <h2 className="text-lg font-semibold mb-4">Previous Conversations</h2>
+            {(project.conversations || []).length === 0 ? (
+              <p className="text-gray-500">No conversations yet. Start typing above to begin collaborating.</p>
+            ) : (
+              <div className="space-y-2">
+                {(project.conversations || []).map((conversation) => (
+                  <div
+                    key={conversation.id}
+                    className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{conversation.title}</span>
+                      <span className="text-sm text-gray-500">
+                        {new Date(conversation.lastMessageAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
-                  <button className="mt-2 w-full flex items-center justify-center px-4 py-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500">
-                    <BookOpenIcon className="h-8 w-8" />
-                  </button>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center">
-                    No knowledge added yet. Add PDFs, documents, or other text to the project knowledge base that Claude will reference in every project conversation.
-                  </p>
-                </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
+        </div>
+
+        {/* Right sidebar */}
+        <div className="w-80 border-l p-6 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center">
+              <BookOpenIcon className="w-5 h-5 mr-2" />
+              Project knowledge
+            </h2>
+            <button className="p-2 hover:bg-gray-100 rounded-full">
+              <PlusIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="text-gray-500">No knowledge has been added to this project yet.</p>
         </div>
       </div>
     </div>
   );
-}; 
+} 

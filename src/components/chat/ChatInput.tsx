@@ -13,7 +13,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService }) => {
   const updateChatInput = useChatStore(state => state.updateChatInput);
   const addMessage = useChatStore(state => state.addMessage);
   const processMessage = useChatStore(state => state.processMessage);
+  const createNewChat = useChatStore(state => state.startNewConversation);
   const { selectedProjectId } = useProjectStore();
+  const addConversationToProject = useProjectStore(state => state.addConversationToProject);
   
   // Local state for input to debounce updates to the store
   const [localInput, setLocalInput] = useState(chatInput);
@@ -67,6 +69,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService }) => {
 
     console.log('ChatInput: Submitting message:', localInput);
     
+    // If we're in a project view, create a new conversation
+    if (selectedProjectId) {
+      const conversationId = createNewChat();
+      if (conversationId) {
+        addConversationToProject(selectedProjectId, conversationId, `Project Chat ${new Date().toLocaleString()}`);
+      }
+    }
+
     // Add user message to chat store first
     addMessage({
       role: 'user',
@@ -79,16 +89,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService }) => {
     } catch (error) {
       console.error('ChatInput: Error processing message:', error);
     }
-    // think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one. 
-// write python that will simulate rolling 3 7 sided die 1000 times and make a histogram to show the results. 
-// setInput('do that again.');
-// setInput('look up 3 papers on the gene DYRK1A and provide a summary.');
-// setInput('make a meal plan for a week of lunches that can be packed for a teenager to take to school, describe but make an artifact for the final plan and number it the version after the last one.');
-    // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. Include a table.');
-    // setInput('create a bunch of text that will test all of the markdown formats including two different types of code. And include an artifact of a sacred geometry svg.');
-    // setInput('think deeply about it and the choose a sacred geometry to create an svg to display in the artifact window. Explain why you chose that one.');
-// Use medik to find the nodes that are related_to NCBIGene:1859
 
+    // Clear the input after sending
+    debouncedUpdate('');
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {

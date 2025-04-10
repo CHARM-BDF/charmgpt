@@ -19,7 +19,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose }) => 
   if (selectedProject) {
     return (
       <ProjectView 
-        project={selectedProject} 
+        projectId={selectedProjectId!} 
         onBack={() => setSelectedProjectId(null)} 
       />
     );

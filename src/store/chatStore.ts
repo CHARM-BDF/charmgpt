@@ -28,7 +28,7 @@ import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../t
  */
 // MessageWithThinking is now imported from '../types/chat'
 
-interface ChatState extends ConversationState {
+export interface ChatState extends ConversationState {
   messages: MessageWithThinking[];
   artifacts: Artifact[];
   selectedArtifactId: string | null;

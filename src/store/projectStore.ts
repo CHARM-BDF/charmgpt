@@ -1,12 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+interface ProjectConversation {
+  id: string;
+  title: string;
+  lastMessageAt: Date;
+}
+
 export interface Project {
   id: string;
   name: string;
   description: string;
   createdAt: Date;
   updatedAt: Date;
+  conversations: ProjectConversation[];
 }
 
 interface ProjectState {
@@ -16,10 +23,14 @@ interface ProjectState {
   error: string | null;
 
   // CRUD operations
-  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateProject: (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>) => void;
+  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations'>) => void;
+  updateProject: (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations'>>) => void;
   deleteProject: (id: string) => void;
   selectProject: (id: string | null) => void;
+  
+  // Conversation management
+  addConversationToProject: (projectId: string, conversationId: string, title: string) => void;
+  removeConversationFromProject: (projectId: string, conversationId: string) => void;
   
   // Loading and error states
   setLoading: (isLoading: boolean) => void;
@@ -40,6 +51,7 @@ export const useProjectStore = create<ProjectState>()(
           ...projectData,
           createdAt: new Date(),
           updatedAt: new Date(),
+          conversations: [],
         };
         return {
           projects: [...state.projects, newProject],
@@ -66,6 +78,37 @@ export const useProjectStore = create<ProjectState>()(
         selectedProjectId: id,
         error: null,
       }),
+
+      addConversationToProject: (projectId, conversationId, title) => set((state) => ({
+        projects: state.projects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                conversations: [
+                  ...(project.conversations || []),
+                  {
+                    id: conversationId,
+                    title,
+                    lastMessageAt: new Date(),
+                  },
+                ],
+                updatedAt: new Date(),
+              }
+            : project
+        ),
+      })),
+
+      removeConversationFromProject: (projectId, conversationId) => set((state) => ({
+        projects: state.projects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                conversations: project.conversations.filter((conv) => conv.id !== conversationId),
+                updatedAt: new Date(),
+              }
+            : project
+        ),
+      })),
 
       setLoading: (isLoading) => set({
         isLoading,
