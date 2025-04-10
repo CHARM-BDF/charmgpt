@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
@@ -6,11 +6,17 @@ import { ProjectView } from './ProjectView';
 
 interface ProjectListViewProps {
   onClose: () => void;
+  showProjectList: boolean;
 }
 
-export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose }) => {
-  const { projects, isLoading, error } = useProjectStore();
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showProjectList }) => {
+  const { projects, isLoading, error, selectedProjectId, selectProject } = useProjectStore();
+
+  useEffect(() => {
+    if (showProjectList) {
+      selectProject(null);
+    }
+  }, [showProjectList, selectProject]);
 
   const selectedProject = selectedProjectId 
     ? projects.find(p => p.id === selectedProjectId)
@@ -20,7 +26,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose }) => 
     return (
       <ProjectView 
         projectId={selectedProjectId!} 
-        onBack={() => setSelectedProjectId(null)}
+        onBack={() => selectProject(null)} 
         onClose={onClose}
       />
     );
@@ -68,7 +74,7 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose }) => 
               <div
                 key={project.id}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-                onClick={() => setSelectedProjectId(project.id)}
+                onClick={() => selectProject(project.id)}
               >
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{project.name}</h3>
                 <p className="mt-1 text-gray-500 dark:text-gray-400">{project.description}</p>

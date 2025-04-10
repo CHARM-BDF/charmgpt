@@ -11,6 +11,7 @@ import { MCPStatusModal } from '../mcp/MCPStatusModal';
 import { ModelSelector } from '../models/ModelSelector';
 import { ConversationDrawer } from '../conversations/ConversationDrawer';
 import BrainWaveCharmStatic from '../animations/BrainWaveCharmStatic';
+import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
 import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, BeakerIcon, FolderIcon } from '@heroicons/react/24/outline';
 // import { useMCPStore } from '../../store/mcpStore';
@@ -29,9 +30,12 @@ export const ChatInterface: React.FC = () => {
   const [showProjectList, setShowProjectList] = useState(false);
   const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
-  // const { activeServer } = useMCPStore();
-  // console.log('ChatInterface: Rendering with showArtifactWindow:', showArtifactWindow);
-  // console.log('ChatInterface: Current artifacts:', artifacts);
+  const { projects, selectedProjectId, selectProject } = useProjectStore();
+  
+  const selectedProject = useMemo(() => 
+    selectedProjectId ? projects.find(p => p.id === selectedProjectId) : null,
+    [projects, selectedProjectId]
+  );
 
   // Effect to log artifact window visibility changes
   useEffect(() => {
@@ -119,6 +123,11 @@ export const ChatInterface: React.FC = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <BrainWaveCharmStatic />
+              {selectedProject && (
+                <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                  {selectedProject.name}
+                </span>
+              )}
               {/* <MCPServerControl /> */}
             </div>
             <div className="flex items-center space-x-6">
@@ -150,7 +159,12 @@ export const ChatInterface: React.FC = () => {
                 <div className="flex flex-col items-center">
                   <div className="flex items-center">
                     <button
-                      onClick={() => setShowProjectList(!showProjectList)}
+                      onClick={() => {
+                        if (selectedProjectId) {
+                          selectProject(null);
+                        }
+                        setShowProjectList(true);
+                      }}
                       className={`p-1 rounded-full transition-colors ${
                         showProjectList 
                           ? 'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/30' 
@@ -369,7 +383,10 @@ export const ChatInterface: React.FC = () => {
       />
 
       {showProjectList && (
-        <ProjectListView onClose={() => setShowProjectList(false)} />
+        <ProjectListView 
+          onClose={() => setShowProjectList(false)} 
+          showProjectList={showProjectList}
+        />
       )}
     </div>
   );
