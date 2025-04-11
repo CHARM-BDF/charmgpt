@@ -21,6 +21,7 @@ import KnowledgeGraphTestButton from '../artifacts/KnowledgeGraphTestButton';
 import { useModeStore } from '../../store/modeStore';
 import { ProjectDrawer } from '../projects/ProjectDrawer';
 import { ProjectListView } from '../projects/ProjectListView';
+import { ProjectView } from '../projects/ProjectView';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
@@ -28,6 +29,7 @@ export const ChatInterface: React.FC = () => {
   const [showFileManager, setShowFileManager] = useState(false);
   const [showTestingTools, setShowTestingTools] = useState(false);
   const [showProjectList, setShowProjectList] = useState(false);
+  const [showProjectView, setShowProjectView] = useState(false);
   const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
   const { projects, selectedProjectId, selectProject } = useProjectStore();
@@ -124,9 +126,12 @@ export const ChatInterface: React.FC = () => {
             <div className="flex items-center space-x-4">
               <BrainWaveCharmStatic />
               {selectedProject && (
-                <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                <button
+                  onClick={() => setShowProjectView(true)}
+                  className="text-lg font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
                   {selectedProject.name}
-                </span>
+                </button>
               )}
               {/* <MCPServerControl /> */}
             </div>
@@ -386,6 +391,14 @@ export const ChatInterface: React.FC = () => {
         <ProjectListView 
           onClose={() => setShowProjectList(false)} 
           showProjectList={showProjectList}
+        />
+      )}
+
+      {showProjectView && selectedProjectId && (
+        <ProjectView 
+          projectId={selectedProjectId}
+          onBack={() => setShowProjectView(false)}
+          onClose={() => setShowProjectView(false)}
         />
       )}
     </div>
