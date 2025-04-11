@@ -7,6 +7,12 @@ interface ProjectConversation {
   lastMessageAt: Date;
 }
 
+export interface ProjectFile {
+  id: string;
+  name: string;
+  timestamp: Date;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -14,6 +20,7 @@ export interface Project {
   createdAt: Date;
   updatedAt: Date;
   conversations: ProjectConversation[];
+  files: ProjectFile[];
 }
 
 interface ProjectState {
@@ -23,8 +30,8 @@ interface ProjectState {
   error: string | null;
 
   // CRUD operations
-  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations'>) => void;
-  updateProject: (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations'>>) => void;
+  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations' | 'files'>) => void;
+  updateProject: (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations' | 'files'>>) => void;
   deleteProject: (id: string) => void;
   selectProject: (id: string | null) => void;
   
@@ -32,6 +39,10 @@ interface ProjectState {
   addConversationToProject: (projectId: string, conversationId: string, title: string) => void;
   removeConversationFromProject: (projectId: string, conversationId: string) => void;
   
+  // File management
+  addFileToProject: (projectId: string, fileId: string, name: string) => void;
+  removeFileFromProject: (projectId: string, fileId: string) => void;
+
   // Loading and error states
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
@@ -52,6 +63,7 @@ export const useProjectStore = create<ProjectState>()(
           createdAt: new Date(),
           updatedAt: new Date(),
           conversations: [],
+          files: [],
         };
         return {
           projects: [...state.projects, newProject],
@@ -104,6 +116,37 @@ export const useProjectStore = create<ProjectState>()(
             ? {
                 ...project,
                 conversations: project.conversations.filter((conv) => conv.id !== conversationId),
+                updatedAt: new Date(),
+              }
+            : project
+        ),
+      })),
+
+      addFileToProject: (projectId, fileId, name) => set((state) => ({
+        projects: state.projects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                files: [
+                  ...(project.files || []),
+                  {
+                    id: fileId,
+                    name,
+                    timestamp: new Date()
+                  }
+                ],
+                updatedAt: new Date()
+              }
+            : project
+        )
+      })),
+
+      removeFileFromProject: (projectId, fileId) => set((state) => ({
+        projects: state.projects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                files: project.files.filter((file) => file.id !== fileId),
                 updatedAt: new Date(),
               }
             : project
