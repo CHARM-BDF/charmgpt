@@ -4,13 +4,14 @@ import { BaseStorageService } from '../../services/fileManagement/BaseStorageSer
 
 interface FileManagerProps {
   storageService: BaseStorageService;
+  projectId?: string;
 }
 
 interface RelatedFile extends FileEntry {
   type: string;
 }
 
-export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
+export const FileManager: React.FC<FileManagerProps> = ({ storageService, projectId }) => {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,7 +23,7 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
 
   useEffect(() => {
     loadFiles();
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -32,7 +33,9 @@ export const FileManager: React.FC<FileManagerProps> = ({ storageService }) => {
 
   const loadFiles = async () => {
     try {
-      const fileList = await storageService.listFiles();
+      const fileList = await storageService.listFiles(projectId ? {
+        tags: [`project:${projectId}`]
+      } : undefined);
       console.log('Files in File Manager:', fileList.map(f => ({
         name: f.name,
         id: f.id,
