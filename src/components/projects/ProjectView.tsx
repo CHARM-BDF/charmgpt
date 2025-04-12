@@ -144,7 +144,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                 <div className="mb-4">
                                     <ProjectChatInput storageService={storageService} onBack={onClose} />
                                 </div>
-                                <div className="px-6">
+                                <div className="px-6 overflow-y-auto max-h-[calc(100vh-300px)]">
                                     <h2 className="text-lg font-semibold mb-3">Previous Conversations</h2>
                                     {(project.conversations || []).length === 0 ? (
                                         <p className="text-gray-500">No conversations yet. Start typing above to begin collaborating.</p>
@@ -153,14 +153,14 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                             {(project.conversations || []).map((conversation) => (
                                                 <div
                                                     key={conversation.id}
-                                                    className="p-3 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                    className="p-4 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
                                                     onClick={() => {
                                                         switchConversation(conversation.id);
                                                         onClose();
                                                     }}
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-medium text-sm">{conversation.title}</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-sm mb-1">{conversation.title}</span>
                                                         <span className="text-xs text-gray-500">
                                                             {getRelativeTimeString(new Date(conversation.lastMessageAt))}
                                                         </span>
