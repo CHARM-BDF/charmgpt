@@ -117,31 +117,18 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
 
     return (
         <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-                <div className="flex items-center space-x-4">
-                    <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
-                        <ArrowLeftIcon className="w-5 h-5" />
-                    </button>
-                    <h1 className="text-xl font-semibold">{project.name}</h1>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <button className="p-2 hover:bg-gray-100 rounded-full">
-                        <StarIcon className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-full">
-                        <EllipsisHorizontalIcon className="w-5 h-5" />
-                    </button>
-                </div>
+            <div className="px-6 pt-4">
+                <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
+                    <ArrowLeftIcon className="w-5 h-5" />
+                </button>
             </div>
-
             <div className="flex flex-1 overflow-hidden">
                 {/* Main content area with Project Knowledge sidebar */}
                 <div className="flex-1 flex justify-center">
                     {/* Container using golden ratio of screen width (61.8%) */}
                     <div className="w-[61.8%] flex">
                         {/* Main content using golden ratio of container (61.8%) */}
-                        <div className="w-[61.8%] px-8 py-6">
+                        <div className="w-[61.8%] px-8 pt-6">
                             {/* Project info */}
                             <div className="mb-6">
                                 <h1 className="font-[var(--font-copernicus),ui-serif,Georgia,Cambria,'Times New Roman',Times,serif] text-2xl font-bold leading-tight tracking-tight text-[hsl(var(--text-200))] mb-4">{project.name}</h1>
@@ -187,7 +174,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                         </div>
 
                         {/* Right sidebar using remaining space (38.2%) */}
-                        <div className="w-[38.2%] border-l overflow-y-auto">
+                        <div className="w-[38.2%] border-l overflow-y-auto pt-6">
                             <div className="px-4 py-3 border border-gray-400 dark:border-gray-500 rounded-lg m-3">
                                 <div className="flex items-center justify-between mb-3">
                                     <h2 className="text-sm font-semibold">Project Knowledge</h2>
