@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Project, ProjectFile } from '../../store/projectStore';
 import { FileEntry } from '../../types/fileManagement';
 // @ts-expect-error - Heroicons type definitions mismatch
-import { ArrowLeftIcon, StarIcon, EllipsisHorizontalIcon, LockClosedIcon, BookOpenIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, StarIcon, EllipsisHorizontalIcon, LockClosedIcon, BookOpenIcon, PlusIcon, TrashIcon, PencilIcon, ArrowUpTrayIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { useChatStore, ChatState } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
 import { ConversationState } from '../../types/chat';
@@ -22,6 +22,10 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
     const [projectFiles, setProjectFiles] = useState<FileEntry[]>([]);
     const [editingFileId, setEditingFileId] = useState<string | null>(null);
     const [editingFileName, setEditingFileName] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [showAddTextModal, setShowAddTextModal] = useState(false);
+    const [textContent, setTextContent] = useState('');
+    const [textTitle, setTextTitle] = useState('');
     const storageService = new APIStorageService();
     const project = useProjectStore((state) => 
         state.projects.find((p) => p.id === projectId)
@@ -49,32 +53,40 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
     // Debug log to see project data
     console.log('Project data:', { projectId, project, files: project?.files });
 
-    const handleFileUpload = async (file: File) => {
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const content = new Uint8Array(arrayBuffer);
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            const file = files[0];
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const content = new Uint8Array(arrayBuffer);
 
-            const metadata = {
-                description: file.name,
-                schema: {
-                    type: "json" as const,
-                    format: file.type || 'application/octet-stream',
-                    encoding: 'utf-8',
-                    sampleData: ''
-                },
-                origin: {
-                    type: 'upload' as const,
-                    timestamp: new Date()
-                },
-                tags: [`project:${projectId}`],
-                llmNotes: ''
-            };
+                const metadata = {
+                    description: file.name,
+                    schema: {
+                        type: "json" as const,
+                        format: file.type || 'application/octet-stream',
+                        encoding: 'utf-8',
+                        sampleData: ''
+                    },
+                    origin: {
+                        type: 'upload' as const,
+                        timestamp: new Date()
+                    },
+                    tags: [`project:${projectId}`],
+                    llmNotes: ''
+                };
 
-            const fileEntry = await storageService.createFile(content, metadata);
-            addFileToProject(projectId, fileEntry.id, file.name);
-            setShowFileManager(false);
-        } catch (error) {
-            console.error('Error uploading file:', error);
+                const fileEntry = await storageService.createFile(content, metadata);
+                addFileToProject(projectId, fileEntry.id, file.name);
+                const fileList = await storageService.listFiles({
+                    tags: [`project:${projectId}`]
+                });
+                setProjectFiles(fileList);
+                setShowFileManager(false);
+            } catch (error) {
+                console.error('Error uploading file:', error);
+            }
         }
     };
 
@@ -108,6 +120,38 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
             setEditingFileId(null);
         } catch (error) {
             console.error('Error renaming file:', error);
+        }
+    };
+
+    const handleAddTextContent = async () => {
+        try {
+            const metadata = {
+                description: textTitle,
+                schema: {
+                    type: "json" as const,
+                    format: 'text/plain',
+                    encoding: 'utf-8',
+                    sampleData: ''
+                },
+                origin: {
+                    type: 'upload' as const,
+                    timestamp: new Date()
+                },
+                tags: [`project:${projectId}`],
+                llmNotes: ''
+            };
+
+            const fileEntry = await storageService.createFile(new TextEncoder().encode(textContent), metadata);
+            addFileToProject(projectId, fileEntry.id, textTitle);
+            const fileList = await storageService.listFiles({
+                tags: [`project:${projectId}`]
+            });
+            setProjectFiles(fileList);
+            setShowAddTextModal(false);
+            setTextContent('');
+            setTextTitle('');
+        } catch (error) {
+            console.error('Error adding text content:', error);
         }
     };
 
@@ -178,12 +222,40 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                             <div className="px-4 py-3 border border-gray-400 dark:border-gray-500 rounded-lg m-3">
                                 <div className="flex items-center justify-between mb-3">
                                     <h2 className="text-sm font-semibold">Project Knowledge</h2>
-                                    <button
-                                        onClick={() => setShowFileManager(true)}
-                                        className="p-1 hover:bg-gray-100 rounded-full"
-                                    >
-                                        <PlusIcon className="h-4 w-4" />
-                                    </button>
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowFileManager(!showFileManager)}
+                                            className="p-1 hover:bg-gray-100 rounded-full"
+                                        >
+                                            <PlusIcon className="h-4 w-4" />
+                                        </button>
+                                        {showFileManager && (
+                                            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                                                <div className="py-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            fileInputRef.current?.click();
+                                                            setShowFileManager(false);
+                                                        }}
+                                                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                                                    >
+                                                        <ArrowUpTrayIcon className="h-5 w-5 mr-3 text-gray-400" />
+                                                        Upload from device
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowAddTextModal(true);
+                                                            setShowFileManager(false);
+                                                        }}
+                                                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                                                    >
+                                                        <DocumentTextIcon className="h-5 w-5 mr-3 text-gray-400" />
+                                                        Add text content
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     {projectFiles.map((file) => (
@@ -237,24 +309,62 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                     </div>
                 </div>
             </div>
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileUpload}
+            />
 
-            {/* File Manager Modal */}
-            {showFileManager && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="bg-white p-4 rounded-lg w-full max-w-4xl">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-semibold">Add File</h2>
-                            <button
-                                onClick={() => setShowFileManager(false)}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                Close
-                            </button>
+            {/* Add Text Content Modal */}
+            {showAddTextModal && (
+                <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl m-4">
+                        <div className="p-6">
+                            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Add text content</h2>
+                            
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                                <input
+                                    type="text"
+                                    value={textTitle}
+                                    onChange={(e) => setTextTitle(e.target.value)}
+                                    placeholder="Name your content"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                />
+                            </div>
+                            
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Content</label>
+                                <textarea
+                                    value={textContent}
+                                    onChange={(e) => setTextContent(e.target.value)}
+                                    placeholder="Type or paste in content..."
+                                    rows={10}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                />
+                            </div>
+                            
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setShowAddTextModal(false);
+                                        setTextContent('');
+                                        setTextTitle('');
+                                    }}
+                                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAddTextContent}
+                                    disabled={!textTitle || !textContent}
+                                    className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Add Content
+                                </button>
+                            </div>
                         </div>
-                        <FileManager 
-                            storageService={storageService} 
-                            projectId={projectId}
-                        />
                     </div>
                 </div>
             )}

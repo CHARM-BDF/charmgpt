@@ -1,0 +1,47 @@
+{
+  "description": "test doc for modal",
+  "schema": {
+    "type": "json",
+    "format": "text/plain",
+    "encoding": "utf-8",
+    "sampleData": ""
+  },
+  "origin": {
+    "type": "upload",
+    "timestamp": "2025-04-12T22:17:16.119Z"
+  },
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0,
+    "branch": {
+      "name": "main",
+      "parent": "",
+      "created": "2025-04-12T22:17:16.119Z",
+      "description": "Initial version"
+    },
+    "history": [
+      {
+        "id": "87078307-d0b9-4601-bbf6-d5836bcd2b8a",
+        "timestamp": "2025-04-12T22:17:16.119Z",
+        "message": "Initial creation",
+        "user": "system",
+        "branch": "main",
+        "parent": ""
+      }
+    ]
+  },
+  "analysisInfo": {
+    "summary": {},
+    "quality": {
+      "nullCount": 0,
+      "duplicateCount": 0,
+      "errorCount": 0,
+      "completeness": 100
+    }
+  },
+  "tags": [
+    "project:3c1c69c4-83c8-4b7e-a798-68f9447aa80c"
+  ],
+  "llmNotes": ""
+}

@@ -1,0 +1,47 @@
+{
+  "description": "mcp-client-development-guide.md",
+  "schema": {
+    "type": "json",
+    "format": "text/plain",
+    "encoding": "utf-8",
+    "sampleData": ""
+  },
+  "origin": {
+    "type": "upload",
+    "timestamp": "2025-04-12T22:11:45.912Z"
+  },
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0,
+    "branch": {
+      "name": "main",
+      "parent": "",
+      "created": "2025-04-12T22:11:45.915Z",
+      "description": "Initial version"
+    },
+    "history": [
+      {
+        "id": "4c8cbc6c-234d-4008-928c-8b568f8b62a7",
+        "timestamp": "2025-04-12T22:11:45.915Z",
+        "message": "Initial creation",
+        "user": "system",
+        "branch": "main",
+        "parent": ""
+      }
+    ]
+  },
+  "analysisInfo": {
+    "summary": {},
+    "quality": {
+      "nullCount": 0,
+      "duplicateCount": 0,
+      "errorCount": 0,
+      "completeness": 100
+    }
+  },
+  "tags": [
+    "project:3c1c69c4-83c8-4b7e-a798-68f9447aa80c"
+  ],
+  "llmNotes": ""
+}
