@@ -6,9 +6,10 @@ import { ArrowLeftIcon, StarIcon, EllipsisHorizontalIcon, LockClosedIcon, BookOp
 import { useChatStore, ChatState } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
 import { ConversationState } from '../../types/chat';
-import { ChatInput } from '../chat/ChatInput';
+import { ProjectChatInput } from './ProjectChatInput';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import { FileManager } from '../files/FileManager';
+import { getRelativeTimeString } from '../../utils/dateUtils';
 
 interface ProjectViewProps {
     projectId: string;
@@ -135,107 +136,113 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-                {/* Main content */}
-                <div className="flex-1 px-8 py-6 overflow-y-auto">
-                    {/* Project info */}
-                    <div className="mb-6">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <LockClosedIcon className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm text-gray-500">Private project</span>
-                        </div>
-                        <p className="text-gray-600">{project.description || 'No description provided.'}</p>
-                    </div>
+                {/* Main content area with Project Knowledge sidebar */}
+                <div className="flex-1 flex justify-center">
+                    {/* Container using golden ratio of screen width (61.8%) */}
+                    <div className="w-[61.8%] flex">
+                        {/* Main content using golden ratio of container (61.8%) */}
+                        <div className="w-[61.8%] px-8 py-6">
+                            {/* Project info */}
+                            <div className="mb-6">
+                                <div className="flex items-center space-x-2 mb-2">
+                                    <LockClosedIcon className="w-4 h-4 text-gray-500" />
+                                    <span className="text-sm text-gray-500">Private project</span>
+                                </div>
+                                <p className="text-gray-600">{project.description || 'No description provided.'}</p>
+                            </div>
 
-                    {/* Chat Input and Conversations */}
-                    <div className="mb-6">
-                        <div className="mb-4">
-                            <ChatInput storageService={new APIStorageService()} onBack={onClose} />
+                            {/* Chat Input and Conversations */}
+                            <div className="mb-6">
+                                <div className="mb-4">
+                                    <ProjectChatInput storageService={storageService} onBack={onClose} />
+                                </div>
+                                <h2 className="text-lg font-semibold mb-3">Previous Conversations</h2>
+                                {(project.conversations || []).length === 0 ? (
+                                    <p className="text-gray-500">No conversations yet. Start typing above to begin collaborating.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {(project.conversations || []).map((conversation) => (
+                                            <div
+                                                key={conversation.id}
+                                                className="p-3 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                onClick={() => {
+                                                    switchConversation(conversation.id);
+                                                    onClose();
+                                                }}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-medium text-sm">{conversation.title}</span>
+                                                    <span className="text-xs text-gray-500">
+                                                        {getRelativeTimeString(new Date(conversation.lastMessageAt))}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <h2 className="text-lg font-semibold mb-3">Previous Conversations</h2>
-                        {(project.conversations || []).length === 0 ? (
-                            <p className="text-gray-500">No conversations yet. Start typing above to begin collaborating.</p>
-                        ) : (
-                            <div className="space-y-2">
-                                {(project.conversations || []).map((conversation) => (
-                                    <div
-                                        key={conversation.id}
-                                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                                        onClick={() => {
-                                            switchConversation(conversation.id);
-                                            onClose();
-                                        }}
+
+                        {/* Right sidebar using remaining space (38.2%) */}
+                        <div className="w-[38.2%] border-l overflow-y-auto">
+                            <div className="px-4 py-3 border border-gray-400 dark:border-gray-500 rounded-lg m-3">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h2 className="text-sm font-semibold">Project Knowledge</h2>
+                                    <button
+                                        onClick={() => setShowFileManager(true)}
+                                        className="p-1 hover:bg-gray-100 rounded-full"
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium text-sm">{conversation.title}</span>
-                                            <span className="text-xs text-gray-500">
-                                                {new Date(conversation.lastMessageAt).toLocaleDateString()}
+                                        <PlusIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {projectFiles.map((file) => (
+                                        <div key={file.id} className="flex flex-col">
+                                            <div className="flex items-center justify-between group">
+                                                <div className="flex items-center space-x-2">
+                                                    <BookOpenIcon className="h-4 w-4 text-gray-500" />
+                                                    {editingFileId === file.id ? (
+                                                        <input
+                                                            type="text"
+                                                            value={editingFileName}
+                                                            onChange={(e) => setEditingFileName(e.target.value)}
+                                                            onBlur={() => handleSaveFileName(file.id)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    handleSaveFileName(file.id);
+                                                                } else if (e.key === 'Escape') {
+                                                                    setEditingFileId(null);
+                                                                }
+                                                            }}
+                                                            className="text-xs border rounded px-1"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <span className="text-xs">{file.name}</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => handleRenameFile(file.id)}
+                                                        className="p-1 hover:bg-gray-100 rounded"
+                                                    >
+                                                        <PencilIcon className="h-3 w-3 text-gray-500" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteFile(file.id)}
+                                                        className="p-1 hover:bg-gray-100 rounded"
+                                                    >
+                                                        <TrashIcon className="h-3 w-3 text-gray-500" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] text-gray-500 ml-6">
+                                                {new Date(file.created).toLocaleDateString()}
                                             </span>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right sidebar */}
-                <div className="w-72 border-l overflow-y-auto">
-                    <div className="px-4 py-3">
-                        <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-sm font-semibold">Project Knowledge</h2>
-                            <button
-                                onClick={() => setShowFileManager(true)}
-                                className="p-1 hover:bg-gray-100 rounded-full"
-                            >
-                                <PlusIcon className="h-4 w-4" />
-                            </button>
-                        </div>
-                        <div className="space-y-2">
-                            {projectFiles.map((file) => (
-                                <div key={file.id} className="flex flex-col">
-                                    <div className="flex items-center justify-between group">
-                                        <div className="flex items-center space-x-2">
-                                            <BookOpenIcon className="h-4 w-4 text-gray-500" />
-                                            {editingFileId === file.id ? (
-                                                <input
-                                                    type="text"
-                                                    value={editingFileName}
-                                                    onChange={(e) => setEditingFileName(e.target.value)}
-                                                    onBlur={() => handleSaveFileName(file.id)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            handleSaveFileName(file.id);
-                                                        } else if (e.key === 'Escape') {
-                                                            setEditingFileId(null);
-                                                        }
-                                                    }}
-                                                    className="text-xs border rounded px-1"
-                                                    autoFocus
-                                                />
-                                            ) : (
-                                                <span className="text-xs">{file.name}</span>
-                                            )}
-                                        </div>
-                                        <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => handleRenameFile(file.id)}
-                                                className="p-1 hover:bg-gray-100 rounded"
-                                            >
-                                                <PencilIcon className="h-3 w-3 text-gray-500" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteFile(file.id)}
-                                                className="p-1 hover:bg-gray-100 rounded"
-                                            >
-                                                <TrashIcon className="h-3 w-3 text-gray-500" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] text-gray-500 ml-6">
-                                        {new Date(file.created).toLocaleDateString()}
-                                    </span>
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     </div>
                 </div>

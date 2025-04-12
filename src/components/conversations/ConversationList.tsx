@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { Conversation } from '../../types/chat';
+import { getRelativeTimeString } from '../../utils/dateUtils';
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -103,7 +104,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
       </div>
       <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
         {conversation.metadata.messageCount} messages • 
-        {new Date(conversation.metadata.lastUpdated).toLocaleDateString()}
+        {getRelativeTimeString(new Date(conversation.metadata.created))}
       </div>
     </div>
   );
