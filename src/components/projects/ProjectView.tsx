@@ -116,7 +116,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-gray-100 dark:bg-gray-900">
             <div className="px-6 pt-4">
                 <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
                     <ArrowLeftIcon className="w-5 h-5" />
@@ -153,14 +153,14 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                             {(project.conversations || []).map((conversation) => (
                                                 <div
                                                     key={conversation.id}
-                                                    className="p-3 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                    className="p-4 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
                                                     onClick={() => {
                                                         switchConversation(conversation.id);
                                                         onClose();
                                                     }}
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-medium text-sm">{conversation.title}</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-sm mb-1">{conversation.title}</span>
                                                         <span className="text-xs text-gray-500">
                                                             {getRelativeTimeString(new Date(conversation.lastMessageAt))}
                                                         </span>
