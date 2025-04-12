@@ -144,6 +144,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                         <div className="w-[61.8%] px-8 py-6">
                             {/* Project info */}
                             <div className="mb-6">
+                                <h1 className="font-[var(--font-copernicus),ui-serif,Georgia,Cambria,'Times New Roman',Times,serif] text-2xl font-bold leading-tight tracking-tight text-[hsl(var(--text-200))] mb-4">{project.name}</h1>
                                 <div className="flex items-center space-x-2 mb-2">
                                     <LockClosedIcon className="w-4 h-4 text-gray-500" />
                                     <span className="text-sm text-gray-500">Private project</span>
@@ -156,30 +157,32 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                 <div className="mb-4">
                                     <ProjectChatInput storageService={storageService} onBack={onClose} />
                                 </div>
-                                <h2 className="text-lg font-semibold mb-3">Previous Conversations</h2>
-                                {(project.conversations || []).length === 0 ? (
-                                    <p className="text-gray-500">No conversations yet. Start typing above to begin collaborating.</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {(project.conversations || []).map((conversation) => (
-                                            <div
-                                                key={conversation.id}
-                                                className="p-3 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                                onClick={() => {
-                                                    switchConversation(conversation.id);
-                                                    onClose();
-                                                }}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-medium text-sm">{conversation.title}</span>
-                                                    <span className="text-xs text-gray-500">
-                                                        {getRelativeTimeString(new Date(conversation.lastMessageAt))}
-                                                    </span>
+                                <div className="px-6">
+                                    <h2 className="text-lg font-semibold mb-3">Previous Conversations</h2>
+                                    {(project.conversations || []).length === 0 ? (
+                                        <p className="text-gray-500">No conversations yet. Start typing above to begin collaborating.</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {(project.conversations || []).map((conversation) => (
+                                                <div
+                                                    key={conversation.id}
+                                                    className="p-3 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                    onClick={() => {
+                                                        switchConversation(conversation.id);
+                                                        onClose();
+                                                    }}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium text-sm">{conversation.title}</span>
+                                                        <span className="text-xs text-gray-500">
+                                                            {getRelativeTimeString(new Date(conversation.lastMessageAt))}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -200,7 +203,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                         <div key={file.id} className="flex flex-col">
                                             <div className="flex items-center justify-between group">
                                                 <div className="flex items-center space-x-2">
-                                                    <BookOpenIcon className="h-4 w-4 text-gray-500" />
+                                                    <BookOpenIcon className="h-5 w-5 text-gray-500" />
                                                     {editingFileId === file.id ? (
                                                         <input
                                                             type="text"
@@ -214,11 +217,11 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                                                     setEditingFileId(null);
                                                                 }
                                                             }}
-                                                            className="text-xs border rounded px-1"
+                                                            className="text-sm border rounded px-1"
                                                             autoFocus
                                                         />
                                                     ) : (
-                                                        <span className="text-xs">{file.name}</span>
+                                                        <span className="text-sm">{file.name}</span>
                                                     )}
                                                 </div>
                                                 <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
