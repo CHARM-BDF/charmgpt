@@ -254,60 +254,51 @@ router.post('/files/:id/extract', async (req: Request, res: Response) => {
         // Read metadata to get file type
         const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
         const fileContent = await fs.promises.readFile(filePath);
-        let extractedText = '';
-        let extractionError = null;
+
+        // For now, only handle PDFs
+        if (metadata.schema.format !== 'application/pdf') {
+            return res.status(400).json({ 
+                error: 'Unsupported file type',
+                message: 'Currently only supporting PDF files while in testing'
+            });
+        }
 
         try {
-            switch (metadata.schema.format) {
-                case 'application/pdf':
-                    const pdfData = await pdfParse(fileContent);
-                    extractedText = pdfData.text;
-                    break;
-                    
-                case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                    const result = await mammoth.extractRawText({ buffer: fileContent });
-                    extractedText = result.value;
-                    break;
-                    
-                case 'text/plain':
-                case 'text/markdown':
-                    extractedText = fileContent.toString('utf-8');
-                    break;
-                    
-                default:
-                    throw new Error(`Unsupported file type: ${metadata.schema.format}`);
-            }
-
+            const pdfData = await pdfParse(fileContent);
+            
             // Update metadata with extracted text
             metadata.textExtraction = {
                 status: 'completed',
-                content: extractedText,
+                content: pdfData.text,
                 format: metadata.schema.format,
                 extractedAt: new Date(),
                 metadata: {
-                    charCount: extractedText.length,
-                    wordCount: extractedText.split(/\s+/).length
+                    pageCount: pdfData.numpages,
+                    charCount: pdfData.text.length,
+                    wordCount: pdfData.text.split(/\s+/).length
                 }
             };
 
             await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
             
-            loggingService.log('info', `Text extracted successfully from file: ${id}`);
+            loggingService.log('info', `Text extracted successfully from PDF: ${id}`);
             res.json({ success: true, metadata: metadata.textExtraction });
 
         } catch (extractError) {
-            extractionError = extractError;
             // Update metadata with error
             metadata.textExtraction = {
                 status: 'failed',
-                error: (extractError as Error).message,
+                error: extractError instanceof Error ? extractError.message : 'Unknown error',
                 format: metadata.schema.format,
                 extractedAt: new Date()
             };
             await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
             
-            loggingService.log('error', `Text extraction failed for file: ${id}`, { error: extractError });
-            res.status(500).json({ error: 'Text extraction failed', details: (extractError as Error).message });
+            loggingService.log('error', `Text extraction failed for PDF: ${id}`, { error: extractError });
+            res.status(500).json({ 
+                error: 'Text extraction failed', 
+                details: extractError instanceof Error ? extractError.message : 'Unknown error'
+            });
         }
 
     } catch (error) {
