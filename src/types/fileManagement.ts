@@ -113,7 +113,7 @@ export interface FileMetadata {
       completeness: number; // Percentage of non-null values
     };
   };
-  textExtraction?: {        // Text extraction information
+  textExtraction?: {        // Text extraction information (optional)
     status: 'pending' | 'completed' | 'failed';
     error?: string;         // Error message if extraction failed
     content?: string;       // Extracted text content

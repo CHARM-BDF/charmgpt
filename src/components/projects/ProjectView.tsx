@@ -122,8 +122,21 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                     llmNotes: ''
                 };
 
+                // Upload the file
                 const fileEntry = await storageService.createFile(content, metadata);
                 addFileToProject(projectId, fileEntry.id, file.name);
+
+                // Start text extraction
+                try {
+                    await fetch(`/api/storage/files/${fileEntry.id}/extract`, {
+                        method: 'POST'
+                    });
+                } catch (extractError) {
+                    console.error('Text extraction failed:', extractError);
+                    // Don't block the upload process if extraction fails
+                }
+
+                // Refresh file list
                 const fileList = await storageService.listFiles({
                     tags: [`project:${projectId}`]
                 });

@@ -4,8 +4,12 @@ import path from 'path';
 import fs from 'fs';
 import { randomUUID } from 'crypto';
 import { LoggingService } from '../services/logging';
+// import pdfParse from 'pdf-parse';
+// import mammoth from 'mammoth';
+import { FileMetadata as FullFileMetadata } from '../../types/fileManagement';
 
-interface FileMetadata {
+// Simplified FileMetadata interface that makes all fields optional
+interface FileMetadata extends Partial<FullFileMetadata> {
   description?: string;
   [key: string]: any;
 }
@@ -230,5 +234,88 @@ router.get('/files/:id/content', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to get file content' });
   }
 });
+
+// POST /api/storage/files/:id/extract - Extract text from a file
+/*
+router.post('/files/:id/extract', async (req: Request, res: Response) => {
+    try {
+        const loggingService = req.app.locals.loggingService as LoggingService;
+        const { id } = req.params;
+        
+        // Get file path and metadata
+        const filePath = path.join(process.cwd(), 'uploads', id);
+        const metadataPath = path.join(process.cwd(), 'uploads', 'metadata', `${id}.json`);
+        
+        if (!fs.existsSync(filePath) || !fs.existsSync(metadataPath)) {
+            loggingService.log('error', `File or metadata not found for: ${id}`);
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        // Read metadata to get file type
+        const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
+        const fileContent = await fs.promises.readFile(filePath);
+        let extractedText = '';
+        let extractionError = null;
+
+        try {
+            switch (metadata.schema.format) {
+                case 'application/pdf':
+                    const pdfData = await pdfParse(fileContent);
+                    extractedText = pdfData.text;
+                    break;
+                    
+                case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    const result = await mammoth.extractRawText({ buffer: fileContent });
+                    extractedText = result.value;
+                    break;
+                    
+                case 'text/plain':
+                case 'text/markdown':
+                    extractedText = fileContent.toString('utf-8');
+                    break;
+                    
+                default:
+                    throw new Error(`Unsupported file type: ${metadata.schema.format}`);
+            }
+
+            // Update metadata with extracted text
+            metadata.textExtraction = {
+                status: 'completed',
+                content: extractedText,
+                format: metadata.schema.format,
+                extractedAt: new Date(),
+                metadata: {
+                    charCount: extractedText.length,
+                    wordCount: extractedText.split(/\s+/).length
+                }
+            };
+
+            await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+            
+            loggingService.log('info', `Text extracted successfully from file: ${id}`);
+            res.json({ success: true, metadata: metadata.textExtraction });
+
+        } catch (extractError) {
+            extractionError = extractError;
+            // Update metadata with error
+            metadata.textExtraction = {
+                status: 'failed',
+                error: (extractError as Error).message,
+                format: metadata.schema.format,
+                extractedAt: new Date()
+            };
+            await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+            
+            loggingService.log('error', `Text extraction failed for file: ${id}`, { error: extractError });
+            res.status(500).json({ error: 'Text extraction failed', details: (extractError as Error).message });
+        }
+
+    } catch (error) {
+        const loggingService = req.app.locals.loggingService as LoggingService;
+        loggingService.logError(error as Error);
+        res.status(500).json({ error: 'Failed to process text extraction' });
+    }
+});
+*/
 
 export default router; 

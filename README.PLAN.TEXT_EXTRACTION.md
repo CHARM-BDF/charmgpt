@@ -3,34 +3,71 @@
 ## Overview
 Add capability to extract text from various file types (PDF, Word, etc.) during upload, making the content accessible to LLMs for chat interactions.
 
-## Phase 1: Setup and Basic Infrastructure
-1. Add necessary dependencies
+## Project Structure
+```
+src/
+├── server/
+│   ├── routes/
+│   │   └── storage.ts       # File management endpoints including text extraction
+│   └── services/
+│       └── fileManagement/  # Storage service implementations
+├── types/
+│   └── fileManagement.ts    # File metadata and storage types
+└── components/
+    └── projects/
+        └── ProjectView.tsx   # UI for file listing and management
+```
+
+## Key Routes
+- `POST /api/storage/files/:id/extract` - Text extraction (temporarily disabled)
+- `GET /api/storage/files` - List all files
+- `POST /api/storage/files` - Upload new file
+- `GET /api/storage/files/:id/content` - Get file content
+- `GET /api/storage/files/:id/metadata` - Get file metadata
+
+## Phase 1: Setup and Basic Infrastructure ✅
+1. Add necessary dependencies ✅
    - `pdf-parse` for PDF files
    - `mammoth` for Word documents
-   - Consider `textract` for broader file type support
+   - Consider `textract` for broader file type support (future)
 
-2. Update FileMetadata type to include extracted text
+2. Update FileMetadata type to include extracted text ✅
    ```typescript
    interface FileMetadata {
-     // ... existing fields ...
-     extractedText?: string;
-     originalFormat: string;
-     textExtractionStatus: 'pending' | 'completed' | 'failed';
-     textExtractionError?: string;
+     textExtraction?: {
+       status: 'pending' | 'completed' | 'failed';
+       content?: string;
+       error?: string;
+       format: string;
+       extractedAt?: Date;
+       metadata?: {
+         pageCount?: number;   // For PDFs
+         wordCount?: number;   // For text-based documents
+         charCount?: number;   // For text-based documents
+       };
+     };
    }
    ```
 
-## Phase 2: Text Extraction Implementation
-1. Create text extraction service
-   - Implement handlers for different file types
-   - Add error handling
-   - Add progress tracking for large files
+## Phase 2: Text Extraction Implementation (In Progress)
+1. Create text extraction service ⚠️
+   - Server endpoint: POST /api/storage/files/:id/extract (temporarily disabled)
+   - Handlers for different file types:
+     - PDF using pdf-parse (needs fix)
+     - Word docs using mammoth ✅
+     - Plain text/markdown ✅
+   - Error handling and metadata updates ✅
 
-2. Modify file upload process
-   - Detect file type
-   - Route to appropriate extractor
-   - Store both original file and extracted text
-   - Update UI to show extraction progress
+   **Note**: Text extraction endpoint temporarily disabled due to pdf-parse initialization issues. Basic file listing and management functionality restored.
+
+2. Modify file upload process (Next Step)
+   - Client-side:
+     - Add extraction request after successful upload
+     - Handle extraction status in UI
+     - Show progress/loading state
+   - Server-side:
+     - Consider automatic extraction on upload
+     - Queue system for large files (future)
 
 3. Test with various file types and sizes
    - Small/large PDFs
@@ -60,11 +97,19 @@ Add capability to extract text from various file types (PDF, Word, etc.) during 
    - Fallback options for unsupported formats
 
 ## Implementation Order
-1. Start with Phase 1 - infrastructure changes
-2. Implement PDF support first (most common use case)
-3. Add Word document support
-4. Implement UI improvements incrementally
-5. Add additional file type support based on needs
+1. ✅ Phase 1 - infrastructure changes
+2. 🔄 Phase 2 - text extraction service
+   - ✅ Server endpoint (temporarily disabled)
+   - ⏳ Upload integration
+   - ⏳ Testing
+3. Phase 3 - LLM integration
+4. Phase 4 - UI improvements
+
+## Next Steps
+1. Fix pdf-parse initialization issues
+   - Investigate test file dependency
+   - Consider alternative PDF parsing libraries if needed
+   - Re-enable text extraction endpoint once fixed
 
 ## Considerations
 - Large file handling
@@ -86,4 +131,6 @@ Add capability to extract text from various file types (PDF, Word, etc.) during 
 - OCR for scanned documents
 - Better handling of document structure
 - Improved text cleaning and formatting
-- Automatic summarization of extracted text 
+- Automatic summarization of extracted text
+- Background job queue for large files
+- Caching of extracted text 
