@@ -188,16 +188,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         {/* Popup moved outside form but inside the container */}
         {isActive && position && selectedProjectId ? (
           <div 
-            className="absolute z-[9999] bg-blue-500 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
+            className="absolute z-[9999] bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
             style={{
-              top: '-220px',
+              bottom: '120px',  // Position above the input
               left: '20px',
               width: '400px',
-              height: '200px',
-              maxHeight: '200px',
-              overflowY: 'auto'
+              maxHeight: '300px',
+              overflowY: 'auto',
+              padding: '8px'  // Add some padding
             }}
           >
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-300 px-2 py-1 mb-1 border-b border-gray-100 dark:border-gray-700">
+              Reference a file
+            </div>
             <FileReferencePopup
               query={query}
               position={position}

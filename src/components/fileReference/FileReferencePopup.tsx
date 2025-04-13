@@ -130,13 +130,7 @@ export const FileReferencePopup: React.FC<FileReferencePopupProps> = ({
   return (
     <div
       ref={popupRef}
-      className="absolute z-[9999] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-64 overflow-y-auto"
-      style={{
-        bottom: '120px',  // Fixed position above the chat input
-        left: '20px',    // Fixed position from the left
-        minWidth: '280px',
-        maxWidth: '400px'
-      }}
+      className="w-full h-full"
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
@@ -150,7 +144,7 @@ export const FileReferencePopup: React.FC<FileReferencePopupProps> = ({
           {query ? 'No matching files found' : 'No files available'}
         </div>
       ) : (
-        <ul className="py-1">
+        <ul className="py-2">
           {files.map((file, index) => (
             <li
               key={file.id}
