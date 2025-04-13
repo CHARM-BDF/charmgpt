@@ -1,7 +1,7 @@
 # File Management System Documentation
 
 ## Overview
-The file management system is a comprehensive solution that handles files, projects, conversations, and their relationships. It uses a combination of filesystem storage and browser localStorage to manage different types of data efficiently.
+The file management system is a comprehensive solution that handles files, projects, conversations, and their relationships. It uses a combination of filesystem storage and browser localStorage to manage different types of data efficiently. The system is integrated with a mode-based architecture that supports both grant and research workflows.
 
 ## Storage Architecture
 
@@ -12,15 +12,24 @@ Projects are stored using Zustand with persist middleware in browser localStorag
 interface Project {
   id: string;
   name: string;
-  description?: string;
-  type: 'grant' | 'research';
-  created: Date;
-  lastModified: Date;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+  conversations: ProjectConversation[];
+  files: ProjectFile[];
+}
+
+interface ProjectFile {
+  id: string;
+  name: string;
+  timestamp: Date;
 }
 
 interface ProjectState {
   projects: Project[];
   selectedProjectId: string | null;
+  isLoading: boolean;
+  error: string | null;
 }
 ```
 
@@ -66,7 +75,32 @@ interface FileMetadata {
     major: number;
     minor: number;
     patch: number;
+    branch: {
+      name: string;
+      parent: string;
+      created: Date;
+      description: string;
+    };
+    history: Array<{
+      id: string;
+      timestamp: Date;
+      message: string;
+      user: string;
+      branch: string;
+      parent: string;
+    }>;
   };
+  analysisInfo?: {
+    summary: Record<string, unknown>;
+    quality: {
+      nullCount: number;
+      duplicateCount: number;
+      errorCount: number;
+      completeness: number;
+    };
+  };
+  tags: string[];
+  llmNotes?: string;
 }
 ```
 
@@ -77,39 +111,41 @@ Conversations are stored using Zustand with persist middleware in browser localS
 interface ConversationState {
   currentConversationId: string | null;
   conversations: {
-    [id: string]: {
-      metadata: {
-        id: string;
-        name: string;
-        created: Date;
-        lastUpdated: Date;
-        messageCount: number;
-      };
-      messages: Message[];
-      artifacts: Artifact[];
-    }
-  }
+    [id: string]: Conversation;
+  };
+}
+
+interface Conversation {
+  metadata: {
+    id: string;
+    name: string;
+    created: Date;
+    lastUpdated: Date;
+    messageCount: number;
+  };
+  messages: MessageWithThinking[];
+  artifacts: Artifact[];
+}
+
+interface MessageWithThinking extends Message {
+  thinking?: string;
+  artifactIds?: string[];
+  isStreaming?: boolean;
+  statusUpdatesCollapsed?: boolean;
+  statusUpdates?: StatusUpdate[];
+  isLastStatusUpdate?: boolean;
 }
 ```
 
-### 4. File Relationships
-Relationships between files are stored in JSON files in the relationships directory.
+### 4. Mode System
+The system supports different operational modes through a mode store:
 
 ```typescript
-interface FileRelationship {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  metadata: {
-    type: RelationType;
-    description: string;
-    created: Date;
-    creator: string;
-    llmNotes?: string;
-  };
-  status: "active" | "deleted";
-  created: Date;
-  modified: Date;
+type Mode = 'grant' | 'research';
+
+interface ModeState {
+  currentMode: Mode;
+  setMode: (mode: Mode) => void;
 }
 ```
 
@@ -118,7 +154,7 @@ interface FileRelationship {
 ### 1. Project-File Relationships
 - Files are tagged with project IDs using the format `project:${projectId}`
 - Files can be queried by project using these tags
-- Project files are displayed in the ProjectFilesTopDrawer component
+- Project files are displayed based on the current mode
 - Implementation:
   ```typescript
   // Example: Loading project files
@@ -128,14 +164,14 @@ interface FileRelationship {
   ```
 
 ### 2. Project-Conversation Relationships
-- Each project can have multiple associated conversations
-- Conversations store project context in their metadata
-- New conversations are automatically created with new projects
+- Each project maintains its own conversations array
+- Conversations are created and managed within project context
+- Mode-specific conversation handling
 - Implementation:
   ```typescript
-  // Example: Creating a new project with conversation
-  const projectId = createProject(name, type);
-  startNewConversation(); // Creates conversation for project
+  // Example: Creating a new conversation
+  const conversationId = startNewConversation(name);
+  addConversationToProject(projectId, conversationId, title);
   ```
 
 ### 3. File-File Relationships
@@ -151,36 +187,18 @@ interface FileRelationship {
 ### 4. Conversation-Artifact Relationships
 - Conversations can generate artifacts (code, images, etc.)
 - Artifacts are stored with their parent conversation
-- Messages can reference one or more artifacts
+- Messages can reference multiple artifacts
+- Supports streaming responses and status updates
 - Implementation:
   ```typescript
-  // Example: Adding an artifact to a conversation
+  // Example: Adding an artifact
   const artifactId = addArtifact({
     type: ArtifactType,
     content: string,
-    title: string
+    title: string,
+    position: number
   });
   ```
-
-## Storage Services
-
-### 1. Base Storage Service
-- Abstract class implementing common functionality
-- Handles core operations (CRUD)
-- Manages metadata operations
-- Defines interface for concrete implementations
-
-### 2. File System Storage Service
-- Implements storage using the local file system
-- Handles physical file operations
-- Manages file relationships
-- Implements query operations
-
-### 3. API Storage Service
-- Client-side implementation
-- Communicates with server via HTTP
-- Handles file uploads and downloads
-- Manages metadata updates
 
 ## Best Practices
 
@@ -191,11 +209,11 @@ interface FileRelationship {
    - Follow naming conventions
    - Maintain consistent metadata
 
-2. **Relationship Management**
-   - Validate both source and target files exist
-   - Use consistent relationship types
-   - Clean up relationships when files are deleted
-   - Keep relationship metadata minimal and focused
+2. **Mode Management**
+   - Check current mode before operations
+   - Handle mode-specific UI components
+   - Maintain mode-appropriate file organization
+   - Consider mode context in operations
 
 3. **Project Organization**
    - Use clear project naming conventions
@@ -206,8 +224,8 @@ interface FileRelationship {
 4. **Conversation Management**
    - Link conversations to projects appropriately
    - Manage artifacts within conversation context
-   - Clean up orphaned artifacts
-   - Maintain conversation history properly
+   - Handle streaming responses properly
+   - Maintain status updates and thinking states
 
 ## Error Handling
 

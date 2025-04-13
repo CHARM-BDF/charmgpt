@@ -2,6 +2,9 @@ import React, { useRef, useEffect, KeyboardEvent, useState, ClipboardEvent } fro
 import { useChatStore } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
+import { useFileReference } from '../../hooks/useFileReference';
+import { FileReferencePopup } from '../fileReference/FileReferencePopup';
+import { FileEntry } from '../../types/fileManagement';
 
 interface ChatInputProps {
   storageService: APIStorageService;
@@ -16,6 +19,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   const processMessage = useChatStore(state => state.processMessage);
   const createNewChat = useChatStore(state => state.startNewConversation);
   const { selectedProjectId } = useProjectStore();
+  
+  useEffect(() => {
+    console.log('Selected Project ID:', selectedProjectId);
+  }, [selectedProjectId]);
+
   const addConversationToProject = useProjectStore(state => state.addConversationToProject);
   
   // Local state for input to debounce updates to the store
@@ -29,23 +37,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     }
   }, [chatInput]);
   
-  // Debounced update function
-  const debouncedUpdate = (value: string) => {
-    setLocalInput(value);
-    
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    // Set a new timeout
-    timeoutRef.current = setTimeout(() => {
-      updateChatInput(value, false);
-    }, 300); // 300ms debounce
-  };
-  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const {
+    fileRefState: { isActive, query, position },
+    handleInputChange: handleFileRefInputChange,
+    handleFileSelect,
+    closeFileRef
+  } = useFileReference({
+    inputRef: textareaRef,
+    onFileSelect: (file: FileEntry, position: number) => {
+      console.log('File selected:', file, 'at position:', position);
+      const before = localInput.slice(0, position - query.length - 1); // -1 for @
+      const after = localInput.slice(position);
+      const newInput = `${before}@${file.name}${after}`;
+      handleInputChange(newInput);
+    }
+  });
+  
+  // Update the input handling to be immediate instead of debounced
+  const handleInputChange = (value: string) => {
+    console.log('1. handleInputChange called with:', value);
+    setLocalInput(value);
+    console.log('2. About to call handleFileRefInputChange');
+    handleFileRefInputChange(value);
+    updateChatInput(value, false);
+  };
+  
   // Auto-resize textarea as content grows
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -108,7 +126,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     }
 
     // Clear the input after sending
-    debouncedUpdate('');
+    handleInputChange('');
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -160,14 +178,42 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     }
   };
 
+  useEffect(() => {
+    console.log('Popup condition values:', { isActive, position, selectedProjectId });
+  }, [isActive, position, selectedProjectId]);
+
   return (
     <div className="sticky bottom-0 bg-gray-200 dark:bg-gray-900 shadow-lg">
-      <div className="w-full max-w-4xl mx-auto px-4 flex">
+      <div className="w-full max-w-4xl mx-auto px-4 flex relative">
+        {/* Popup moved outside form but inside the container */}
+        {isActive && position && selectedProjectId ? (
+          <div 
+            className="absolute z-[9999] bg-blue-500 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
+            style={{
+              top: '-220px',
+              left: '20px',
+              width: '400px',
+              height: '200px',
+              maxHeight: '200px',
+              overflowY: 'auto'
+            }}
+          >
+            <FileReferencePopup
+              query={query}
+              position={position}
+              onSelect={handleFileSelect}
+              onClose={closeFileRef}
+              projectId={selectedProjectId}
+              storageService={storageService}
+            />
+          </div>
+        ) : null}
+        
         <form onSubmit={handleSubmit} className="relative w-full flex">
           <textarea
             ref={textareaRef}
             value={localInput}
-            onChange={(e) => debouncedUpdate(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             className="w-full min-h-[96px] p-3 
@@ -181,7 +227,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
                      leading-normal
                      resize-none
                      shadow-inner"
-            placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+            placeholder="Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
           />
         </form>
       </div>

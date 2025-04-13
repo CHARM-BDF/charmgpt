@@ -1,14 +1,14 @@
 {
-  "description": "How_to_Write_Specific_Aims_Page (1).pdf",
+  "description": "RC2-Active.md",
   "schema": {
     "type": "json",
-    "format": "application/pdf",
+    "format": "text/plain",
     "encoding": "utf-8",
     "sampleData": ""
   },
   "origin": {
     "type": "upload",
-    "timestamp": "2025-04-12T22:51:51.980Z"
+    "timestamp": "2025-04-13T03:47:38.056Z"
   },
   "version": {
     "major": 1,
@@ -17,13 +17,13 @@
     "branch": {
       "name": "main",
       "parent": "",
-      "created": "2025-04-12T22:51:51.980Z",
+      "created": "2025-04-13T03:47:38.056Z",
       "description": "Initial version"
     },
     "history": [
       {
-        "id": "289feac3-89fb-4b72-b7a3-0e5d44dac450",
-        "timestamp": "2025-04-12T22:51:51.980Z",
+        "id": "bd0be8e1-ba01-4164-ab33-143753d98871",
+        "timestamp": "2025-04-13T03:47:38.056Z",
         "message": "Initial upload",
         "user": "system",
         "branch": "main",

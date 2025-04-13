@@ -5,7 +5,6 @@ import { FolderIcon, PlusIcon, DocumentTextIcon } from '@heroicons/react/24/outl
 import { useModeStore } from '../../store/modeStore';
 import { useProjectStore, Project } from '../../store/projectStore';
 import { useChatStore } from '../../store/chatStore';
-import { ProjectFilesTopDrawer } from './ProjectFilesTopDrawer';
 
 interface ProjectDrawerProps {
   storageService: any; // We'll type this properly later
@@ -19,7 +18,7 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const { currentMode } = useModeStore();
-  const { projects, selectedProjectId, createProject, selectProject } = useProjectStore();
+  const { projects, selectedProjectId, addProject, selectProject } = useProjectStore();
   const { startNewConversation } = useChatStore();
 
   // Don't render if not in grant mode
@@ -75,9 +74,18 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
   const handleCreateProject = () => {
     if (!newProjectName.trim()) return;
     
-    const projectId = createProject(newProjectName, currentMode);
-    selectProject(projectId);
-    startNewConversation(); // Start a new chat for the project
+    addProject({
+      name: newProjectName,
+      description: ''  // Empty description for now
+    });
+    
+    // Find the newly created project
+    const newProject = projects.find(p => p.name === newProjectName);
+    if (newProject) {
+      selectProject(newProject.id);
+      startNewConversation(); // Start a new chat for the project
+    }
+    
     setNewProjectName('');
     setShowNewProjectDialog(false);
   };
@@ -132,15 +140,6 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
 
   return (
     <>
-      {/* Add ProjectFilesTopDrawer */}
-      <ProjectFilesTopDrawer
-        files={files}
-        selectedProjectId={selectedProjectId}
-        onFileUpload={handleFileUpload}
-        onFileDelete={handleFileDelete}
-        onFileRename={handleFileRename}
-      />
-
       {/* Trigger area */}
       <div
         ref={triggerRef}
