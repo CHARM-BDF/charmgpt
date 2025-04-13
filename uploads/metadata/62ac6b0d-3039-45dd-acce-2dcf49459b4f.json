@@ -1,14 +1,14 @@
 {
-  "description": "test doc for modal",
+  "description": "How_to_Write_Specific_Aims_Page (1).pdf",
   "schema": {
     "type": "json",
-    "format": "text/plain",
+    "format": "application/pdf",
     "encoding": "utf-8",
     "sampleData": ""
   },
   "origin": {
     "type": "upload",
-    "timestamp": "2025-04-12T22:17:16.119Z"
+    "timestamp": "2025-04-12T22:51:51.980Z"
   },
   "version": {
     "major": 1,
@@ -17,14 +17,14 @@
     "branch": {
       "name": "main",
       "parent": "",
-      "created": "2025-04-12T22:17:16.119Z",
+      "created": "2025-04-12T22:51:51.980Z",
       "description": "Initial version"
     },
     "history": [
       {
-        "id": "87078307-d0b9-4601-bbf6-d5836bcd2b8a",
-        "timestamp": "2025-04-12T22:17:16.119Z",
-        "message": "Initial creation",
+        "id": "289feac3-89fb-4b72-b7a3-0e5d44dac450",
+        "timestamp": "2025-04-12T22:51:51.980Z",
+        "message": "Initial upload",
         "user": "system",
         "branch": "main",
         "parent": ""

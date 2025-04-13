@@ -113,6 +113,18 @@ export interface FileMetadata {
       completeness: number; // Percentage of non-null values
     };
   };
+  textExtraction?: {        // Text extraction information
+    status: 'pending' | 'completed' | 'failed';
+    error?: string;         // Error message if extraction failed
+    content?: string;       // Extracted text content
+    format: string;         // Original file format (pdf, docx, etc.)
+    extractedAt?: Date;     // When the text was extracted
+    metadata?: {            // Format-specific metadata
+      pageCount?: number;   // For PDFs
+      wordCount?: number;   // For text-based documents
+      charCount?: number;   // For text-based documents
+    };
+  };
   lastAccessed?: Date;      // Last accessed timestamp
   status?: "active" | "deleted" | "archived"; // File status
 }

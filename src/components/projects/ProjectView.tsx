@@ -22,6 +22,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
     const [projectFiles, setProjectFiles] = useState<FileEntry[]>([]);
     const [editingFileId, setEditingFileId] = useState<string | null>(null);
     const [editingFileName, setEditingFileName] = useState('');
+    const [selectedFileContent, setSelectedFileContent] = useState<{ title: string; content: string | null } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showAddTextModal, setShowAddTextModal] = useState(false);
     const [textContent, setTextContent] = useState('');
@@ -57,9 +58,25 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
         const files = event.target.files;
         if (files && files.length > 0) {
             const file = files[0];
+            
+            // Define allowed MIME types
+            const allowedTypes = [
+                'application/pdf',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'text/plain',
+                'text/markdown'
+            ];
+            
+            // Check if file type is allowed
+            if (!allowedTypes.includes(file.type)) {
+                alert('Only PDF, DOCX, text, and markdown files are supported for text extraction.');
+                return;
+            }
+
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 const content = new Uint8Array(arrayBuffer);
+                const timestamp = new Date();
 
                 const metadata = {
                     description: file.name,
@@ -71,7 +88,35 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                     },
                     origin: {
                         type: 'upload' as const,
-                        timestamp: new Date()
+                        timestamp: timestamp
+                    },
+                    version: {
+                        major: 1,
+                        minor: 0,
+                        patch: 0,
+                        branch: {
+                            name: 'main',
+                            parent: '',
+                            created: timestamp,
+                            description: 'Initial version'
+                        },
+                        history: [{
+                            id: crypto.randomUUID(),
+                            timestamp: timestamp,
+                            message: 'Initial upload',
+                            user: 'system',
+                            branch: 'main',
+                            parent: ''
+                        }]
+                    },
+                    analysisInfo: {
+                        summary: {},
+                        quality: {
+                            nullCount: 0,
+                            duplicateCount: 0,
+                            errorCount: 0,
+                            completeness: 100
+                        }
                     },
                     tags: [`project:${projectId}`],
                     llmNotes: ''
@@ -152,6 +197,31 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
             setTextTitle('');
         } catch (error) {
             console.error('Error adding text content:', error);
+        }
+    };
+
+    const handleViewFile = async (file: FileEntry) => {
+        try {
+            // Get the raw content without updating metadata
+            const content = await fetch(`/api/storage/files/${file.id}/content`).then(r => r.arrayBuffer());
+            let textContent: string;
+            
+            // If text has been extracted, use that
+            if (file.metadata?.textExtraction?.content) {
+                textContent = file.metadata.textExtraction.content;
+            } else {
+                // Otherwise decode the raw content
+                const decoder = new TextDecoder();
+                textContent = decoder.decode(new Uint8Array(content));
+            }
+            
+            setSelectedFileContent({
+                title: file.name,
+                content: textContent
+            });
+        } catch (error) {
+            console.error('Error reading file:', error);
+            alert('Error reading file content');
         }
     };
 
@@ -261,7 +331,10 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                     {projectFiles.map((file) => (
                                         <div key={file.id} className="flex flex-col">
                                             <div className="flex items-center justify-between group">
-                                                <div className="flex items-center space-x-2">
+                                                <div 
+                                                    className="flex items-center space-x-2 cursor-pointer"
+                                                    onClick={() => handleViewFile(file)}
+                                                >
                                                     <BookOpenIcon className="h-5 w-5 text-gray-500" />
                                                     {editingFileId === file.id ? (
                                                         <input
@@ -313,8 +386,36 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
+                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
                 onChange={handleFileUpload}
             />
+
+            {/* File Content Modal */}
+            {selectedFileContent && (
+                <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl m-4 max-h-[90vh] flex flex-col">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                {selectedFileContent.title}
+                            </h2>
+                            <button
+                                onClick={() => setSelectedFileContent(null)}
+                                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                                <span className="sr-only">Close</span>
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 dark:text-gray-200">
+                                {selectedFileContent.content || 'No content available'}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Text Content Modal */}
             {showAddTextModal && (
