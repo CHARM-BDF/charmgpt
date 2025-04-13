@@ -61,15 +61,13 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
             
             // Define allowed MIME types
             const allowedTypes = [
-                'application/pdf',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'text/plain',
                 'text/markdown'
             ];
             
             // Check if file type is allowed
             if (!allowedTypes.includes(file.type)) {
-                alert('Only PDF, DOCX, text, and markdown files are supported for text extraction.');
+                alert('Only text and markdown files are supported.');
                 return;
             }
 
@@ -313,7 +311,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                             <PlusIcon className="h-4 w-4" />
                                         </button>
                                         {showFileManager && (
-                                            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                                            <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                                                 <div className="py-1">
                                                     <button
                                                         onClick={() => {
@@ -399,7 +397,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                accept=".txt,.md,text/plain,text/markdown"
                 onChange={handleFileUpload}
             />
 
