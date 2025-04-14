@@ -58,9 +58,11 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
     if (!localInput.trim()) return;
 
     if (selectedProjectId) {
-      const conversationId = createNewChat();
+      const conversationName = `Conversation ${new Date().toLocaleString()}`;
+      const conversationId = createNewChat(conversationName);
+      
       if (conversationId) {
-        addConversationToProject(selectedProjectId, conversationId, `Project Chat ${new Date().toLocaleString()}`);
+        addConversationToProject(selectedProjectId, conversationId, conversationName);
         addMessage({
           role: 'user',
           content: localInput

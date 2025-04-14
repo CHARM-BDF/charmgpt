@@ -275,23 +275,27 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                         <p className="text-gray-500">No conversations yet. Start typing above to begin collaborating.</p>
                                     ) : (
                                         <div className="space-y-2">
-                                            {(project.conversations || []).map((conversation) => (
-                                                <div
-                                                    key={conversation.id}
-                                                    className="p-4 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                                    onClick={() => {
-                                                        switchConversation(conversation.id);
-                                                        onClose();
-                                                    }}
-                                                >
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium text-sm mb-1">{conversation.title}</span>
-                                                        <span className="text-xs text-gray-500">
-                                                            {getRelativeTimeString(new Date(conversation.lastMessageAt))}
-                                                        </span>
+                                            {(project.conversations || []).map((projectConversation) => {
+                                                // Get the full conversation data from the chat store
+                                                const conversation = useChatStore(state => state.conversations[projectConversation.id]);
+                                                return (
+                                                    <div
+                                                        key={projectConversation.id}
+                                                        className="p-4 border border-gray-400 dark:border-gray-500 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                        onClick={() => {
+                                                            switchConversation(projectConversation.id);
+                                                            onClose();
+                                                        }}
+                                                    >
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium text-sm mb-1">{conversation?.metadata.name || projectConversation.title}</span>
+                                                            <span className="text-xs text-gray-500">
+                                                                {getRelativeTimeString(new Date(projectConversation.lastMessageAt))}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
