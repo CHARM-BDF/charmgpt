@@ -143,16 +143,16 @@ When implementing the file reference popup triggered by typing '@', several appr
 2. **Positioning Approaches**: 
    - Using `bottom: '100%'` with absolute positioning
    - Using `top: '-220px'` with absolute positioning
-   - Adding explicit width/height values
 
 ### What Worked
-Moving the popup outside of the `<form>` element while keeping it within the parent container:
+1. **Moving the popup outside of the `<form>` element** while keeping it within the parent container:
 
 ```tsx
 <div className="w-full max-w-4xl mx-auto px-4 flex relative">
   {/* Popup moved outside form but inside the container */}
   {isActive && position && selectedProjectId ? (
-    <div className="absolute z-[9999] bg-blue-500 ...">
+    <div className="absolute z-[9999] bg-white dark:bg-gray-800 ...">
+      <div className="text-sm font-medium ...">Reference a file</div>
       <FileReferencePopup ... />
     </div>
   ) : null}
@@ -163,13 +163,20 @@ Moving the popup outside of the `<form>` element while keeping it within the par
 </div>
 ```
 
+2. **Final styling improvements**:
+   - Fixed position using `bottom: '120px'` instead of negative top values
+   - Added padding and a title header
+   - Applied proper light/dark theme styling
+   - Fixed width (400px) and increased height (300px max)
+   - Proper z-index (9999) to ensure visibility
+
 ### Why This Worked
-Forms can have constraints on positioning and z-index behavior for child elements. By moving the popup outside the form element:
+HTML forms can have unexpected constraints on positioning and z-index behavior for child elements. By moving the popup outside the form element:
 1. The popup is no longer subject to form-specific layout behaviors
 2. The parent container's `relative` positioning provides the correct positioning context
 3. The popup can properly stack above other content with z-index
 
-This solution required minimal change and maintained all existing functionality while fixing the visibility issue.
+This approach required minimal change to the component structure while fixing the visibility issue.
 
 ## Best Practices
 
