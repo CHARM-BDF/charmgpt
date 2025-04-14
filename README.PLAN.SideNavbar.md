@@ -14,6 +14,54 @@ Modify the existing `ConversationDrawer` component to become a fully-featured si
   - Display all conversations sorted by last modified time
   - Collapsible back to icon-only view
 
+## Project Navigation Flow
+
+### Component Interaction
+The project navigation system works through the interaction of several components:
+
+1. **ChatInterface.tsx** (Parent Component)
+   - Manages main state:
+     - `showProjectList` - controls ProjectListView visibility
+     - `showProjectView` - controls ProjectView visibility
+     - Passes these state setters to child components
+   - Renders either ProjectListView or ProjectView based on state
+
+2. **ConversationDrawer.tsx**
+   - Has two project navigation paths:
+     - "View All" button: Shows full project list
+     - Individual project links: Shows specific project view
+   - Uses props from ChatInterface:
+     - `setShowProjectList` - to show project list
+     - `setShowProjectView` - to show specific project
+   - Uses ProjectStore for state management
+
+3. **ProjectListView.tsx**
+   - Shows list of all projects
+   - Handles project selection
+   - Automatically switches to ProjectView when a project is selected
+
+4. **ProjectView.tsx**
+   - Displays specific project details
+   - Rendered when a project is selected and showProjectView is true
+
+### Navigation Patterns
+
+1. **"View All" Navigation**:
+   ```typescript
+   const navigateToProjects = () => {
+     useProjectStore.getState().selectProject(null); // Clear selection
+     setShowProjectList(true);                       // Show list view
+   };
+   ```
+
+2. **Specific Project Navigation**:
+   ```typescript
+   const openProject = (projectId: string) => {
+     useProjectStore.getState().selectProject(projectId); // Select project
+     setShowProjectView(true);                           // Show project view
+   };
+   ```
+
 ## Implementation Steps
 
 ### 1. Update ConversationDrawer Structure
