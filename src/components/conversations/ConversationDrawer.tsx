@@ -1,88 +1,239 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../../store/chatStore';
+import { useProjectStore } from '../../store/projectStore';
 import { ConversationList } from './ConversationList';
 // @ts-ignore - Heroicons type definitions mismatch
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 
-export const ConversationDrawer: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface ConversationDrawerProps {
+  onShowProjects?: () => void;
+  setShowProjectList?: (show: boolean) => void;
+}
+
+export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ 
+  onShowProjects,
+  setShowProjectList 
+}) => {
+  const [isVisible, setIsVisible] = useState(true); // Always show at least the collapsed view
+  const [isExpanded, setIsExpanded] = useState(false); // Track expanded/collapsed state
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const { startNewConversation, switchConversation } = useChatStore();
+  const { startNewConversation, switchConversation, conversations } = useChatStore();
+  const { projects } = useProjectStore();
   
-  // Track mouse position for drawer activation
+  // Get recent projects
+  const recentProjects = projects
+    ?.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 3) || [];
+  
+  // Handle clicks outside the drawer to collapse it
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!drawerRef.current || !triggerRef.current) return;
-      
-      const triggerWidth = 20; // Width of trigger area in pixels
-      if (e.clientX <= triggerWidth && !isOpen) {
-        setIsOpen(true);
-      } else if (e.clientX > 300 && isOpen && !drawerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (drawerRef.current && !drawerRef.current.contains(e.target as Node) && isExpanded) {
+        setIsExpanded(false);
       }
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    return () => document.removeEventListener('mousemove', handleMouseMove);
-  }, [isOpen]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isExpanded]);
+
+  // Handle keyboard events (Escape to collapse)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isExpanded) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isExpanded]);
 
   const handleNewConversation = () => {
     const newId = startNewConversation();
     switchConversation(newId);
+    // Auto-collapse after creating a new conversation for a cleaner UI
+    setIsExpanded(false);
   };
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  // Function to navigate to the projects view
+  const navigateToProjects = () => {
+    if (setShowProjectList) {
+      // Clear any selected project and show the list
+      useProjectStore.getState().selectProject(null);
+      setShowProjectList(true);
+      // Auto-collapse after navigating to projects for a cleaner UI
+      setIsExpanded(false);
+    }
+  };
+
+  // Navigate to a specific project
+  const openProject = (projectId: string) => {
+    if (setShowProjectList) {
+      // Select the project and show the list
+      useProjectStore.getState().selectProject(projectId);
+      setShowProjectList(true);
+      // Auto-collapse after navigating
+      setIsExpanded(false);
+    }
+  };
+
+  // Calculate the width class based on current state
+  const widthClass = isExpanded ? 'w-72' : 'w-16';
 
   return (
     <>
-      {/* Trigger area */}
-      <div
-        ref={triggerRef}
-        className="fixed left-0 top-[88px] w-5 h-[calc(100vh-96px)] z-40"
-      />
-      
       {/* Drawer */}
       <div
         ref={drawerRef}
         className={`fixed left-0 top-[88px] h-[calc(100vh-96px)] bg-white dark:bg-gray-800 shadow-lg 
-                   transition-transform duration-300 ease-in-out z-50
-                   ${isOpen ? 'translate-x-0' : 'translate-x-[-95%]'}
+                   transition-all duration-300 ease-in-out z-50
+                   ${isVisible ? 'translate-x-0' : 'translate-x-[-100%]'}
                    border-r border-gray-200 dark:border-gray-700
                    rounded-tr-xl rounded-br-xl
-                   w-72`}
+                   ${widthClass} overflow-hidden`}
+        aria-expanded={isExpanded}
       >
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Conversations
-            </h2>
-            <button
-              onClick={handleNewConversation}
-              className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
-                       hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
-                       flex items-center gap-1"
-              title="New Conversation"
-            >
-              <span className="w-4 h-4 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
-                <span className="text-sm font-semibold leading-none">+</span>
-              </span>
-              <SparklesIcon className="w-5 h-5" />
-            </button>
-          </div>
+        {/* Icon-only sidebar view */}
+        <div className={`h-full flex flex-col items-center py-6 space-y-8 ${isExpanded ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}>
+          {/* Expand button */}
+          <button
+            onClick={toggleExpanded}
+            className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                     hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title="Expand Sidebar"
+            aria-label="Expand Sidebar"
+          >
+            <ArrowsPointingOutIcon className="w-6 h-6" />
+          </button>
           
-          {/* Conversation list */}
-          <div className="h-[calc(100vh-224px)] overflow-y-auto">
-            <ConversationList />
-          </div>
+          {/* New chat button */}
+          <button
+            onClick={handleNewConversation}
+            className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                     hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
+                     relative group"
+            title="New Conversation"
+            aria-label="New Conversation"
+          >
+            <div className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full
+                          group-hover:bg-blue-500 dark:group-hover:bg-blue-600 transition-colors">
+              <span className="text-sm font-semibold leading-none group-hover:text-white">+</span>
+            </div>
+            {/* Tooltip */}
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              New Conversation
+            </span>
+          </button>
+          
+          {/* Projects button */}
+          <button
+            onClick={navigateToProjects}
+            className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                     hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
+                     relative group"
+            title="Projects"
+            aria-label="Show Projects"
+          >
+            <FolderIcon className="w-6 h-6 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
+            {/* Tooltip */}
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Projects
+            </span>
+          </button>
         </div>
-        
-        {/* Hint text when drawer is closed */}
-        <div className={`absolute right-0 top-1/2 -translate-y-1/2 transition-opacity duration-300
-                      ${isOpen ? 'opacity-0' : 'opacity-100'}`}>
-          <div className="rotate-90 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-            Conversations
+
+        {/* Expanded sidebar content */}
+        {isExpanded && (
+          <div className="absolute inset-0 w-full bg-white dark:bg-gray-800 p-4 overflow-hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Conversations
+              </h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleNewConversation}
+                  className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                           hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
+                           flex items-center gap-1"
+                  title="New Conversation"
+                >
+                  <span className="w-4 h-4 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
+                    <span className="text-sm font-semibold leading-none">+</span>
+                  </span>
+                  <SparklesIcon className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={toggleExpanded}
+                  className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                           hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Collapse"
+                >
+                  <ChevronRightIcon className="w-5 h-5 rotate-180" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Recent projects section */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Recent Projects
+                </h3>
+                {recentProjects.length > 0 && (
+                  <button
+                    onClick={navigateToProjects}
+                    className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    View All
+                  </button>
+                )}
+              </div>
+              
+              <div className="space-y-1 text-sm">
+                {recentProjects.length > 0 ? (
+                  recentProjects.map(project => (
+                    <button
+                      key={project.id}
+                      onClick={() => openProject(project.id)}
+                      className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 
+                               flex items-center gap-2 transition-colors"
+                    >
+                      <FolderIcon className="w-4 h-4 text-gray-400" />
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-gray-400 px-3 py-2 italic text-xs">
+                    No projects yet. Create your first project.
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Conversation list */}
+            <div>
+              <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 px-1">
+                Recent Conversations
+              </div>
+              <div className="h-[calc(100vh-320px)] overflow-y-auto pr-1">
+                <ConversationList />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Invisible trigger area - keeping this for now, may remove later */}
+      <div
+        ref={triggerRef}
+        className="fixed left-0 top-[88px] w-5 h-[calc(100vh-96px)] z-40"
+      />
     </>
   );
 }; 

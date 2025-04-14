@@ -338,7 +338,9 @@ export const ChatInterface: React.FC = () => {
             storageService={storageService}
           />
         ) : (
-          <ConversationDrawer />
+          <ConversationDrawer 
+            setShowProjectList={setShowProjectList}
+          />
         )}
 
         {/* File Manager Modal */}
