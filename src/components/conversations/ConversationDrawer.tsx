@@ -8,11 +8,13 @@ import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon } fro
 interface ConversationDrawerProps {
   onShowProjects?: () => void;
   setShowProjectList?: (show: boolean) => void;
+  setShowProjectView?: (show: boolean) => void;
 }
 
 export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ 
   onShowProjects,
-  setShowProjectList 
+  setShowProjectList,
+  setShowProjectView
 }) => {
   const [isVisible, setIsVisible] = useState(true); // Always show at least the collapsed view
   const [isExpanded, setIsExpanded] = useState(false); // Track expanded/collapsed state
@@ -61,7 +63,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  // Function to navigate to the projects view
+  // Function to navigate to the projects view (for View All)
   const navigateToProjects = () => {
     if (setShowProjectList) {
       // Clear any selected project and show the list
@@ -72,15 +74,13 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     }
   };
 
-  // Navigate to a specific project
+  // Navigate to a specific project - now also shows the ProjectView
   const openProject = (projectId: string) => {
-    if (setShowProjectList) {
-      // Select the project and show the list
-      useProjectStore.getState().selectProject(projectId);
-      setShowProjectList(true);
-      // Auto-collapse after navigating
-      setIsExpanded(false);
+    useProjectStore.getState().selectProject(projectId);
+    if (setShowProjectView) {
+      setShowProjectView(true);
     }
+    setIsExpanded(false);
   };
 
   // Calculate the width class based on current state

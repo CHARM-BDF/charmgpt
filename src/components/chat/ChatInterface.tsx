@@ -340,6 +340,7 @@ export const ChatInterface: React.FC = () => {
         ) : (
           <ConversationDrawer 
             setShowProjectList={setShowProjectList}
+            setShowProjectView={setShowProjectView}
           />
         )}
 
