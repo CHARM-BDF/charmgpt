@@ -55,6 +55,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const handleNewConversation = () => {
     const newId = startNewConversation();
     switchConversation(newId);
+    useProjectStore.getState().selectProject(null);
     // Auto-collapse after creating a new conversation for a cleaner UI
     setIsExpanded(false);
   };

@@ -20,6 +20,7 @@ import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';
 import { useMCPStore } from './mcpStore';
 import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../types/knowledgeGraph';
+import { useProjectStore } from './projectStore';
 
 /**
  * Core message interface extension
@@ -83,6 +84,9 @@ export interface ChatState extends ConversationState {
   
   // Status updates
   toggleStatusUpdatesCollapsed: (messageId: string) => void;
+
+  // New selector for unassociated conversations
+  getUnassociatedConversations: () => string[];
 }
 
 export const useChatStore = create<ChatState>()(
@@ -115,6 +119,23 @@ export const useChatStore = create<ChatState>()(
         // New conversation state
         currentConversationId: null,
         conversations: {},
+
+        // Add new selector for unassociated conversations
+        getUnassociatedConversations: () => {
+          const state = get();
+          const allConversationIds = Object.keys(state.conversations);
+          const projectStore = useProjectStore.getState();
+          
+          // Get all conversation IDs that are associated with any project
+          const projectAssociatedIds = new Set(
+            projectStore.projects.flatMap(project => 
+              project.conversations.map(conv => conv.id)
+            )
+          );
+          
+          // Return conversation IDs that are not in any project
+          return allConversationIds.filter(id => !projectAssociatedIds.has(id));
+        },
 
         // Add new function to update chat input
         updateChatInput: (text: string, append: boolean = false) => {
