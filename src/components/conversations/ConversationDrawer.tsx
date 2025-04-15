@@ -152,32 +152,34 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         {/* Expanded sidebar content */}
         {isExpanded && (
           <div className="absolute inset-0 w-full bg-white dark:bg-gray-800 p-4 overflow-hidden">
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={toggleExpanded}
+                className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                         hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Collapse"
+              >
+                <ChevronRightIcon className="w-5 h-5 rotate-180" />
+              </button>
+            </div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Conversations
-              </h2>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleNewConversation}
-                  className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
-                           hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
-                           flex items-center gap-1"
-                  title="New Conversation"
-                >
-                  <span className="w-4 h-4 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
-                    <span className="text-sm font-semibold leading-none">+</span>
-                  </span>
-                  <SparklesIcon className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={toggleExpanded}
-                  className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
-                           hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Collapse"
-                >
-                  <ChevronRightIcon className="w-5 h-5 rotate-180" />
-                </button>
+              <div className="flex items-center gap-2">
+                <SparklesIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  New Conversation
+                </h2>
               </div>
+              <button
+                onClick={handleNewConversation}
+                className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                         hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
+                         flex items-center gap-1"
+                title="New Conversation"
+              >
+                <span className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
+                  <span className="text-base font-semibold leading-none">+</span>
+                </span>
+              </button>
             </div>
             
             {/* Recent projects section */}
