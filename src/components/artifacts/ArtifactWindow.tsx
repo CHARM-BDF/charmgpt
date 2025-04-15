@@ -1,7 +1,7 @@
 import React from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { ArtifactContent } from './ArtifactContent';
-import KnowledgeGraphTestButton from './KnowledgeGraphTestButton';
+// import KnowledgeGraphTestButton from './KnowledgeGraphTestButton';
 
 interface ArtifactWindowProps {
   storageService: any;
@@ -30,7 +30,7 @@ export const ArtifactWindow: React.FC<ArtifactWindowProps> = ({ storageService }
           <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
             <div className="text-center p-4">
               <p>No artifact selected</p>
-              <KnowledgeGraphTestButton />
+              {/* <KnowledgeGraphTestButton /> */}
             </div>
           </div>
         )}

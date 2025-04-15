@@ -39,41 +39,24 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   const [showThinkingMap, setShowThinkingMap] = useState<Record<string, boolean>>({});
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
-  // Debug function to log all artifacts - only call this when needed, not on every render
-  const logAllArtifacts = useCallback(() => {
-    console.log("=== DEBUG: ALL ARTIFACTS ===");
-    console.log(`Total artifacts in store: ${artifacts.length}`);
-    
-    // Log each artifact with full details
-    artifacts.forEach((artifact, index) => {
-      console.log(`Artifact ${index + 1}:`);
-      console.log(`  ID: ${artifact.id}`);
-      console.log(`  ArtifactID: ${artifact.artifactId}`);
-    });
-  }, [artifacts]);
-  
   // Function to get all artifacts associated with a message
   const getMessageArtifacts = (message: MessageWithThinking) => {
     const result: Artifact[] = [];
     
     // Step 1: Get directly linked artifacts based on artifactId
-    // console.log(`Step 1: Checking for linked artifacts for message ${message.id}`);
     if (message.artifactId) {
       const artifact = artifacts.find(a => a.id === message.artifactId);
       if (artifact) {
-        // console.log(`  Found linked artifact: ${artifact.id} (${artifact.type})`);
         result.push(artifact);
       }
     }
     
     // Check for multiple artifacts using the new artifactIds property
     if ((message as any).artifactIds && Array.isArray((message as any).artifactIds)) {
-      // console.log(`  Message has artifactIds property with ${(message as any).artifactIds.length} artifacts`);
       (message as any).artifactIds.forEach((id: string) => {
         if (id !== message.artifactId) { // Avoid duplicates
           const artifact = artifacts.find(a => a.id === id);
           if (artifact) {
-            // console.log(`  Found additional linked artifact: ${artifact.id} (${artifact.type})`);
             result.push(artifact);
           }
         }
@@ -81,29 +64,23 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     }
     
     // Step 2: Get artifacts that reference this message
-    // console.log(`Step 2: Checking for artifacts that reference message ${message.id}`);
     const referencingArtifacts = artifacts.filter(a => 
       a.content.includes(message.id) && !result.some(r => r.id === a.id)
     );
     if (referencingArtifacts.length > 0) {
-      // console.log(`  Found ${referencingArtifacts.length} artifacts referencing this message`);
       result.push(...referencingArtifacts);
     }
     
     // Step 3: Extract artifact IDs from message content (buttons)
-    // console.log(`Step 3: Checking for artifacts referenced in message content`);
     const buttonMatches = message.content.match(/data-artifact-id="([^"]+)"/g) || [];
     buttonMatches.forEach(match => {
       const artifactId = match.replace('data-artifact-id="', '').replace('"', '');
       const artifact = artifacts.find(a => a.id === artifactId);
       if (artifact && !result.some(r => r.id === artifact.id)) {
-        // console.log(`  Found artifact referenced in content: ${artifact.id} (${artifact.type})`);
         result.push(artifact);
       }
     });
     
-    // Log final result
-    // console.log(`Found ${result.length} total artifacts for message ${message.id}`);
     return result;
   };
 
@@ -173,7 +150,6 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
       setTimeout(() => setCopiedMessageId(null), 2000); // Hide after 2 seconds
-      // console.log('Successfully copied to clipboard');
     } catch (err) {
       console.error('Failed to copy text:', err);
     }
@@ -186,18 +162,6 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
 
   return (
     <div ref={containerRef} className="w-full max-w-3xl mx-auto px-4 pt-6">
-      {/* Debug button - only show in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="flex justify-end mb-2">
-          <button
-            onClick={logAllArtifacts}
-            className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-          >
-            Debug Artifacts
-          </button>
-        </div>
-      )}
-      
       <div className="w-full space-y-6">
         {messages.map((message) => {
           const messageWithThinking = message as MessageWithThinking;
@@ -354,17 +318,6 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                       const jsonArtifact = messageArtifacts.find(
                         artifact => artifact.type === 'application/json' || artifact.type === 'application/vnd.ant.json'
                       );
-                      
-                      // Log found artifacts for debugging
-                      // console.log(`Message ${message.id} artifacts:`, {
-                      //   total: messageArtifacts.length,
-                      //   artifactIds: messageArtifacts.map(a => a.id),
-                      //   types: messageArtifacts.map(a => a.type),
-                      //   hasBibliography: !!bibliographyArtifact,
-                      //   hasKnowledgeGraph: !!knowledgeGraphArtifact,
-                      //   hasJson: !!jsonArtifact,
-                      //   messageArtifactId: message.artifactId
-                      // });
                       
                       if (bibliographyArtifact || knowledgeGraphArtifact || jsonArtifact) {
                         return (
