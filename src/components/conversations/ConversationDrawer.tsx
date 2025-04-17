@@ -250,9 +250,37 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             {/* Grant Review projects section */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Grant Reviews
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Grant Reviews
+                  </h3>
+                  <button
+                    onClick={() => {
+                      const { addProject, projects } = useProjectStore.getState();
+                      const projectName = "New Grant Review";
+                      addProject({
+                        name: projectName,
+                        description: "",
+                        type: 'grant_review',
+                        grantMetadata: {
+                          requiredDocuments: []
+                        }
+                      });
+                      // Find the newly created project
+                      const newProject = projects.find(p => p.name === projectName && p.type === 'grant_review');
+                      if (newProject) {
+                        useProjectStore.getState().selectProject(newProject.id);
+                        setShowProjectView?.(true);
+                        setIsExpanded(false);
+                      }
+                    }}
+                    className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full
+                             hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors group"
+                    title="New Grant Review"
+                  >
+                    <span className="text-sm font-semibold leading-none text-gray-600 dark:text-gray-300 group-hover:text-white">+</span>
+                  </button>
+                </div>
                 {grantReviewProjects.length > 0 && (
                   <button
                     onClick={() => setShowGrantReviewList?.(true)}

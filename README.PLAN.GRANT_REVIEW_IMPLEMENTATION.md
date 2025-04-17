@@ -2,73 +2,76 @@
 
 ## Completed Steps ✅
 1. Added grant review icon to ConversationDrawer
-   - Added BeakerIcon initially for testing
-   - Replaced with grant mode icon from `/logos/grantmode_icon.png`
+   - Added grant mode icon from `/logos/grantmode_icon.png`
    - Sized appropriately (w-8 h-8)
-   - Added hover effects to match other icons
+   - Added hover effects to match other icons (blue on hover)
    - Added tooltip with fast transition
    - Positioned correctly in the collapsed drawer view
 
-## Next Step: Add Grant Review Section to Expanded Drawer
-1. **Update Expanded View** (`src/components/conversations/ConversationDrawer.tsx`)
-   ```typescript
-   // Add grant review projects section after Recent Projects
-   const grantReviewProjects = projects
-     ?.filter(p => p.type === 'grant_review')
-     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-     .slice(0, 3) || [];
+2. Added Grant Review section to expanded drawer
+   - Shows recent grant review projects
+   - Matches styling of Recent Projects section
+   - Added "View All" button
+   - Shows placeholder when no grant reviews exist
 
-   // Add new section in expanded view:
-   <div className="mb-4">
-     <div className="flex justify-between items-center mb-2">
-       <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-         Grant Reviews
-       </h3>
-       {grantReviewProjects.length > 0 && (
-         <button
-           onClick={() => setShowGrantReviewList?.(true)}
-           className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
-         >
-           View All
-         </button>
-       )}
-     </div>
-     
-     <div className="space-y-1 text-sm">
-       {grantReviewProjects.length > 0 ? (
-         grantReviewProjects.map(project => (
-           <button
-             key={project.id}
-             onClick={() => openProject(project.id)}
-             className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 
-                      flex items-center gap-2 transition-colors"
-           >
-             <img 
-               src="/logos/grantmode_icon.png" 
-               alt="Grant Review"
-               className="w-4 h-4 opacity-80" 
-             />
-             <span className="truncate">{project.name}</span>
-           </button>
-         ))
-       ) : (
-         <div className="text-gray-400 px-3 py-2 italic text-xs">
-           No grant reviews yet.
-         </div>
-       )}
-     </div>
+3. Project Store Updates
+   - Project interface already includes type field and grantMetadata
+   - Updated addProject to properly handle grant review type
+   - Added getGrantReviewProjects selector
+   - Proper initialization of grantMetadata for new grant reviews
+
+4. GrantReviewListView Component
+   - Shows only grant review projects
+   - Creates new grant reviews with correct type
+   - Displays project details
+   - Navigates to individual project view
+   - Handles empty state
+   - Matches project list styling
+
+## Next Step: Document Management
+1. **Update ProjectView for Grant Reviews** (`src/components/projects/ProjectView.tsx`)
+   - Add document requirement section
+   - Create document upload interface
+   - Track document status
+   - Show review progress
+
+   ```typescript
+   interface DocumentRequirement {
+     name: string;
+     description: string;
+     required: boolean;
+     uploadStatus: 'pending' | 'uploaded' | 'reviewed';
+   }
+
+   // Component structure:
+   <div className="document-requirements">
+     <h2>Required Documents</h2>
+     {project.grantMetadata?.requiredDocuments.map(doc => (
+       <DocumentRow
+         key={doc.name}
+         document={doc}
+         onUpload={handleUpload}
+         onStatusChange={handleStatusChange}
+       />
+     ))}
+     <AddDocumentButton onClick={handleAddDocument} />
    </div>
    ```
 
-## Remaining Steps
-1. Update Project interface and store
-2. Create GrantReviewListView
-3. Implement grant review project creation
-4. Add document requirement tracking
-5. Create specialized views for grant reviews
-6. Testing and integration
+2. Create supporting components:
+   - DocumentRow
+   - DocumentUploader
+   - StatusIndicator
+   - ReviewNotes
 
-Would you like me to proceed with implementing the expanded drawer view for grant reviews?
+## Remaining Steps
+1. Implement document management UI
+2. Add document upload functionality
+3. Create review workflow
+4. Add testing
+5. Final integration and testing
+
+Would you like me to proceed with implementing the document management features in the ProjectView component?
 
 ## Phase 1: Foundation Setup
 

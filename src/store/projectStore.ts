@@ -73,6 +73,9 @@ export const useProjectStore = create<ProjectState>()(
           id: crypto.randomUUID(),
           ...projectData,
           type: projectData.type || 'project',
+          grantMetadata: projectData.type === 'grant_review' ? {
+            requiredDocuments: []
+          } : undefined,
           createdAt: new Date(),
           updatedAt: new Date(),
           conversations: [],

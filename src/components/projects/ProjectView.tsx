@@ -342,6 +342,32 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Document guidance for grant review projects */}
+                                {project.type === 'grant_review' && (
+                                    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                                        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Expected Documents</h3>
+                                        <ul className="text-xs space-y-1.5 text-blue-700 dark:text-blue-400">
+                                            <li className="flex items-center">
+                                                <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                Request for Application (RFA)
+                                            </li>
+                                            <li className="flex items-center">
+                                                <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                Specific Aims
+                                            </li>
+                                            <li className="flex items-center">
+                                                <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                Research Proposal
+                                            </li>
+                                            <li className="flex items-center">
+                                                <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                Supplemental Information
+                                            </li>
+                                        </ul>
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     {projectFiles.map((file) => (
                                         <div key={file.id} className="flex flex-col">
