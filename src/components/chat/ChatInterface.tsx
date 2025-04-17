@@ -3,8 +3,6 @@ import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { ArtifactWindow } from '../artifacts/ArtifactWindow';
 import { ArtifactDrawer } from '../artifacts/ArtifactDrawer';
-// import { MCPTools } from '../mcp/MCPTools';
-// import { MCPServerControl } from '../mcp/MCPServerControl';
 import { DarkModeToggle } from '../DarkModeToggle';
 import { useChatStore } from '../../store/chatStore';
 import { MCPStatusModal } from '../mcp/MCPStatusModal';
@@ -13,11 +11,9 @@ import { ConversationDrawer } from '../conversations/ConversationDrawer';
 import BrainWaveCharmStatic from '../animations/BrainWaveCharmStatic';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
-import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, BeakerIcon, FolderIcon } from '@heroicons/react/24/outline';
-// import { useMCPStore } from '../../store/mcpStore';
+import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, Cog8ToothIcon } from '@heroicons/react/24/outline';
 import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
-import KnowledgeGraphTestButton from '../artifacts/KnowledgeGraphTestButton';
 import { useModeStore } from '../../store/modeStore';
 import { ProjectDrawer } from '../projects/ProjectDrawer';
 import { ProjectListView } from '../projects/ProjectListView';
@@ -27,9 +23,9 @@ export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
-  const [showTestingTools, setShowTestingTools] = useState(false);
   const [showProjectList, setShowProjectList] = useState(false);
   const [showProjectView, setShowProjectView] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
   const { projects, selectedProjectId, selectProject } = useProjectStore();
@@ -43,79 +39,6 @@ export const ChatInterface: React.FC = () => {
   useEffect(() => {
     console.log('ChatInterface: showArtifactWindow changed to:', showArtifactWindow);
   }, [showArtifactWindow]);
-
-  // Close testing tools dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Check if the click is on the testing tools button itself (which has its own handler)
-      const isTestingButton = target.closest('button') && 
-        target.closest('button')?.getAttribute('title') === 'Testing Tools';
-      
-      // Check if the click is inside the dropdown menu or any button
-      const isInsideDropdown = target.closest('.testing-tools-dropdown');
-      const isButton = target.tagName === 'BUTTON' || target.closest('button');
-      
-      // Only close if the click is outside both the container and dropdown AND not on any button
-      if (!target.closest('.testing-tools-container') && !isTestingButton && !isInsideDropdown && !isButton) {
-        setShowTestingTools(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Close testing tools dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Check if the click is on the testing tools button itself
-      const isTestingButton = target.closest('button') && 
-        target.closest('button')?.getAttribute('title') === 'Testing Tools';
-      
-      // Check if the click is inside the dropdown menu
-      const isInsideDropdown = target.closest('.testing-tools-dropdown');
-      
-      // Only close if the click is outside both the button and dropdown
-      if (!isTestingButton && !isInsideDropdown) {
-        setShowTestingTools(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Simple click outside handler for testing tools dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // If testing tools dropdown is not shown, do nothing
-      if (!showTestingTools) return;
-      
-      const target = event.target as HTMLElement;
-      
-      // Check if click is on the testing tools button
-      const isOnButton = target.closest('button')?.getAttribute('title') === 'Testing Tools';
-      
-      // Check if click is inside the dropdown
-      const isInDropdown = target.closest('.testing-tools-dropdown') !== null;
-      
-      // Only close if click is outside both the button and dropdown
-      if (!isOnButton && !isInDropdown) {
-        setShowTestingTools(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showTestingTools]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-200 dark:bg-gray-900">
@@ -133,29 +56,12 @@ export const ChatInterface: React.FC = () => {
                   {selectedProject.name}
                 </button>
               )}
-              {/* <MCPServerControl /> */}
             </div>
             <div className="flex items-center space-x-6">
-              {/* Model Selection */}
-              <ModelSelector />
-
-              {/* Files Section */}
-              <div className="flex flex-col items-center">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setShowFileManager(!showFileManager)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                    title="File Manager"
-                  >
-                    <FolderOpenIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  </button>
-                </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Files</span>
-              </div>
-
-              {/* MCP Server Section */}
-              <div className="flex flex-col items-center">
-                <div className="flex items-center">
+              {/* Settings Menu */}
+              <div className="relative flex items-center space-x-4">
+                {/* MCP Server Section - Always visible */}
+                <div className="flex flex-col items-center whitespace-nowrap">
                   <button
                     onClick={() => setIsStatusModalOpen(true)}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
@@ -163,98 +69,93 @@ export const ChatInterface: React.FC = () => {
                   >
                     <ServerIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                   </button>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">MCP Server</span>
                 </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">MCP Server</span>
-              </div>
 
-              {/* Display Controls Section */}
-              <div className="flex flex-col items-center">
-                <div className="flex items-center space-x-3">
-                  <DarkModeToggle />
-                </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Display</span>
-              </div>
+                {/* Animated Container for Controls */}
+                <div className={`flex items-center space-x-3 overflow-hidden transition-all duration-300 ease-in-out ${
+                  showSettings ? 'w-[412px] opacity-100' : 'w-0 opacity-0'
+                }`}>
+                  {/* Model Selection with dividers */}
+                  <div className="flex items-center px-3 border-x border-gray-200 dark:border-gray-700">
+                    <ModelSelector />
+                  </div>
 
-              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-              
-              {/* Chat Controls Section */}
-              <div className="flex flex-col items-center">
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => setShowList(!showList)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                    title={showList ? "Hide List" : "Show List"}
-                  >
-                    <ListBulletIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  </button>
-                  
-                  <button
-                    onClick={toggleArtifactWindow}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                    title="Toggle Artifact Window"
-                  >
-                    <ArrowsRightLeftIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  </button>
-                  
-                  <button
-                    onClick={clearChat}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                    title="Clear chat history"
-                  >
-                    <TrashIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  </button>
-                </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Chat Controls</span>
-              </div>
-
-              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-              
-              {/* Streaming Controls Section */}
-              <div className="flex flex-col items-center">
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={toggleStreaming}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                    title={streamingEnabled ? "Disable streaming" : "Enable streaming"}
-                  >
-                    <ForwardIcon 
-                      className={`w-5 h-5 ${
-                        streamingEnabled 
-                          ? 'text-blue-600 dark:text-blue-400' 
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`} 
-                    />
-                  </button>
-                </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Streaming</span>
-              </div>
-
-              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-              
-              {/* Testing Tools Section */}
-              <div className="flex flex-col items-center testing-tools-container">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
+                  {/* Files Section */}
+                  <div className="flex flex-col items-center whitespace-nowrap">
                     <button
+                      onClick={() => setShowFileManager(!showFileManager)}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                      title="Testing Tools"
-                      onClick={() => setShowTestingTools(!showTestingTools)}
+                      title="File Manager"
                     >
-                      <BeakerIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      <FolderOpenIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                     </button>
-                    {showTestingTools && (
-                      <div 
-                        className="fixed top-20 right-4 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-[9999] testing-tools-dropdown"
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Files</span>
+                  </div>
+
+                  {/* Display Controls Section */}
+                  <div className="flex flex-col items-center whitespace-nowrap">
+                    <DarkModeToggle />
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Display</span>
+                  </div>
+
+                  {/* Chat Controls Section */}
+                  <div className="flex flex-col items-center whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setShowList(!showList)}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        title={showList ? "Hide List" : "Show List"}
                       >
-                        <div className="p-3">
-                          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Knowledge Graph Tests</h3>
-                          <KnowledgeGraphTestButton />
-                        </div>
-                      </div>
-                    )}
+                        <ListBulletIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      </button>
+                      <button
+                        onClick={toggleArtifactWindow}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        title="Toggle Artifact Window"
+                      >
+                        <ArrowsRightLeftIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      </button>
+                      <button
+                        onClick={clearChat}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        title="Clear chat history"
+                      >
+                        <TrashIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Chat Controls</span>
+                  </div>
+
+                  {/* Streaming Controls Section */}
+                  <div className="flex flex-col items-center whitespace-nowrap">
+                    <button
+                      onClick={toggleStreaming}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                      title={streamingEnabled ? "Disable streaming" : "Enable streaming"}
+                    >
+                      <ForwardIcon 
+                        className={`w-5 h-5 ${
+                          streamingEnabled 
+                            ? 'text-blue-600 dark:text-blue-400' 
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`} 
+                      />
+                    </button>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Streaming</span>
                   </div>
                 </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Testing</span>
+
+                {/* Settings Toggle Button */}
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-all duration-300 ${
+                    showSettings ? 'rotate-180' : ''
+                  }`}
+                  title="Settings"
+                >
+                  <Cog8ToothIcon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                </button>
               </div>
             </div>
           </div>
@@ -305,7 +206,6 @@ export const ChatInterface: React.FC = () => {
               </div>
             </div>
             <ChatInput storageService={storageService} />
-            {/* {activeServer && <MCPTools serverId={activeServer} onToolSelect={() => {}} onResourceSelect={() => {}} onPromptSelect={() => {}} />} */}
           </div>
         </div>
 
