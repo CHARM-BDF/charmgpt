@@ -3,18 +3,20 @@ import { useChatStore } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
 import { ConversationList } from './ConversationList';
 // @ts-ignore - Heroicons type definitions mismatch
-import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon, BeakerIcon } from '@heroicons/react/24/outline';
 
 interface ConversationDrawerProps {
   onShowProjects?: () => void;
   setShowProjectList?: (show: boolean) => void;
   setShowProjectView?: (show: boolean) => void;
+  setShowGrantReviewList?: (show: boolean) => void;
 }
 
 export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ 
   onShowProjects,
   setShowProjectList,
-  setShowProjectView
+  setShowProjectView,
+  setShowGrantReviewList
 }) => {
   const [isVisible, setIsVisible] = useState(true); // Always show at least the collapsed view
   const [isExpanded, setIsExpanded] = useState(false); // Track expanded/collapsed state
@@ -26,6 +28,12 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   // Get recent projects
   const recentProjects = projects
     ?.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 3) || [];
+  
+  // Get recent grant review projects
+  const grantReviewProjects = projects
+    ?.filter(p => p.type === 'grant_review')
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3) || [];
   
   // Handle clicks outside the drawer to collapse it
@@ -105,7 +113,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
           {/* Expand button */}
           <button
             onClick={toggleExpanded}
-            className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+            className="p-2.5 rounded-full text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100
                      hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             title="Expand Sidebar"
             aria-label="Expand Sidebar"
@@ -116,7 +124,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
           {/* New chat button */}
           <button
             onClick={handleNewConversation}
-            className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+            className="p-2.5 rounded-full text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100
                      hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
                      relative group"
             title="New Conversation"
@@ -127,15 +135,15 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
               <span className="text-sm font-semibold leading-none group-hover:text-white">+</span>
             </div>
             {/* Tooltip */}
-            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              New Conversation
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 whitespace-nowrap">
+              New Conv
             </span>
           </button>
           
           {/* Projects button */}
           <button
             onClick={navigateToProjects}
-            className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+            className="p-2.5 rounded-full text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100
                      hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
                      relative group"
             title="Projects"
@@ -143,8 +151,28 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
           >
             <FolderIcon className="w-6 h-6 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
             {/* Tooltip */}
-            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 whitespace-nowrap">
               Projects
+            </span>
+          </button>
+
+          {/* Grant Review button */}
+          <button
+            onClick={() => setShowGrantReviewList?.(true)}
+            className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                     hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
+                     relative group"
+            title="Grant Reviews"
+            aria-label="Show Grant Reviews"
+          >
+            <img 
+              src="/logos/grantmode_icon.png" 
+              alt="Grant Review"
+              className="w-8 h-8 opacity-80 group-hover:opacity-100 group-hover:[filter:invert(48%)_sepia(95%)_saturate(1000%)_hue-rotate(195deg)_brightness(102%)_contrast(101%)] transition-all" 
+            />
+            {/* Tooltip */}
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 whitespace-nowrap">
+              Grant Reviews
             </span>
           </button>
         </div>
@@ -214,6 +242,47 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 ) : (
                   <div className="text-gray-400 px-3 py-2 italic text-xs">
                     No projects yet. Create your first project.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Grant Review projects section */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Grant Reviews
+                </h3>
+                {grantReviewProjects.length > 0 && (
+                  <button
+                    onClick={() => setShowGrantReviewList?.(true)}
+                    className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    View All
+                  </button>
+                )}
+              </div>
+              
+              <div className="space-y-1 text-sm">
+                {grantReviewProjects.length > 0 ? (
+                  grantReviewProjects.map(project => (
+                    <button
+                      key={project.id}
+                      onClick={() => openProject(project.id)}
+                      className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 
+                               flex items-center gap-2 transition-colors"
+                    >
+                      <img 
+                        src="/logos/grantmode_icon.png" 
+                        alt="Grant Review"
+                        className="w-4 h-4 opacity-80" 
+                      />
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-gray-400 px-3 py-2 italic text-xs">
+                    No grant reviews yet.
                   </div>
                 )}
               </div>

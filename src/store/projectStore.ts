@@ -21,6 +21,15 @@ export interface Project {
   updatedAt: Date;
   conversations: ProjectConversation[];
   files: ProjectFile[];
+  type: 'project' | 'grant_review';
+  grantMetadata?: {
+    requiredDocuments: Array<{
+      name: string;
+      description: string;
+      required: boolean;
+      uploadStatus: 'pending' | 'uploaded' | 'reviewed';
+    }>;
+  };
 }
 
 interface ProjectState {
@@ -46,11 +55,14 @@ interface ProjectState {
   // Loading and error states
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
+
+  // Grant review specific
+  getGrantReviewProjects: () => Project[];
 }
 
 export const useProjectStore = create<ProjectState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       projects: [],
       selectedProjectId: null,
       isLoading: false,
@@ -60,6 +72,7 @@ export const useProjectStore = create<ProjectState>()(
         const newProject: Project = {
           id: crypto.randomUUID(),
           ...projectData,
+          type: projectData.type || 'project',
           createdAt: new Date(),
           updatedAt: new Date(),
           conversations: [],
@@ -162,10 +175,14 @@ export const useProjectStore = create<ProjectState>()(
         error,
         isLoading: false,
       }),
+
+      getGrantReviewProjects: () => {
+        const state = get();
+        return state.projects.filter(project => project.type === 'grant_review');
+      },
     }),
     {
       name: 'project-storage',
-      // Only persist the projects array and selectedProjectId
       partialize: (state) => ({
         projects: state.projects,
         selectedProjectId: state.selectedProjectId,
