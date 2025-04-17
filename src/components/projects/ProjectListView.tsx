@@ -10,7 +10,10 @@ interface ProjectListViewProps {
 }
 
 export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showProjectList }) => {
-  const { projects, isLoading, error, selectedProjectId, selectProject } = useProjectStore();
+  const { projects, isLoading, error, selectedProjectId, selectProject, addProject } = useProjectStore();
+
+  // Filter out grant review projects
+  const regularProjects = projects.filter(p => p.type !== 'grant_review');
 
   useEffect(() => {
     if (showProjectList) {
@@ -19,8 +22,16 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
   }, [showProjectList, selectProject]);
 
   const selectedProject = selectedProjectId 
-    ? projects.find(p => p.id === selectedProjectId)
+    ? regularProjects.find(p => p.id === selectedProjectId)
     : null;
+
+  const handleCreateProject = () => {
+    addProject({
+      name: "New Project",
+      description: "",
+      type: 'project'
+    });
+  };
 
   if (selectedProject) {
     return (
@@ -38,11 +49,11 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
       <div className="border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-screen-2xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Projects</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Research Projects</h1>
             <div className="flex items-center space-x-4">
               <button
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                onClick={() => {/* TODO: Add new project */}}
+                onClick={handleCreateProject}
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
                 New Project
@@ -64,13 +75,13 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
           <div className="text-center text-gray-500 dark:text-gray-400">Loading projects...</div>
         ) : error ? (
           <div className="text-center text-red-500">{error}</div>
-        ) : projects.length === 0 ? (
+        ) : regularProjects.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400">
-            No projects yet. Create your first project!
+            No research projects yet. Create your first project!
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+            {regularProjects.map((project) => (
               <div
                 key={project.id}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"

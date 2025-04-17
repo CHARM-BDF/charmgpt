@@ -18,6 +18,7 @@ import { useModeStore } from '../../store/modeStore';
 import { ProjectDrawer } from '../projects/ProjectDrawer';
 import { ProjectListView } from '../projects/ProjectListView';
 import { ProjectView } from '../projects/ProjectView';
+import { GrantReviewListView } from '../projects/GrantReviewListView';
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
@@ -25,6 +26,7 @@ export const ChatInterface: React.FC = () => {
   const [showFileManager, setShowFileManager] = useState(false);
   const [showProjectList, setShowProjectList] = useState(false);
   const [showProjectView, setShowProjectView] = useState(false);
+  const [showGrantReviewList, setShowGrantReviewList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
@@ -173,6 +175,7 @@ export const ChatInterface: React.FC = () => {
           <ConversationDrawer 
             setShowProjectList={setShowProjectList}
             setShowProjectView={setShowProjectView}
+            setShowGrantReviewList={setShowGrantReviewList}
           />
         )}
 
@@ -233,6 +236,13 @@ export const ChatInterface: React.FC = () => {
           projectId={selectedProjectId}
           onBack={() => setShowProjectView(false)}
           onClose={() => setShowProjectView(false)}
+        />
+      )}
+
+      {showGrantReviewList && (
+        <GrantReviewListView 
+          onClose={() => setShowGrantReviewList(false)}
+          showGrantReviewList={showGrantReviewList}
         />
       )}
     </div>

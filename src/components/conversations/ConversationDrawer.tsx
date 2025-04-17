@@ -158,7 +158,12 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
 
           {/* Grant Review button */}
           <button
-            onClick={() => setShowGrantReviewList?.(true)}
+            onClick={() => {
+              console.log('Grant Review button clicked');
+              console.log('setShowGrantReviewList prop:', setShowGrantReviewList);
+              setShowGrantReviewList?.(true);
+              console.log('After calling setShowGrantReviewList(true)');
+            }}
             className="p-2.5 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
                      hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
                      relative group"

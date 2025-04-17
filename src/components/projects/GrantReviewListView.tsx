@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
@@ -10,12 +10,19 @@ interface GrantReviewListViewProps {
 }
 
 export const GrantReviewListView: React.FC<GrantReviewListViewProps> = ({ onClose, showGrantReviewList }) => {
-  const { selectedProjectId, selectProject, addProject } = useProjectStore();
-  const grantReviewProjects = useProjectStore(state => state.getGrantReviewProjects());
+  const { selectedProjectId, selectProject, addProject, projects } = useProjectStore();
+  
+  // Memoize the filtered projects to prevent infinite updates
+  const grantReviewProjects = useMemo(() => 
+    projects.filter(p => p.type === 'grant_review')
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+    [projects]
+  );
 
-  const selectedProject = selectedProjectId 
-    ? grantReviewProjects.find(p => p.id === selectedProjectId)
-    : null;
+  const selectedProject = useMemo(() => 
+    selectedProjectId ? grantReviewProjects.find(p => p.id === selectedProjectId) : null,
+    [selectedProjectId, grantReviewProjects]
+  );
 
   if (selectedProject) {
     return (
