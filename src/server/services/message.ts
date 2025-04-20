@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { MCPArtifact } from '../../types/mcp';
 
 // Types
 export interface ChatMessage {
@@ -162,6 +163,7 @@ export class MessageService {
   }
 
   /**
+   * @deprecated Use enhanceResponseWithArtifacts instead
    * Format final response with bibliography
    */
   formatResponseWithBibliography(storeResponse: StoreFormat, bibliography?: any[]): StoreFormat {
@@ -169,25 +171,25 @@ export class MessageService {
       return storeResponse;
     }
 
-    const bibliographyId = crypto.randomUUID();
-    const artifacts = storeResponse.artifacts || [];
+    console.log('\n🔴🔴🔴 LEGACY PATH: formatResponseWithBibliography called 🔴🔴🔴');
+    console.log('Bibliography entries:', bibliography.length);
     
-    artifacts.push({
-      id: bibliographyId,
-      artifactId: bibliographyId,
-      type: "application/vnd.bibliography",
-      title: "Article References",
-      content: JSON.stringify(bibliography),
-      position: artifacts.length
-    });
-
-    return {
-      ...storeResponse,
-      artifacts
-    };
+    // Use the new enhanceResponseWithArtifacts function
+    const result = this.enhanceResponseWithArtifacts(
+      storeResponse,
+      [{
+        type: "application/vnd.bibliography",
+        title: "Article References",
+        content: bibliography
+      }]
+    );
+    
+    console.log('🔴🔴🔴 LEGACY PATH: Bibliography processing complete 🔴🔴🔴');
+    return result;
   }
 
   /**
+   * @deprecated Use enhanceResponseWithArtifacts instead
    * Format final response with knowledge graph
    */
   formatResponseWithKnowledgeGraph(storeResponse: StoreFormat, knowledgeGraph?: any, title: string = "Knowledge Graph"): StoreFormat {
@@ -200,58 +202,135 @@ export class MessageService {
 
     console.log(`Knowledge graph has ${knowledgeGraph.nodes?.length || 0} nodes and ${knowledgeGraph.links?.length || 0} links`);
     
-    const graphId = crypto.randomUUID();
-    console.log(`Generated knowledge graph artifact ID: ${graphId}`);
-    
-    const artifacts = storeResponse.artifacts || [];
-    console.log(`Current artifacts count: ${artifacts.length}`);
-    
-    artifacts.push({
-      id: graphId,
-      artifactId: graphId,
-      type: "application/vnd.knowledge-graph",
-      title: title,
-      content: JSON.stringify(knowledgeGraph),
-      position: artifacts.length
-    });
-
-    console.log(`New artifacts count: ${artifacts.length}`);
-    console.log(`Knowledge graph artifact added at position: ${artifacts.length - 1}`);
-
-    return {
-      ...storeResponse,
-      artifacts
-    };
+    // Use the new enhanceResponseWithArtifacts function
+    return this.enhanceResponseWithArtifacts(
+      storeResponse,
+      [{
+        type: "application/vnd.knowledge-graph",
+        title: title,
+        content: knowledgeGraph
+      }]
+    );
   }
 
+  /**
+   * @deprecated Use enhanceResponseWithArtifacts instead
+   * Format final response with markdown
+   */
   formatResponseWithMarkdown(storeResponse: StoreFormat, grantMarkdown: any): StoreFormat {
     if (!grantMarkdown) {
       return storeResponse;
     }
 
-    const markdownId = crypto.randomUUID();
-    const artifacts = storeResponse.artifacts || [];
+    // Use the new enhanceResponseWithArtifacts function
+    return this.enhanceResponseWithArtifacts(
+      storeResponse,
+      [{
+        type: "text/markdown",
+        title: grantMarkdown.title || "NIH Grant Details",
+        content: grantMarkdown.content,
+        language: "markdown"
+      }]
+    );
+  }
+
+  /**
+   * Unified function to enhance a response with artifacts
+   * Replaces the individual enhancement functions with a single, consistent approach
+   * 
+   * @param baseResponse - The current store response to enhance
+   * @param artifacts - Array of artifacts to add to the response
+   * @param appendButtons - Whether to append artifact buttons to the conversation text
+   * @returns The enhanced response with all artifacts added
+   */
+  enhanceResponseWithArtifacts(
+    baseResponse: StoreFormat, 
+    artifacts: MCPArtifact[],
+    appendButtons: boolean = true
+  ): StoreFormat {
+    console.log('\n🟢🟢🟢 NEW PATH: enhanceResponseWithArtifacts called 🟢🟢🟢');
+    console.log(`Starting with ${baseResponse.artifacts?.length || 0} existing artifacts`);
+    console.log(`Adding ${artifacts.length} new artifacts of types: ${artifacts.map(a => a.type).join(', ')}`);
     
-    // Add the markdown artifact
-    artifacts.push({
-      id: markdownId,
-      artifactId: markdownId,
-      type: "text/markdown",
-      title: grantMarkdown.title || "NIH Grant Details",
-      content: grantMarkdown.content,
-      position: artifacts.length,
-      language: "markdown",
-      metadata: grantMarkdown.metadata
+    // Start with existing artifacts or empty array
+    const existingArtifacts = baseResponse.artifacts || [];
+    let position = existingArtifacts.length;
+    const conversationAppends: string[] = [];
+    
+    // Process each artifact based on its type
+    const processedArtifacts = artifacts.map(artifact => {
+      // Generate an identifier based on the type and a unique ID
+      const typeId = artifact.type.split('/').pop() || 'artifact';
+      const artifactId = `${typeId}-${crypto.randomUUID()}`;
+      
+      console.log(`Processing ${artifact.type} artifact: "${artifact.title}"`);
+      
+      // Handle content formatting based on type
+      const content = this.formatArtifactContent(artifact);
+      
+      // Create button for this artifact if requested
+      if (appendButtons) {
+        conversationAppends.push(this.createArtifactButton(artifactId, artifact.type, artifact.title));
+      }
+      
+      // Return the processed artifact
+      return {
+        id: artifactId,
+        artifactId: artifactId,
+        type: artifact.type,
+        title: artifact.title,
+        content: content,
+        position: position++,
+        language: artifact.language
+      };
     });
-
-    // Add button to conversation
-    const conversation = storeResponse.conversation || '';
-    const button = this.createArtifactButton(markdownId, "text/markdown", grantMarkdown.title || "NIH Grant Details");
-    storeResponse.conversation = `${conversation}\n\n${button}`;
-
-    return {
-      ...storeResponse,
-      artifacts
+    
+    console.log(`Processed ${processedArtifacts.length} artifacts successfully`);
+    
+    // Handle conversation text if artifact buttons were added
+    let conversation = baseResponse.conversation;
+    if (appendButtons && conversationAppends.length > 0) {
+      conversation = `${conversation}\n\n${conversationAppends.join('\n\n')}`;
+      console.log(`Added ${conversationAppends.length} artifact buttons to conversation`);
+    }
+    
+    // Return updated response with all artifacts
+    const result = {
+      ...baseResponse,
+      conversation: conversation,
+      artifacts: [...existingArtifacts, ...processedArtifacts]
     };
+    
+    console.log('🟢🟢🟢 NEW PATH: Enhancement complete 🟢🟢🟢');
+    return result;
+  }
+  
+  /**
+   * Format artifact content based on type
+   * Different artifact types may need different content handling
+   */
+  private formatArtifactContent(artifact: MCPArtifact): string {
+    // For binary types like images, preserve the content as-is
+    if (artifact.type.startsWith('image/')) {
+      return typeof artifact.content === 'string' 
+        ? artifact.content 
+        : String(artifact.content);
+    }
+    
+    // For JSON-based types, ensure content is stringified
+    if (
+      artifact.type === 'application/vnd.knowledge-graph' || 
+      artifact.type === 'application/vnd.bibliography' ||
+      artifact.type === 'application/json'
+    ) {
+      return typeof artifact.content === 'string' 
+        ? artifact.content 
+        : JSON.stringify(artifact.content);
+    }
+    
+    // For text-based types, ensure it's a string
+    return typeof artifact.content === 'string' 
+      ? artifact.content 
+      : JSON.stringify(artifact.content);
   }
 } 
