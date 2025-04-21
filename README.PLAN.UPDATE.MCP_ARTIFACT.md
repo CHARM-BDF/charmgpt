@@ -356,6 +356,11 @@ return {
 };
 ```
 
+6. Grant Fetch MCP server updated to use standardized artifacts array
+   - Replaced custom `grantMarkdown` field with standard `artifacts` array
+   - Removed non-standard `isError` field
+   - Preserved all metadata and functionality
+
 ## Implementation Steps
 
 1. ✅ **Create base interfaces**: Define standard interfaces for MCP responses and artifacts
@@ -378,9 +383,12 @@ return {
    - Used a single enhancement call for better maintainability
 
 5. ✅ **Update MCP servers**: Modify each MCP server to follow the standard format
-   - Will update PubMed MCP server first
-   - Will update MediKanren MCP server next
-   - Will ensure consistent artifact handling across all servers
+   - ✅ PubMed MCP server already follows the standardized format
+   - ✅ MediKanren MCP server already follows the standardized format
+   - ✅ Grant Fetch MCP server updated to use standardized artifacts array
+     - Replaced custom `grantMarkdown` field with standard `artifacts` array
+     - Removed non-standard `isError` field
+     - Preserved all metadata and functionality
 
 6. ✅ **Add backward compatibility**: Ensure existing non-standard response formats are still processed correctly
    - ✅ Added backward compatibility for bibliography, knowledge graph, and grant markdown
@@ -507,12 +515,22 @@ Testing should verify:
 
 With all implementation steps complete and verified, we can now:
 
-1. **Clean up the codebase**:
-   - Remove the deprecated enhancement functions
+1. **Check for any other MCP servers**:
+   - Review all remaining MCP servers in the codebase
+   - Update any other non-standardized MCP servers before proceeding
+   - Run additional tests with all MCP servers to ensure compatibility
+
+2. **Clean up the codebase**:
    - Remove unnecessary logging statements added for testing
    - Update documentation to reflect the new standardized approach
+   - Maintain deprecated functions until all MCP servers are confirmed working
 
-2. **Explore improvements**:
+3. **Plan for deprecated function removal**:
+   - Add enhanced logging to deprecated functions to monitor usage
+   - Set a timeline for monitoring usage before removal
+   - Remove deprecated functions only after sufficient time with no usage
+
+4. **Explore improvements**:
    - Add support for new artifact types following the established pattern
    - Optimize performance for large artifacts
    - Consider adding type validation for artifacts coming from MCP servers 

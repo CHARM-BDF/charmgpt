@@ -310,6 +310,21 @@ export class MessageService {
    * Different artifact types may need different content handling
    */
   private formatArtifactContent(artifact: MCPArtifact): string {
+    // Check if content is a JSON string with nested content
+    if (typeof artifact.content === 'string' && artifact.content.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(artifact.content);
+        // If it has a content property, use that instead
+        if (parsed.content) {
+          console.log('Found nested content in artifact, extracting inner content');
+          return parsed.content;
+        }
+      } catch (e) {
+        // Not valid JSON or no nested content, continue with normal processing
+        console.log('Content looks like JSON but failed to parse:', e);
+      }
+    }
+    
     // For binary types like images, preserve the content as-is
     if (artifact.type.startsWith('image/')) {
       return typeof artifact.content === 'string' 

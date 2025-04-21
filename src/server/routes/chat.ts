@@ -324,6 +324,24 @@ router.post('/', async (req: Request<{}, {}, {
               // Add binary output to the collection
               (messages as any).binaryOutputs.push(binaryOutput);
             }
+
+            // Handle artifacts array from standardized MCP response format
+            if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts) && toolResult.artifacts.length > 0) {
+              console.log('[CHAT:TOOL-RESULT] Found artifacts array in MCP response:', toolResult.artifacts.length, 'items');
+              
+              // Process each artifact
+              for (const artifact of toolResult.artifacts) {
+                console.log(`[CHAT:TOOL-RESULT] Found artifact of type: ${artifact.type} titled "${artifact.title}"`);
+                
+                // Store for later processing in the unified artifact collection phase
+                if (!(messages as any).directArtifacts) {
+                  (messages as any).directArtifacts = [];
+                }
+                (messages as any).directArtifacts.push(artifact);
+              }
+              
+              console.log('[CHAT:TOOL-RESULT] Stored MCP artifacts for later processing');
+            }
           }
         }
       }
@@ -456,6 +474,19 @@ router.post('/', async (req: Request<{}, {}, {
       });
       
       console.log('[CHAT:ARTIFACTS] Knowledge graph added to artifacts queue');
+    }
+    
+    // Handle direct artifacts from MCP responses
+    if ((messages as any).directArtifacts && Array.isArray((messages as any).directArtifacts)) {
+      sendStatusUpdate('Processing MCP artifacts...');
+      console.log('🟡🟡🟡 CHAT ROUTE: Found direct artifacts with', (messages as any).directArtifacts.length, 'items 🟡🟡🟡');
+      
+      for (const artifact of (messages as any).directArtifacts) {
+        console.log(`[CHAT:ARTIFACTS] Processing direct artifact of type: ${artifact.type}`);
+        artifactsToAdd.push(artifact);
+      }
+      
+      console.log('[CHAT:ARTIFACTS] Direct artifacts added to processing queue');
     }
     
     // Handle artifact array if present

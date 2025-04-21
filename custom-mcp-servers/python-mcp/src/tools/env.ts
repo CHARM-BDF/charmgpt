@@ -101,6 +101,7 @@ export function validatePythonCode(code: string): void {
       'os.getpid',
       'os._exit',
       'os.environ',
+      'os.path',
       'os.path.join'
     ]);
     for (const op of osOperations) {

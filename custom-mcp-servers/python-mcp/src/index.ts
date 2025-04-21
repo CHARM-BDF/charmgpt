@@ -77,6 +77,8 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      logging: {}
+
     },
   }
 );
@@ -138,37 +140,60 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // Handle binary output if present
     if (result.binaryOutput) {
+      console.error("PYTHON SERVER LOGS: Binary output detected!");
+      console.error(`PYTHON SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
+      console.error(`PYTHON SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
+      console.error(`PYTHON SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
+      console.error(`PYTHON SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
+      
       logger.info("Binary output detected:");
       logger.info(`- Type: ${result.binaryOutput.type}`);
       logger.info(`- Size: ${result.binaryOutput.metadata.size} bytes`);
       logger.info(`- Metadata: ${JSON.stringify(result.binaryOutput.metadata, null, 2)}`);
-      
-      // Return a description of the binary output instead of the data itself
-      return {
-        content: [
 
+      // Use standard artifacts array format instead of binaryOutput
+      const artifactResponse = {
+        content: [
           {
             type: "text",
             text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
+          }
+        ],
+        artifacts: [
+          {
+            type: result.binaryOutput.type,
+            title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
+            content: result.binaryOutput.data,
             metadata: {
-              hasBinaryOutput: true,
-              binaryType: result.binaryOutput.type,
-              ...result.binaryOutput.metadata
+              ...result.binaryOutput.metadata,
+              sourceCode: result.code
             }
           }
         ],
-        binaryOutput: {
-          ...result.binaryOutput,
-          metadata: {
-            ...result.binaryOutput.metadata,
-            sourceCode: result.code  // Include the source code in binary output metadata
-          }
+        metadata: {
+          hasBinaryOutput: true,
+          binaryType: result.binaryOutput.type,
         },
         isError: false,
       };
+      
+      console.error("PYTHON SERVER LOGS: Returning artifact with following structure:");
+      console.error(`PYTHON SERVER LOGS: - Content items: ${artifactResponse.content.length}`);
+      console.error(`PYTHON SERVER LOGS: - Artifacts items: ${artifactResponse.artifacts.length}`);
+      console.error(`PYTHON SERVER LOGS: - First artifact type: ${artifactResponse.artifacts[0].type}`);
+      console.error(`PYTHON SERVER LOGS: - First artifact title: ${artifactResponse.artifacts[0].title}`);
+      console.error(`PYTHON SERVER LOGS: - Content data length: ${artifactResponse.artifacts[0].content.length} characters`);
+      
+      return artifactResponse;
+    } else {
+      console.error("PYTHON SERVER LOGS: No binary output detected in execution result");
     }
 
     // Log standard output result
+    console.error(`PYTHON SERVER LOGS: Standard output result (${result.output.length} chars):`);
+    console.error(`PYTHON SERVER LOGS: Output type: ${result.type || 'text'}`);
+    console.error(`PYTHON SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
+    
     logger.info("Standard output result:");
     logger.info(`- Type: ${result.type || 'text'}`);
     logger.info(`- Output length: ${result.output.length} characters`);
@@ -176,13 +201,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
     }
 
+    // For text output, create an artifact if it's rich enough to deserve one
+    let artifacts = undefined;
+    if (result.output.length > 200 || result.output.includes('\n')) {
+      console.error("PYTHON SERVER LOGS: Creating text/markdown artifact for long output");
+      artifacts = [
+        {
+          type: "text/markdown",
+          title: "Python Output",
+          content: "```\n" + result.output + "\n```"
+        }
+      ];
+      console.error(`PYTHON SERVER LOGS: Created markdown artifact with length ${artifacts[0].content.length}`);
+    } else {
+      console.error("PYTHON SERVER LOGS: Output too short, not creating artifact");
+    }
+
     // Default response for non-binary output
     return {
       content: [{
-        type: result.type || "text",
+        type: "text",
         text: result.output || "Code executed successfully with no text output.",
-        metadata: result.metadata
       }],
+      artifacts,
+      metadata: result.metadata,
       isError: false,
     };
   } catch (error) {
