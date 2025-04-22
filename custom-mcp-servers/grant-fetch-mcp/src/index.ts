@@ -124,6 +124,7 @@ Here is the grant content:
 ${markdownResult.markdown}`;
 
     // Return both the artifact and LLM version
+    logger.info("GRANT FETCH MCP SERVER: Returning response with standardized artifacts format");
     return {
       content: [{
         type: "text",
@@ -135,17 +136,18 @@ ${markdownResult.markdown}`;
           statusCode: fetchResult.statusCode
         }
       }],
-      grantMarkdown: {
-        type: "text/markdown",
-        title: "NIH Grant Details",
-        content: markdownResult.markdown,
-        metadata: {
-          source: args.url,
-          contentType: fetchResult.contentType,
-          convertedAt: new Date().toISOString()
+      artifacts: [
+        {
+          type: "text/markdown",
+          title: "NIH Grant Details",
+          content: markdownResult.markdown,
+          metadata: {
+            source: args.url,
+            contentType: fetchResult.contentType,
+            convertedAt: new Date().toISOString()
+          }
         }
-      },
-      isError: false
+      ]
     };
 
   } catch (error) {
@@ -156,8 +158,7 @@ ${markdownResult.markdown}`;
           type: "text",
           text: `Error: ${error instanceof Error ? error.message : String(error)}`,
         },
-      ],
-      isError: true,
+      ]
     };
   }
 });

@@ -1,37 +1,28 @@
-import React, { useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ProjectView } from './ProjectView';
 
-interface ProjectListViewProps {
+interface GrantReviewListViewProps {
   onClose: () => void;
-  showProjectList: boolean;
+  showGrantReviewList: boolean;
 }
 
-export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showProjectList }) => {
-  const { projects, isLoading, error, selectedProjectId, selectProject, addProject } = useProjectStore();
+export const GrantReviewListView: React.FC<GrantReviewListViewProps> = ({ onClose, showGrantReviewList }) => {
+  const { selectedProjectId, selectProject, addProject, projects } = useProjectStore();
+  
+  // Memoize the filtered projects to prevent infinite updates
+  const grantReviewProjects = useMemo(() => 
+    projects.filter(p => p.type === 'grant_review')
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+    [projects]
+  );
 
-  // Filter out grant review projects
-  const regularProjects = projects.filter(p => p.type !== 'grant_review');
-
-  useEffect(() => {
-    if (showProjectList) {
-      selectProject(null);
-    }
-  }, [showProjectList, selectProject]);
-
-  const selectedProject = selectedProjectId 
-    ? regularProjects.find(p => p.id === selectedProjectId)
-    : null;
-
-  const handleCreateProject = () => {
-    addProject({
-      name: "New Project",
-      description: "",
-      type: 'project'
-    });
-  };
+  const selectedProject = useMemo(() => 
+    selectedProjectId ? grantReviewProjects.find(p => p.id === selectedProjectId) : null,
+    [selectedProjectId, grantReviewProjects]
+  );
 
   if (selectedProject) {
     return (
@@ -43,20 +34,31 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
     );
   }
 
+  const handleCreateGrantReview = () => {
+    addProject({
+      name: "New Grant Review",
+      description: "",
+      type: 'grant_review',
+      grantMetadata: {
+        requiredDocuments: []
+      }
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-white dark:bg-gray-900 z-50">
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-screen-2xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Research Projects</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Grant Review Projects</h1>
             <div className="flex items-center space-x-4">
               <button
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                onClick={handleCreateProject}
+                onClick={handleCreateGrantReview}
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
-                New Project
+                New Grant Review
               </button>
               <button
                 onClick={onClose}
@@ -71,17 +73,13 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
 
       {/* Content */}
       <div className="max-w-screen-2xl mx-auto px-4 py-6">
-        {isLoading ? (
-          <div className="text-center text-gray-500 dark:text-gray-400">Loading projects...</div>
-        ) : error ? (
-          <div className="text-center text-red-500">{error}</div>
-        ) : regularProjects.length === 0 ? (
+        {grantReviewProjects.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400">
-            No research projects yet. Create your first project!
+            No grant review projects yet. Create your first one!
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {regularProjects.map((project) => (
+            {grantReviewProjects.map((project) => (
               <div
                 key={project.id}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"

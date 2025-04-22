@@ -23,6 +23,8 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
     const [editingFileId, setEditingFileId] = useState<string | null>(null);
     const [editingFileName, setEditingFileName] = useState('');
     const [selectedFileContent, setSelectedFileContent] = useState<{ title: string; content: string | null } | null>(null);
+    const [editingProjectName, setEditingProjectName] = useState(false);
+    const [projectName, setProjectName] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showAddTextModal, setShowAddTextModal] = useState(false);
     const [textContent, setTextContent] = useState('');
@@ -35,6 +37,14 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
     const addFileToProject = useProjectStore((state) => state.addFileToProject);
     const createNewChat = useChatStore((state: ChatState) => state.startNewConversation);
     const switchConversation = useChatStore((state: ChatState) => state.switchConversation);
+    const updateProject = useProjectStore((state) => state.updateProject);
+
+    // Initialize project name when project changes
+    useEffect(() => {
+        if (project) {
+            setProjectName(project.name);
+        }
+    }, [project]);
 
     // Load files when component mounts or when showFileManager changes
     useEffect(() => {
@@ -236,6 +246,13 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
         }
     };
 
+    const handleSaveProjectName = () => {
+        if (project && projectName.trim() !== '') {
+            updateProject(project.id, { ...project, name: projectName.trim() });
+            setEditingProjectName(false);
+        }
+    };
+
     if (!project) {
         return <div>Project not found</div>;
     }
@@ -256,11 +273,38 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                         <div className="w-[61.8%] px-8 pt-6">
                             {/* Project info */}
                             <div className="mb-6">
-                                <h1 className="font-[var(--font-copernicus),ui-serif,Georgia,Cambria,'Times New Roman',Times,serif] text-2xl font-bold leading-tight tracking-tight text-[hsl(var(--text-200))] mb-4">{project.name}</h1>
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <LockClosedIcon className="w-4 h-4 text-gray-500" />
-                                    <span className="text-sm text-gray-500">Private project</span>
+                                <div className="flex items-center justify-between">
+                                    {editingProjectName ? (
+                                        <input
+                                            type="text"
+                                            value={projectName}
+                                            onChange={(e) => setProjectName(e.target.value)}
+                                            onBlur={handleSaveProjectName}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    handleSaveProjectName();
+                                                } else if (e.key === 'Escape') {
+                                                    setEditingProjectName(false);
+                                                    setProjectName(project?.name || '');
+                                                }
+                                            }}
+                                            className="font-[var(--font-copernicus),ui-serif,Georgia,Cambria,'Times New Roman',Times,serif] text-2xl font-bold leading-tight tracking-tight text-[hsl(var(--text-200))] px-1 border rounded flex-1"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <>
+                                            <h1 className="font-[var(--font-copernicus),ui-serif,Georgia,Cambria,'Times New Roman',Times,serif] text-2xl font-bold leading-tight tracking-tight text-[hsl(var(--text-200))]">{project?.name}</h1>
+                                            <button
+                                                onClick={() => setEditingProjectName(true)}
+                                                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ml-2"
+                                                title="Edit project name"
+                                            >
+                                                <PencilIcon className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
+                                <div className="h-6" /> {/* Spacer div */}
                                 <p className="text-gray-600">{project.description || 'No description provided.'}</p>
                             </div>
 
@@ -342,7 +386,8 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                         )}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
+
+                                <div className="space-y-2 mb-4">
                                     {projectFiles.map((file) => (
                                         <div key={file.id} className="flex flex-col">
                                             <div className="flex items-center justify-between group">
@@ -392,6 +437,38 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* Document guidance for grant review projects */}
+                                {project.type === 'grant_review' && (
+                                    <>
+                                        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                                            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Expected Documents</h3>
+                                            <ul className="text-xs space-y-1.5 text-blue-700 dark:text-blue-400">
+                                                <li className="flex items-center">
+                                                    <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                    Request for Application (RFA)
+                                                </li>
+                                                <li className="flex items-center">
+                                                    <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                    Specific Aims
+                                                </li>
+                                                <li className="flex items-center">
+                                                    <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                    Research Proposal
+                                                </li>
+                                                <li className="flex items-center">
+                                                    <DocumentTextIcon className="h-4 w-4 mr-2" />
+                                                    Supplemental Information
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-md">
+                                            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                                                Add your documents using the <span className="font-medium">+</span> sign to upload or paste text to create files that can be referenced in the chat area. To specifically reference a document, type <span className="font-medium">@</span> and a list of associated files will appear for selection.
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

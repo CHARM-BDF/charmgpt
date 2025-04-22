@@ -248,10 +248,25 @@ export const ArtifactContent: React.FC<{
         return <div className="mermaid">{artifact.content}</div>;
       
       case 'text/markdown':
-        const trimmedContent = artifact.content
-          .split('\n')
-          .map(line => line.trimStart())
-          .join('\n');
+        const trimmedContent = (() => {
+          // Check if we have a JSON string with nested content
+          if (artifact.content.trim().startsWith('{')) {
+            try {
+              const parsed = JSON.parse(artifact.content);
+              // If it has a content property, use that instead
+              if (parsed.content) {
+                console.log('Found nested content in artifact, extracting inner content');
+                return typeof parsed.content === 'string' 
+                  ? parsed.content.split('\n').map((line: string) => line.trimStart()).join('\n')
+                  : artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+              }
+            } catch (e) {
+              console.log('Content looks like JSON but failed to parse:', e);
+            }
+          }
+          // Default trimming for normal content
+          return artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+        })();
 
         // Debug logging
         console.log('Content being passed to ReactMarkdown:', {

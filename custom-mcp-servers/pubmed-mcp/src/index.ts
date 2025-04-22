@@ -362,7 +362,13 @@ ${abstract}
             forModel: true
           }
         ],
-        bibliography: bibliographyData
+        artifacts: [
+          {
+            type: "application/vnd.bibliography",
+            title: "Bibliography",
+            content: bibliographyData
+          }
+        ]
       };
 
     } else if (name === "get-details") {

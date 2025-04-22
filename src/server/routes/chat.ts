@@ -325,6 +325,24 @@ router.post('/', async (req: Request<{}, {}, {
               // Add binary output to the collection
               (messages as any).binaryOutputs.push(binaryOutput);
             }
+
+            // Handle artifacts array from standardized MCP response format
+            if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts) && toolResult.artifacts.length > 0) {
+              console.log('[CHAT:TOOL-RESULT] Found artifacts array in MCP response:', toolResult.artifacts.length, 'items');
+              
+              // Process each artifact
+              for (const artifact of toolResult.artifacts) {
+                console.log(`[CHAT:TOOL-RESULT] Found artifact of type: ${artifact.type} titled "${artifact.title}"`);
+                
+                // Store for later processing in the unified artifact collection phase
+                if (!(messages as any).directArtifacts) {
+                  (messages as any).directArtifacts = [];
+                }
+                (messages as any).directArtifacts.push(artifact);
+              }
+              
+              console.log('[CHAT:TOOL-RESULT] Stored MCP artifacts for later processing');
+            }
           }
         }
       }
@@ -417,62 +435,100 @@ router.post('/', async (req: Request<{}, {}, {
     sendStatusUpdate('Processing response format...');
     let storeResponse = messageService.convertToStoreFormat(toolResponse as any);
     
-    // Add bibliography if present
+    // Process all artifacts in a unified way
+    console.log('\n🟡🟡🟡 CHAT ROUTE: Starting unified artifact collection 🟡🟡🟡');
+    let artifactsToAdd = [];
+    
+    // Handle bibliography if present
     if ((messages as any).bibliography) {
       sendStatusUpdate('Adding bibliography...');
-      storeResponse = messageService.formatResponseWithBibliography(
-        storeResponse, 
-        (messages as any).bibliography
-      );
+      console.log('🟡🟡🟡 CHAT ROUTE: Found bibliography data with', (messages as any).bibliography.length, 'entries 🟡🟡🟡');
+      artifactsToAdd.push({
+        type: 'application/vnd.bibliography',
+        title: 'Bibliography',
+        content: (messages as any).bibliography
+      });
     }
-
+    
     // Handle grant markdown if present
     if ((messages as any).grantMarkdown) {
       sendStatusUpdate('Adding grant markdown...');
-      storeResponse = messageService.formatResponseWithMarkdown(
-        storeResponse, 
-        (messages as any).grantMarkdown
-      );
+      console.log('🟡🟡🟡 CHAT ROUTE: Found grant markdown data 🟡🟡🟡');
+      artifactsToAdd.push({
+        type: 'text/markdown',
+        title: 'Grant Proposal',
+        content: (messages as any).grantMarkdown,
+        language: 'markdown'
+      });
     }
-
-    // Add knowledge graph if present
+    
+    // Handle knowledge graph if present
     if ((messages as any).knowledgeGraph) {
       sendStatusUpdate('Adding knowledge graph...');
-      console.log('\n=== ADDING KNOWLEDGE GRAPH TO RESPONSE ===');
-      console.log(`Knowledge graph has ${(messages as any).knowledgeGraph.nodes.length} nodes and ${(messages as any).knowledgeGraph.links.length} links`);
+      console.log('🟡🟡🟡 CHAT ROUTE: Found knowledge graph data 🟡🟡🟡');
+      console.log(`[CHAT:ARTIFACTS] Knowledge graph has ${(messages as any).knowledgeGraph.nodes.length} nodes and ${(messages as any).knowledgeGraph.links.length} links`);
       
-      storeResponse = messageService.formatResponseWithKnowledgeGraph(
-        storeResponse, 
-        (messages as any).knowledgeGraph,
-        "Knowledge Graph"
-      );
+      artifactsToAdd.push({
+        type: 'application/vnd.knowledge-graph',
+        title: 'Knowledge Graph',
+        content: (messages as any).knowledgeGraph
+      });
       
-      // Add this logging after formatting
-      console.log('Knowledge graph added to response');
-      if (storeResponse.artifacts) {
-        const kgArtifact = storeResponse.artifacts.find(a => a.type === 'application/vnd.knowledge-graph');
-        if (kgArtifact) {
-          console.log(`Knowledge graph artifact ID: ${kgArtifact.id}`);
-          console.log(`Knowledge graph artifact has artifactId: ${!!kgArtifact.artifactId}`);
-        } else {
-          console.log('WARNING: Knowledge graph artifact not found in response after formatting');
+      console.log('[CHAT:ARTIFACTS] Knowledge graph added to artifacts queue');
+    }
+    
+    // Handle direct artifacts from MCP responses
+    if ((messages as any).directArtifacts && Array.isArray((messages as any).directArtifacts)) {
+      sendStatusUpdate('Processing MCP artifacts...');
+      console.log('🟡🟡🟡 CHAT ROUTE: Found direct artifacts with', (messages as any).directArtifacts.length, 'items 🟡🟡🟡');
+      
+      for (const artifact of (messages as any).directArtifacts) {
+        console.log(`[CHAT:ARTIFACTS] Processing direct artifact of type: ${artifact.type}`);
+        artifactsToAdd.push(artifact);
+      }
+      
+      console.log('[CHAT:ARTIFACTS] Direct artifacts added to processing queue');
+    }
+    
+    // Handle artifact array if present
+    if (toolResponse && typeof toolResponse === 'object' && 
+        'input' in toolResponse && toolResponse.input && 
+        typeof toolResponse.input === 'object' && 
+        'artifacts' in toolResponse.input && 
+        Array.isArray(toolResponse.input.artifacts)) {
+      console.log('🟡🟡🟡 CHAT ROUTE: Found existing artifacts array with', toolResponse.input.artifacts.length, 'items 🟡🟡🟡');
+      artifactsToAdd.push(...toolResponse.input.artifacts);
+    }
+    
+    // Handle binary outputs if present
+    if ((messages as any).binaryOutputs) {
+      sendStatusUpdate('Processing binary outputs...');
+      console.log('🟡🟡🟡 CHAT ROUTE: Found binary outputs to process 🟡🟡🟡');
+      
+      for (const binaryOutput of (messages as any).binaryOutputs) {
+        // Use artifact service to get processed artifacts
+        const processedArtifacts = artifactService.processBinaryOutput(binaryOutput, 0);
+        console.log('[CHAT:ARTIFACTS] Processed', processedArtifacts.length, 'artifacts from binary output');
+        
+        // Convert each processed artifact to the standard format
+        for (const artifact of processedArtifacts) {
+          artifactsToAdd.push({
+            type: artifact.type,
+            title: artifact.title,
+            content: artifact.content,
+            language: artifact.language
+          });
         }
       }
     }
-
-    // Add binary outputs if present
-    if ((messages as any).binaryOutputs) {
-      sendStatusUpdate('Processing binary outputs...');
-      const artifacts = storeResponse.artifacts || [];
-      let position = artifacts.length;
-
-      for (const binaryOutput of (messages as any).binaryOutputs) {
-        const processedArtifacts = artifactService.processBinaryOutput(binaryOutput, position);
-        artifacts.push(...processedArtifacts);
-        position += processedArtifacts.length;
-      }
-
-      storeResponse.artifacts = artifacts;
+    
+    // Apply all artifacts in one operation
+    if (artifactsToAdd.length > 0) {
+      console.log('🟡🟡🟡 CHAT ROUTE: Applying', artifactsToAdd.length, 'artifacts using unified enhancement function 🟡🟡🟡');
+      storeResponse = messageService.enhanceResponseWithArtifacts(storeResponse, artifactsToAdd);
+      console.log('🟡🟡🟡 CHAT ROUTE: Enhancement complete, storeResponse now has', storeResponse.artifacts?.length || 0, 'artifacts 🟡🟡🟡');
+    } else {
+      console.log('🟡🟡🟡 CHAT ROUTE: No artifacts to add, skipping enhancement 🟡🟡🟡');
     }
 
     // Log response
