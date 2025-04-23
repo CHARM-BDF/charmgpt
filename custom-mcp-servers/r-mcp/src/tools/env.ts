@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define separate paths for logs and temp files
-export const LOGS_DIR = path.join(__dirname, '../../../../logs/python-mcp');
+export const LOGS_DIR = path.join(__dirname, '../../../../logs/r-mcp');
 export const TEMP_DIR = path.join(__dirname, '../../temp');  // Keep temp files close to the server
 
 // Comprehensive list of allowed Python packages
@@ -77,7 +77,7 @@ const DANGEROUS_PATTERNS = [
   'os.exec'
 ];
 
-export function validatePythonCode(code: string): void {
+export function validateRCode(code: string): void {
   // Check for dangerous imports and operations
   for (const pattern of DANGEROUS_PATTERNS) {
     if (code.includes(pattern)) {
@@ -112,7 +112,7 @@ export function validatePythonCode(code: string): void {
   }
 }
 
-export async function setupPythonEnvironment() {
+export async function setupREnvironment() {
   // Create temp directory if it doesn't exist
   try {
     await fs.mkdir(TEMP_DIR, { recursive: true });
@@ -152,7 +152,7 @@ export async function setupPythonEnvironment() {
   };
 }
 
-export async function cleanupPythonEnvironment() {
+export async function cleanupREnvironment() {
   // Clean up temp directory
   try {
     const files = await fs.readdir(TEMP_DIR);

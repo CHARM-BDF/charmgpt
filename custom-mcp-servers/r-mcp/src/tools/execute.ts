@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import { setupPythonEnvironment, cleanupPythonEnvironment, validatePythonCode, TEMP_DIR, LOGS_DIR } from './env.js';
+import { setupREnvironment, cleanupREnvironment, validateRCode, TEMP_DIR, LOGS_DIR } from './env.js';
 import { appendFileSync, mkdirSync } from 'fs';
 import { createWriteStream } from 'fs';
 import { promisify } from 'util';
@@ -10,7 +10,7 @@ import { exec } from 'child_process';
 const execAsync = promisify(exec);
 
 // Docker configuration
-const DOCKER_IMAGE = 'my-python-mcp';
+const DOCKER_IMAGE = 'my-r-mcp';
 const CONTAINER_TEMP_DIR = '/app/temp';
 const CONTAINER_LOGS_DIR = '/app/logs';
 
@@ -81,8 +81,8 @@ function log(type: string, message: string, color: string, logFile: string) {
     hour12: false
   }).format(new Date());
   
-  const logMessage = `${timestamp} ${color}[PYTHON-MCP ${type}]\x1b[0m ${message}\n`;
-  const fileMessage = `${timestamp} [PYTHON-MCP ${type}] ${message}\n`;
+  const logMessage = `${timestamp} ${color}[R-MCP ${type}]\x1b[0m ${message}\n`;
+  const fileMessage = `${timestamp} [R-MCP ${type}] ${message}\n`;
   
   // Write to console with color
   process.stderr.write(logMessage);
@@ -122,14 +122,14 @@ interface ExecuteResult {
 }
 
 // Add helper function for code transformation
-function transformPythonCode(code: string, logger: Logger): string {
-  console.error(`PYTHON SERVER LOGS: Original Python code:\n${code}`);
+function transformRCode(code: string, logger: Logger): string {
+  console.error(`R SERVER LOGS: Original R code:\n${code}`);
   
   // Check if code contains file operations but no os import
   if ((code.includes('savefig') || code.includes('to_csv') || code.includes('to_excel') || 
        code.includes('json.dump') || code.includes('write')) && !code.includes('import os')) {
     code = 'import os\n' + code;
-    console.error(`PYTHON SERVER LOGS: Added import os to code`);
+    console.error(`R SERVER LOGS: Added import os to code`);
   }
 
   // Replace relative paths in common file operations with OUTPUT_DIR
@@ -141,7 +141,7 @@ function transformPythonCode(code: string, logger: Logger): string {
         const filename = p1 || p2 || (p3 ? p3.replace('\\', '') : null);
         if (!filename) return match;
         const result = `plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], '${filename}'))`;
-        console.error(`PYTHON SERVER LOGS: Transformed savefig from "${match}" to "${result}"`);
+        console.error(`R SERVER LOGS: Transformed savefig from "${match}" to "${result}"`);
         return result;
       }
     },
@@ -149,7 +149,7 @@ function transformPythonCode(code: string, logger: Logger): string {
       pattern: /to_csv\(['"]([^'"]+)['"]\)/g,
       replacement: (match: string, filename: string): string => {
         const result = `to_csv(os.path.join(os.environ['OUTPUT_DIR'], '${filename}'))`;
-        console.error(`PYTHON SERVER LOGS: Transformed to_csv from "${match}" to "${result}"`);
+        console.error(`R SERVER LOGS: Transformed to_csv from "${match}" to "${result}"`);
         return result;
       }
     },
@@ -157,7 +157,7 @@ function transformPythonCode(code: string, logger: Logger): string {
       pattern: /to_excel\(['"]([^'"]+)['"]\)/g,
       replacement: (match: string, filename: string): string => {
         const result = `to_excel(os.path.join(os.environ['OUTPUT_DIR'], '${filename}'))`;
-        console.error(`PYTHON SERVER LOGS: Transformed to_excel from "${match}" to "${result}"`);
+        console.error(`R SERVER LOGS: Transformed to_excel from "${match}" to "${result}"`);
         return result;
       }
     },
@@ -165,7 +165,7 @@ function transformPythonCode(code: string, logger: Logger): string {
       pattern: /json\.dump\(.*?,\s*open\(['"]([^'"]+)['"],\s*['"]w['"]\)/g,
       replacement: (match: string, filename: string): string => {
         const result = match.replace(filename, `os.path.join(os.environ['OUTPUT_DIR'], '${filename}')`);
-        console.error(`PYTHON SERVER LOGS: Transformed json.dump from "${match}" to "${result}"`);
+        console.error(`R SERVER LOGS: Transformed json.dump from "${match}" to "${result}"`);
         return result;
       }
     }
@@ -183,10 +183,10 @@ function transformPythonCode(code: string, logger: Logger): string {
   // Add plt.close() after savefig if not present
   if (code.includes('savefig') && !code.includes('plt.close()')) {
     code += '\nplt.close()  # Auto-added to ensure cleanup';
-    console.error(`PYTHON SERVER LOGS: Added plt.close() to code`);
+    console.error(`R SERVER LOGS: Added plt.close() to code`);
   }
 
-  console.error(`PYTHON SERVER LOGS: Transformed Python code:\n${code}`);
+  console.error(`R SERVER LOGS: Transformed Python code:\n${code}`);
   return code;
 }
 
@@ -235,7 +235,7 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
         .map(([key, value]) => ['-e', `${key}=${value}`])
         .flat(),
       DOCKER_IMAGE,
-      'python', '-u', scriptName  // -u for unbuffered output
+      'R', '-u', scriptName  // -u for unbuffered output
     ];
 
     logger.log(`Running Docker command: docker ${dockerArgs.join(' ')}`);
@@ -247,13 +247,13 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
 
       dockerProcess.stdout.on('data', (data) => {
         const message = data.toString();
-        if (!logger.isClosed) logger.log(`Python output: ${message}`);
+        if (!logger.isClosed) logger.log(`R output: ${message}`);
         output += message;
       });
 
       dockerProcess.stderr.on('data', (data) => {
         const message = data.toString();
-        if (!logger.isClosed) logger.log(`Python stderr: ${message}`);
+        if (!logger.isClosed) logger.log(`R stderr: ${message}`);
         errorOutput += message;
       });
 
@@ -324,12 +324,12 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   let scriptPath = '';
   
   try {
-    // Validate Python code before transformation
-    validatePythonCode(originalCode);
-    logger.log('Python code validation passed');
+    // Validate R code before transformation
+    validateRCode(originalCode);
+    logger.log('R code validation passed');
     
     // Transform code to handle file operations
-    const code = transformPythonCode(originalCode, logger);
+    const code = transformRCode(originalCode, logger);
     
     // Log if code was transformed
     if (code !== originalCode) {
@@ -338,11 +338,11 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       logger.log(`Transformed code: ${code}`);
     }
 
-    // Log the Python code being executed
+    // Log the R code being executed
     logger.log(code);
     
-    // Set up Python environment with security settings
-    const envConfig = await setupPythonEnvironment();
+    // Set up R environment with security settings
+    const envConfig = await setupREnvironment();
     
     // Ensure Docker image exists
     await ensureDockerImage();
@@ -353,7 +353,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     
     // Write the code to the temporary file
     await fs.writeFile(scriptPath, code, 'utf-8');
-    logger.log('Python code written to temporary file');
+    logger.log('R code written to temporary file');
 
     // Run the code in Docker and collect output
     const output = await runInDocker(scriptPath, envConfig, logger);
@@ -362,33 +362,33 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     logger.log('Checking temp directory for files...');
     const files = await fs.readdir(TEMP_DIR);
     logger.log(`Files in temp directory: ${files.join(', ')}`);
-    console.error(`PYTHON SERVER LOGS: Files found in temp directory: ${files.join(', ')}`);
+    console.error(`R SERVER LOGS: Files found in temp directory: ${files.join(', ')}`);
     
     let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
 
     for (const file of files) {
       logger.log(`Processing file: ${file}`);
-      console.error(`PYTHON SERVER LOGS: Processing file: ${file}`);
+      console.error(`R SERVER LOGS: Processing file: ${file}`);
       
       if (file.endsWith('.png')) {
         logger.log(`Found PNG file: ${file}`);
-        console.error(`PYTHON SERVER LOGS: Found PNG file: ${file}`);
+        console.error(`R SERVER LOGS: Found PNG file: ${file}`);
         const filePath = path.join(TEMP_DIR, file);
         logger.log(`Full file path: ${filePath}`);
-        console.error(`PYTHON SERVER LOGS: Full PNG path: ${filePath}`);
+        console.error(`R SERVER LOGS: Full PNG path: ${filePath}`);
         
         try {
           const fileContent = await fs.readFile(filePath);
           logger.log(`File size: ${fileContent.length} bytes`);
-          console.error(`PYTHON SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
+          console.error(`R SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
           const base64Data = fileContent.toString('base64');
-          console.error(`PYTHON SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
+          console.error(`R SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
           
           // Extract PNG dimensions from the IHDR chunk
           const width = fileContent.readUInt32BE(16);
           const height = fileContent.readUInt32BE(20);
           logger.log(`Image dimensions: ${width}x${height}`);
-          console.error(`PYTHON SERVER LOGS: PNG dimensions: ${width}x${height}`);
+          console.error(`R SERVER LOGS: PNG dimensions: ${width}x${height}`);
           
           binaryOutput = {
             data: base64Data,
@@ -405,23 +405,23 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
           };
           
           logger.log('Binary output prepared successfully');
-          console.error('PYTHON SERVER LOGS: Binary output prepared successfully');
+          console.error('R SERVER LOGS: Binary output prepared successfully');
           
           // Clean up the binary file
           await fs.unlink(filePath).catch(error => {
             logger.log(`Error cleaning up PNG file: ${error}`);
-            console.error(`PYTHON SERVER LOGS: Error cleaning up PNG file: ${error}`);
+            console.error(`R SERVER LOGS: Error cleaning up PNG file: ${error}`);
           });
           break;  // Only handle the first PNG for now
         } catch (error) {
           logger.log(`Error processing PNG file: ${error}`);
-          console.error(`PYTHON SERVER LOGS: ERROR processing PNG file: ${error}`);
+          console.error(`R SERVER LOGS: ERROR processing PNG file: ${error}`);
         }
       }
     }
 
     // Clean up after execution
-    await cleanupPythonEnvironment();
+    await cleanupREnvironment();
     try {
       logger.log(`Cleaning up script file: ${scriptPath}`);
       await fs.unlink(scriptPath);
@@ -429,7 +429,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       // Ignore file not found errors during cleanup
       if (error instanceof Error && !error.message.includes('ENOENT')) {
         logger.log(`Error cleaning up temp file: ${error}`);
-        console.error(`PYTHON SERVER LOGS: Error cleaning up temp file: ${error}`);
+        console.error(`R SERVER LOGS: Error cleaning up temp file: ${error}`);
       }
     }
 
@@ -443,14 +443,14 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     };
     
     logger.log(`Execution completed successfully`);
-    console.error(`PYTHON SERVER LOGS: Execution completed successfully`);
+    console.error(`R SERVER LOGS: Execution completed successfully`);
     logger.log(`Result type: ${result.type}`);
-    console.error(`PYTHON SERVER LOGS: Result type: ${result.type}`);
+    console.error(`R SERVER LOGS: Result type: ${result.type}`);
     if (binaryOutput) {
       logger.log(`Binary output size: ${binaryOutput.metadata.size} bytes`);
-      console.error(`PYTHON SERVER LOGS: Binary output included in result, size: ${binaryOutput.metadata.size} bytes`);
+      console.error(`R SERVER LOGS: Binary output included in result, size: ${binaryOutput.metadata.size} bytes`);
     } else {
-      console.error(`PYTHON SERVER LOGS: No binary output included in result`);
+      console.error(`R SERVER LOGS: No binary output included in result`);
     }
     
     return result;
@@ -459,7 +459,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     // Attempt cleanup even if execution failed
     logger.log(`Execution error: ${error}`);
     try {
-      await cleanupPythonEnvironment();
+      await cleanupREnvironment();
       if (scriptPath) {
         await fs.unlink(scriptPath).catch(() => {}); // Ignore cleanup errors
       }
