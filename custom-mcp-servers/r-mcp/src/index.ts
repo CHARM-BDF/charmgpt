@@ -6,28 +6,28 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
-import { validatePythonCode } from "./tools/env.js";
+import { validateRCode } from "./tools/env.js";
 import os from "os";
 
 // Logger utility
 const logger = {
   info: (message: string, ...args: any[]) => {
-    console.error(`\x1b[36m[PYTHON-MCP INFO]\x1b[0m ${message}`, ...args);
+    console.error(`\x1b[36m[R-MCP INFO]\x1b[0m ${message}`, ...args);
   },
   error: (message: string, ...args: any[]) => {
-    console.error(`\x1b[31m[PYTHON-MCP ERROR]\x1b[0m ${message}`, ...args);
+    console.error(`\x1b[31m[R-MCP ERROR]\x1b[0m ${message}`, ...args);
   },
   debug: (message: string, ...args: any[]) => {
     if (process.env.DEBUG) {
-      console.error(`\x1b[35m[PYTHON-MCP DEBUG]\x1b[0m ${message}`, ...args);
+      console.error(`\x1b[35m[R-MCP DEBUG]\x1b[0m ${message}`, ...args);
     }
   }
 };
 
-// Define the Python execution tool
-const PYTHON_EXECUTION_TOOL = {
-  name: "execute_python",
-  description: "Execute Python code with data science capabilities. Supports numpy, pandas, matplotlib, and other common data science packages. " +
+// Define the R execution tool
+const R_EXECUTION_TOOL = {
+  name: "execute_r",
+  description: "Execute R code with data science capabilities. Supports numpy, pandas, matplotlib, and other common data science packages. " +
     "⚠️ CRITICAL FILE OUTPUT INSTRUCTIONS ⚠️\n" +
     "This runs in a non-interactive environment with strict file output requirements:\n" +
     "1. ALWAYS use os.environ['OUTPUT_DIR'] for ANY file operations\n" +
@@ -68,10 +68,10 @@ const PYTHON_EXECUTION_TOOL = {
 };
 
 // Initialize MCP server
-logger.info("Initializing Python MCP Server...");
+logger.info("Initializing R MCP Server...");
 const server = new Server(
   {
-    name: "python-mcp",
+    name: "r-mcp",
     version: "0.1.0",
   },
   {
@@ -87,9 +87,9 @@ logger.info("Server initialized successfully");
 // Handle tool listing requests
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   logger.info("Received tool listing request");
-  logger.debug("Available tools:", [PYTHON_EXECUTION_TOOL.name]);
+  logger.debug("Available tools:", [R_EXECUTION_TOOL.name]);
   return {
-    tools: [PYTHON_EXECUTION_TOOL],
+    tools: [R_EXECUTION_TOOL],
   };
 });
 
@@ -101,7 +101,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     const { name, arguments: args } = request.params;
 
-    if (name !== "execute_python") {
+    if (name !== "execute_r") {
       logger.error(`Unknown tool requested: ${name}`);
       return {
         content: [{ type: "text", text: `Unknown tool: ${name}` }],
@@ -110,8 +110,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     if (!args || typeof args !== "object") {
-      logger.error("Invalid arguments provided for execute_python");
-      throw new Error("Invalid arguments for execute_python");
+      logger.error("Invalid arguments provided for execute_r");
+      throw new Error("Invalid arguments for execute_r");
     }
 
     const { code, dataFiles, timeout } = args as {
@@ -125,11 +125,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       throw new Error("Code parameter is required and must be a string");
     }
 
-    logger.info("Validating Python code...");
-    validatePythonCode(code);
+    logger.info("Validating R code...");
+    validateRCode(code);
     logger.info("Code validation successful");
 
-    logger.info("Executing Python code...");
+    logger.info("Executing R code...");
     const result = await execute({
       code,
       dataFiles,
@@ -140,11 +140,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // Handle binary output if present
     if (result.binaryOutput) {
-      console.error("PYTHON SERVER LOGS: Binary output detected!");
-      console.error(`PYTHON SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
-      console.error(`PYTHON SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
-      console.error(`PYTHON SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
-      console.error(`PYTHON SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
+      console.error("R SERVER LOGS: Binary output detected!");
+      console.error(`R SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
+      console.error(`R SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
+      console.error(`R SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
+      console.error(`R SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
       
       logger.info("Binary output detected:");
       logger.info(`- Type: ${result.binaryOutput.type}`);
@@ -162,7 +162,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         artifacts: [
           {
             type: result.binaryOutput.type,
-            title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
+            title: `R Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
             content: result.binaryOutput.data,
             metadata: {
               ...result.binaryOutput.metadata,
@@ -177,22 +177,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         isError: false,
       };
       
-      console.error("PYTHON SERVER LOGS: Returning artifact with following structure:");
-      console.error(`PYTHON SERVER LOGS: - Content items: ${artifactResponse.content.length}`);
-      console.error(`PYTHON SERVER LOGS: - Artifacts items: ${artifactResponse.artifacts.length}`);
-      console.error(`PYTHON SERVER LOGS: - First artifact type: ${artifactResponse.artifacts[0].type}`);
-      console.error(`PYTHON SERVER LOGS: - First artifact title: ${artifactResponse.artifacts[0].title}`);
-      console.error(`PYTHON SERVER LOGS: - Content data length: ${artifactResponse.artifacts[0].content.length} characters`);
+      console.error("R SERVER LOGS: Returning artifact with following structure:");
+      console.error(`R SERVER LOGS: - Content items: ${artifactResponse.content.length}`);
+      console.error(`R SERVER LOGS: - Artifacts items: ${artifactResponse.artifacts.length}`);
+      console.error(`R SERVER LOGS: - First artifact type: ${artifactResponse.artifacts[0].type}`);
+      console.error(`R SERVER LOGS: - First artifact title: ${artifactResponse.artifacts[0].title}`);
+      console.error(`R SERVER LOGS: - Content data length: ${artifactResponse.artifacts[0].content.length} characters`);
       
       return artifactResponse;
     } else {
-      console.error("PYTHON SERVER LOGS: No binary output detected in execution result");
+      console.error("R SERVER LOGS: No binary output detected in execution result");
     }
 
     // Log standard output result
-    console.error(`PYTHON SERVER LOGS: Standard output result (${result.output.length} chars):`);
-    console.error(`PYTHON SERVER LOGS: Output type: ${result.type || 'text'}`);
-    console.error(`PYTHON SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
+    console.error(`R SERVER LOGS: Standard output result (${result.output.length} chars):`);
+    console.error(`R SERVER LOGS: Output type: ${result.type || 'text'}`);
+    console.error(`R SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
     
     logger.info("Standard output result:");
     logger.info(`- Type: ${result.type || 'text'}`);
@@ -204,17 +204,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // For text output, create an artifact if it's rich enough to deserve one
     let artifacts = undefined;
     if (result.output.length > 200 || result.output.includes('\n')) {
-      console.error("PYTHON SERVER LOGS: Creating text/markdown artifact for long output");
+      console.error("R SERVER LOGS: Creating text/markdown artifact for long output");
       artifacts = [
         {
           type: "text/markdown",
-          title: "Python Output",
+          title: "R Output",
           content: "```\n" + result.output + "\n```"
         }
       ];
-      console.error(`PYTHON SERVER LOGS: Created markdown artifact with length ${artifacts[0].content.length}`);
+      console.error(`R SERVER LOGS: Created markdown artifact with length ${artifacts[0].content.length}`);
     } else {
-      console.error("PYTHON SERVER LOGS: Output too short, not creating artifact");
+      console.error("R SERVER LOGS: Output too short, not creating artifact");
     }
 
     // Default response for non-binary output
@@ -243,11 +243,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start the server
 async function runServer() {
-  logger.info("Starting Python MCP Server...");
+  logger.info("Starting R MCP Server...");
   try {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    logger.info("Python MCP Server running on stdio");
+    logger.info("R MCP Server running on stdio");
   } catch (error) {
     logger.error("Failed to start server:", error);
     throw error;
