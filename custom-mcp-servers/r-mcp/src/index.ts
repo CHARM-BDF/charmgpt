@@ -7,7 +7,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
 import { validateRCode } from "./tools/env.js";
-import os from "os";
 
 // Logger utility
 const logger = {
@@ -27,22 +26,24 @@ const logger = {
 // Define the R execution tool
 const R_EXECUTION_TOOL = {
   name: "execute_r",
-  description: "Execute R code with data science capabilities. Supports numpy, pandas, matplotlib, and other common data science packages. " +
+  description: "Execute R code with data science capabilities. Supports tidyverse, ggplot2, and other common R data science packages. " +
     "⚠️ CRITICAL FILE OUTPUT INSTRUCTIONS ⚠️\n" +
     "This runs in a non-interactive environment with strict file output requirements:\n" +
-    "1. ALWAYS use os.environ['OUTPUT_DIR'] for ANY file operations\n" +
+    "1. ALWAYS use file.path() with OUTPUT_DIR for ANY file operations\n" +
     "2. NEVER use relative paths (like 'plot.png') - they will fail\n" +
-    "3. ALWAYS include 'import os' when saving files\n\n" +
+    "3. ALWAYS get OUTPUT_DIR from Sys.getenv('OUTPUT_DIR')\n\n" +
     "Required Pattern for File Outputs:\n" +
-    "```python\n" +
-    "import os\n" +
-    "# Save files using os.path.join with OUTPUT_DIR:\n" +
-    "plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], 'plot.png'))\n" +
-    "df.to_csv(os.path.join(os.environ['OUTPUT_DIR'], 'data.csv'))\n" +
+    "```r\n" +
+    "# Set up output directory\n" +
+    "OUTPUT_DIR <- Sys.getenv('OUTPUT_DIR')\n\n" +
+    "# Save files using file.path with OUTPUT_DIR:\n" +
+    "ggsave(file.path(OUTPUT_DIR, 'plot.png'), plot)\n" +
+    "write.csv(data, file.path(OUTPUT_DIR, 'data.csv'))\n" +
+    "saveRDS(model, file.path(OUTPUT_DIR, 'model.rds'))\n" +
     "```\n" +
     "Other Requirements:\n" +
-    "- Use print() for text output\n" +
-    "- Return values for data structures\n" +
+    "- Use print() or cat() for text output\n" +
+    "- Return values will be captured automatically\n" +
     "- Maximum execution time: 30 seconds\n" +
     "- Memory limit: 256MB",
   inputSchema: {
@@ -50,7 +51,7 @@ const R_EXECUTION_TOOL = {
     properties: {
       code: {
         type: "string",
-        description: "Python code to execute. ⚠️ MUST use os.environ['OUTPUT_DIR'] for ALL file outputs. Example: plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], 'plot.png'))"
+        description: "R code to execute. ⚠️ MUST use file.path(OUTPUT_DIR, ...) for ALL file outputs. Example: ggsave(file.path(OUTPUT_DIR, 'plot.png'), plot)"
       },
       dataFiles: {
         type: "object",
