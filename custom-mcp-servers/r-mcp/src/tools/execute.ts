@@ -104,8 +104,8 @@ interface ExecuteArgs {
 interface ExecuteResult {
   output: string;
   code: string;
-  type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json';
-  metadata?: Record<string, any>;
+  type?: 'text' | 'ggplot' | 'data.frame' | 'matrix' | 'binary' | 'json';
+  metadata?: Record<string, unknown>;
   binaryOutput?: {
     data: string;  // base64 encoded
     type: string;  // MIME type
@@ -125,47 +125,58 @@ interface ExecuteResult {
 function transformRCode(code: string, logger: Logger): string {
   console.error(`R SERVER LOGS: Original R code:\n${code}`);
   
-  // Check if code contains file operations but no os import
-  if ((code.includes('savefig') || code.includes('to_csv') || code.includes('to_excel') || 
-       code.includes('json.dump') || code.includes('write')) && !code.includes('import os')) {
-    code = 'import os\n' + code;
-    console.error(`R SERVER LOGS: Added import os to code`);
+  // Add output directory setup if file operations are detected
+  const hasFileOperations = /(?:write|save|ggsave|png|jpeg|pdf|svg)\s*\(/.test(code);
+  
+  if (hasFileOperations && !code.includes('OUTPUT_DIR')) {
+    code = `# Set up output directory\nOUTPUT_DIR <- Sys.getenv("OUTPUT_DIR")\n\n${code}`;
+    console.error(`R SERVER LOGS: Added OUTPUT_DIR setup to code`);
   }
 
-  // Replace relative paths in common file operations with OUTPUT_DIR
+  // Replace relative paths in common file operations with file.path(OUTPUT_DIR, ...)
   const fileOperations = [
     {
-      // Match both direct path and string concatenation patterns
-      pattern: /plt\.savefig\(['"]([^'"]+)['"]\)|plt\.savefig\(os\.environ\['OUTPUT_DIR'\]\s*\+\s*['"]\/([^'"]+)['"]\)|plt\.savefig\(os\.environ\['OUTPUT_DIR'\]\s*\+\s*['"](\\[^'"]+)['"]\)/g,
-      replacement: (match: string, p1: string | undefined, p2: string | undefined, p3: string | undefined): string => {
-        const filename = p1 || p2 || (p3 ? p3.replace('\\', '') : null);
-        if (!filename) return match;
-        const result = `plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], '${filename}'))`;
-        console.error(`R SERVER LOGS: Transformed savefig from "${match}" to "${result}"`);
+      // Match ggsave with direct path
+      pattern: /ggsave\s*\(\s*['"]([^'"]+)['"]/g,
+      replacement: (match: string, filename: string): string => {
+        const result = `ggsave(file.path(OUTPUT_DIR, '${filename}')`;
+        console.error(`R SERVER LOGS: Transformed ggsave from "${match}" to "${result}"`);
         return result;
       }
     },
     {
-      pattern: /to_csv\(['"]([^'"]+)['"]\)/g,
+      // Match write.csv with direct path
+      pattern: /write\.csv\s*\([^,]+,\s*['"]([^'"]+)['"]/g,
       replacement: (match: string, filename: string): string => {
-        const result = `to_csv(os.path.join(os.environ['OUTPUT_DIR'], '${filename}'))`;
-        console.error(`R SERVER LOGS: Transformed to_csv from "${match}" to "${result}"`);
+        const result = match.replace(`"${filename}"`, `file.path(OUTPUT_DIR, '${filename}')`);
+        console.error(`R SERVER LOGS: Transformed write.csv from "${match}" to "${result}"`);
         return result;
       }
     },
     {
-      pattern: /to_excel\(['"]([^'"]+)['"]\)/g,
+      // Match write.table with direct path
+      pattern: /write\.table\s*\([^,]+,\s*['"]([^'"]+)['"]/g,
       replacement: (match: string, filename: string): string => {
-        const result = `to_excel(os.path.join(os.environ['OUTPUT_DIR'], '${filename}'))`;
-        console.error(`R SERVER LOGS: Transformed to_excel from "${match}" to "${result}"`);
+        const result = match.replace(`"${filename}"`, `file.path(OUTPUT_DIR, '${filename}')`);
+        console.error(`R SERVER LOGS: Transformed write.table from "${match}" to "${result}"`);
         return result;
       }
     },
     {
-      pattern: /json\.dump\(.*?,\s*open\(['"]([^'"]+)['"],\s*['"]w['"]\)/g,
+      // Match saveRDS with direct path
+      pattern: /saveRDS\s*\([^,]+,\s*['"]([^'"]+)['"]/g,
       replacement: (match: string, filename: string): string => {
-        const result = match.replace(filename, `os.path.join(os.environ['OUTPUT_DIR'], '${filename}')`);
-        console.error(`R SERVER LOGS: Transformed json.dump from "${match}" to "${result}"`);
+        const result = match.replace(`"${filename}"`, `file.path(OUTPUT_DIR, '${filename}')`);
+        console.error(`R SERVER LOGS: Transformed saveRDS from "${match}" to "${result}"`);
+        return result;
+      }
+    },
+    {
+      // Match png/jpeg/pdf device with direct path
+      pattern: /(png|jpeg|pdf|svg)\s*\(\s*['"]([^'"]+)['"]/g,
+      replacement: (_match: string, device: string, filename: string): string => {
+        const result = `${device}(file.path(OUTPUT_DIR, '${filename}')`;
+        console.error(`R SERVER LOGS: Transformed ${device} from "${_match}" to "${result}"`);
         return result;
       }
     }
@@ -173,20 +184,16 @@ function transformRCode(code: string, logger: Logger): string {
 
   // Apply transformations
   for (const op of fileOperations) {
-    if (typeof op.replacement === 'string') {
-      code = code.replace(op.pattern, op.replacement);
-    } else {
-      code = code.replace(op.pattern, op.replacement);
-    }
+    code = code.replace(op.pattern, op.replacement);
   }
 
-  // Add plt.close() after savefig if not present
-  if (code.includes('savefig') && !code.includes('plt.close()')) {
-    code += '\nplt.close()  # Auto-added to ensure cleanup';
-    console.error(`R SERVER LOGS: Added plt.close() to code`);
+  // Add device closure for graphics if needed
+  if (/(?:png|jpeg|pdf|svg)\s*\(/.test(code) && !code.includes('dev.off()')) {
+    code += '\ndev.off()  # Auto-added to ensure cleanup';
+    console.error(`R SERVER LOGS: Added dev.off() to code`);
   }
 
-  console.error(`R SERVER LOGS: Transformed Python code:\n${code}`);
+  console.error(`R SERVER LOGS: Transformed R code:\n${code}`);
   return code;
 }
 
@@ -235,7 +242,7 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
         .map(([key, value]) => ['-e', `${key}=${value}`])
         .flat(),
       DOCKER_IMAGE,
-      'R', '-u', scriptName  // -u for unbuffered output
+      'Rscript', scriptName  // Use Rscript to execute the R script
     ];
 
     logger.log(`Running Docker command: docker ${dockerArgs.join(' ')}`);
@@ -347,8 +354,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     // Ensure Docker image exists
     await ensureDockerImage();
     
-    // Create a temporary Python file with the code
-    scriptPath = path.join(TEMP_DIR, `script_${Date.now()}.py`);
+    // Create a temporary R file with the code
+    scriptPath = path.join(TEMP_DIR, `script_${Date.now()}.R`);
     logger.log(`Script path: ${scriptPath}`);
     
     // Write the code to the temporary file
@@ -370,29 +377,40 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       logger.log(`Processing file: ${file}`);
       console.error(`R SERVER LOGS: Processing file: ${file}`);
       
-      if (file.endsWith('.png')) {
-        logger.log(`Found PNG file: ${file}`);
-        console.error(`R SERVER LOGS: Found PNG file: ${file}`);
+      if (/\.(png|jpe?g|pdf|svg)$/i.test(file)) {
+        logger.log(`Found image file: ${file}`);
+        console.error(`R SERVER LOGS: Found image file: ${file}`);
         const filePath = path.join(TEMP_DIR, file);
         logger.log(`Full file path: ${filePath}`);
-        console.error(`R SERVER LOGS: Full PNG path: ${filePath}`);
+        console.error(`R SERVER LOGS: Full image path: ${filePath}`);
         
         try {
           const fileContent = await fs.readFile(filePath);
           logger.log(`File size: ${fileContent.length} bytes`);
-          console.error(`R SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
+          console.error(`R SERVER LOGS: Image file size: ${fileContent.length} bytes`);
           const base64Data = fileContent.toString('base64');
-          console.error(`R SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
+          console.error(`R SERVER LOGS: Converted image to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
           
-          // Extract PNG dimensions from the IHDR chunk
-          const width = fileContent.readUInt32BE(16);
-          const height = fileContent.readUInt32BE(20);
-          logger.log(`Image dimensions: ${width}x${height}`);
-          console.error(`R SERVER LOGS: PNG dimensions: ${width}x${height}`);
+          // For PNG files, extract dimensions from the IHDR chunk
+          let width = 0;
+          let height = 0;
+          if (file.endsWith('.png')) {
+            width = fileContent.readUInt32BE(16);
+            height = fileContent.readUInt32BE(20);
+          }
+          
+          const fileType = path.extname(file).toLowerCase();
+          const mimeType = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.pdf': 'application/pdf',
+            '.svg': 'image/svg+xml'
+          }[fileType] || 'application/octet-stream';
           
           binaryOutput = {
             data: base64Data,
-            type: 'image/png',
+            type: mimeType,
             metadata: {
               filename: file,
               size: fileContent.length,
@@ -400,22 +418,22 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
                 width,
                 height
               },
-              sourceCode: code  // Add the source code to metadata
+              sourceCode: code
             }
           };
           
           logger.log('Binary output prepared successfully');
-          console.error('R SERVER LOGS: Binary output prepared successfully');
+          console.error(`R SERVER LOGS: Binary output prepared successfully`);
           
           // Clean up the binary file
           await fs.unlink(filePath).catch(error => {
-            logger.log(`Error cleaning up PNG file: ${error}`);
-            console.error(`R SERVER LOGS: Error cleaning up PNG file: ${error}`);
+            logger.log(`Error cleaning up image file: ${error}`);
+            console.error(`R SERVER LOGS: Error cleaning up image file: ${error}`);
           });
-          break;  // Only handle the first PNG for now
+          break;  // Only handle the first image file
         } catch (error) {
-          logger.log(`Error processing PNG file: ${error}`);
-          console.error(`R SERVER LOGS: ERROR processing PNG file: ${error}`);
+          logger.log(`Error processing image file: ${error}`);
+          console.error(`R SERVER LOGS: ERROR processing image file: ${error}`);
         }
       }
     }
@@ -437,7 +455,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     const result: ExecuteResult = { 
       output, 
       code,
-      type: binaryOutput ? 'matplotlib.figure' as const : 'text' as const,
+      type: binaryOutput ? 'ggplot' as const : 'text' as const,
       metadata: binaryOutput ? { hasBinaryOutput: true } : {},
       binaryOutput
     };

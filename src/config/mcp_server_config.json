@@ -69,6 +69,12 @@
         "./custom-mcp-servers/python-mcp/dist/index.js"
       ]
     },
+    "r": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/r-mcp/dist/index.js"
+      ]
+    },
     "graph": {
       "command": "node",
       "args": [
