@@ -30,13 +30,21 @@ try {
   console.error('Error creating temp directory:', error);
 }
 
-function createRunLogger() {
+// Logger type definition
+interface Logger {
+  log: (message: string) => void;
+  close: () => void;
+  isClosed: boolean;
+}
+
+function createRunLogger(): Logger {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const logFileName = `run_${timestamp}.log`;
   const logFilePath = path.join(LOGS_DIR, logFileName);
   
   // Create write stream for logging
   const logStream = createWriteStream(logFilePath, { flags: 'a' });
+  let isClosed = false;
   
   // Log the paths being used
   logStream.write(`Log file path: ${logFilePath}\n`);
@@ -44,13 +52,19 @@ function createRunLogger() {
   
   return {
     log: (message: string) => {
-      const timestamp = new Date().toISOString();
-      const logMessage = `[${timestamp}] ${message}\n`;
-      logStream.write(logMessage);
+      if (!isClosed) {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[${timestamp}] ${message}\n`;
+        logStream.write(logMessage);
+      }
     },
     close: () => {
-      logStream.end();
-    }
+      if (!isClosed) {
+        isClosed = true;
+        logStream.end();
+      }
+    },
+    isClosed
   };
 }
 
@@ -105,12 +119,6 @@ interface ExecuteResult {
       sourceCode: string;  // Source code that generated the output
     };
   };
-}
-
-// Logger type definition
-interface Logger {
-  log: (message: string) => void;
-  close: () => void;
 }
 
 // Add helper function for code transformation
@@ -218,8 +226,11 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
       '-w', CONTAINER_TEMP_DIR,  // Set working directory
       '--memory', '256m',  // Memory limit
       '--cpus', '1.0',     // CPU limit
-      // Add environment variables
-      ...Object.entries(envConfig.env)
+      // Add environment variables, but map OUTPUT_DIR to container path
+      ...Object.entries({
+        ...envConfig.env,
+        OUTPUT_DIR: CONTAINER_TEMP_DIR  // Override OUTPUT_DIR to use container path
+      })
         .filter(([, value]) => value !== undefined)
         .map(([key, value]) => ['-e', `${key}=${value}`])
         .flat(),
@@ -231,45 +242,77 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
 
     return new Promise((resolve, reject) => {
       let output = '';
+      let errorOutput = '';
       const dockerProcess = spawn('docker', dockerArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
 
       dockerProcess.stdout.on('data', (data) => {
         const message = data.toString();
-        logger.log(`Python output: ${message}`);
+        if (!logger.isClosed) logger.log(`Python output: ${message}`);
         output += message;
       });
 
       dockerProcess.stderr.on('data', (data) => {
         const message = data.toString();
-        logger.log(`Python stderr: ${message}`);
-        output += message;
+        if (!logger.isClosed) logger.log(`Python stderr: ${message}`);
+        errorOutput += message;
       });
 
       dockerProcess.on('error', (error) => {
-        logger.log(`Docker error: ${error.message}`);
-        reject(error);
+        const errorMessage = `Docker process error: ${error.message}\nCommand: docker ${dockerArgs.join(' ')}`;
+        if (!logger.isClosed) logger.log(errorMessage);
+        reject(new Error(errorMessage));
       });
 
       dockerProcess.on('close', (code) => {
         if (code === 0) {
-          logger.log('Docker container exited successfully');
+          if (!logger.isClosed) logger.log('Docker container exited successfully');
           resolve(output.trim());
         } else {
-          const error = new Error(`Docker container exited with code ${code}`);
-          logger.log(`Docker error: ${error.message}`);
-          reject(error);
+          // Construct detailed error message
+          const errorMessage = [
+            `Docker container exited with code ${code}`,
+            'Command:',
+            `docker ${dockerArgs.join(' ')}`,
+            '',
+            'Error output:',
+            errorOutput || '(no error output)',
+            '',
+            'Standard output:',
+            output || '(no standard output)',
+          ].join('\n');
+
+          if (!logger.isClosed) logger.log(`Docker execution failed:\n${errorMessage}`);
+          reject(new Error(errorMessage));
         }
       });
 
       // Handle timeout
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         dockerProcess.kill();
-        reject(new Error('Execution timeout'));
+        const timeoutMessage = [
+          'Docker execution timed out after 30 seconds',
+          'Command:',
+          `docker ${dockerArgs.join(' ')}`,
+          '',
+          'Partial output:',
+          output || '(no output)',
+          '',
+          'Error output:',
+          errorOutput || '(no error output)',
+        ].join('\n');
+        
+        if (!logger.isClosed) logger.log(timeoutMessage);
+        reject(new Error(timeoutMessage));
       }, 30000); // 30 seconds timeout
+
+      // Clean up timeout on success or error
+      dockerProcess.on('close', () => clearTimeout(timeoutId));
+      dockerProcess.on('error', () => clearTimeout(timeoutId));
     });
   } catch (error) {
-    logger.log(`Docker execution error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    throw error;
+    const errorMessage = `Docker execution error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    if (!logger.isClosed) logger.log(errorMessage);
+    throw new Error(errorMessage);
   }
 }
 
@@ -278,20 +321,23 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   
   // Create logger first
   const logger = createRunLogger();
-  
-  // Transform code to handle file operations
-  const code = transformPythonCode(originalCode, logger);
-  
-  // Log if code was transformed
-  if (code !== originalCode) {
-    logger.log('Code was transformed to use OUTPUT_DIR for file operations');
-    logger.log(`Original code: ${originalCode}`);
-    logger.log(`Transformed code: ${code}`);
-  }
-
   let scriptPath = '';
   
   try {
+    // Validate Python code before transformation
+    validatePythonCode(originalCode);
+    logger.log('Python code validation passed');
+    
+    // Transform code to handle file operations
+    const code = transformPythonCode(originalCode, logger);
+    
+    // Log if code was transformed
+    if (code !== originalCode) {
+      logger.log('Code was transformed to use OUTPUT_DIR for file operations');
+      logger.log(`Original code: ${originalCode}`);
+      logger.log(`Transformed code: ${code}`);
+    }
+
     // Log the Python code being executed
     logger.log(code);
     
@@ -426,4 +472,4 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   } finally {
     logger.close();
   }
-} 
+}
