@@ -124,13 +124,13 @@ export async function setupPythonEnvironment() {
   }
 
   // Get the virtual environment path
-  //const venvPath = path.join(__dirname, '../../venv');
-  //const sitePackages = path.join(venvPath, 'lib', 'python3.11', 'site-packages');
+  const venvPath = path.join(__dirname, '../../venv');
+  const sitePackages = path.join(venvPath, 'lib', 'python3.11', 'site-packages');
 
   // Environment configuration with security settings
   return {
     env: {
-      //PYTHONPATH: sitePackages,
+      PYTHONPATH: sitePackages,
       PYTHONUNBUFFERED: '1',
       MPLBACKEND: 'Agg',  // Non-interactive matplotlib backend
       OUTPUT_DIR: TEMP_DIR,  // Use the shared temp directory

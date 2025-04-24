@@ -273,7 +273,15 @@ export class MessageService {
         conversationAppends.push(this.createArtifactButton(artifactId, artifact.type, artifact.title));
       }
       
-      // Return the processed artifact
+      // Check for metadata and log if present
+      if (artifact.metadata) {
+        console.log(`Artifact has metadata: ${Object.keys(artifact.metadata).join(', ')}`);
+        if (artifact.metadata.sourceCode) {
+          console.log(`Artifact has source code in metadata of length: ${(artifact.metadata.sourceCode as string).length}`);
+        }
+      }
+      
+      // Return the processed artifact with metadata preserved
       return {
         id: artifactId,
         artifactId: artifactId,
@@ -281,7 +289,8 @@ export class MessageService {
         title: artifact.title,
         content: content,
         position: position++,
-        language: artifact.language
+        language: artifact.language,
+        metadata: artifact.metadata // Preserve original metadata
       };
     });
     

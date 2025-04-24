@@ -88,8 +88,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
     console.log('ChatInput: Submitting message:', localInput);
     
-    // If we're in a project view, create a new conversation and transition
-    if (selectedProjectId) {
+    // Get the project conversation flow state
+    const inProjectConversationFlow = useChatStore.getState().inProjectConversationFlow;
+    console.log('ChatInput: inProjectConversationFlow:', inProjectConversationFlow);
+    
+    // Only create a new conversation if we have a project ID AND we're not continuing a flow
+    if (selectedProjectId && !inProjectConversationFlow) {
       const conversationId = createNewChat();
       if (conversationId) {
         addConversationToProject(selectedProjectId, conversationId, `Project Chat ${new Date().toLocaleString()}`);
@@ -111,7 +115,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         }
       }
     } else {
-      // Regular chat flow without project
+      // Regular chat flow without project or continuing a project conversation
       addMessage({
         role: 'user',
         content: localInput
@@ -137,45 +141,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   };
 
   const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const clipboardData = e.clipboardData;
-    const htmlContent = clipboardData.getData('text/html');
-    const plainText = clipboardData.getData('text/plain');
-    const content = htmlContent || plainText;
-
-    // Only save if content is longer than 500 characters and we have a selected project
-    if (content.length > 500 && selectedProjectId) {
-      const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
-      const fileName = `Pasted text ${timestamp}`;
-
-      try {
-        const metadata = {
-          description: fileName,
-          schema: {
-            type: 'json' as const,
-            format: htmlContent ? 'text/html' : 'text/plain',
-            encoding: 'utf-8',
-            sampleData: ''
-          },
-          origin: {
-            type: 'upload' as const,
-            timestamp: new Date()
-          }
-        };
-
-        // Add project tag to the metadata before sending
-        const metadataWithTags = {
-          ...metadata,
-          tags: [`project:${selectedProjectId}`]
-        };
-
-        await storageService.createFile(content, metadataWithTags);
-
-        // Add a message to the chat indicating the file was saved
-        processMessage(`Saved pasted content as file: ${fileName}`);
-      } catch (error) {
-        console.error('Error saving pasted content:', error);
-      }
-    }
+    // Just let the default paste behavior work
+    // No special handling needed
   };
 
   useEffect(() => {

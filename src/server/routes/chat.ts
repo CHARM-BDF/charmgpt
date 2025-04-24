@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import 'dotenv/config';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { systemPrompt } from '../systemPrompt';
 import { MCPService, MCPLogMessage } from '../services/mcp';

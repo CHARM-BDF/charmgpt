@@ -1,0 +1,47 @@
+{
+  "description": "TA3 summary.md",
+  "schema": {
+    "type": "json",
+    "format": "text/plain",
+    "encoding": "utf-8",
+    "sampleData": ""
+  },
+  "origin": {
+    "type": "upload",
+    "timestamp": "2025-04-22T23:28:53.415Z"
+  },
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0,
+    "branch": {
+      "name": "main",
+      "parent": "",
+      "created": "2025-04-22T23:28:53.415Z",
+      "description": "Initial version"
+    },
+    "history": [
+      {
+        "id": "414d1d3a-364a-4b5f-936f-983975448a61",
+        "timestamp": "2025-04-22T23:28:53.415Z",
+        "message": "Initial upload",
+        "user": "system",
+        "branch": "main",
+        "parent": ""
+      }
+    ]
+  },
+  "analysisInfo": {
+    "summary": {},
+    "quality": {
+      "nullCount": 0,
+      "duplicateCount": 0,
+      "errorCount": 0,
+      "completeness": 100
+    }
+  },
+  "tags": [
+    "project:cdfed820-2dd5-4f0b-a4d2-384e1be8a9bb"
+  ],
+  "llmNotes": ""
+}

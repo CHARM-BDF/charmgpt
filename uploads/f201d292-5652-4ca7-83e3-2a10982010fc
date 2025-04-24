@@ -1,0 +1,293 @@
+Below is a **condensed version** of each section, followed by a brief **description of what was removed** (and why) to reduce length while preserving core content and flow.
+
+---
+
+## Task 3. Rare Disease Benchmark Dataset (RDBD)
+
+### Condensed Text
+**Task 3 (RDBD):** We will produce curated “benchmark” subsets—RDBD v1 by month 12 and v2 by month 36—containing gold-standard labeled examples for 150+ diagnosed rare diseases. Each labeled sample will include metadata to enable clinically relevant groupings (e.g., by causal variant type or phenotypic presentations). Multiple data-access tiers (controlled, fully de-identified, synthetic expansions) will respect patient preferences while maximizing utility. This extensively phenotyped, annotated dataset will support AI/ML training and testing.
+
+To address known AI/ML failure modes, we will develop specialized “challenge” sets with noise injection (e.g., shuffled timepoints, phenotypic obfuscation) and diverse data sources (varying ancestries, healthcare institutions, collection devices) for robust model evaluations. Additionally, we will deploy an automated evaluation framework for user-uploaded models and display top performers—based on accuracy, robustness, and bias—on a leaderboard. (Cecchini et al. 2024)
+
+### What Was Removed and Why
+- **Repetitive Phrasing**: Shortened descriptions about “patient clinical data” and “comprehensive harmonized clinical data” to reduce wordiness.  
+- **Excess Detail on Collection Devices**: Retained the concept of diverse sources but removed repeated examples.  
+- **Sentence Restructuring**: Combined related ideas (e.g., mention of controlling data access, challenge sets, and leaderboard) to streamline.  
+
+---
+
+## 3.1 Diagnostic Benchmarking Tasks
+
+### Condensed Text
+**3.1 Diagnostic Benchmarking Tasks:** We will define machine-learning-ready tasks aligned with real clinical workflows, spanning three contexts:
+
+1. **Passive Monitoring:** Models generate predictions at routine clinical timepoints (e.g., each clinic visit) to identify undiagnosed rare diseases, simulating population-level surveillance. Benchmarks will include patients meeting minimum longitudinal EHR completeness, with predictions based only on data before each inference timepoint.
+
+2. **Patient-Initiated Upload:** Models generate predictions upon patient data submission (e.g., via a digital app), optionally linked with EHR data. Predictions will use all available patient-provided data at submission.
+
+3. **Clinician-Initiated Evaluation:** Models generate predictions for patients suspected by clinicians to have a rare disease but not yet diagnosed. This supports targeted evaluation and prioritized diagnostic testing.
+
+We will accommodate binary predictions (whether further evaluation is warranted) and ranked lists of candidate diseases or genes. Output definitions will focus on clinically actionable steps (e.g., specialist referral, test selection). Models may also provide explanations (e.g., highlighted features) to enhance interpretability. Clinical consultants will define diagnostic certainty tiers for gold-standard labels, along with inclusion/exclusion criteria. Tasks will be released with machine-readable definitions specifying inputs, outputs, timepoints, cohort logic, and metrics.
+
+### What Was Removed and Why
+- **Repeated Clauses**: Removed duplicate mentions of EHR data specifics to consolidate the description.  
+- **Detailed Examples**: Kept one or two examples of relevant data or usage scenarios but eliminated lengthy expansions (e.g., repeated references to minimum data thresholds).  
+- **Minor Elaboration on Explanation Types**: Kept the concept of interpretability while removing repeated phrasing on how textual rationales or highlighted features might look.  
+
+---
+
+## 3.2 Access Tiers for RDBD Data Access
+
+### Condensed Text
+We will maintain multiple RDBD versions (e.g., RDBD-sim for simulated cohorts, RDBD-deid for deidentified data, RDBD-phi for identifiable data, and RDBD-challenge for generalizability assessments). Additional modality-specific cohorts (e.g., RDBD-[data modality]) may be offered to meet specialized research needs.
+
+### What Was Removed and Why
+- **Bullet-Point Detail**: Kept only the essential list of access tiers, removing extra commentary on each version.  
+- **Repeated Definitions**: Combined references to each dataset version into a single short paragraph.  
+
+---
+
+## 3.3 Patient Usability and Willingness to Share
+
+### Condensed Text
+We will collaborate with the Undiagnosed Diseases Network Foundation (UDNF) and PX Partners to recruit diverse rare disease patients for input on RAISE-Dx and the RDDC. Patients will provide feedback through meetings and surveys on acceptability and usability. This ensures continuous patient involvement in governance and feature development, fulfilling ISO requirements to involve rare disease communities.
+
+### What Was Removed and Why
+- **Extended Organizational Background**: Removed extra background on the UDNF and PX Partners to reduce length.  
+- **Excess Detail on Documentation**: Kept the importance of patient input while trimming the specifics about minutes, online surveys, etc.  
+
+---
+
+## 3.4 Realistic Synthetic Rare Disease Patient Cohorts
+
+### Condensed Text
+We will develop **RDBD-sim**, a synthetic rare disease cohort enabling model development while preserving privacy. Using prior work in domain-guided simulation, we will generate phenotypic and genomic data reflecting real-world diagnostic complexity (e.g., comorbidities, missing data). We will simulate disease progression states (early, intermediate, late), typical age ranges, and relevant HPO terms, introducing stochastic variation to replicate real documentation patterns and diagnostic delays.
+
+For genomic data, we will incorporate pathogenic variants (simulated based on known loci) while avoiding direct reuse of publicly known pathogenic variants to reduce overfitting. Noise will include benign variants and phenotypically ambiguous mutations, promoting diverse and realistic scenarios. We will conduct multiple validation strategies (e.g., classifiers to distinguish real vs. synthetic, nearest-neighbor phenotypic checks) and engage expert reviewers to confirm plausibility. Future expansions will include structured EHR and clinical note simulations, all released with metadata on generation parameters.
+
+### What Was Removed and Why
+- **Detailed Examples of Noise Injection**: Kept only key examples (e.g., unrelated phenotypes, timing variation) while trimming lengthy scenarios.  
+- **Long Explanations of Data Sources**: Referenced resources (ClinVar, OMIM, etc.) without repeating the entire process of data retrieval.  
+- **Excessive Context on LLM Tools**: Removed mention of “state-of-the-art LLMs” for extracting text-based onset data to keep focus on high-level approach.  
+
+---
+
+## 3.5 Benchmark Dataset Construction
+
+### Condensed Text
+Using established task definitions, certainty tiers, and inclusion/exclusion criteria, we will curate high-quality benchmark datasets from both harmonized RDDC data and synthetic cohorts. For each diagnostic context (Passive Monitoring, Patient-Initiated, Clinician-Initiated), we will apply predefined logic to extract populations meeting thresholds for data completeness, diagnosis certainty, and consent.
+
+We will split datasets into training and held-out test sets, ensuring no temporal leakage by restricting model inputs to data available before the relevant timepoints. To support fairness analyses, we will construct both a **Deployment-Reflective Test Set** (mirroring real-world disease prevalence) and a **Stratified Evaluation Set** (enriched for rare conditions and underrepresented subgroups). Manual expert reviews will confirm label fidelity, and we will version all datasets with metadata describing cohort characteristics and label provenance.
+
+### What Was Removed and Why
+- **Examples of Edge Cases**: Removed extra detail about sample size and specific population thresholds, preserving the overall approach to data partitioning.  
+- **Repeated Mentions of “Longitudinal”**: Merged multiple statements about preventing temporal leakage into a single sentence.  
+- **Detailed Power Analysis**: Kept the concept but dropped extensive explanation of methodology.  
+
+---
+
+## 3.6 Benchmark Dataset Cloud Access
+
+### Condensed Text
+We will publish the benchmarking datasets through AWS SageMaker Catalog. This system will consolidate dataset descriptions, provide controlled access mechanisms, and allow users to subscribe to updates. Metadata will clarify requirements and intended uses, offering a convenient interface for TA4 developers and external researchers.
+
+### What Was Removed and Why
+- **Explanation of Catalog Mechanics**: Shortened the description of how AWS SageMaker Catalog works, keeping only the essential points on dataset availability.  
+
+---
+
+## 3.7 Automated Model Evaluation Framework
+
+### Condensed Text
+Working with the IV&V partner, we will provide an automated framework to evaluate diagnostic models on accuracy, time-to-diagnosis, fairness, and robustness. We will measure not only diagnostic accuracy but also time-to-correct-diagnosis (relative to confirmed diagnosis) and time-to-clinical-suspicion (whether the model flags the condition before clinical suspicion).
+
+For binary classification, we will report AUROC, AUPRC, and F1; for ranking tasks, we will use Mean Reciprocal Rank (MRR) and top-k recall. We will measure fairness using subgroup-based metrics (e.g., false negative rates by ancestry or comorbidity burden) and assess robustness via challenge cohorts with noise injection or modality dropout. All results will be version-controlled for transparency.
+
+### What Was Removed and Why
+- **Elaborations on NLP**: Consolidated references to identifying early clinical suspicion from notes.  
+- **Extended Definitions of Protected Subgroups**: Retained the concept of fairness analysis while reducing enumerations of SDOH proxies.  
+- **Detailed Justifications**: Kept the key rationale for metrics but omitted repeated explanations of their clinical significance.  
+
+---
+
+## 3.8 Clinician Evaluation Framework
+
+### Condensed Text
+Alongside automated evaluation, we will implement a clinician-in-the-loop process to capture qualitative factors not reflected in metrics alone. Clinicians will use Mosaic to review patient data, providing feedback on the relevance and plausibility of model outputs and explanations. A structured rubric will guide reviewers on clinical appropriateness, interpretability, and potential impact. We will recruit a diverse panel of board-certified clinicians, use inter-rater reliability checks, and share structured feedback with model developers for iterative improvement.
+
+### What Was Removed and Why
+- **Detailed Workflow Steps**: Kept the essence of how clinicians review outputs but removed step-by-step procedures.  
+- **Extended Discussion on Blinded Protocol**: Retained mention of blinded evaluations without details on reviewer identity management.  
+
+---
+
+## 3.9 Benchmarking with Model Leaderboards
+
+### Condensed Text
+We will rank and display top-performing models on a public leaderboard hosted in a secure, cloud-based environment. Users can filter by diagnostic task, disease category, or fairness metrics. The system will provide real-time benchmarking and an interactive interface to encourage open competition and collaboration.
+
+### What Was Removed and Why
+- **Technical Platform Details**: Summarized hosting and deployment approach; removed references to container orchestration and backups.  
+- **Excess Explanation**: Trimmed text about how leaderboards foster collaboration, focusing on the main outcome (public performance display).  
+
+---
+
+# TA3-Focused Version of the RAPID ISO (Condensed)
+
+Below is the **ISO text** for Technical Area 3, shortened to maintain critical requirements and instructions.
+
+---
+
+## 1.0 INNOVATIVE SOLUTIONS OPENING (ISO) SUMMARY INFORMATION
+
+**Federal Agency:** ARPA-H, Proactive Health Office (PHO)  
+**Program Title:** Rare disease AI/ML and Precision Integrated Diagnostics (RAPID)  
+**Announcement Type:** Solicitation  
+**ISO Solicitation Number:** ARPA-H-SOL-25-119  
+
+**Dates (5pm EST deadlines):**  
+- **Proposers’ Day:** January 23, 2025  
+- **ISO Questions Due:** February 4, 2025  
+- **Solution Summary Due:** February 14, 2025  
+- **Patients’ Day:** February 25, 2025  
+- **Full Proposal Due:** April 11, 2025  
+
+**Concise Funding Opportunity Description:** RAPID aims to accelerate rare disease diagnosis by enabling large-scale data curation for advanced diagnostic models, increasing their accuracy and comprehensiveness.
+
+**Anticipated Awards:** Multiple Other Transaction Agreements (OTAs).  
+**Program Budget:** Not publicly disclosed; no formal ceiling.  
+**Cost Sharing:** May be requested.  
+**Agency Contact:** [RAPID@arpa-h.gov](mailto:RAPID@arpa-h.gov)
+
+### What Was Removed and Why
+- **Extended ARPA-H Background**: Kept relevant info but omitted repeated references to the Agency’s broader mission.  
+
+---
+
+## 2.0 RAPID PROGRAM INFORMATION
+
+### 2.1 Background (Rare Disease Context)
+An estimated 30 million Americans have one of ~10,000 identified rare diseases, with global prevalence exceeding 350 million. RAPID’s overarching goal is to reduce diagnostic delays, misdiagnoses, and access disparities.
+
+### 2.2 Program Description (High-Level)
+RAPID is a 4.5-year program (21-month base + 33-month option) to end the prolonged diagnostic odyssey for rare disease patients. It is divided into multiple TAs:
+- **TA3** will build a Rare Disease Data Commons (RDDC) and produce a Rare Disease Benchmark Dataset to enable AI-based diagnostic development.
+
+> **Note on Dependencies**  
+> - **TA1** aggregates large-scale EHR data.  
+> - **TA2** collects novel, patient-sourced data.  
+> **TA3** must ingest and harmonize both.
+
+### 2.4 Program Scope (Excerpted for TA3)
+- **TA3: Sustainable Platform for AI Diagnostic Development** – Establish the RDDC, produce a Rare Disease Benchmark Dataset, and prepare for future model evaluations.
+
+---
+
+## 2.5 Technical Approach and Structure
+
+### 2.5.3 TA3: Sustainable Platform for AI Diagnostic Development
+**Scope:** Create a secure, scalable, AI-optimized platform (RDDC) to ingest and process data from TA1/TA2. Deliver the Rare Disease Benchmark Dataset as a resource for future diagnostics.
+
+**Key Requirements:**
+- **Data Infrastructure**: Handle large, heterogeneous data (storage, processing, external system connections).  
+- **Data Processing**: Advanced pipelines for structuring/normalizing (FHIR, HPO, GA4GH), ensuring data is fully de-identified.  
+- **Rare Disease Benchmark Dataset Access**: Balanced openness with privacy protections, suitable governance framework.  
+- **Scalability & Sustainability**: Architecture to handle expanding data sources and evolving standards.  
+- **Financial Sustainability**: Long-term viability with minimal restrictive paywalls.  
+- **Benchmarking Framework**: Support multi-dimensional model evaluations in partnership with IV&V.  
+- **Ethics**: Robust patient privacy, IRB compliance, transparent governance, and community engagement.
+
+### 2.5.4 Additional Considerations (TAs 1–3)
+- **Data Rights**: Government prefers broad data rights but not mandatory.  
+- **Deidentified vs. Identifiable**: Deidentified data must be broadly accessible; identifiable data remains under strict DUAs.  
+- **Management & IRB**: Must have a designated PI/PM; IRB approval as needed for identifiable data handling.
+
+---
+
+## 2.6 Program Timeline, Phases & Milestones
+
+RAPID includes:
+- **Phase I (Months 0–21)**: Foundational platform buildout, initial Benchmark Dataset.  
+- **Phase II (Months 22–54)**: Expanded data ingestion, advanced privacy analytics, model evaluation support.
+
+An IV&V partner will evaluate TA3’s data quality, security, and features and help integrate model benchmarking tools.
+
+---
+
+## 2.6.5 Program Metrics (TA3-Specific)
+
+| **Metric**         | **Year 1** | **Year 2** | **Year 3** | **Year 4** | **Year 5** |
+|--------------------|-----------:|-----------:|-----------:|-----------:|-----------:|
+| **Harmonization**  | ≥75%       | ≥80%       | ≥85%       | ≥90%       | ≥95%       |
+| **Enablement**     | ≥15%       | ≥35%       | ≥55%       | ≥75%       | ≥85%       |
+| **Usability**      | ≥60%       | ≥70%       | ≥80%       | ≥90%       | ≥95%       |
+
+**Key Points**  
+- **Harmonization**: Data normalized to standards.  
+- **Enablement**: Proportion of patient records ready for external model evaluation.  
+- **Usability**: User satisfaction (Likert scale).
+
+### What Was Removed and Why
+- **Table Footnotes**: Omitted extensive footnotes on metric definitions, retaining the main table and targets.
+
+---
+
+## 2.7 General Requirements
+All TAs must use recognized healthcare standards (HL7 FHIR, GA4GH, HPO). Proposals must address IP/open-source approaches consistent with broad adoption.  
+
+---
+
+## 3.0 ELIGIBILITY INFORMATION
+All responsible organizations are eligible; non-US entities must meet the ISO’s criteria. FFRDCs can only participate if they provide unique capabilities.
+
+### What Was Removed and Why
+- **Full FFRDC Policy**: Preserved key eligibility notes but removed extended text about government labs.
+
+---
+
+## 4.0 SUBMISSION AND EVALUATION PROCESS
+
+### 4.1 Solution Summary (Pre-Proposal)
+TA3 proposers must submit a 3-page Summary by February 14, 2025. The Government will encourage or discourage full proposals based on the summary.
+
+### 4.2 Full Proposal
+Full proposals are due April 11, 2025. Must follow **Appendix D** for Volume I–III format.  
+
+### 4.3 Proprietary Information
+Proposers must mark proprietary data clearly on each page.
+
+---
+
+## 5.0 REVIEW AND EVALUATION OF FULL PROPOSALS
+
+### 5.1 Compliance
+Proposals must meet all requirements to be evaluated.
+
+### 5.2 Criteria
+1. **Scientific/Technical Merit** (RDDC design, Rare Disease Benchmark Dataset, data ingestion, etc.)  
+2. **Capabilities/Experience** (large data platforms, HPC/ML environments, etc.)  
+3. **Budget** (reasonableness and cost realism).
+
+---
+
+## 6.0 ADMINISTRATIVE & NATIONAL POLICY REQUIREMENTS
+Includes standard ARPA-H contract clauses, conflict-of-interest disclosures, IRB requirements for identifiable data, and Associate Performer Agreements for data sharing.
+
+---
+
+## 7.0 APPENDICES RELEVANT TO TA3
+- **Appendix C**: Solution Summary instructions.  
+- **Appendix D**: Full Proposal format.  
+- **Appendix B**: Data elements from TA1/TA2.  
+- **Appendix A**: Associate Performer Agreement details.
+
+### What Was Removed and Why
+- **Detailed APA Procedures**: Kept the concept without repeating every clause.  
+- **Long Form Requirements**: Maintained references to essential appendices.
+
+---
+
+# End of Condensed Text
+
+## Final Note
+These edits preserve the **substance** of each section—objectives, deliverables, and compliance details—while removing repetitive or overly detailed content. This ensures the document remains aligned with the original goals and structure but within tighter word limits.
