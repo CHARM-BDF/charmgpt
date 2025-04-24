@@ -34,6 +34,9 @@ export interface MCPArtifact {
   
   /** Optional language for code artifacts */
   language?: string;
+  
+  /** Optional metadata for additional information */
+  metadata?: Record<string, any>;
 }
 
 /**

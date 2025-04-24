@@ -1,0 +1,46 @@
+{
+  "description": "Pasted text 20250423T032828",
+  "schema": {
+    "type": "json",
+    "format": "text/html",
+    "encoding": "utf-8",
+    "sampleData": ""
+  },
+  "origin": {
+    "type": "upload",
+    "timestamp": "2025-04-23T03:28:28.505Z"
+  },
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0,
+    "branch": {
+      "name": "main",
+      "parent": "",
+      "created": "2025-04-23T03:28:28.556Z",
+      "description": "Initial version"
+    },
+    "history": [
+      {
+        "id": "33ee1a91-5457-457c-b34a-e0a339960b33",
+        "timestamp": "2025-04-23T03:28:28.556Z",
+        "message": "Initial creation",
+        "user": "system",
+        "branch": "main",
+        "parent": ""
+      }
+    ]
+  },
+  "analysisInfo": {
+    "summary": {},
+    "quality": {
+      "nullCount": 0,
+      "duplicateCount": 0,
+      "errorCount": 0,
+      "completeness": 100
+    }
+  },
+  "tags": [
+    "project:cdfed820-2dd5-4f0b-a4d2-384e1be8a9bb"
+  ]
+}

@@ -43,11 +43,26 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   const getMessageArtifacts = (message: MessageWithThinking) => {
     const result: Artifact[] = [];
     
+    // Helper function to normalize artifact types for consistent UI rendering
+    const normalizeArtifact = (artifact: Artifact): Artifact => {
+      // Create a copy to avoid modifying the original in the store
+      const normalizedArtifact = {...artifact};
+      
+      // Ensure knowledge graph artifacts have consistent type for UI rendering
+      if (normalizedArtifact.type && 
+          (normalizedArtifact.type.includes('knowledge-graph') || 
+           normalizedArtifact.type.includes('knowledgegraph'))) {
+        normalizedArtifact.type = 'application/vnd.knowledge-graph';
+      }
+      
+      return normalizedArtifact;
+    };
+    
     // Step 1: Get directly linked artifacts based on artifactId
     if (message.artifactId) {
       const artifact = artifacts.find(a => a.id === message.artifactId);
       if (artifact) {
-        result.push(artifact);
+        result.push(normalizeArtifact(artifact));
       }
     }
     
@@ -57,7 +72,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
         if (id !== message.artifactId) { // Avoid duplicates
           const artifact = artifacts.find(a => a.id === id);
           if (artifact) {
-            result.push(artifact);
+            result.push(normalizeArtifact(artifact));
           }
         }
       });
@@ -68,7 +83,9 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
       a.content.includes(message.id) && !result.some(r => r.id === a.id)
     );
     if (referencingArtifacts.length > 0) {
-      result.push(...referencingArtifacts);
+      referencingArtifacts.forEach(artifact => {
+        result.push(normalizeArtifact(artifact));
+      });
     }
     
     // Step 3: Extract artifact IDs from message content (buttons)
@@ -77,7 +94,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
       const artifactId = match.replace('data-artifact-id="', '').replace('"', '');
       const artifact = artifacts.find(a => a.id === artifactId);
       if (artifact && !result.some(r => r.id === artifact.id)) {
-        result.push(artifact);
+        result.push(normalizeArtifact(artifact));
       }
     });
     

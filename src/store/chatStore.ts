@@ -43,6 +43,7 @@ export interface ChatState extends ConversationState {
   streamingEnabled: boolean;
   pinnedGraphId: string | null;
   chatInput: string; // New state for chat input
+  inProjectConversationFlow: boolean; // Flag to track if we're continuing a project conversation
   
   // Existing message functions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
@@ -63,6 +64,7 @@ export interface ChatState extends ConversationState {
   toggleStreaming: () => void;
   setPinnedGraphId: (id: string | null) => void;
   updateChatInput: (text: string, append: boolean) => void; // New function to update chat input
+  setProjectConversationFlow: (enabled: boolean) => void; // Function to set project conversation flow state
   
   // New conversation management functions
   startNewConversation: (name?: string) => string;
@@ -115,6 +117,7 @@ export const useChatStore = create<ChatState>()(
         streamingEnabled: false,
         pinnedGraphId: null,
         chatInput: '', // Initialize chat input
+        inProjectConversationFlow: false, // Initialize the project conversation flow flag
         
         // New conversation state
         currentConversationId: null,
@@ -393,6 +396,9 @@ export const useChatStore = create<ChatState>()(
 
             // Add assistant message to current conversation
             set(state => {
+              // Get the current project conversation flow state to preserve it
+              const currentInProjectConversationFlow = state.inProjectConversationFlow;
+              
               const updatedConversation = {
                 ...state.conversations[state.currentConversationId!],
                 messages: [...state.conversations[state.currentConversationId!].messages, assistantMessage],
@@ -410,7 +416,8 @@ export const useChatStore = create<ChatState>()(
                   [state.currentConversationId!]: updatedConversation
                 },
                 streamingMessageId: assistantMessageId,
-                streamingContent: '_Status: Initializing..._\n\n'
+                streamingContent: '_Status: Initializing..._\n\n',
+                inProjectConversationFlow: currentInProjectConversationFlow // Preserve the flag
               };
             });
 
@@ -640,6 +647,9 @@ export const useChatStore = create<ChatState>()(
                 console.log(`[ID DEBUG] Messages in state during update:`, messagesInState.map(msg => msg.id));
                 console.log(`[ID DEBUG] Looking for message with ID: ${assistantMessageId}`);
                 
+                // Get the current project conversation flow state to preserve it
+                const currentInProjectConversationFlow = state.inProjectConversationFlow;
+                
                 const updatedMessages = messagesInState.map(msg => {
                   if (msg.id === assistantMessageId) {
                     console.log(`[ID DEBUG] Found message to update! ID: ${msg.id}`);
@@ -686,7 +696,8 @@ export const useChatStore = create<ChatState>()(
                   },
                   streamingMessageId: null,
                   streamingContent: fullContent,
-                  streamingComplete: true
+                  streamingComplete: true,
+                  inProjectConversationFlow: currentInProjectConversationFlow // Preserve the flag
                 };
               });
 
@@ -696,12 +707,17 @@ export const useChatStore = create<ChatState>()(
 
           } catch (error) {
             console.error('ChatStore: Error processing message:', error);
+            
+            // Get the current project conversation flow state to preserve it
+            const currentInProjectConversationFlow = get().inProjectConversationFlow;
+            
             set({ 
               error: error instanceof Error ? error.message : 'Unknown error',
               isLoading: false,
               streamingMessageId: null,
               streamingContent: '',
-              streamingComplete: true
+              streamingComplete: true,
+              inProjectConversationFlow: currentInProjectConversationFlow // Preserve the flag
             });
             
             // Update the message to show the error
@@ -712,7 +728,8 @@ export const useChatStore = create<ChatState>()(
                   msg.id === errorMessageId ? 
                     { ...msg, content: `_Error: ${error instanceof Error ? error.message : 'Unknown error'}_` } : 
                     msg
-                )
+                ),
+                inProjectConversationFlow: state.inProjectConversationFlow // Preserve the flag
               }));
             }
           }
@@ -724,7 +741,8 @@ export const useChatStore = create<ChatState>()(
           artifacts: [],
           isLoading: false,
           error: null,
-          showArtifactWindow: false
+          showArtifactWindow: false,
+          inProjectConversationFlow: false // Reset the flag when clearing chat
         })),
 
         startStreaming: (messageId: string) => {
@@ -776,7 +794,8 @@ export const useChatStore = create<ChatState>()(
             // Clear artifacts and related state when starting new conversation
             artifacts: [],
             selectedArtifactId: null,
-            showArtifactWindow: false
+            showArtifactWindow: false,
+            inProjectConversationFlow: false // Reset project conversation flow when starting a new conversation
           }));
           
           return id;
@@ -792,7 +811,8 @@ export const useChatStore = create<ChatState>()(
             messages: conversation.messages,
             artifacts: conversation.artifacts || [],
             selectedArtifactId: null,
-            showArtifactWindow: false
+            showArtifactWindow: false,
+            inProjectConversationFlow: false // Reset project conversation flow when switching conversations
           });
         },
 
@@ -1026,6 +1046,11 @@ export const useChatStore = create<ChatState>()(
               }
             };
           });
+        },
+        // Add new function to set project conversation flow state
+        setProjectConversationFlow: (enabled: boolean) => {
+          console.log('ChatStore: Setting project conversation flow state:', enabled);
+          set({ inProjectConversationFlow: enabled });
         },
       };
     },

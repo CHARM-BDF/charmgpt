@@ -14,6 +14,7 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
   const addMessage = useChatStore(state => state.addMessage);
   const processMessage = useChatStore(state => state.processMessage);
   const createNewChat = useChatStore(state => state.startNewConversation);
+  const setProjectConversationFlow = useChatStore(state => state.setProjectConversationFlow);
   const { selectedProjectId } = useProjectStore();
   const addConversationToProject = useProjectStore(state => state.addConversationToProject);
   
@@ -67,6 +68,11 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
           role: 'user',
           content: localInput
         });
+        
+        // Set the flag to indicate we're continuing a project conversation
+        // This prevents creating a new conversation for follow-up messages
+        setProjectConversationFlow(true);
+        
         onBack?.();
         try {
           await processMessage(localInput);
@@ -86,37 +92,8 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
   };
 
   const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const clipboardData = e.clipboardData;
-    const htmlContent = clipboardData.getData('text/html');
-    const plainText = clipboardData.getData('text/plain');
-    const content = htmlContent || plainText;
-
-    if (content.length > 500 && selectedProjectId) {
-      const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
-      const fileName = `Pasted text ${timestamp}`;
-
-      try {
-        const metadata = {
-          description: fileName,
-          schema: {
-            type: 'json' as const,
-            format: htmlContent ? 'text/html' : 'text/plain',
-            encoding: 'utf-8',
-            sampleData: ''
-          },
-          origin: {
-            type: 'upload' as const,
-            timestamp: new Date()
-          },
-          tags: [`project:${selectedProjectId}`]
-        };
-
-        await storageService.createFile(content, metadata);
-        processMessage(`Saved pasted content as file: ${fileName}`);
-      } catch (error) {
-        console.error('Error saving pasted content:', error);
-      }
-    }
+    // Just let the default paste behavior work
+    // No special handling needed
   };
 
   return (
