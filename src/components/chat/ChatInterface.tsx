@@ -11,7 +11,7 @@ import { ConversationDrawer } from '../conversations/ConversationDrawer';
 import BrainWaveCharmStatic from '../animations/BrainWaveCharmStatic';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
-import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, Cog8ToothIcon } from '@heroicons/react/24/outline';
+import { ServerIcon, FolderOpenIcon, ListBulletIcon, TrashIcon, ArrowsRightLeftIcon, BoltIcon, ArrowPathIcon, SparklesIcon, RocketLaunchIcon, ForwardIcon, Cog8ToothIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { FileManager } from '../files/FileManager';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import { useModeStore } from '../../store/modeStore';
@@ -19,6 +19,71 @@ import { ProjectDrawer } from '../projects/ProjectDrawer';
 import { ProjectListView } from '../projects/ProjectListView';
 import { ProjectView } from '../projects/ProjectView';
 import { GrantReviewListView } from '../projects/GrantReviewListView';
+
+// Add this new component for the editable conversation title
+const ConversationTitle: React.FC = () => {
+  const currentConversationId = useChatStore(state => state.currentConversationId);
+  const conversations = useChatStore(state => state.conversations);
+  const renameConversation = useChatStore(state => state.renameConversation);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  
+  const conversationName = currentConversationId && conversations[currentConversationId] 
+    ? conversations[currentConversationId].metadata.name 
+    : 'Untitled';
+  
+  const startEditing = () => {
+    setEditName(conversationName);
+    setIsEditing(true);
+  };
+  
+  const saveEdit = () => {
+    if (currentConversationId && editName.trim()) {
+      renameConversation(currentConversationId, editName.trim());
+    }
+    setIsEditing(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+  
+  if (isEditing) {
+    return (
+      <div className="relative">
+        <input
+          type="text"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onBlur={saveEdit}
+          onKeyDown={handleKeyDown}
+          className="text-lg font-normal px-2 py-0.5 border border-blue-400 dark:border-blue-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 outline-none"
+          autoFocus
+        />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex items-center group">
+      <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
+        {conversationName}
+      </span>
+      <button 
+        onClick={startEditing}
+        className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-blue-600 dark:hover:text-blue-400"
+        title="Rename conversation"
+      >
+        <PencilIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+      </button>
+    </div>
+  );
+};
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
@@ -51,12 +116,22 @@ export const ChatInterface: React.FC = () => {
             <div className="flex items-center space-x-4">
               <BrainWaveCharmStatic />
               {selectedProject && (
-                <button
-                  onClick={() => setShowProjectView(true)}
-                  className="text-lg font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  {selectedProject.name}
-                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setShowProjectView(true)}
+                    className="text-lg font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    {selectedProject.name}
+                  </button>
+                  
+                  {/* Add slash and conversation name */}
+                  {useChatStore(state => state.currentConversationId) && (
+                    <>
+                      <span className="mx-2 text-gray-500 dark:text-gray-400">/</span>
+                      <ConversationTitle />
+                    </>
+                  )}
+                </div>
               )}
             </div>
             <div className="flex items-center space-x-6">
