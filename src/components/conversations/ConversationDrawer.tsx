@@ -215,8 +215,8 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                          flex items-center gap-1"
                 title="New Conversation"
               >
-                <span className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
-                  <span className="text-base font-semibold leading-none">+</span>
+                <span className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
+                  <span className="text-sm font-semibold leading-none">+</span>
                 </span>
               </button>
             </div>
@@ -224,69 +224,89 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             {/* Projects section */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
-                  <FolderIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <div 
+                  className="flex items-center gap-2 cursor-pointer group/title hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  onClick={navigateToProjects}
+                >
+                  <FolderIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover/title:text-blue-600 dark:group-hover/title:text-blue-400 transition-colors" />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover/title:text-blue-600 dark:group-hover/title:text-blue-400 transition-colors">
                     Projects
                   </h2>
                 </div>
                 <button
-                  onClick={navigateToProjects}
-                  className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                  onClick={() => {
+                    const { addProject, projects } = useProjectStore.getState();
+                    const projectName = "New Project";
+                    addProject({
+                      name: projectName,
+                      description: "",
+                      type: 'project'
+                    });
+                    // Find the newly created project
+                    const newProject = projects.find(p => p.name === projectName && p.type === 'project');
+                    if (newProject) {
+                      useProjectStore.getState().selectProject(newProject.id);
+                      setShowProjectView?.(true);
+                      setIsExpanded(false);
+                    }
+                  }}
+                  className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                         hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
+                         flex items-center gap-1"
+                  title="New Project"
                 >
-                  View All
+                  <span className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
+                    <span className="text-sm font-semibold leading-none">+</span>
+                  </span>
                 </button>
               </div>
             </div>
-
+            
             {/* Grant Review section */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
+                <div 
+                  className="flex items-center gap-2 cursor-pointer group/title hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  onClick={() => setShowGrantReviewList?.(true)}
+                >
                   <img 
                     src="/logos/grantmode_icon.png" 
                     alt="Grant Review"
-                    className="w-5 h-5 opacity-80" 
+                    className="w-5 h-5 opacity-80 group-hover/title:opacity-100 group-hover/title:[filter:invert(48%)_sepia(95%)_saturate(1000%)_hue-rotate(195deg)_brightness(102%)_contrast(101%)] transition-all" 
                   />
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover/title:text-blue-600 dark:group-hover/title:text-blue-400 transition-colors">
                     Grant Reviews
                   </h2>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const { addProject, projects } = useProjectStore.getState();
-                      const projectName = "New Grant Review";
-                      addProject({
-                        name: projectName,
-                        description: "",
-                        type: 'grant_review',
-                        grantMetadata: {
-                          requiredDocuments: []
-                        }
-                      });
-                      // Find the newly created project
-                      const newProject = projects.find(p => p.name === projectName && p.type === 'grant_review');
-                      if (newProject) {
-                        useProjectStore.getState().selectProject(newProject.id);
-                        setShowProjectView?.(true);
-                        setIsExpanded(false);
+                <button
+                  onClick={() => {
+                    const { addProject, projects } = useProjectStore.getState();
+                    const projectName = "New Grant Review";
+                    addProject({
+                      name: projectName,
+                      description: "",
+                      type: 'grant_review',
+                      grantMetadata: {
+                        requiredDocuments: []
                       }
-                    }}
-                    className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full
-                             hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors group"
-                    title="New Grant Review"
-                  >
-                    <span className="text-sm font-semibold leading-none text-gray-600 dark:text-gray-300 group-hover:text-white">+</span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowGrantReviewList?.(true)}
-                    className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    View All
-                  </button>
-                </div>
+                    });
+                    // Find the newly created project
+                    const newProject = projects.find(p => p.name === projectName && p.type === 'grant_review');
+                    if (newProject) {
+                      useProjectStore.getState().selectProject(newProject.id);
+                      setShowProjectView?.(true);
+                      setIsExpanded(false);
+                    }
+                  }}
+                  className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                         hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
+                         flex items-center gap-1"
+                  title="New Grant Review"
+                >
+                  <span className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
+                    <span className="text-sm font-semibold leading-none">+</span>
+                  </span>
+                </button>
               </div>
             </div>
             
