@@ -141,8 +141,8 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount 
         });
         
         if (!response.ok) {
-            console.error(`[medik-mcp] HTTP error! status: ${response.status}`);
-            throw new Error(`HTTP error! status: ${response.status}`);
+            console.error(`[medik-mcp] HTTP error! status: ${response.status} for query: ${JSON.stringify(params)}`);
+            throw new Error(`HTTP error! status: ${response.status} for query: ${JSON.stringify(params)}`);
         }
         
         const data = await response.json();
@@ -199,12 +199,14 @@ export async function runBidirectionalQuery(params: {
     if (DEBUG) console.error(`[medik-mcp] Starting bidirectional query for ${curie}`);
     
     try {
+        console.error(`[medik-mcp] Running X->Known query for ${curie}`);
         const xToKnownResult = await makeMediKanrenRequest<QueryResponse>({
             e1: 'X->Known',
             e2: 'biolink:related_to',
             e3: curie
         });
 
+        console.error(`[medik-mcp] Running Known->X query for ${curie}`);
         const knownToXResult = await makeMediKanrenRequest<QueryResponse>({
             e1: 'Known->X',
             e2: 'biolink:related_to',
@@ -214,11 +216,17 @@ export async function runBidirectionalQuery(params: {
         let combinedResults: any[] = [];
         
         if (Array.isArray(xToKnownResult)) {
+            console.error(`[medik-mcp] X->Known query for ${curie} returned ${xToKnownResult.length} results`);
             combinedResults = [...combinedResults, ...xToKnownResult];
+        } else {
+            console.error(`[medik-mcp] X->Known query for ${curie} failed or returned no results`);
         }
         
         if (Array.isArray(knownToXResult)) {
+            console.error(`[medik-mcp] Known->X query for ${curie} returned ${knownToXResult.length} results`);
             combinedResults = [...combinedResults, ...knownToXResult];
+        } else {
+            console.error(`[medik-mcp] Known->X query for ${curie} failed or returned no results`);
         }
 
         const deduplicatedResults = combinedResults.filter((result, index, self) =>
@@ -230,7 +238,7 @@ export async function runBidirectionalQuery(params: {
         );
         
         if (deduplicatedResults.length === 0) {
-            console.error(`[medik-mcp] No results found for ${curie}`);
+            console.error(`[medik-mcp] No results found for ${curie} after deduplication`);
             return null;
         }
         
@@ -255,13 +263,28 @@ export async function runNetworkNeighborhoodQuery(params: {
     
     try {
         const allResults = [];
+        const successfulGenes = [];
+        const failedGenes = [];
         
         for (const curie of curies) {
+            console.error(`[medik-mcp] Processing gene: ${curie}`);
             const queryResult = await runBidirectionalQuery({ curie });
-            if (Array.isArray(queryResult)) {
+            
+            if (Array.isArray(queryResult) && queryResult.length > 0) {
+                console.error(`[medik-mcp] Successfully retrieved ${queryResult.length} relationships for ${curie}`);
                 allResults.push(...queryResult);
+                successfulGenes.push(curie);
+            } else {
+                console.error(`[medik-mcp] Failed to retrieve relationships for ${curie}`);
+                failedGenes.push(curie);
             }
         }
+        
+        console.error(`[medik-mcp] Network neighborhood query summary:`);
+        console.error(`[medik-mcp] - Total genes processed: ${curies.length}`);
+        console.error(`[medik-mcp] - Successful genes: ${successfulGenes.length} (${successfulGenes.join(', ')})`);
+        console.error(`[medik-mcp] - Failed genes: ${failedGenes.length} (${failedGenes.join(', ')})`);
+        console.error(`[medik-mcp] - Total relationships retrieved: ${allResults.length}`);
         
         return allResults;
     } catch (error) {

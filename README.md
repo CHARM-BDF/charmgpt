@@ -8,6 +8,9 @@ This guide walks you through setting up and running the custom MCP (Model Contex
 - [Manual Setup](#manual-setup)
   - [Build MCP Servers](#build-mcp-servers)
   - [Build Docker Images](#build-docker-images)
+- [Running the Application](#running-the-application)
+  - [Start the Application](#start-the-application)
+  - [Access the Application](#access-the-application)
 - [Next Steps](#next-steps)
 - [Troubleshooting](#troubleshooting)
 
@@ -19,7 +22,7 @@ This guide walks you through setting up and running the custom MCP (Model Contex
   - For Linux: Install [Docker Engine](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/)
   - After installation, make sure to start Docker Desktop or the Docker daemon
 - Git repository cloned locally
-- Node.js and npm installed
+- Node.js (v16 or later) and npm installed
 
 ## Automated Setup
 
@@ -103,11 +106,55 @@ If you prefer to set up the servers step by step, follow these instructions:
    ```
    You should see `my-r-mcp` in the list of available images.
 
+## Running the Application
+
+After setting up the MCP servers and Docker images, you'll need to install the main application dependencies and start the application.
+
+### Install Main Application Dependencies
+
+From the repository root, run:
+
+```bash
+# Install all dependencies for the main application
+npm install
+```
+
+### Start the Application
+
+The application consists of a frontend and a backend server. You can start both simultaneously using:
+
+```bash
+# Start both the frontend and backend server
+npm start
+```
+
+This command runs:
+- The Vite development server for the frontend
+- The backend server that manages MCP servers and handles API requests
+
+Alternatively, you can run them separately:
+
+```bash
+# Start just the frontend
+npm run dev
+
+# Start just the backend server
+npm run server:dev
+```
+
+### Access the Application
+
+Once started, the application will be available at:
+
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend API: [http://localhost:3000](http://localhost:3000)
+
 ## Next Steps
 
-Now that you have the MCP servers and Docker images built, you can:
+Now that you have the application running, you can:
 
-- Run the containers
+- Create new conversations in the UI
+- Utilize the various MCP servers through the interface
 - Develop and test your MCP implementations
 - Make modifications to the codebase as needed
 
@@ -117,6 +164,13 @@ Now that you have the MCP servers and Docker images built, you can:
 
 - If you see an error about Docker daemon not running, make sure Docker Desktop is started
 - If build fails due to network issues, check your internet connection and try again
+- If the application doesn't start, check that all dependencies are installed with `npm install`
+
+### MCP Server Issues
+
+- If an MCP server fails to start, check its logs in the console output
+- Ensure that all required environment variables are set (check `.env` files if they exist)
+- For TypeScript errors, try rebuilding with `npm run build:mcp-servers`
 
 ### Python MCP Issues
 
