@@ -119,9 +119,17 @@ export const ConversationList: React.FC = () => {
     }
   };
 
+  // Sort conversations by lastUpdated time (most recent first)
+  const sortedConversationEntries = Object.entries(conversations)
+    .sort(([, a], [, b]) => {
+      const aDate = new Date(a.metadata.lastUpdated);
+      const bDate = new Date(b.metadata.lastUpdated);
+      return bDate.getTime() - aDate.getTime(); // Most recent first
+    });
+
   return (
     <div className="space-y-2">
-      {Object.entries(conversations).map(([id, conversation]) => (
+      {sortedConversationEntries.map(([id, conversation]) => (
         <ConversationItem
           key={id}
           conversation={conversation}
