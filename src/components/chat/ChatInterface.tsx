@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { ArtifactWindow } from '../artifacts/ArtifactWindow';
@@ -97,15 +97,39 @@ export const ChatInterface: React.FC = () => {
   const { setMode, currentMode } = useModeStore();
   const { projects, selectedProjectId, selectProject } = useProjectStore();
   
-  const selectedProject = useMemo(() => 
-    selectedProjectId ? projects.find(p => p.id === selectedProjectId) : null,
-    [projects, selectedProjectId]
+  // Get current conversation ID only - avoid excessive re-renders from other conversation data
+  const currentConversationId = useChatStore(state => state.currentConversationId);
+  
+  // Only look up the conversation data when we need it, avoiding circular dependencies
+  const currentConversation = useMemo(() => {
+    if (!currentConversationId) return null;
+    return useChatStore.getState().conversations[currentConversationId];
+  }, [currentConversationId]);
+  
+  // Get project ID from conversation metadata
+  const conversationProjectId = useMemo(() => 
+    currentConversation?.metadata?.projectId,
+    [currentConversation]
+  );
+  
+  // Get the project based on the conversation's projectId
+  const conversationProject = useMemo(() => 
+    conversationProjectId ? projects.find(p => p.id === conversationProjectId) : null,
+    [projects, conversationProjectId]
   );
 
   // Effect to log artifact window visibility changes
   useEffect(() => {
     console.log('ChatInterface: showArtifactWindow changed to:', showArtifactWindow);
   }, [showArtifactWindow]);
+  
+  // Handle showing project view - ensure we select the project from the conversation
+  const handleShowProjectView = useCallback(() => {
+    if (conversationProjectId) {
+      selectProject(conversationProjectId);
+    }
+    setShowProjectView(true);
+  }, [conversationProjectId, selectProject]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-200 dark:bg-gray-900">
@@ -115,23 +139,28 @@ export const ChatInterface: React.FC = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <BrainWaveCharmStatic />
-              {selectedProject && (
+              {conversationProject && (
                 <div className="flex items-center">
                   <button
-                    onClick={() => setShowProjectView(true)}
+                    onClick={handleShowProjectView}
                     className="text-lg font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                   >
-                    {selectedProject.name}
+                    {conversationProject.name}
                   </button>
                   
                   {/* Add slash and conversation name */}
-                  {useChatStore(state => state.currentConversationId) && (
+                  {currentConversationId && (
                     <>
                       <span className="mx-2 text-gray-500 dark:text-gray-400">/</span>
                       <ConversationTitle />
                     </>
                   )}
                 </div>
+              )}
+              
+              {/* If no project but we have a conversation, just show the conversation title */}
+              {!conversationProject && currentConversationId && (
+                <ConversationTitle />
               )}
             </div>
             <div className="flex items-center space-x-6">
@@ -306,9 +335,9 @@ export const ChatInterface: React.FC = () => {
         />
       )}
 
-      {showProjectView && selectedProjectId && (
+      {showProjectView && conversationProjectId && (
         <ProjectView 
-          projectId={selectedProjectId}
+          projectId={conversationProjectId}
           onBack={() => setShowProjectView(false)}
           onClose={() => setShowProjectView(false)}
         />
