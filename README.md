@@ -11,6 +11,7 @@ This guide walks you through setting up and running the custom MCP (Model Contex
 - [Running the Application](#running-the-application)
   - [Start the Application](#start-the-application)
   - [Access the Application](#access-the-application)
+- [Environment Variables](#environment-variables)
 - [Next Steps](#next-steps)
 - [Troubleshooting](#troubleshooting)
 
@@ -148,6 +149,25 @@ Once started, the application will be available at:
 
 - Frontend: [http://localhost:5173](http://localhost:5173)
 - Backend API: [http://localhost:3000](http://localhost:3000)
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables (as needed):
+
+```
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Brave Search API (for brave-search MCP server)
+BRAVE_API_KEY=your_brave_api_key_here
+
+# PubMed/NCBI (for pubmed MCP server)
+NCBI_API_KEY=your_ncbi_api_key_here
+NCBI_TOOL_EMAIL=your_email@example.com
+
+# Other API keys may be required depending on which MCP servers you use
+```
 
 ## Next Steps
 

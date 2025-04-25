@@ -15,17 +15,17 @@
           "./node_modules/@modelcontextprotocol/server-brave-search/dist/index.js"
         ],
         "env": {
-          "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE"
+          "BRAVE_API_KEY": "${BRAVE_API_KEY}"
         }
       },
       "pubmed": {
         "command": "node",
         "args": [
-          "./src/custom-mcp-servers/pubmed-mcp/dist/index.js"
+          "./custom-mcp-servers/pubmed-mcp/dist/index.js"
         ],
         "env": {
-          "NCBI_API_KEY": "YOUR_NCBI_API_KEY_HERE",
-          "NCBI_TOOL_EMAIL": "your.email@example.com"
+          "NCBI_API_KEY": "${NCBI_API_KEY}",
+          "NCBI_TOOL_EMAIL": "${NCBI_TOOL_EMAIL}"
         }
       },
       "server-sequential-thinking": {
@@ -52,13 +52,52 @@
           "./custom-mcp-servers/string-db-mcp/dist/index.js"
         ]
       },
-      "medikanren-api": {
-        "command": "npx",
-        "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/mediKanrenOpenAPI.yaml"]
+      "medik-mcp": {
+        "command": "node",
+        "args": [
+          "./custom-mcp-servers/medik-mcp/dist/index.js"
+        ]
       },
       "mondo-api": {
         "command": "npx",
-        "args": ["openapi-mcp-server", "/Users/andycrouse/Documents/GitHub/charm-mcp/docs/monarchOpenAPI.yaml"]
+        "args": ["openapi-mcp-server", "./custom-mcp-servers/openapi-mcp-input/monarchOpenAPI.yaml"]
+      },
+      "python": {
+        "command": "node",
+        "args": [
+          "./custom-mcp-servers/python-mcp/dist/index.js"
+        ]
+      },
+      "r": {
+        "command": "node",
+        "args": [
+          "./custom-mcp-servers/r-mcp/dist/index.js"
+        ]
+      },
+      "graph": {
+        "command": "node",
+        "args": [
+          "./custom-mcp-servers/graphManipulate-mcp/dist/index.js"
+        ],
+        "timeout": 120000
+      },
+      "id-finder": {
+        "command": "node",
+        "args": [
+          "./custom-mcp-servers/id-finder-mcp/dist/index.js"
+        ]
+      },
+      "grant-fetch": {
+        "command": "node",
+        "args": [
+          "./custom-mcp-servers/grant-fetch-mcp/dist/index.js"
+        ]
+      },
+      "aims-review": {
+        "command": "node",
+        "args": [
+          "./custom-mcp-servers/aims-review-mcp/dist/index.js"
+        ]
       }
     }
 } 
