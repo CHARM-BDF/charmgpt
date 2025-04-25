@@ -89,6 +89,12 @@ export interface ChatState extends ConversationState {
 
   // New selector for unassociated conversations
   getUnassociatedConversations: () => string[];
+  
+  // New function for bidirectional project-conversation relationship
+  setConversationProject: (conversationId: string, projectId: string | undefined) => void;
+  
+  // Add new migration function
+  migrateConversationsToProjects: () => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -122,6 +128,74 @@ export const useChatStore = create<ChatState>()(
         // New conversation state
         currentConversationId: null,
         conversations: {},
+        
+        // Add new function to set conversation's project
+        setConversationProject: (conversationId: string, projectId: string | undefined) => {
+          console.log(`ChatStore: Setting project ${projectId} for conversation ${conversationId}`);
+          set(state => {
+            // Validate conversation exists
+            if (!state.conversations[conversationId]) {
+              console.error(`Cannot set project for non-existent conversation: ${conversationId}`);
+              return state;
+            }
+            
+            // Create an explicit partial state update
+            const updatedState: Partial<ChatState> = {
+              conversations: {
+                ...state.conversations,
+                [conversationId]: {
+                  ...state.conversations[conversationId],
+                  metadata: {
+                    ...state.conversations[conversationId].metadata,
+                    projectId,
+                    lastUpdated: new Date()
+                  }
+                }
+              }
+            };
+            
+            return updatedState;
+          });
+        },
+
+        // Add new migration function to update conversations with project references
+        migrateConversationsToProjects: () => {
+          console.log('ChatStore: Migrating conversation-project associations');
+          const projects = useProjectStore.getState().projects;
+          const chatStore = get();
+          
+          // Build a mapping of conversationId -> projectId
+          const conversationProjectMap: Record<string, string> = {};
+          
+          // Go through each project and record its conversations
+          projects.forEach(project => {
+            project.conversations.forEach(conv => {
+              conversationProjectMap[conv.id] = project.id;
+            });
+          });
+          
+          // Update all conversations with their project IDs
+          const updatedConversations = {...chatStore.conversations};
+          
+          Object.keys(updatedConversations).forEach(convId => {
+            if (conversationProjectMap[convId]) {
+              updatedConversations[convId] = {
+                ...updatedConversations[convId],
+                metadata: {
+                  ...updatedConversations[convId].metadata,
+                  projectId: conversationProjectMap[convId]
+                }
+              };
+            }
+          });
+          
+          // Set the updated conversations
+          set({
+            conversations: updatedConversations
+          });
+          
+          console.log('ChatStore: Migrated conversation-project associations');
+        },
 
         // Add new selector for unassociated conversations
         getUnassociatedConversations: () => {
@@ -806,14 +880,9 @@ export const useChatStore = create<ChatState>()(
           const conversation = state.conversations[id];
           if (!conversation) return;
 
-          // Check if this conversation belongs to any project
-          const projectStore = useProjectStore.getState();
-          const projectsWithThisConversation = projectStore.projects.filter(project => 
-            project.conversations.some(conv => conv.id === id)
-          );
-          
-          // If the conversation belongs to a project, set inProjectConversationFlow to true
-          const isProjectConversation = projectsWithThisConversation.length > 0;
+          // Check if this conversation belongs to any project directly from its metadata
+          // instead of querying the project store which could cause circular dependencies
+          const isProjectConversation = !!conversation.metadata.projectId;
           console.log('ChatStore: Switching to conversation:', id, 'Project conversation:', isProjectConversation);
 
           set({

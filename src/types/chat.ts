@@ -73,6 +73,7 @@ export interface ConversationMetadata {
   lastUpdated: Date;
   created: Date;
   messageCount: number;
+  projectId?: string; // Optional - not all conversations belong to projects
 }
 
 export interface Conversation {

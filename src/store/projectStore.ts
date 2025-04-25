@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useChatStore } from './chatStore';
 
 interface ProjectConversation {
   id: string;
@@ -107,36 +108,48 @@ export const useProjectStore = create<ProjectState>()(
         error: null,
       }),
 
-      addConversationToProject: (projectId, conversationId, title) => set((state) => ({
-        projects: state.projects.map((project) =>
-          project.id === projectId
-            ? {
-                ...project,
-                conversations: [
-                  ...(project.conversations || []),
-                  {
-                    id: conversationId,
-                    title,
-                    lastMessageAt: new Date(),
-                  },
-                ],
-                updatedAt: new Date(),
-              }
-            : project
-        ),
-      })),
+      addConversationToProject: (projectId, conversationId, title) => {
+        // First, update the project (existing logic)
+        set((state) => ({
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  conversations: [
+                    ...(project.conversations || []),
+                    {
+                      id: conversationId,
+                      title,
+                      lastMessageAt: new Date(),
+                    },
+                  ],
+                  updatedAt: new Date(),
+                }
+              : project
+          ),
+        }));
+        
+        // Then, update the conversation to reference this project
+        useChatStore.getState().setConversationProject(conversationId, projectId);
+      },
 
-      removeConversationFromProject: (projectId, conversationId) => set((state) => ({
-        projects: state.projects.map((project) =>
-          project.id === projectId
-            ? {
-                ...project,
-                conversations: project.conversations.filter((conv) => conv.id !== conversationId),
-                updatedAt: new Date(),
-              }
-            : project
-        ),
-      })),
+      removeConversationFromProject: (projectId, conversationId) => {
+        // First update the project (existing logic)
+        set((state) => ({
+          projects: state.projects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  conversations: project.conversations.filter((conv) => conv.id !== conversationId),
+                  updatedAt: new Date(),
+                }
+              : project
+          ),
+        }));
+        
+        // Then, update the conversation to remove the project reference
+        useChatStore.getState().setConversationProject(conversationId, undefined);
+      },
 
       addFileToProject: (projectId, fileId, name) => set((state) => ({
         projects: state.projects.map((project) =>
