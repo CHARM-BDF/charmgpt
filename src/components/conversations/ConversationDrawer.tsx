@@ -224,9 +224,12 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             {/* Recent projects section */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Recent Projects
-                </h3>
+                <div className="flex items-center gap-2">
+                  <FolderIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Recent Projects
+                  </h2>
+                </div>
                 {regularProjects.length > 0 && (
                   <button
                     onClick={navigateToProjects}
@@ -262,9 +265,16 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  <img 
+                    src="/logos/grantmode_icon.png" 
+                    alt="Grant Review"
+                    className="w-5 h-5 opacity-80" 
+                  />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Grant Reviews
-                  </h3>
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
                       const { addProject, projects } = useProjectStore.getState();
@@ -291,15 +301,16 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   >
                     <span className="text-sm font-semibold leading-none text-gray-600 dark:text-gray-300 group-hover:text-white">+</span>
                   </button>
+
+                  {grantReviewProjects.length > 0 && (
+                    <button
+                      onClick={() => setShowGrantReviewList?.(true)}
+                      className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      View All
+                    </button>
+                  )}
                 </div>
-                {grantReviewProjects.length > 0 && (
-                  <button
-                    onClick={() => setShowGrantReviewList?.(true)}
-                    className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    View All
-                  </button>
-                )}
               </div>
               
               <div className="space-y-1 text-sm">
@@ -329,8 +340,11 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             
             {/* Conversation list */}
             <div>
-              <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 px-1">
-                Recent Conversations
+              <div className="flex items-center gap-2 mb-2">
+                <SparklesIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Recent Conversations
+                </h2>
               </div>
               <div className="h-[calc(100vh-420px)] overflow-y-auto pr-1">
                 <ConversationList />
