@@ -25,9 +25,10 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const { startNewConversation, switchConversation, conversations } = useChatStore();
   const { projects } = useProjectStore();
   
-  // Get recent projects
-  const recentProjects = projects
-    ?.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  // Get regular projects (not grant reviews)
+  const regularProjects = projects
+    ?.filter(p => p.type !== 'grant_review')
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3) || [];
   
   // Get recent grant review projects
@@ -35,6 +36,11 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     ?.filter(p => p.type === 'grant_review')
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3) || [];
+  
+  console.log('ConversationDrawer: All projects:', projects?.length || 0);
+  console.log('ConversationDrawer: Regular projects:', regularProjects.length);
+  console.log('ConversationDrawer: Grant review projects:', grantReviewProjects.length);
+  console.log('ConversationDrawer: Project types:', projects?.map(p => ({ id: p.id.substring(0, 6), name: p.name, type: p.type })));
   
   // Handle clicks outside the drawer to collapse it
   useEffect(() => {
@@ -221,7 +227,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Recent Projects
                 </h3>
-                {recentProjects.length > 0 && (
+                {regularProjects.length > 0 && (
                   <button
                     onClick={navigateToProjects}
                     className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
@@ -232,8 +238,8 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
               </div>
               
               <div className="space-y-1 text-sm">
-                {recentProjects.length > 0 ? (
-                  recentProjects.map(project => (
+                {regularProjects.length > 0 ? (
+                  regularProjects.map(project => (
                     <button
                       key={project.id}
                       onClick={() => openProject(project.id)}
