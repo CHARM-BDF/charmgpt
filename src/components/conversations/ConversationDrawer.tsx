@@ -100,7 +100,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       {/* Drawer */}
       <div
         ref={drawerRef}
-        className={`fixed left-0 top-[88px] h-[calc(100vh-96px)] bg-white dark:bg-gray-800 shadow-lg 
+        className={`fixed left-0 top-[88px] h-[calc(100vh-196px)] bg-white dark:bg-gray-800 shadow-lg 
                    transition-all duration-300 ease-in-out z-50
                    ${isVisible ? 'translate-x-0' : 'translate-x-[-100%]'}
                    border-r border-gray-200 dark:border-gray-700
@@ -326,7 +326,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
               <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 px-1">
                 Recent Conversations
               </div>
-              <div className="h-[calc(100vh-320px)] overflow-y-auto pr-1">
+              <div className="h-[calc(100vh-420px)] overflow-y-auto pr-1">
                 <ConversationList />
               </div>
             </div>
@@ -337,7 +337,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       {/* Invisible trigger area - keeping this for now, may remove later */}
       <div
         ref={triggerRef}
-        className="fixed left-0 top-[88px] w-5 h-[calc(100vh-96px)] z-40"
+        className="fixed left-0 top-[88px] w-5 h-[calc(100vh-196px)] z-40"
       />
     </>
   );
