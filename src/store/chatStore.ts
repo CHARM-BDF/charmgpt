@@ -806,13 +806,23 @@ export const useChatStore = create<ChatState>()(
           const conversation = state.conversations[id];
           if (!conversation) return;
 
+          // Check if this conversation belongs to any project
+          const projectStore = useProjectStore.getState();
+          const projectsWithThisConversation = projectStore.projects.filter(project => 
+            project.conversations.some(conv => conv.id === id)
+          );
+          
+          // If the conversation belongs to a project, set inProjectConversationFlow to true
+          const isProjectConversation = projectsWithThisConversation.length > 0;
+          console.log('ChatStore: Switching to conversation:', id, 'Project conversation:', isProjectConversation);
+
           set({
             currentConversationId: id,
             messages: conversation.messages,
             artifacts: conversation.artifacts || [],
             selectedArtifactId: null,
             showArtifactWindow: false,
-            inProjectConversationFlow: false // Reset project conversation flow when switching conversations
+            inProjectConversationFlow: isProjectConversation // Set true if conversation belongs to a project
           });
         },
 
