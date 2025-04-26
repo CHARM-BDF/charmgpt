@@ -1,0 +1,35 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# TypeScript build output
+dist/
+
+# Swift build artifacts
+swift-helper/.build/
+*.o
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Binary executables (prebuilt binaries should be added explicitly if needed)
+/bin/CalendarHelper
+/bin/CalendarHelper.app
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor configs
+.vscode/
+.idea/
+*.sublime-* 

@@ -121,14 +121,14 @@ export class MCPService {
     console.log(`[MCP-LOG-HANDLER] Setting notification handler for ${clientCount} existing clients`);
     
     for (const [serverName, client] of this.mcpClients.entries()) {
-      console.log(`[MCP-LOG-HANDLER] Setting notification handler for client: ${serverName}`);
+      // console.log(`[MCP-LOG-HANDLER] Setting notification handler for client: ${serverName}`);
       
       if ('notification' in client) {
         client.notification = async (notification: { method: string; params?: unknown }) => {
           console.log(`[MCP-LOG-HANDLER] Notification received from ${serverName}`);
           this.handleMCPNotification(serverName, notification);
         };
-        console.log(`[MCP-LOG-HANDLER] Successfully set notification handler for ${serverName}`);
+        // console.log(`[MCP-LOG-HANDLER] Successfully set notification handler for ${serverName}`);
       } else {
         console.warn(`[MCP-LOG-HANDLER] Client ${serverName} does not support notifications!`);
       }
