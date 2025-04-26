@@ -200,4 +200,121 @@ Now that you have the application running, you can:
 
 - If the build process is interrupted, you can simply run the build command again - Docker will use cached layers when possible
 - If you encounter memory issues during the build, try increasing the resources allocated to Docker in Docker Desktop settings
-- For Mac with Apple Silicon (M1/M2/M3), the `--platform linux/amd64` flag is essential for compatibility 
+- For Mac with Apple Silicon (M1/M2/M3), the `--platform linux/amd64` flag is essential for compatibility
+
+# CalDAV MCP Server
+
+This is a Model Context Protocol (MCP) server that provides access to calendars via two different backends:
+
+1. **CalDAV Protocol** - For accessing Apple iCloud calendars
+2. **EventKit Framework** - For accessing all macOS Calendar.app calendars, including Exchange
+
+## Features
+
+- Access calendars from multiple providers
+- List available calendars
+- Retrieve calendar events with filtering options
+- Supports switching between CalDAV and EventKit backends
+
+## Setup
+
+### Installation
+
+```bash
+# Clone the repository
+cd /path/to/charm-mcp/custom-mcp-servers/cal-mcp
+
+# Install dependencies
+npm install
+```
+
+### Configuration
+
+#### CalDAV Backend (Default)
+
+The CalDAV backend connects directly to iCloud calendars using the CalDAV protocol.
+
+Add these variables to your root .env file:
+
+```
+CALDAV_SERVER_URL=https://caldav.icloud.com
+CALDAV_USERNAME=your.email@icloud.com
+CALDAV_PASSWORD=your-app-specific-password
+CALDAV_DEFAULT_CALENDAR=Calendar
+```
+
+> Note: For Apple Calendar, you must use an app-specific password generated at https://appleid.apple.com/ rather than your regular Apple ID password.
+
+#### EventKit Backend (macOS Only)
+
+The EventKit backend uses the native macOS Calendar framework to access all calendars (iCloud, Exchange, etc.).
+
+1. First build the helper:
+```bash
+cd bin/CalendarHelper
+./build.sh
+```
+
+2. Edit the build.sh script to include your Developer ID for code signing
+3. Run the helper once manually to grant permissions:
+```bash
+./bin/CalendarHelper/CalendarHelper list-calendars
+```
+
+4. Use the EventKit backend by setting an environment variable:
+```
+CAL_BACKEND=eventkit
+```
+
+### Building and Running
+
+```bash
+# Build the project
+npm run build
+
+# Run with CalDAV backend (default)
+npm start
+
+# Run with EventKit backend 
+CAL_BACKEND=eventkit npm start
+```
+
+## Tools
+
+The server provides the following MCP tools:
+
+### 1. `list_calendars`
+
+Lists all available calendars from the configured calendar source.
+
+Example usage:
+```javascript
+const response = await mcpClient.callTool('list_calendars', {});
+```
+
+### 2. `get_calendar_events`
+
+Gets events from a specified calendar within a date range.
+
+Parameters:
+- `calendarId` (optional): ID of the calendar to get events from
+- `start` (optional): Start date in ISO format (defaults to today)
+- `end` (optional): End date in ISO format (defaults to 7 days from start)
+- `query` (optional): Search query to filter events by title, description, or location
+
+Example usage:
+```javascript
+const response = await mcpClient.callTool('get_calendar_events', {
+  calendarId: 'https://caldav.example.com/calendars/user/calendar/',
+  start: '2023-10-01T00:00:00Z',
+  end: '2023-10-31T23:59:59Z',
+  query: 'meeting'
+});
+```
+
+## Troubleshooting
+
+- **Connection Issues**: Ensure your credentials are correct and the server URL is accessible
+- **Authentication Failures**: Some providers may require app-specific passwords or other authentication methods
+- **Empty Calendar List**: Verify that you have permissions to access the calendars on the server
+- **EventKit Permissions**: If using EventKit, make sure you've run the helper once manually to grant permissions 

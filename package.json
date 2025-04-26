@@ -18,7 +18,8 @@
     "build:all": "npm run build:mcp-servers && npm run build",
     "test:python": "tsx src/tools/python/test-suite.ts",
     "test:server": "tsx src/tools/python/test-server.ts",
-    "test:artifacts": "node test/artifact-integration.js"
+    "test:artifacts": "node test/artifact-integration.js",
+    "start:eventkit": "node dist/eventkit-server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
