@@ -115,7 +115,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         }
       }
     } else {
-      // Regular chat flow without project or continuing a project conversation
+      // Get current conversation state
+      const currentConversationId = useChatStore.getState().currentConversationId;
+      
+      // Only create a new chat if there isn't an active conversation
+      if (!currentConversationId) {
+        createNewChat();
+      }
+      
+      // Add message to current conversation (either existing or newly created)
       addMessage({
         role: 'user',
         content: localInput

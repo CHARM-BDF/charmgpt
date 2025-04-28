@@ -335,9 +335,9 @@ export const ChatInterface: React.FC = () => {
         />
       )}
 
-      {showProjectView && conversationProjectId && (
+      {showProjectView && (selectedProjectId || conversationProjectId) && (
         <ProjectView 
-          projectId={conversationProjectId}
+          projectId={selectedProjectId || conversationProjectId as string}
           onBack={() => setShowProjectView(false)}
           onClose={() => setShowProjectView(false)}
         />
