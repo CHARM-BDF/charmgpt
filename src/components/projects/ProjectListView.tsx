@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { ProjectView } from './ProjectView';
 
 interface ProjectListViewProps {
@@ -10,10 +10,14 @@ interface ProjectListViewProps {
 }
 
 export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showProjectList }) => {
-  const { projects, isLoading, error, selectedProjectId, selectProject, addProject } = useProjectStore();
+  const { projects, isLoading, error, selectedProjectId, selectProject, addProject, deleteProject } = useProjectStore();
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // Filter out grant review projects
-  const regularProjects = projects.filter(p => p.type !== 'grant_review');
+  const regularProjects = projects
+    .filter(p => p.type !== 'grant_review')
+    // Sort by updatedAt timestamp, most recent first
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   useEffect(() => {
     if (showProjectList) {
@@ -45,6 +49,17 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
     );
   };
 
+  const handleDeleteProject = (projectId: string) => {
+    if (confirmDelete === projectId) {
+      // User has confirmed, delete the project
+      deleteProject(projectId);
+      setConfirmDelete(null);
+    } else {
+      // First click, ask for confirmation
+      setConfirmDelete(projectId);
+    }
+  };
+
   if (selectedProject) {
     return (
       <ProjectView 
@@ -61,7 +76,15 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
       <div className="border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-screen-2xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Research Projects</h1>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={onClose}
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <ArrowLeftIcon className="h-5 w-5" />
+              </button>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Research Projects</h1>
+            </div>
             <div className="flex items-center space-x-4">
               <button
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -69,12 +92,6 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
                 New Project
-              </button>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-              >
-                <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
           </div>
@@ -96,13 +113,37 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
             {regularProjects.map((project) => (
               <div
                 key={project.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
-                onClick={() => selectProject(project.id)}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 group relative"
               >
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{project.name}</h3>
-                <p className="mt-1 text-gray-500 dark:text-gray-400">{project.description}</p>
-                <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                  Last updated: {new Date(project.updatedAt).toLocaleDateString()}
+                {/* Delete Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteProject(project.id);
+                  }}
+                  className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title={confirmDelete === project.id ? "Click again to confirm deletion" : "Delete project"}
+                >
+                  <TrashIcon className={`h-5 w-5 ${confirmDelete === project.id ? 'text-red-500 dark:text-red-400' : ''}`} />
+                </button>
+                
+                {/* Project content - only trigger click if not on the delete button */}
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => selectProject(project.id)}
+                >
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 pr-8">{project.name}</h3>
+                  <p className="mt-1 text-gray-500 dark:text-gray-400">{project.description}</p>
+                  <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    Last updated: {new Date(project.updatedAt).toLocaleDateString()}
+                  </div>
+                  
+                  {/* Confirmation message */}
+                  {confirmDelete === project.id && (
+                    <div className="mt-2 text-sm text-red-500 dark:text-red-400 font-medium">
+                      Click the trash icon again to confirm deletion
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
