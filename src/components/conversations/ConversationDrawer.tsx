@@ -235,20 +235,33 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 </div>
                 <button
                   onClick={() => {
-                    const { addProject, projects } = useProjectStore.getState();
+                    console.log("ConversationDrawer: New Project button clicked");
+                    // Get the addProject function
+                    const { addProject } = useProjectStore.getState();
                     const projectName = "New Project";
-                    addProject({
+                    
+                    // Add the project and get the ID directly
+                    console.log("ConversationDrawer: About to create new project:", projectName);
+                    const newProjectId = addProject({
                       name: projectName,
                       description: "",
                       type: 'project'
                     });
-                    // Find the newly created project
-                    const newProject = projects.find(p => p.name === projectName && p.type === 'project');
-                    if (newProject) {
-                      useProjectStore.getState().selectProject(newProject.id);
-                      setShowProjectView?.(true);
-                      setIsExpanded(false);
-                    }
+                    console.log("ConversationDrawer: New project created with ID:", newProjectId);
+                    
+                    // Use the ID directly instead of searching
+                    console.log("ConversationDrawer: Selecting project with ID:", newProjectId);
+                    useProjectStore.getState().selectProject(newProjectId);
+                    console.log("ConversationDrawer: Setting showProjectView to true");
+                    setShowProjectView?.(true);
+                    setIsExpanded(false);
+                    
+                    // Extra verification - log all projects after creation
+                    const { projects, selectedProjectId } = useProjectStore.getState();
+                    console.log("ConversationDrawer: All projects after creation:", 
+                      projects.map(p => ({ id: p.id, name: p.name, type: p.type }))
+                    );
+                    console.log("ConversationDrawer: Currently selected project ID:", selectedProjectId);
                   }}
                   className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
                          hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
@@ -280,9 +293,14 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 </div>
                 <button
                   onClick={() => {
-                    const { addProject, projects } = useProjectStore.getState();
+                    console.log("ConversationDrawer: New Grant Review button clicked");
+                    // Get the addProject function
+                    const { addProject } = useProjectStore.getState();
                     const projectName = "New Grant Review";
-                    addProject({
+                    
+                    // Add the project and get the ID directly
+                    console.log("ConversationDrawer: About to create new grant review:", projectName);
+                    const newProjectId = addProject({
                       name: projectName,
                       description: "",
                       type: 'grant_review',
@@ -290,13 +308,21 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                         requiredDocuments: []
                       }
                     });
-                    // Find the newly created project
-                    const newProject = projects.find(p => p.name === projectName && p.type === 'grant_review');
-                    if (newProject) {
-                      useProjectStore.getState().selectProject(newProject.id);
-                      setShowProjectView?.(true);
-                      setIsExpanded(false);
-                    }
+                    console.log("ConversationDrawer: New grant review created with ID:", newProjectId);
+                    
+                    // Use the ID directly instead of searching
+                    console.log("ConversationDrawer: Selecting grant review with ID:", newProjectId);
+                    useProjectStore.getState().selectProject(newProjectId);
+                    console.log("ConversationDrawer: Setting showProjectView to true");
+                    setShowProjectView?.(true);
+                    setIsExpanded(false);
+                    
+                    // Extra verification - log all projects after creation
+                    const { projects, selectedProjectId } = useProjectStore.getState();
+                    console.log("ConversationDrawer: All projects after creation:", 
+                      projects.map(p => ({ id: p.id, name: p.name, type: p.type }))
+                    );
+                    console.log("ConversationDrawer: Currently selected project ID:", selectedProjectId);
                   }}
                   className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
                          hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors

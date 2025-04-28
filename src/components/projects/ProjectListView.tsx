@@ -26,11 +26,23 @@ export const ProjectListView: React.FC<ProjectListViewProps> = ({ onClose, showP
     : null;
 
   const handleCreateProject = () => {
-    addProject({
+    console.log("ProjectListView: handleCreateProject called");
+    const newProjectId = addProject({
       name: "New Project",
       description: "",
       type: 'project'
     });
+    
+    // Immediately select the new project
+    console.log("ProjectListView: Created new project with ID:", newProjectId);
+    console.log("ProjectListView: Selecting new project");
+    selectProject(newProjectId);
+    
+    // Log projects after creation
+    const { projects } = useProjectStore.getState();
+    console.log("ProjectListView: All projects after creation:", 
+      projects.map(p => ({ id: p.id, name: p.name, type: p.type }))
+    );
   };
 
   if (selectedProject) {

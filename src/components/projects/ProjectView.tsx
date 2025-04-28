@@ -18,6 +18,8 @@ interface ProjectViewProps {
 }
 
 export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
+    console.log("ProjectView: Component rendering with projectId:", projectId);
+    
     const [showFileManager, setShowFileManager] = useState(false);
     const [projectFiles, setProjectFiles] = useState<FileEntry[]>([]);
     const [editingFileId, setEditingFileId] = useState<string | null>(null);
@@ -30,9 +32,16 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
     const [textContent, setTextContent] = useState('');
     const [textTitle, setTextTitle] = useState('');
     const storageService = new APIStorageService();
-    const project = useProjectStore((state) => 
-        state.projects.find((p) => p.id === projectId)
-    );
+    
+    // Add logging to see if the correct project is found
+    const project = useProjectStore((state) => {
+        console.log("ProjectView: Looking for project with ID:", projectId);
+        console.log("ProjectView: All projects in store:", state.projects.map(p => ({id: p.id, name: p.name, type: p.type})));
+        const foundProject = state.projects.find((p) => p.id === projectId);
+        console.log("ProjectView: Found project:", foundProject ? {id: foundProject.id, name: foundProject.name} : 'NOT FOUND');
+        return foundProject;
+    });
+    
     const addConversationToProject = useProjectStore((state) => state.addConversationToProject);
     const addFileToProject = useProjectStore((state) => state.addFileToProject);
     const createNewChat = useChatStore((state: ChatState) => state.startNewConversation);

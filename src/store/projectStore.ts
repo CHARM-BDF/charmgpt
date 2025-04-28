@@ -40,7 +40,7 @@ interface ProjectState {
   error: string | null;
 
   // CRUD operations
-  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations' | 'files'>) => void;
+  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations' | 'files'>) => string;
   updateProject: (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'conversations' | 'files'>>) => void;
   deleteProject: (id: string) => void;
   selectProject: (id: string | null) => void;
@@ -69,24 +69,40 @@ export const useProjectStore = create<ProjectState>()(
       isLoading: false,
       error: null,
 
-      addProject: (projectData) => set((state) => {
-        const newProject: Project = {
-          id: crypto.randomUUID(),
-          ...projectData,
-          type: projectData.type || 'project',
-          grantMetadata: projectData.type === 'grant_review' ? {
-            requiredDocuments: []
-          } : undefined,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          conversations: [],
-          files: [],
-        };
-        return {
-          projects: [...state.projects, newProject],
-          error: null,
-        };
-      }),
+      addProject: (projectData) => {
+        console.log("ProjectStore: addProject called with data:", projectData);
+        const projectId = crypto.randomUUID();
+        console.log("ProjectStore: Generated new project ID:", projectId);
+        
+        set((state) => {
+          console.log("ProjectStore: Current projects before adding:", state.projects.length);
+          const newProject: Project = {
+            id: projectId,
+            ...projectData,
+            type: projectData.type || 'project',
+            grantMetadata: projectData.type === 'grant_review' ? {
+              requiredDocuments: []
+            } : undefined,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            conversations: [],
+            files: [],
+          };
+          console.log("ProjectStore: Created new project object:", newProject);
+          return {
+            projects: [...state.projects, newProject],
+            error: null,
+          };
+        });
+        
+        // Log state after update
+        console.log("ProjectStore: After adding project, current state:", {
+          projects: get().projects.length,
+          selectedProjectId: get().selectedProjectId
+        });
+        console.log("ProjectStore: Returning project ID:", projectId);
+        return projectId;
+      },
 
       updateProject: (id, updates) => set((state) => ({
         projects: state.projects.map((project) =>
