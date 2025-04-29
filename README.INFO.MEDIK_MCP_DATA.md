@@ -235,6 +235,21 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
           }}
         />
       </div>
+      <button
+        onClick={() => {
+          if (artifactId) {
+            setPinnedGraphId(isPinned ? null : artifactId);
+          }
+        }}
+        className={`p-2 rounded-full ${
+          isPinned 
+            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+        }`}
+        title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
+      >
+        {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+      </button>
     </div>
   );
 };
@@ -303,7 +318,7 @@ Graphs can be "pinned" using the `setPinnedGraphId` function:
 
 When a user clicks the pin icon in the knowledge graph viewer:
 
-1. **State Update**: 
+1. **UI Interaction**: 
    ```javascript
    // In KnowledgeGraphViewer.tsx
    <button
@@ -312,15 +327,34 @@ When a user clicks the pin icon in the knowledge graph viewer:
          setPinnedGraphId(isPinned ? null : artifactId);
        }
      }}
-     // Styling and title props...
+     className={`p-2 rounded-full ${
+       isPinned 
+         ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+         : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+     }`}
+     title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
    >
      {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
    </button>
    ```
 
-2. **Message Processing**:
-   In `chatStore.ts`, when a message is sent, the pinned graph is included:
+2. **State Management**:
+   In `chatStore.ts`, the pinned graph ID is stored in the state:
    ```javascript
+   // In chatStore.ts state definition
+   pinnedGraphId: string | null;
+   
+   // Function to update pinned graph
+   setPinnedGraphId: (id: string | null) => {
+     console.log('ChatStore: Setting pinned graph ID to', id);
+     set({ pinnedGraphId: id });
+   }
+   ```
+
+3. **Message Processing**:
+   When sending a message, the pinned graph is retrieved and included:
+   ```javascript
+   // In processMessage function of chatStore.ts
    // Get pinned graph if available
    const pinnedGraphId = get().pinnedGraphId;
    let pinnedGraph = null;
@@ -345,12 +379,15 @@ When a user clicks the pin icon in the knowledge graph viewer:
    });
    ```
 
-3. **Server-side Processing**:
-   In `chat.ts` (server route), the pinned graph is processed:
+4. **Server-side Processing**:
+   In the server route (`chat.ts`), the pinned graph is processed:
    ```javascript
    // If there's a pinned graph, add it to the context
    if (pinnedGraph) {
+     sendStatusUpdate('Processing pinned knowledge graph...');
      console.log('\n=== PINNED GRAPH DETECTED ===');
+     console.log('Graph ID:', pinnedGraph.id);
+     console.log('Graph Title:', pinnedGraph.title);
      
      // Add an assistant message about the pinned graph
      messages.push({
@@ -367,6 +404,9 @@ When a user clicks the pin icon in the knowledge graph viewer:
        if (isValidKnowledgeGraph(graphContent)) {
          console.log(`Pinned knowledge graph contains ${graphContent.nodes.length} nodes and ${graphContent.links.length} links`);
          (messages as any).knowledgeGraph = graphContent;
+         console.log('Stored pinned knowledge graph for merging with future graphs');
+       } else {
+         console.error('Invalid knowledge graph structure in pinned graph');
        }
      } catch (error) {
        console.error('Error processing pinned knowledge graph:', error);
@@ -374,7 +414,7 @@ When a user clicks the pin icon in the knowledge graph viewer:
    }
    ```
 
-4. **Graph Merging**:
+5. **Graph Merging**:
    If new knowledge graph data is generated during the conversation, it's merged with the pinned graph:
    ```javascript
    // Check if knowledge graph exists and merge if it does
@@ -389,6 +429,10 @@ When a user clicks the pin icon in the knowledge graph viewer:
      (messages as any).knowledgeGraph = mergedGraph;
      
      console.log(`Merged graph now contains ${mergedGraph.nodes.length} nodes and ${mergedGraph.links.length} links`);
+   } else {
+     // First knowledge graph, just set it
+     console.log('Setting initial knowledge graph');
+     (messages as any).knowledgeGraph = newGraph;
    }
    ```
 
@@ -396,6 +440,7 @@ This system allows for:
 - Persistent context across multiple messages
 - Progressive building of knowledge graphs by merging new information
 - Seamless integration with the AI assistant, which receives information about the pinned graph
+- Visual indication to the user about which graph is currently pinned
 
 ### Version Control
 
