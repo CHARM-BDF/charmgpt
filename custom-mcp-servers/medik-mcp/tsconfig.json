@@ -6,10 +6,10 @@
     "esModuleInterop": true,
     "strict": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDirs": ["./src", "../mcp-helpers"],
     "typeRoots": ["./node_modules/@types"],
     "types": ["node"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../mcp-helpers/**/*"],
   "exclude": ["node_modules"]
 } 

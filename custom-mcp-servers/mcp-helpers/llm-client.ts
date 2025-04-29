@@ -6,7 +6,16 @@
  */
 
 import fetch from 'node-fetch';
-import { setTimeout } from 'timers/promises';
+// Remove the timers/promises import and define our own delay function
+
+/**
+ * Create a delay using Promise
+ * @param ms Time to delay in milliseconds
+ * @returns Promise that resolves after ms milliseconds
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 interface LLMClientOptions {
   /** Base URL for the LLM Service (defaults to http://localhost:3000/api/internal/llm) */
@@ -85,7 +94,7 @@ export class LLMClient {
   private async sendRequest(endpoint: string, body: any, retryCount = 0): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(this.timeout, () => controller.abort());
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
     
     try {
       console.log(`LLMClient: Sending request to ${endpoint}`);
@@ -98,7 +107,7 @@ export class LLMClient {
           'X-MCP-Name': this.mcpName
         },
         body: JSON.stringify(body),
-        signal: controller.signal
+        signal: controller.signal as any // Type assertion to fix compatibility issue
       });
       
       clearTimeout(timeoutId);
@@ -109,7 +118,7 @@ export class LLMClient {
       }
       
       return await response.json();
-    } catch (error) {
+    } catch (error: any) { // Type annotation to fix 'unknown' error
       // Handle abort errors
       if (error.name === 'AbortError') {
         throw new Error(`LLM Service request timed out after ${this.timeout}ms`);
@@ -119,7 +128,7 @@ export class LLMClient {
       if (retryCount < this.retries) {
         console.warn(`LLMClient: Request failed, retrying (${retryCount + 1}/${this.retries})...`);
         const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 10000);
-        await setTimeout(backoffTime);
+        await delay(backoffTime); // Use our custom delay function
         return this.sendRequest(endpoint, body, retryCount + 1);
       }
       
@@ -136,7 +145,7 @@ export class LLMClient {
   async query(params: LLMQueryParams): Promise<LLMResponse> {
     try {
       return await this.sendRequest('/query', params);
-    } catch (error) {
+    } catch (error: any) { // Type annotation to fix 'unknown' error
       console.error('LLMClient: Query failed:', error);
       return {
         success: false,
@@ -156,7 +165,7 @@ export class LLMClient {
   async analyze(data: any, task: string, options = {}): Promise<LLMResponse> {
     try {
       return await this.sendRequest('/analyze', { data, task, options });
-    } catch (error) {
+    } catch (error: any) { // Type annotation to fix 'unknown' error
       console.error('LLMClient: Analysis failed:', error);
       return {
         success: false,

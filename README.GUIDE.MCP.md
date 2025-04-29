@@ -382,4 +382,160 @@ Artifacts appear in the chat interface as clickable links:
 3. **Performance Problems**:
    - Implement request caching
    - Optimize database queries
-   - Use appropriate timeouts 
+   - Use appropriate timeouts
+
+## Using the LLM Service
+
+The LLM Service provides a standardized way to interact with Large Language Models (like Anthropic's Claude) in your MCP implementation.
+
+### 1. Service Structure
+
+The LLM Service consists of three main components:
+- `src/server/services/llm/index.ts`: Core implementation of the service
+- `src/server/services/llm/types.ts`: Type definitions
+- `src/server/services/llm/providers/anthropic.ts`: Anthropic provider implementation
+
+### 2. Basic Usage
+
+```typescript
+import { LLMService } from 'src/server/services/llm';
+
+// Initialize the service
+const llmService = new LLMService({
+  provider: 'anthropic',
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  defaultModel: 'claude-3-haiku-20240307',
+  cacheEnabled: true
+});
+
+// Make a basic query
+const response = await llmService.query({
+  messages: [
+    {
+      role: 'user',
+      content: 'What is the capital of France?'
+    }
+  ]
+});
+
+console.log(response.content);
+```
+
+### 3. Key Features
+
+#### Caching
+The service includes built-in response caching to improve performance and reduce API costs:
+
+```typescript
+// Configure caching
+const llmService = new LLMService({
+  // ... other options
+  cacheEnabled: true,
+  cacheTTL: 3600 // Cache lifetime in seconds
+});
+```
+
+#### Specialized Methods
+
+The service provides specialized methods for common tasks:
+
+```typescript
+// Extract structured data
+const jsonData = await llmService.extractJSON({
+  messages: [/* your messages */],
+  jsonSchema: {/* your JSON schema */}
+});
+
+// Analyze data
+const analysis = await llmService.analyze({
+  data: yourDataObject,
+  task: 'Summarize the key points in this data'
+});
+
+// Rank items
+const rankedItems = await llmService.rankItems({
+  items: ['Item 1', 'Item 2', 'Item 3'],
+  criteria: 'Rank by relevance to machine learning'
+});
+```
+
+### 4. Integration with MCP Tools
+
+When implementing a tool that requires LLM capabilities:
+
+```typescript
+// In your tool implementation
+app.post('/tools/analysis', async (req, res) => {
+  const { data, analysisType } = req.body;
+  
+  try {
+    // Use the LLM service
+    const result = await llmService.analyze({
+      data,
+      task: analysisType
+    });
+    
+    // Format response for MCP
+    res.json({
+      content: [{
+        type: 'text',
+        text: result.content
+      }],
+      isError: false
+    });
+  } catch (error) {
+    res.json({
+      content: [{
+        type: 'text',
+        text: `Error during analysis: ${error.message}`
+      }],
+      isError: true
+    });
+  }
+});
+```
+
+### 5. Provider Configuration
+
+The service currently supports Anthropic's Claude models:
+
+```typescript
+// Configure with specific model
+const llmService = new LLMService({
+  provider: 'anthropic',
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  defaultModel: 'claude-3-opus-20240229', // For best quality
+  // Alternative models:
+  // 'claude-3-sonnet-20240229' - Good balance
+  // 'claude-3-haiku-20240307' - Fastest, lowest cost
+});
+```
+
+### 6. Error Handling
+
+The service includes robust error handling:
+
+```typescript
+try {
+  const response = await llmService.query({
+    messages: [/* your messages */]
+  });
+  // Process successful response
+} catch (error) {
+  if (error.name === 'LLMProviderError') {
+    // Handle provider-specific errors
+  } else if (error.name === 'LLMRateLimitError') {
+    // Handle rate limiting
+  } else {
+    // Handle general errors
+  }
+}
+```
+
+### 7. Best Practices
+
+- Set appropriate timeout values for your use case
+- Implement retries for transient errors
+- Use structured prompts for consistent results
+- Enable caching to improve performance and reduce costs
+- Include proper error handling 

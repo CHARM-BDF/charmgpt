@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "description": "mediKanren MCP Server",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/medik-mcp/src/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/medik-mcp/src/index.js",
     "dev": "tsc -w",
-    "test": "mcp-cli run --server \"node dist/index.js\" --tool run-query --args '{\"e1\":\"Known->X\",\"e2\":\"biolink:treats\",\"e3\":\"MONDO:0005148\"}'"
+    "test": "mcp-cli run --server \"node dist/medik-mcp/src/index.js\" --tool run-query --args '{\"e1\":\"Known->X\",\"e2\":\"biolink:treats\",\"e3\":\"MONDO:0005148\"}'"
   },
   "keywords": [
     "mcp",
