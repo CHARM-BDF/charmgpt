@@ -8,6 +8,11 @@ import { z } from "zod";
 import { createInterface } from 'readline';
 import { formatKnowledgeGraphArtifact, formatNetworkNeighborhood } from "./formatters.js";
 import { randomUUID } from 'crypto';
+import { LLMClient } from "../../mcp-helpers/llm-client.js";
+import logger from './logger.js';
+
+// Enable console interception to capture logs to file
+logger.interceptConsole();
 
 // Define log levels type
 type LogLevel = 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
@@ -66,6 +71,15 @@ const MEDIKANREN_API_BASE = "https://medikanren.metareflective.app";
 // https://medikanren.loca.lt/
 const DEBUG = false;  // Set to false to reduce logging
 
+// Initialize the LLM client
+const llmClient = new LLMClient({
+    mcpName: 'medik-mcp', // Identifies this MCP in logs
+    retries: 3 // Number of retry attempts for failed requests
+});
+
+// Log LLM client initialization 
+if (DEBUG) console.error('[medik-mcp] LLM Client initialized');
+
 // Define interface types for API responses
 interface QueryErrorResponse {
     error: string;
@@ -90,11 +104,24 @@ const GetEverythingRequestSchema = z.object({
     curie: z.string().describe("A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.")
 });
 
+// Define validation schema for find-pathway tool
+const FindPathwayRequestSchema = z.object({
+    sourceCurie: z.string().describe("CURIE of the first entity (e.g., gene HGNC:1097)"),
+    targetCurie: z.string().describe("CURIE of the second entity (e.g., disease MONDO:0011719)"),
+    maxIterations: z.number().default(3).describe("Maximum number of exploration iterations"),
+    maxNodesPerIteration: z.number().default(5).describe("Number of candidate nodes to explore in each iteration")
+});
+
+// Add TypeScript declaration for global.writeDebugLog
+declare global {
+    var writeDebugLog: (message: string) => void;
+}
+
 // Create server instance
 const server = new Server(
     {
         name: "medik-mcp",
-        version: "1.0.0",
+        version: "1.0.1",
     },
     {
         capabilities: {
@@ -103,6 +130,49 @@ const server = new Server(
         },
     }
 );
+
+// Direct file logging for debugging
+try {
+    const fs = require('fs');
+    const path = require('path');
+    const debugDir = './debug';
+    
+    // Create debug directory if it doesn't exist
+    if (!fs.existsSync(debugDir)) {
+        fs.mkdirSync(debugDir, { recursive: true });
+    }
+    
+    // Create a debug log file
+    const timestamp = new Date().toISOString()
+        .replace(/:/g, '-')
+        .replace(/\..+/, '')
+        .replace('T', '_');
+    const debugFile = path.join(debugDir, `medik-debug_${timestamp}.log`);
+    
+    // Write initial log
+    fs.writeFileSync(debugFile, `MediK MCP Server Debug Log\nStarted at: ${new Date().toISOString()}\nVersion: 1.0.1\n\n`);
+    
+    // Log function for appending to the debug file
+    global.writeDebugLog = function(message) {
+        try {
+            const logEntry = `[${new Date().toISOString()}] ${message}\n`;
+            fs.appendFileSync(debugFile, logEntry);
+            console.error(`[DEBUG] ${message}`);
+        } catch (err) {
+            console.error(`[ERROR] Failed to write debug log: ${err}`);
+        }
+    };
+    
+    global.writeDebugLog('Debug logging initialized');
+    global.writeDebugLog('Server version: 1.0.1');
+    global.writeDebugLog('find-pathway tool is enabled');
+} catch (error) {
+    console.error('Failed to initialize debug logging:', error);
+}
+
+// Log server initialization
+console.log(`[medik-mcp] Starting server v1.0.1 with find-pathway tool enabled`);
+console.log(`[medik-mcp] Registering tools: run-query, get-everything, network-neighborhood, find-pathway`);
 
 // Debug helper for direct console output
 function debugLog(message: string, data?: any) {
@@ -295,64 +365,117 @@ export async function runNetworkNeighborhoodQuery(params: {
 
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-        tools: [
-            {
-                name: "run-query",
-                description: "Run a 1-hop query in mediKanren. Note: If you need comprehensive bidirectional relationships, use get-everything instead as it provides complete coverage.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        e1: {
-                            type: "string",
-                            description: "X->Known or Known->X, for subject unknown or object unknown respectively.",
-                        },
-                        e2: {
-                            type: "string",
-                            description: "A biolink predicate such as biolink:treats, from the biolink list.",
-                        },
-                        e3: {
-                            type: "string",
-                            description: "A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.",
-                        }
+    console.error('[TOOLS-DEBUG] Starting ListToolsRequestSchema handler');
+    
+    // Create the tools array with all tools
+    console.error('[TOOLS-DEBUG] Creating tools array...');
+    const allTools = [
+        {
+            name: "run-query",
+            description: "Run a 1-hop query in mediKanren. Note: If you need comprehensive bidirectional relationships, use get-everything instead as it provides complete coverage.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    e1: {
+                        type: "string",
+                        description: "X->Known or Known->X, for subject unknown or object unknown respectively.",
                     },
-                    required: ["e1", "e2", "e3"],
-                },
-            },
-            {
-                name: "get-everything",
-                description: "Run both X->Known and Known->X queries with biolink:related_to to get all relationships for a CURIE. This is the recommended comprehensive query that provides complete bidirectional coverage. Do not use run-query if you are using this tool as it would be redundant.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        curie: {
-                            type: "string",
-                            description: "A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.",
-                        }
+                    e2: {
+                        type: "string",
+                        description: "A biolink predicate such as biolink:treats, from the biolink list.",
                     },
-                    required: ["curie"],
+                    e3: {
+                        type: "string",
+                        description: "A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.",
+                    }
                 },
+                required: ["e1", "e2", "e3"],
             },
-            {
-                name: "network-neighborhood",
-                description: "Find genes or proteins that are neighbors in the network.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        curies: {
-                            type: "array",
-                            items: {
-                                type: "string",
-                                description: "Array of CURIEs (at least 2) representing genes or proteins.",
-                            },
-                            minItems: 2,
+        },
+        {
+            name: "get-everything",
+            description: "Run both X->Known and Known->X queries with biolink:related_to to get all relationships for a CURIE. This is the recommended comprehensive query that provides complete bidirectional coverage. Do not use run-query if you are using this tool as it would be redundant.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    curie: {
+                        type: "string",
+                        description: "A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.",
+                    }
+                },
+                required: ["curie"],
+            },
+        },
+        {
+            name: "find-pathway",
+            description: "Find potential connection pathways between two biomedical entities by exploring the knowledge graph",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    sourceCurie: {
+                        type: "string",
+                        description: "CURIE of the first entity (e.g., gene HGNC:1097)",
+                    },
+                    targetCurie: {
+                        type: "string", 
+                        description: "CURIE of the second entity (e.g., disease MONDO:0011719)",
+                    },
+                    maxIterations: {
+                        type: "number",
+                        description: "Maximum number of exploration iterations (default: 3)",
+                    },
+                    maxNodesPerIteration: {
+                        type: "number",
+                        description: "Number of candidate nodes to explore in each iteration (default: 5)",
+                    }
+                },
+                required: ["sourceCurie", "targetCurie"],
+            },
+            // These fields were causing issues, removing them
+            // version: "0.1",
+            // enabled: true  // Explicitly mark the tool as enabled
+        },
+        {
+            name: "network-neighborhood",
+            description: "Find genes or proteins that are neighbors in the network.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    curies: {
+                        type: "array",
+                        items: {
+                            type: "string",
                             description: "Array of CURIEs (at least 2) representing genes or proteins.",
                         },
+                        minItems: 2,
+                        description: "Array of CURIEs (at least 2) representing genes or proteins.",
                     },
-                    required: ["curies"],
                 },
-            }
-        ],
+                required: ["curies"],
+            },
+        }
+    ];
+
+    console.error('[TOOLS-DEBUG] Tools list created with', allTools.length, 'tools');
+    console.error('[TOOLS-DEBUG] Tools names:', allTools.map(t => t.name).join(', '));
+    
+    // Double-check that find-pathway is included
+    const findPathwayTool = allTools.find(t => t.name === 'find-pathway');
+    console.error('[TOOLS-DEBUG] Find-pathway tool found?', !!findPathwayTool);
+    
+    // Log to debug file
+    if (global.writeDebugLog) {
+        global.writeDebugLog('--------- TOOLS LIST ---------');
+        global.writeDebugLog(`Returning ${allTools.length} tools:`);
+        allTools.forEach(tool => {
+            global.writeDebugLog(`- ${tool.name}: ${tool.description.substring(0, 50)}...`);
+        });
+    }
+    
+    console.error('[TOOLS-DEBUG] Final tools count before return:', allTools.length);
+    
+    return {
+        tools: allTools
     };
 });
 
@@ -726,8 +849,203 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     ],
                 };
             }
+        } else if (toolName === "find-pathway") {
+            // Validate parameters
+            const { sourceCurie, targetCurie, maxIterations = 3, maxNodesPerIteration = 5 } = 
+                FindPathwayRequestSchema.parse(toolArgs);
+            
+            // Log the request
+            sendStructuredLog(server, 'info', `Starting pathway discovery between ${sourceCurie} and ${targetCurie}`, {
+                sourceCurie,
+                targetCurie,
+                maxIterations,
+                maxNodesPerIteration
+            });
+            
+            try {
+                // Step 1: Get initial neighborhoods for source and target
+                sendStructuredLog(server, 'info', `Querying initial neighborhoods for source and target`, {
+                    stage: "initial_neighborhoods"
+                });
+                
+                const sourceNeighborhood = await runBidirectionalQuery({ curie: sourceCurie });
+                const targetNeighborhood = await runBidirectionalQuery({ curie: targetCurie });
+                
+                if (!sourceNeighborhood || !targetNeighborhood) {
+                    sendStructuredLog(server, 'error', `Failed to retrieve neighborhoods for source or target`, {
+                        sourceCurie,
+                        targetCurie,
+                        sourceSuccess: !!sourceNeighborhood,
+                        targetSuccess: !!targetNeighborhood
+                    });
+                    
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Could not find neighborhood information for ${!sourceNeighborhood ? sourceCurie : ''} ${!sourceNeighborhood && !targetNeighborhood ? 'and' : ''} ${!targetNeighborhood ? targetCurie : ''}. Please verify these CURIEs exist in the knowledge graph.`
+                            }
+                        ]
+                    };
+                }
+
+                // Step 2: Format the neighborhoods for the LLM
+                sendStructuredLog(server, 'info', `Formatting neighborhoods for LLM analysis`, {
+                    stage: "data_preparation"
+                });
+                
+                // Format nodes for LLM analysis - simplify the data structure
+                const formatRelationshipForLLM = (rel: any[]) => {
+                    // Expected format: [subject, predicate, object, ...]
+                    return {
+                        subject: rel[0] || 'Unknown',
+                        predicate: rel[2] || 'Unknown',
+                        object: rel[3] || 'Unknown'
+                    };
+                };
+                
+                const sourceRelationships = Array.isArray(sourceNeighborhood) 
+                    ? sourceNeighborhood
+                        .filter(rel => rel && rel.length >= 4)
+                        .map(formatRelationshipForLLM)
+                        .slice(0, 20) // Limit to 20 relationships to avoid token limits
+                    : [];
+                
+                const targetRelationships = Array.isArray(targetNeighborhood)
+                    ? targetNeighborhood
+                        .filter(rel => rel && rel.length >= 4)
+                        .map(formatRelationshipForLLM)
+                        .slice(0, 20) // Limit to 20 relationships
+                    : [];
+                
+                sendStructuredLog(server, 'info', `Using LLM to identify potential connecting paths`, {
+                    stage: "llm_analysis",
+                    sourceRelationshipsCount: sourceRelationships.length,
+                    targetRelationshipsCount: targetRelationships.length
+                });
+
+                // Step 3: Use the LLM client to analyze potential pathways
+                try {
+                    // Log that we're about to call the LLM
+                    console.error(`[medik-mcp] Calling LLM client for pathway analysis between ${sourceCurie} and ${targetCurie}`);
+                    
+                    // Call the LLM service using the client
+                    const result = await llmClient.query({
+                        prompt: `Given these source and target nodes with their relationships, identify the most promising potential pathways between them.
+                        
+                        Source entity (${sourceCurie}) relationships:
+                        ${JSON.stringify(sourceRelationships, null, 2)}
+                        
+                        Target entity (${targetCurie}) relationships:
+                        ${JSON.stringify(targetRelationships, null, 2)}
+                        
+                        Please identify 2-3 potential biological pathways that might connect these entities.
+                        Consider biological plausibility, relationship types, and semantic similarity.`,
+                        responseFormat: 'text',
+                        options: {
+                            temperature: 0.3
+                        }
+                    });
+                    
+                    // Log the full result for debugging
+                    console.error(`[medik-mcp] LLM response received:`, {
+                        success: result.success,
+                        contentLength: result.content?.length || 0
+                    });
+                    
+                    // Format the response
+                    const analysisText = `## Pathway Analysis Results
+
+### Source Entity: ${sourceCurie}
+Found ${sourceRelationships.length} relationships in its neighborhood.
+
+### Target Entity: ${targetCurie}
+Found ${targetRelationships.length} relationships in its neighborhood.
+
+### Potential Pathways
+${result.success ? result.content : "Failed to analyze potential pathways."}
+
+---
+*Note: This is an early prototype of the pathway discovery tool. Future versions will include interactive graph visualization.*`;
+                    
+                    // Return the formatted response
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: analysisText
+                            }
+                        ],
+                        metadata: {
+                            pathfinder: true,
+                            sourceCurie,
+                            targetCurie,
+                            maxIterations,
+                            maxNodesPerIteration,
+                            sourceNeighborhoodSize: Array.isArray(sourceNeighborhood) ? sourceNeighborhood.length : 0,
+                            targetNeighborhoodSize: Array.isArray(targetNeighborhood) ? targetNeighborhood.length : 0,
+                            llmSuccess: result.success,
+                            version: "0.1-prototype"
+                        }
+                    };
+                    
+                } catch (llmError) {
+                    // Handle LLM error gracefully
+                    console.error(`[medik-mcp] LLM query error:`, llmError);
+                    sendStructuredLog(server, 'error', `LLM query failed: ${llmError instanceof Error ? llmError.message : String(llmError)}`, {
+                        stage: "llm_error"
+                    });
+                    
+                    // Return a degraded but still useful response
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `## Pathway Analysis Results
+
+### Source Entity: ${sourceCurie}
+Found ${sourceRelationships.length} relationships in its neighborhood.
+
+### Target Entity: ${targetCurie}
+Found ${targetRelationships.length} relationships in its neighborhood.
+
+### LLM Analysis Failed
+Could not generate pathway analysis due to an error with the LLM service.
+The basic neighborhood data has been retrieved successfully.
+
+---
+*Error details: ${llmError instanceof Error ? llmError.message : String(llmError)}*`
+                            }
+                        ],
+                        metadata: {
+                            pathfinder: true,
+                            sourceCurie,
+                            targetCurie,
+                            llmSuccess: false,
+                            version: "0.1-prototype"
+                        }
+                    };
+                }
+                
+            } catch (error) {
+                console.error(`[medik-mcp] Pathway discovery error:`, error);
+                sendStructuredLog(server, 'error', `Pathway discovery failed with error: ${error instanceof Error ? error.message : String(error)}`, {
+                    sourceCurie,
+                    targetCurie,
+                    error: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined
+                });
+                
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Error finding pathway: ${error instanceof Error ? error.message : String(error)}`
+                        }
+                    ]
+                };
+            }
         } else {
-            // Handle unknown tool
             return {
                 content: [
                     {
@@ -752,6 +1070,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
 
 // Start the server
 async function main() {
+    console.log(`[medik-mcp] Starting server with log file: ${logger.getLogFile()}`);
+    
     const transport = new StdioServerTransport();
     
     try {
@@ -759,7 +1079,8 @@ async function main() {
         
         sendStructuredLog(server, 'info', 'Server started', {
             transport: 'stdio',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            logFile: logger.getLogFile()
         });
         
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -793,5 +1114,25 @@ main().catch((error) => {
         error: errorMessage,
         stack: error instanceof Error ? error.stack : undefined
     });
+    // Close the logger before exiting
+    logger.close();
     process.exit(1);
+});
+
+// Register cleanup handlers
+process.on('SIGINT', () => {
+    console.log('[medik-mcp] Server shutting down (SIGINT)');
+    logger.close();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('[medik-mcp] Server shutting down (SIGTERM)');
+    logger.close();
+    process.exit(0);
+});
+
+process.on('exit', () => {
+    console.log('[medik-mcp] Server exiting');
+    logger.close();
 }); 
