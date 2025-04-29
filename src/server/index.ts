@@ -8,8 +8,10 @@ import chatRouter from './routes/chat';
 import ollamaRouter from './routes/ollama_mcp';
 import serverStatusRouter from './routes/server-status';
 import storageRouter from './routes/storage';
+import llmRoutes from './routes/api/internal/llm';
 import { MCPService, MCPLogMessage } from './services/mcp';
 import { LoggingService } from './services/logging';
+import { LLMService } from './services/llm';
 import { randomUUID } from 'crypto';
 
 // ES Module dirname equivalent
@@ -24,6 +26,7 @@ const port = 3001; // Explicitly set to 3001
 // Initialize services
 const mcpService = new MCPService();
 const loggingService = new LoggingService();
+const llmService = new LLMService(); // Initialize LLM Service
 
 // Initialize logging directory
 const logDir = path.join(process.cwd(), 'logs');
@@ -43,6 +46,7 @@ console.log(`Log directory: ${logDir}`);
 // Store services in app locals for route access
 app.locals.mcpService = mcpService;
 app.locals.loggingService = loggingService;
+app.locals.llmService = llmService; // Add LLM Service to app locals
 
 // Enhanced debug log
 console.log('\n=== MCP Service Initialization ===');
@@ -119,6 +123,7 @@ app.use('/api/chat', chatRouter);
 app.use('/api/ollama', ollamaRouter);
 app.use('/api/server-status', serverStatusRouter);
 app.use('/api/storage', storageRouter);
+app.use('/api/internal/llm', llmRoutes); // Mount LLM API routes
 
 // Add cleanup handlers for graceful shutdown
 process.on('SIGINT', () => {
@@ -139,6 +144,7 @@ app.listen(port, () => {
   console.log(`Server started at: ${timestamp}`);
   console.log(`API running at http://localhost:${port}`);
   console.log(`Client running at http://localhost:5173`);
+  console.log(`LLM Service running at http://localhost:${port}/api/internal/llm`);
   
   // Send a test log message after a short delay
   // setTimeout(() => {
