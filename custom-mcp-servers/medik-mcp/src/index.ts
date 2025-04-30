@@ -10,6 +10,8 @@ import { formatKnowledgeGraphArtifact, formatNetworkNeighborhood } from "./forma
 import { randomUUID } from 'crypto';
 import { LLMClient } from "../../mcp-helpers/llm-client.js";
 import logger from './logger.js';
+import fs from 'fs';
+import path from 'path';
 
 // Enable console interception to capture logs to file
 logger.interceptConsole();
@@ -133,8 +135,7 @@ const server = new Server(
 
 // Direct file logging for debugging
 try {
-    const fs = require('fs');
-    const path = require('path');
+    // Use the imported fs and path modules
     const debugDir = './debug';
     
     // Create debug directory if it doesn't exist
@@ -183,7 +184,7 @@ function debugLog(message: string, data?: any) {
 
 // Helper function for API requests
 async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount = 0): Promise<T | null> {
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES = 5;
     const RETRY_DELAY_MS = 1000;
     
     const url = `${MEDIKANREN_API_BASE}/query`;
@@ -854,8 +855,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
             const { sourceCurie, targetCurie, maxIterations = 3, maxNodesPerIteration = 5 } = 
                 FindPathwayRequestSchema.parse(toolArgs);
             
+            // Create a unique ID for this pathway request for tracking in logs
+            const requestId = randomUUID().substring(0, 8);
+            
             // Log the request
             sendStructuredLog(server, 'info', `Starting pathway discovery between ${sourceCurie} and ${targetCurie}`, {
+                requestId,
                 sourceCurie,
                 targetCurie,
                 maxIterations,
@@ -865,6 +870,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
             try {
                 // Step 1: Get initial neighborhoods for source and target
                 sendStructuredLog(server, 'info', `Querying initial neighborhoods for source and target`, {
+                    requestId,
                     stage: "initial_neighborhoods"
                 });
                 
@@ -891,6 +897,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
 
                 // Step 2: Format the neighborhoods for the LLM
                 sendStructuredLog(server, 'info', `Formatting neighborhoods for LLM analysis`, {
+                    requestId,
                     stage: "data_preparation"
                 });
                 
@@ -919,6 +926,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     : [];
                 
                 sendStructuredLog(server, 'info', `Using LLM to identify potential connecting paths`, {
+                    requestId,
                     stage: "llm_analysis",
                     sourceRelationshipsCount: sourceRelationships.length,
                     targetRelationshipsCount: targetRelationships.length
@@ -927,31 +935,83 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                 // Step 3: Use the LLM client to analyze potential pathways
                 try {
                     // Log that we're about to call the LLM
-                    console.error(`[medik-mcp] Calling LLM client for pathway analysis between ${sourceCurie} and ${targetCurie}`);
+                    console.error(`[medik-mcp] [Pathfinder:${requestId}] Calling LLM client for pathway analysis between ${sourceCurie} and ${targetCurie}`);
                     
-                    // Call the LLM service using the client
-                    const result = await llmClient.query({
-                        prompt: `Given these source and target nodes with their relationships, identify the most promising potential pathways between them.
-                        
-                        Source entity (${sourceCurie}) relationships:
-                        ${JSON.stringify(sourceRelationships, null, 2)}
-                        
-                        Target entity (${targetCurie}) relationships:
-                        ${JSON.stringify(targetRelationships, null, 2)}
-                        
-                        Please identify 2-3 potential biological pathways that might connect these entities.
-                        Consider biological plausibility, relationship types, and semantic similarity.`,
+                    // Add detailed logging before LLM call
+                    sendStructuredLog(server, 'info', `[Pathfinder:${requestId}] Preparing LLM request with prompt data`, {
+                        stage: "llm_request_preparation",
+                        requestId,
+                        model: "claude-3-opus-20240229",
+                        promptLength: {
+                            system: generateSystemPrompt().length,
+                            user: generateUserPrompt(sourceCurie, targetCurie).length
+                        },
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // FIX: Use llmClient instead of server.llm and use the correct method name (extractJSON with uppercase JSON)
+                    // Also add explicit error handling with more details in the logs
+                    const systemPrompt = generateSystemPrompt();
+                    const userPrompt = generateUserPrompt(sourceCurie, targetCurie);
+                    
+                    console.error(`[medik-mcp] [Pathfinder:${requestId}] Using llmClient to query LLM`);
+                    
+                    const response = await llmClient.query({
+                        prompt: userPrompt,
+                        systemPrompt: systemPrompt,
                         responseFormat: 'text',
                         options: {
-                            temperature: 0.3
+                            model: "claude-3-opus-20240229"
                         }
                     });
+
+                    // Log the raw response for debugging
+                    console.error(`[medik-mcp] [Pathfinder:${requestId}] Raw LLM response:`, 
+                        response ? `success=${response.success}, content_length=${response.content?.length || 0}` : 'null');
                     
-                    // Log the full result for debugging
-                    console.error(`[medik-mcp] LLM response received:`, {
-                        success: result.success,
-                        contentLength: result.content?.length || 0
+                    // Add more detailed logging for the response
+                    sendStructuredLog(server, 'info', `[Pathfinder:${requestId}] Received LLM response`, {
+                        stage: "llm_response_received",
+                        requestId,
+                        status: response?.success ? "success" : "error",
+                        hasContent: !!response?.content,
+                        contentSize: response?.content ? response.content.length : 0,
+                        errorMessage: response?.error || null,
+                        responseTime: new Date().toISOString()
                     });
+
+                    console.error(`[medik-mcp] [Pathfinder:${requestId}] LLM response received: ${response?.success ? "success" : "error"}`);
+
+                    if (!response || !response.success || !response.content) {
+                        // Add detailed error logging
+                        sendStructuredLog(server, 'error', `[Pathfinder:${requestId}] Failed to extract pathways from LLM response`, {
+                            stage: "llm_extraction_failure",
+                            requestId,
+                            error: response?.error || "Invalid or empty LLM response",
+                            rawResponse: response ? JSON.stringify(response).substring(0, 500) : "null",
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Error: ${response?.error || 'Unknown error'}`
+                                }
+                            ],
+                            metadata: {
+                                pathfinder: true,
+                                sourceCurie,
+                                targetCurie,
+                                maxIterations,
+                                maxNodesPerIteration,
+                                sourceNeighborhoodSize: Array.isArray(sourceNeighborhood) ? sourceNeighborhood.length : 0,
+                                targetNeighborhoodSize: Array.isArray(targetNeighborhood) ? targetNeighborhood.length : 0,
+                                llmSuccess: false,
+                                version: "0.1-prototype"
+                            }
+                        };
+                    }
                     
                     // Format the response
                     const analysisText = `## Pathway Analysis Results
@@ -963,7 +1023,7 @@ Found ${sourceRelationships.length} relationships in its neighborhood.
 Found ${targetRelationships.length} relationships in its neighborhood.
 
 ### Potential Pathways
-${result.success ? result.content : "Failed to analyze potential pathways."}
+${response.content}
 
 ---
 *Note: This is an early prototype of the pathway discovery tool. Future versions will include interactive graph visualization.*`;
@@ -984,16 +1044,28 @@ ${result.success ? result.content : "Failed to analyze potential pathways."}
                             maxNodesPerIteration,
                             sourceNeighborhoodSize: Array.isArray(sourceNeighborhood) ? sourceNeighborhood.length : 0,
                             targetNeighborhoodSize: Array.isArray(targetNeighborhood) ? targetNeighborhood.length : 0,
-                            llmSuccess: result.success,
+                            llmSuccess: response.success,
                             version: "0.1-prototype"
                         }
                     };
                     
                 } catch (llmError) {
-                    // Handle LLM error gracefully
-                    console.error(`[medik-mcp] LLM query error:`, llmError);
-                    sendStructuredLog(server, 'error', `LLM query failed: ${llmError instanceof Error ? llmError.message : String(llmError)}`, {
-                        stage: "llm_error"
+                    // Handle LLM error gracefully with detailed logs
+                    console.error(`[medik-mcp] [Pathfinder:${requestId}] LLM query error:`, llmError);
+                    
+                    // Add full error details to the log
+                    const errorDetails = {
+                        message: llmError instanceof Error ? llmError.message : String(llmError),
+                        stack: llmError instanceof Error ? llmError.stack : undefined,
+                        name: llmError instanceof Error ? llmError.name : undefined,
+                        toString: String(llmError)
+                    };
+                    
+                    sendStructuredLog(server, 'error', `[Pathfinder:${requestId}] LLM query failed: ${errorDetails.message}`, {
+                        stage: "llm_error",
+                        requestId,
+                        errorDetails,
+                        timestamp: new Date().toISOString()
                     });
                     
                     // Return a degraded but still useful response
@@ -1014,7 +1086,7 @@ Could not generate pathway analysis due to an error with the LLM service.
 The basic neighborhood data has been retrieved successfully.
 
 ---
-*Error details: ${llmError instanceof Error ? llmError.message : String(llmError)}*`
+*Error details: ${errorDetails.message}*`
                             }
                         ],
                         metadata: {
@@ -1067,6 +1139,23 @@ The basic neighborhood data has been retrieved successfully.
         };
     }
 });
+
+// Generate system prompt for the LLM
+function generateSystemPrompt(): string {
+  return `You are a biomedical pathway analysis expert. Your analysis should be scientific and evidence-based.
+When asked to identify pathways, please output a numbered list of pathways in the following format:
+1. [Pathway Name] - [Brief description of mechanism with key proteins/genes]
+
+Focus on molecular interactions, signaling pathways, metabolic pathways, gene regulation, 
+or other biological processes that connect the entities. 
+Limit your analysis to 3-5 of the most relevant and well-established pathways.`;
+}
+
+// Generate user prompt for the LLM
+function generateUserPrompt(entity1: string, entity2: string): string {
+  return `Identify the biological pathways that connect ${entity1} and ${entity2}. 
+For each pathway, briefly describe the key steps and mediators involved in the relationship.`;
+}
 
 // Start the server
 async function main() {

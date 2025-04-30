@@ -77,7 +77,7 @@ export class Logger {
     this.originalConsoleInfo = console.info;
     
     // Log the initialization
-    this.log(`Logger initialized at ${this.startTime.toISOString()}`);
+    this.log(`Logger initialized at ${this.formatCentralTime(this.startTime)}`);
     this.log(`Log file: ${this.logFile}`);
   }
   
@@ -87,10 +87,50 @@ export class Logger {
    * @returns Formatted date string (YYYY-MM-DD_HH-MM-SS)
    */
   private formatDate(date: Date): string {
-    return date.toISOString()
+    return this.formatCentralTime(date)
       .replace(/:/g, '-')
       .replace(/\..+/, '')
       .replace('T', '_');
+  }
+
+  /**
+   * Format date to Central Time Zone
+   * @param date Date to format
+   * @returns ISO string in Central Time
+   */
+  private formatCentralTime(date: Date): string {
+    // Convert UTC to US Central Time (CT)
+    // Options for formatting to CT
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    };
+
+    // Get formatted date parts without milliseconds
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(date);
+    
+    // Convert parts array to object for easier access
+    const dateObj: Record<string, string> = {};
+    parts.forEach(part => {
+      if (part.type !== 'literal') {
+        dateObj[part.type] = part.value;
+      }
+    });
+
+    // Get milliseconds separately - we'll format CT time and append ms
+    // Convert the date to CT first
+    const ctTime = new Date(date.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    const milliseconds = ctTime.getMilliseconds().toString().padStart(3, '0');
+
+    // Create ISO-like format in Central Time
+    return `${dateObj.year}-${dateObj.month}-${dateObj.day}T${dateObj.hour}:${dateObj.minute}:${dateObj.second}.${milliseconds}[CT]`;
   }
   
   /**
@@ -103,7 +143,7 @@ export class Logger {
       return;
     }
     
-    const timestamp = new Date().toISOString();
+    const timestamp = this.formatCentralTime(new Date());
     const logMessage = `[${timestamp}] ${message}\n`;
     
     try {
@@ -171,7 +211,7 @@ export class Logger {
    * Close the logger and clean up
    */
   public close(): void {
-    this.log(`Logger closed at ${new Date().toISOString()}`);
+    this.log(`Logger closed at ${this.formatCentralTime(new Date())}`);
     this.log(`Session duration: ${(new Date().getTime() - this.startTime.getTime()) / 1000} seconds`);
     
     if (this.logStream) {
