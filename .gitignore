@@ -1,3 +1,6 @@
+# CHARMGPT-specific directory
+uploads/
+
 # Environment variables
 .env
 .env.local
