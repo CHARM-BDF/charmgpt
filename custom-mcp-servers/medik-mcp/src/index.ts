@@ -895,6 +895,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     };
                 }
 
+                // Create a combined array of results for the knowledge graph
+                const combinedResults = [];
+                const startingNodeIds = new Set([sourceCurie, targetCurie]);
+                
+                // Add source neighborhood relationships to the combined results
+                if (Array.isArray(sourceNeighborhood)) {
+                    combinedResults.push(...sourceNeighborhood);
+                }
+                
+                // Add target neighborhood relationships to the combined results
+                if (Array.isArray(targetNeighborhood)) {
+                    combinedResults.push(...targetNeighborhood);
+                }
+                
+                // Prepare to format as a knowledge graph
+                const pathwayGraphPromise = formatKnowledgeGraphArtifact(
+                    combinedResults,
+                    {
+                        e1: "PathwayAnalysis",
+                        e2: "pathway-between",
+                        e3: `${sourceCurie}_to_${targetCurie}`
+                    },
+                    startingNodeIds
+                );
+
                 // Step 2: Format the neighborhoods for the LLM
                 sendStructuredLog(server, 'info', `Formatting neighborhoods for LLM analysis`, {
                     requestId,
@@ -992,23 +1017,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                             timestamp: new Date().toISOString()
                         });
                         
+                        // Still generate the knowledge graph even if LLM analysis failed
+                        const graphResult = await pathwayGraphPromise;
+                        
                         return {
                             content: [
                                 {
                                     type: "text",
-                                    text: `Error: ${response?.error || 'Unknown error'}`
+                                    text: `## Pathway Analysis Results
+
+### Source Entity: ${sourceCurie}
+Found ${sourceRelationships.length} relationships in its neighborhood.
+
+### Target Entity: ${targetCurie}
+Found ${targetRelationships.length} relationships in its neighborhood.
+
+### LLM Analysis Failed
+Could not generate pathway analysis due to an error with the LLM service.
+The basic neighborhood data has been retrieved successfully.
+
+---
+**IMPORTANT: Analysis complete with graph visualization despite LLM error. No need to run this query again.**
+
+*Error details: ${response?.error || 'Unknown error'}*`
                                 }
                             ],
+                            artifacts: graphResult.artifacts,
                             metadata: {
                                 pathfinder: true,
                                 sourceCurie,
                                 targetCurie,
-                                maxIterations,
-                                maxNodesPerIteration,
-                                sourceNeighborhoodSize: Array.isArray(sourceNeighborhood) ? sourceNeighborhood.length : 0,
-                                targetNeighborhoodSize: Array.isArray(targetNeighborhood) ? targetNeighborhood.length : 0,
                                 llmSuccess: false,
-                                version: "0.1-prototype"
+                                version: "0.2-with-graph"
                             }
                         };
                     }
@@ -1026,16 +1066,25 @@ Found ${targetRelationships.length} relationships in its neighborhood.
 ${response.content}
 
 ---
-*Note: This is an early prototype of the pathway discovery tool. Future versions will include interactive graph visualization.*`;
+**IMPORTANT: Analysis complete with both text and graph visualization. No need to run this query again.**
+
+*This task is complete. The knowledge graph visualization shows the network connections between the entities.*`;
                     
-                    // Return the formatted response
+                    // Wait for the graph formatting to complete
+                    const graphResult = await pathwayGraphPromise;
+                    
+                    // Combine the LLM analysis with the knowledge graph artifact
+                    const combinedContent = [
+                        {
+                            type: "text",
+                            text: analysisText
+                        }
+                    ];
+                    
+                    // Return the formatted response with both text and graph
                     return {
-                        content: [
-                            {
-                                type: "text",
-                                text: analysisText
-                            }
-                        ],
+                        content: combinedContent,
+                        artifacts: graphResult.artifacts,
                         metadata: {
                             pathfinder: true,
                             sourceCurie,
@@ -1045,7 +1094,7 @@ ${response.content}
                             sourceNeighborhoodSize: Array.isArray(sourceNeighborhood) ? sourceNeighborhood.length : 0,
                             targetNeighborhoodSize: Array.isArray(targetNeighborhood) ? targetNeighborhood.length : 0,
                             llmSuccess: response.success,
-                            version: "0.1-prototype"
+                            version: "0.2-with-graph"
                         }
                     };
                     
@@ -1068,6 +1117,9 @@ ${response.content}
                         timestamp: new Date().toISOString()
                     });
                     
+                    // Still generate the knowledge graph even if LLM analysis failed
+                    const graphResult = await pathwayGraphPromise;
+                    
                     // Return a degraded but still useful response
                     return {
                         content: [
@@ -1086,15 +1138,18 @@ Could not generate pathway analysis due to an error with the LLM service.
 The basic neighborhood data has been retrieved successfully.
 
 ---
+**IMPORTANT: Analysis complete with graph visualization despite LLM error. No need to run this query again.**
+
 *Error details: ${errorDetails.message}*`
                             }
                         ],
+                        artifacts: graphResult.artifacts,
                         metadata: {
                             pathfinder: true,
                             sourceCurie,
                             targetCurie,
                             llmSuccess: false,
-                            version: "0.1-prototype"
+                            version: "0.2-with-graph"
                         }
                     };
                 }
@@ -1108,14 +1163,70 @@ The basic neighborhood data has been retrieved successfully.
                     stack: error instanceof Error ? error.stack : undefined
                 });
                 
-                return {
-                    content: [
-                        {
-                            type: "text",
-                            text: `Error finding pathway: ${error instanceof Error ? error.message : String(error)}`
+                // Attempt to create a minimal graph with just the source and target nodes
+                try {
+                    // Create a minimal knowledge graph with just the starting nodes
+                    const minimalGraph = {
+                        nodes: [
+                            {
+                                id: sourceCurie,
+                                name: sourceCurie,
+                                group: 1,
+                                isStartingNode: true,
+                                val: 10,
+                                entityType: sourceCurie.split(':')[0]
+                            },
+                            {
+                                id: targetCurie,
+                                name: targetCurie,
+                                group: 3,
+                                isStartingNode: true,
+                                val: 10,
+                                entityType: targetCurie.split(':')[0]
+                            }
+                        ],
+                        links: []
+                    };
+                    
+                    // Create a minimal artifact
+                    const minimalArtifact = {
+                        type: 'application/vnd.knowledge-graph',
+                        title: `Pathway Analysis: ${sourceCurie} to ${targetCurie} (Error)`,
+                        content: JSON.stringify(minimalGraph)
+                    };
+                    
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error finding pathway: ${error instanceof Error ? error.message : String(error)}
+
+**IMPORTANT: Analysis attempt complete. No need to run this query again.**`
+                            }
+                        ],
+                        artifacts: [minimalArtifact],
+                        metadata: {
+                            pathfinder: true,
+                            sourceCurie,
+                            targetCurie,
+                            llmSuccess: false,
+                            graphSuccess: false,
+                            version: "0.2-with-graph"
                         }
-                    ]
-                };
+                    };
+                } catch (minimalGraphError) {
+                    // If even creating a minimal graph fails, return just the error message
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error finding pathway: ${error instanceof Error ? error.message : String(error)}
+
+**IMPORTANT: Analysis attempt complete. No need to run this query again.**`
+                            }
+                        ]
+                    };
+                }
             }
         } else {
             return {

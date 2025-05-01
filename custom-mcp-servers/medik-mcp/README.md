@@ -6,6 +6,8 @@ A Model Context Protocol (MCP) server that interfaces with the mediKanren API, a
 
 - Run 1-hop queries in the mediKanren knowledge graph
 - Run comprehensive bidirectional queries to get all relationships for an entity
+- Find potential connection pathways between two biomedical entities
+- Analyze network neighborhoods for multiple genes or proteins
 - Retrieve PubMed abstracts by ID
 - Generate knowledge graph artifacts for visualization
 - Format query results into human-readable text
@@ -32,7 +34,7 @@ npm run build
 
 ## Usage
 
-The server exposes three main tools:
+The server exposes the following main tools:
 
 ### 1. run-query
 
@@ -82,7 +84,56 @@ The response includes:
 - Combines and deduplicates the results from both queries
 - Formats the combined results into a comprehensive knowledge graph
 
-### 3. get-pubmed-abstract
+### 3. network-neighborhood
+
+Finds genes or proteins that are neighbors in the network and identifies common connection points between them.
+
+**Parameters:**
+- `curies`: Array of CURIEs (at least 2) representing genes or proteins
+
+**Example:**
+```json
+{
+  "curies": ["HGNC:3535", "HGNC:6407"]
+}
+```
+
+**Response:**
+The response includes:
+1. Human-readable text describing the network connections found
+2. A knowledge graph artifact that visualizes the network neighborhood with the requested genes/proteins highlighted
+
+### 4. find-pathway
+
+Analyzes and identifies potential connection pathways between two biomedical entities by exploring the knowledge graph and using LLM analysis to interpret the findings.
+
+**Parameters:**
+- `sourceCurie`: CURIE of the first entity (e.g., gene HGNC:1097)
+- `targetCurie`: CURIE of the second entity (e.g., disease MONDO:0011719)
+- `maxIterations`: Optional. Maximum number of exploration iterations (default: 3)
+- `maxNodesPerIteration`: Optional. Number of candidate nodes to explore in each iteration (default: 5)
+
+**Example:**
+```json
+{
+  "sourceCurie": "HGNC:1097",
+  "targetCurie": "MONDO:0011719"
+}
+```
+
+**Response:**
+The response includes:
+1. Human-readable text describing the potential biological pathways connecting the entities
+2. Analysis of relationships found in the neighborhoods of both entities
+3. A knowledge graph artifact that visualizes the network connections between the source and target entities
+
+**How it works:**
+- Retrieves bidirectional neighborhood data for both the source and target entities
+- Formats the combined data into a knowledge graph for visualization
+- Uses an LLM to analyze the neighborhoods and identify potential biological pathways or mechanisms
+- Returns both the LLM analysis and the interactive knowledge graph visualization
+
+### 5. get-pubmed-abstract
 
 Retrieves a PubMed abstract by ID.
 
@@ -117,6 +168,7 @@ The server generates knowledge graph artifacts for query results, which include:
 - **Nodes**: Entities such as drugs, diseases, genes, etc.
 - **Links**: Relationships between entities
 - **Metadata**: Entity types, relationship types, and evidence
+- **Starting Nodes**: Special highlighting for query source entities
 
 The knowledge graph is formatted as a JSON object with the following structure:
 
@@ -128,7 +180,8 @@ The knowledge graph is formatted as a JSON object with the following structure:
       "name": "Drug Name",
       "group": 1,
       "entityType": "Drug",
-      "val": 10
+      "val": 10,
+      "isStartingNode": true
     },
     ...
   ],
@@ -143,6 +196,29 @@ The knowledge graph is formatted as a JSON object with the following structure:
   ]
 }
 ```
+
+### Knowledge Graph Visualization Features
+
+Different tools leverage knowledge graph artifacts in specific ways:
+
+1. **run-query and get-everything**: Display simple 1-hop or bidirectional relationships
+2. **network-neighborhood**: Highlights common nodes connecting multiple genes/proteins of interest
+3. **find-pathway**: Visualizes the combined neighborhoods of two entities, highlighting potential connecting pathways
+
+All knowledge graph visualizations support:
+- Interactive node dragging and rearrangement
+- Zoom and pan for exploring large graphs
+- Hovering for detailed entity information
+- Color-coding by entity type
+- Node sizing based on connection count (more connected nodes appear larger)
+
+### Pathway Analysis Visualization
+
+For the find-pathway tool specifically:
+- Source and target entities are highlighted as starting nodes
+- Connections between neighborhoods are emphasized
+- The accompanying LLM analysis provides context about biological mechanisms
+- The visualization complements the text analysis by showing the actual network structure
 
 ## Node and Edge Filtering
 
@@ -284,4 +360,22 @@ Error response:
 
 ## License
 
-ISC 
+ISC
+
+## Version History
+
+### v1.0.1
+- Initial release with basic query, get-everything, and PubMed abstract functionality
+- Knowledge graph visualization for query results
+- Node filtering and error handling
+
+### v1.0.2
+- Added network-neighborhood tool for analyzing connections between multiple genes/proteins
+- Enhanced knowledge graph visualization capabilities
+- Improved error handling and logging
+
+### v1.0.3 (Current)
+- Added find-pathway tool with LLM-powered pathway analysis
+- Enhanced find-pathway to include knowledge graph visualization
+- Updated error handling to preserve visualization even when LLM analysis fails
+- Added comprehensive documentation for all tools 
