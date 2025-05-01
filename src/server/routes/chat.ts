@@ -188,6 +188,13 @@ router.post('/', async (req: Request<{}, {}, {
           // Execute tool
           const toolResult = await mcpService.callTool(serverName, toolName, content.input as Record<string, unknown>);
 
+          // Add detailed logging of MCP tool response
+          console.log('\n===== [MCP-OUTPUT] TOOL RESPONSE START =====');
+          console.log(`[MCP-OUTPUT] Server: ${serverName}, Tool: ${toolName}`);
+          console.log('[MCP-OUTPUT] Full JSON Response:');
+          console.log(JSON.stringify(toolResult, null, 2));
+          console.log('===== [MCP-OUTPUT] TOOL RESPONSE END =====\n');
+
           // Debug log the tool result
           console.log('\n=== MCP TOOL RESULT DEBUG ===');
           // console.log('Raw tool result:', toolResult);
@@ -209,6 +216,23 @@ router.post('/', async (req: Request<{}, {}, {
             const textContent = (toolResult.content as any[]).find((item: any) => 
               item.type === 'text' && typeof item.text === 'string'
             );
+
+            // Log text content extraction
+            console.log('[MCP-OUTPUT] TEXT CONTENT EXTRACTION:');
+            console.log(`Tool: ${toolName}, Server: ${serverName}`);
+            console.log('Has content array:', Array.isArray(toolResult.content));
+            console.log('Content array length:', Array.isArray(toolResult.content) ? toolResult.content.length : 0);
+            console.log('Found text content:', !!textContent);
+            if (textContent) {
+              console.log('Text content preview (first 100 chars):', textContent.text.substring(0, 100));
+            } else {
+              console.log('Text content items in array:');
+              if (Array.isArray(toolResult.content)) {
+                toolResult.content.forEach((item, index) => {
+                  console.log(`Item ${index}: type=${item.type}, has text=${'text' in item}, text length=${item.text ? item.text.length : 0}`);
+                });
+              }
+            }
 
             if (textContent) {
               // If there's metadata, add it to the status updates
@@ -467,11 +491,16 @@ router.post('/', async (req: Request<{}, {}, {
       console.log('🟡🟡🟡 CHAT ROUTE: Found knowledge graph data 🟡🟡🟡');
       console.log(`[CHAT:ARTIFACTS] Knowledge graph has ${(messages as any).knowledgeGraph.nodes.length} nodes and ${(messages as any).knowledgeGraph.links.length} links`);
       
-      artifactsToAdd.push({
+      // Log full structure of knowledge graph artifact
+      console.log('[MCP-OUTPUT] KNOWLEDGE GRAPH ARTIFACT:');
+      const knowledgeGraphArtifact = {
         type: 'application/vnd.knowledge-graph',
         title: 'Knowledge Graph',
         content: (messages as any).knowledgeGraph
-      });
+      };
+      console.log(JSON.stringify(knowledgeGraphArtifact, null, 2));
+      
+      artifactsToAdd.push(knowledgeGraphArtifact);
       
       console.log('[CHAT:ARTIFACTS] Knowledge graph added to artifacts queue');
     }
@@ -483,6 +512,10 @@ router.post('/', async (req: Request<{}, {}, {
       
       for (const artifact of (messages as any).directArtifacts) {
         console.log(`[CHAT:ARTIFACTS] Processing direct artifact of type: ${artifact.type}`);
+        // Log full structure of direct artifact
+        console.log('[MCP-OUTPUT] DIRECT ARTIFACT:');
+        console.log(JSON.stringify(artifact, null, 2));
+        
         artifactsToAdd.push(artifact);
       }
       
@@ -524,7 +557,17 @@ router.post('/', async (req: Request<{}, {}, {
     // Apply all artifacts in one operation
     if (artifactsToAdd.length > 0) {
       console.log('🟡🟡🟡 CHAT ROUTE: Applying', artifactsToAdd.length, 'artifacts using unified enhancement function 🟡🟡🟡');
+      
+      // Log the store response before enhancement
+      console.log('[MCP-OUTPUT] STORE RESPONSE BEFORE ENHANCEMENT:');
+      console.log(JSON.stringify(storeResponse, null, 2));
+      
       storeResponse = messageService.enhanceResponseWithArtifacts(storeResponse, artifactsToAdd);
+      
+      // Log the store response after enhancement
+      console.log('[MCP-OUTPUT] STORE RESPONSE AFTER ENHANCEMENT:');
+      console.log(JSON.stringify(storeResponse, null, 2));
+      
       console.log('🟡🟡🟡 CHAT ROUTE: Enhancement complete, storeResponse now has', storeResponse.artifacts?.length || 0, 'artifacts 🟡🟡🟡');
     } else {
       console.log('🟡🟡🟡 CHAT ROUTE: No artifacts to add, skipping enhancement 🟡🟡🟡');

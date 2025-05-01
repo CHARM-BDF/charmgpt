@@ -75,7 +75,7 @@ export class LLMClient {
    * @param options Client configuration options
    */
   constructor(options: LLMClientOptions = {}) {
-    this.baseUrl = options.baseUrl || 'http://localhost:3000/api/internal/llm';
+    this.baseUrl = options.baseUrl || 'http://localhost:3001/api/internal/llm';
     this.timeout = options.timeout || 30000;
     this.authToken = options.authToken || process.env.MCP_AUTH_TOKEN || '';
     this.retries = options.retries || 3;
