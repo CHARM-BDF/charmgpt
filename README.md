@@ -31,7 +31,6 @@ The simplest way to set up all custom MCP servers is to use the provided bash sc
 
 ```bash
 # From the repository root
-chmod +x custom-mcp-servers/build-all-mcps.sh
 ./custom-mcp-servers/build-all-mcps.sh
 ```
 
