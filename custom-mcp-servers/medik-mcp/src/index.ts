@@ -688,6 +688,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     const formattedResult = await formattingPromise;
                     console.error(`MEDIK: Promise resolved successfully, got formatted result`);
                     
+                    // Filter the knowledge graph to remove nodes with only one connection
+                    if (formattedResult.artifacts && formattedResult.artifacts.length > 0) {
+                        const knowledgeGraphArtifact = formattedResult.artifacts.find(
+                            (a: any) => a.type === 'application/vnd.knowledge-graph'
+                        );
+                        
+                        if (knowledgeGraphArtifact && knowledgeGraphArtifact.content) {
+                            // Parse the knowledge graph content
+                            try {
+                                const graph = typeof knowledgeGraphArtifact.content === 'string' 
+                                    ? JSON.parse(knowledgeGraphArtifact.content) 
+                                    : knowledgeGraphArtifact.content;
+                                
+                                // Apply filtering to remove nodes with only one connection
+                                const filteredGraph = filterLowConnectivityNodes(graph, new Set([curie]));
+                                
+                                // Update the artifact content with the filtered graph
+                                knowledgeGraphArtifact.content = typeof knowledgeGraphArtifact.content === 'string'
+                                    ? JSON.stringify(filteredGraph)
+                                    : filteredGraph;
+                                
+                                console.error(`[medik-mcp] Filtered knowledge graph: ${filteredGraph.nodes.length} nodes, ${filteredGraph.links.length} links`);
+                            } catch (error) {
+                                console.error(`[medik-mcp] Error filtering knowledge graph:`, error);
+                                // If filtering fails, just use the original graph
+                            }
+                        }
+                    }
+                    
                     // Add metadata about the query success and node count
                     const metadata = {
                         querySuccess: true,
@@ -1073,6 +1102,35 @@ ${response.content}
                     // Wait for the graph formatting to complete
                     const graphResult = await pathwayGraphPromise;
                     
+                    // Filter the knowledge graph to remove nodes with only one connection
+                    if (graphResult.artifacts && graphResult.artifacts.length > 0) {
+                        const knowledgeGraphArtifact = graphResult.artifacts.find(
+                            (a: any) => a.type === 'application/vnd.knowledge-graph'
+                        );
+                        
+                        if (knowledgeGraphArtifact && knowledgeGraphArtifact.content) {
+                            // Parse the knowledge graph content
+                            try {
+                                const graph = typeof knowledgeGraphArtifact.content === 'string' 
+                                    ? JSON.parse(knowledgeGraphArtifact.content) 
+                                    : knowledgeGraphArtifact.content;
+                                
+                                // Apply filtering to remove nodes with only one connection
+                                const filteredGraph = filterLowConnectivityNodes(graph, startingNodeIds);
+                                
+                                // Update the artifact content with the filtered graph
+                                knowledgeGraphArtifact.content = typeof knowledgeGraphArtifact.content === 'string'
+                                    ? JSON.stringify(filteredGraph)
+                                    : filteredGraph;
+                                
+                                console.error(`[medik-mcp] [Pathfinder:${requestId}] Filtered knowledge graph: ${filteredGraph.nodes.length} nodes, ${filteredGraph.links.length} links`);
+                            } catch (filterError) {
+                                console.error(`[medik-mcp] [Pathfinder:${requestId}] Error filtering knowledge graph:`, filterError);
+                                // If filtering fails, just use the original graph
+                            }
+                        }
+                    }
+                    
                     // Combine the LLM analysis with the knowledge graph artifact
                     const combinedContent = [
                         {
@@ -1266,6 +1324,71 @@ Limit your analysis to 3-5 of the most relevant and well-established pathways.`;
 function generateUserPrompt(entity1: string, entity2: string): string {
   return `Identify the biological pathways that connect ${entity1} and ${entity2}. 
 For each pathway, briefly describe the key steps and mediators involved in the relationship.`;
+}
+
+/**
+ * Filter a knowledge graph to remove nodes with only one connection
+ * Preserves starting nodes regardless of connection count
+ * 
+ * @param graph The knowledge graph to filter
+ * @param startingNodeIds Set of node IDs that should always be preserved
+ * @returns The filtered knowledge graph
+ */
+function filterLowConnectivityNodes(graph: any, startingNodeIds: Set<string>): any {
+  // If the graph is not valid, return it as is
+  if (!graph || !graph.nodes || !graph.links || !Array.isArray(graph.nodes) || !Array.isArray(graph.links)) {
+    console.error(`[medik-mcp] Invalid graph structure for filtering: ${JSON.stringify(graph)}`);
+    return graph;
+  }
+
+  console.log(`[medik-mcp] Filtering knowledge graph: ${graph.nodes.length} nodes, ${graph.links.length} links`);
+  
+  // Count connections for each node
+  const connectionCounts = new Map<string, number>();
+  
+  // Initialize all nodes with 0 connections
+  graph.nodes.forEach((node: any) => {
+    connectionCounts.set(node.id, 0);
+  });
+  
+  // Count connections from links
+  graph.links.forEach((link: any) => {
+    connectionCounts.set(link.source, (connectionCounts.get(link.source) || 0) + 1);
+    connectionCounts.set(link.target, (connectionCounts.get(link.target) || 0) + 1);
+  });
+  
+  // Determine which nodes to keep (starting nodes or those with >1 connection)
+  const nodesToKeep = new Set<string>();
+  
+  connectionCounts.forEach((count, nodeId) => {
+    // Keep starting nodes regardless of connection count
+    if (startingNodeIds.has(nodeId)) {
+      nodesToKeep.add(nodeId);
+      console.log(`[medik-mcp] Keeping starting node: ${nodeId}`);
+    } 
+    // Keep nodes with more than 1 connection
+    else if (count > 1) {
+      nodesToKeep.add(nodeId);
+    }
+  });
+  
+  console.log(`[medik-mcp] Nodes to keep: ${nodesToKeep.size} out of ${graph.nodes.length}`);
+  
+  // Filter nodes
+  const filteredNodes = graph.nodes.filter((node: any) => nodesToKeep.has(node.id));
+  
+  // Filter links (only keep links where both source and target are kept)
+  const filteredLinks = graph.links.filter((link: any) => 
+    nodesToKeep.has(link.source) && nodesToKeep.has(link.target)
+  );
+  
+  console.log(`[medik-mcp] Filtered graph: ${filteredNodes.length} nodes, ${filteredLinks.length} links`);
+  
+  // Return new graph object
+  return {
+    nodes: filteredNodes,
+    links: filteredLinks
+  };
 }
 
 // Start the server

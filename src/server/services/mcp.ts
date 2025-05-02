@@ -301,17 +301,42 @@ export class MCPService {
     
     console.log('\n=== Tool Selection Process ===');
     console.log('Checking available servers and their tools...');
+    
+    // Enhanced debugging for blockedServers
     console.log('Blocked servers:', blockedServers);
+    console.log('Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
+    console.log('blockedServers.length:', blockedServers.length);
+    
+    if (Array.isArray(blockedServers)) {
+      console.log('Individual blocked servers:');
+      blockedServers.forEach((server, index) => {
+        console.log(`  [${index}] "${server}" (type: ${typeof server})`);
+      });
+    } else {
+      console.error('⚠️ blockedServers is not an array! This will cause filtering to fail.');
+    }
     
     this.toolNameMapping.clear();
     
+    console.log('\n=== Processing Individual Servers ===');
     for (const [serverName, client] of this.mcpClients.entries()) {
       try {
-        console.log(`\nServer: ${serverName}`);
-        console.log(`Status: ${blockedServers.includes(serverName) ? 'BLOCKED' : 'AVAILABLE'}`);
+        console.log(`\nServer: "${serverName}"`);
+        const isBlocked = Array.isArray(blockedServers) && 
+                          blockedServers.some(s => s === serverName);
+        console.log(`Status check: includes("${serverName}") = ${isBlocked}`);
+        console.log(`Final Status: ${isBlocked ? 'BLOCKED' : 'AVAILABLE'}`);
         
-        if (blockedServers.includes(serverName)) {
-          console.log('Skipping blocked server');
+        // Enhanced debugging of the includes check
+        if (Array.isArray(blockedServers) && blockedServers.length > 0) {
+          console.log('Checking equality with each blocked server:');
+          blockedServers.forEach((s, i) => {
+            console.log(`  [${i}] "${s}" === "${serverName}" ? ${s === serverName}`);
+          });
+        }
+        
+        if (isBlocked) {
+          console.log(`Skipping blocked server: ${serverName}`);
           continue;
         }
 
