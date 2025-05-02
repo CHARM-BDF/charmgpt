@@ -522,17 +522,48 @@ export const useChatStore = create<ChatState>()(
               }));
 
             sendStatusUpdate('Connecting to MCP server...');
+            
+            // Add extensive debug logging
+            const blockedServersToSend = useMCPStore.getState().getBlockedServers();
+            console.log('\n=== DEBUG: SENDING BLOCKED SERVERS TO API ===');
+            console.log('blockedServers value being sent in request:', blockedServersToSend);
+            console.log('blockedServers JSON stringified:', JSON.stringify(blockedServersToSend));
+            console.log('Type of blockedServers:', Array.isArray(blockedServersToSend) ? 'Array' : typeof blockedServersToSend);
+            console.log('Number of blocked servers:', blockedServersToSend.length);
+            
+            // Check if getBlockedServers actually works
+            const mcpStore = useMCPStore.getState();
+            console.log('Direct check of MCP store:');
+            if (mcpStore.servers && Array.isArray(mcpStore.servers)) {
+              const blockedServersDirectCheck = mcpStore.servers
+                .filter(server => server.status === 'blocked')
+                .map(server => server.name);
+              console.log('- Blocked servers by direct check:', blockedServersDirectCheck);
+              console.log('- Number of blocked servers by direct check:', blockedServersDirectCheck.length);
+              
+              if (JSON.stringify(blockedServersToSend) !== JSON.stringify(blockedServersDirectCheck)) {
+                console.warn('⚠️ DISCREPANCY DETECTED between getBlockedServers() and direct check!');
+              }
+            }
+            
+            // Check stringified request body
+            const requestBody = JSON.stringify({
+              message: content,
+              history: messageHistory,
+              blockedServers: blockedServersToSend,
+              pinnedGraph: pinnedGraph
+            });
+            
+            console.log('Full request body stringified:', requestBody);
+            console.log('Parsing request body back:', JSON.parse(requestBody).blockedServers);
+            console.log('=== END DEBUG ===\n');
+            
             const response = await fetch(apiUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                message: content,
-                history: messageHistory,
-                blockedServers: useMCPStore.getState().getBlockedServers(),
-                pinnedGraph: pinnedGraph
-              })
+              body: requestBody
             });
 
             if (!response.ok) {

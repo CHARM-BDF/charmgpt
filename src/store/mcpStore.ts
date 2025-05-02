@@ -34,18 +34,37 @@ export const useMCPStore = create<MCPStoreState>()(
             fetchStatus: async () => {
                 set({ isLoading: true });
                 try {
+                    // Add debug logging for localStorage
+                    console.log('\n=== DEBUG: FETCH STATUS START ===');
+                    console.log('localStorage keys:', Object.keys(localStorage).filter(key => key.startsWith('server-')));
+                    
+                    // Log persisted state
+                    const persistedState = localStorage.getItem('mcp-storage');
+                    console.log('Persisted mcp-storage:', persistedState ? JSON.parse(persistedState) : 'None');
+                    
                     const response = await fetch('/api/server-status');
                     const data = await response.json();
                     
                     // Convert server data to include status
-                    const updatedServers = data.servers.map((server: MCPServerState) => ({
-                        ...server,
-                        // If server is not running, it's inactive
-                        // If it's running, check localStorage for blocked status
-                        status: (!server.isRunning ? 'inactive' : 
-                                localStorage.getItem(`server-${server.name}-blocked`) === 'true' ? 
-                                'blocked' : 'active') as ServerStatus
-                    }));
+                    const updatedServers = data.servers.map((server: MCPServerState) => {
+                        // Get blocked status from localStorage
+                        const isBlocked = localStorage.getItem(`server-${server.name}-blocked`) === 'true';
+                        const status = (!server.isRunning ? 'inactive' : 
+                                isBlocked ? 'blocked' : 'active') as ServerStatus;
+                        
+                        // Add debug logging for each server
+                        console.log(`Server "${server.name}": isRunning=${server.isRunning}, isBlocked=${isBlocked}, status=${status}`);
+                        console.log(`localStorage key "server-${server.name}-blocked" = ${localStorage.getItem(`server-${server.name}-blocked`)}`);
+                        
+                        return {
+                            ...server,
+                            status
+                        };
+                    });
+                    
+                    console.log('Total servers:', updatedServers.length);
+                    console.log('Blocked servers:', updatedServers.filter((s: MCPServerState) => s.status === 'blocked').map((s: MCPServerState) => s.name));
+                    console.log('=== DEBUG: FETCH STATUS END ===\n');
                     
                     set({ 
                         servers: updatedServers,
@@ -93,17 +112,38 @@ export const useMCPStore = create<MCPStoreState>()(
             },
             getBlockedServers: () => {
                 const state = get();
+                
+                // Add enhanced debug logging
+                console.log('\n=== DEBUG: GET BLOCKED SERVERS DETAILED ===');
+                console.log('Current server details:');
+                state.servers.forEach(server => {
+                    console.log(`Server "${server.name}":
+  - isRunning: ${server.isRunning}
+  - status: ${server.status}
+  - localStorage value: ${localStorage.getItem(`server-${server.name}-blocked`)}
+  - Will be included in blocked list: ${server.status === 'blocked' ? 'YES' : 'NO'}`);
+                });
+                
                 const blockedServers = state.servers
                     .filter(server => server.status === 'blocked')
                     .map(server => server.name);
                 
-                // Add debug logging
-                console.log('\n=== GET BLOCKED SERVERS DEBUG ===');
-                console.log('Current server states:');
-                state.servers.forEach(server => {
-                    console.log(`${server.name}: ${server.status} (Running: ${server.isRunning})`);
-                });
                 console.log('Returning blocked servers:', blockedServers);
+                console.log('Raw localStorage keys for server blocks:');
+                
+                // List all localStorage entries for server blocks
+                const localStorageBlocked = Object.keys(localStorage)
+                    .filter(key => key.startsWith('server-') && key.endsWith('-blocked') && localStorage.getItem(key) === 'true')
+                    .map(key => key.replace('server-', '').replace('-blocked', ''));
+                    
+                console.log('Servers blocked according to localStorage:', localStorageBlocked);
+                
+                // Check for discrepancies
+                if (JSON.stringify(blockedServers.sort()) !== JSON.stringify(localStorageBlocked.sort())) {
+                    console.warn('⚠️ DISCREPANCY DETECTED between store state and localStorage!');
+                    console.warn('This might explain why blocked servers are not being properly reported.');
+                }
+                
                 console.log('================================\n');
                 
                 return blockedServers;

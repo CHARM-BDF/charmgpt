@@ -87,11 +87,25 @@ router.post('/', async (req: Request<{}, {}, {
     loggingService.logRequest(req);
 
     const { message, history, blockedServers = [], pinnedGraph } = req.body;
-    // Add debug logging for blocked servers
-    console.log('\n=== BLOCKED SERVERS DEBUG ===');
-    console.log('Received blocked servers:', blockedServers);
+    // Enhanced debug logging for blocked servers
+    console.log('\n=== ENHANCED BLOCKED SERVERS DEBUG ===');
+    console.log('Raw request body:', JSON.stringify(req.body).substring(0, 500) + '...');
+    console.log('Received blockedServers:', blockedServers);
+    console.log('Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
     console.log('Number of blocked servers:', blockedServers.length);
-    console.log('================================\n');
+    console.log('String representation:', String(blockedServers));
+    console.log('JSON.stringify result:', JSON.stringify(blockedServers));
+    
+    // Check if there's any issue with the blockedServers array
+    if (Array.isArray(blockedServers)) {
+      console.log('Individual server names:');
+      blockedServers.forEach((server, index) => {
+        console.log(`  [${index}] ${server} (type: ${typeof server})`);
+      });
+    } else {
+      console.error('⚠️ blockedServers is not an array! This will cause filtering to fail.');
+    }
+    console.log('===========================================\n');
 
     let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
