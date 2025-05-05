@@ -400,6 +400,39 @@ export const useChatStore = create<ChatState>()(
             return;
           }
           
+          // Create a new assistant message immediately to store status updates
+          const assistantMessageId = crypto.randomUUID();
+          const assistantMessage = {
+            id: assistantMessageId,
+            role: 'assistant' as const,
+            content: '',
+            timestamp: new Date(),
+            statusUpdates: [] as StatusUpdate[],
+            statusUpdatesCollapsed: false
+          };
+          
+          // Add the assistant message to the conversation immediately
+          set(state => {
+            const updatedConversation = {
+              ...state.conversations[state.currentConversationId!],
+              messages: [...state.conversations[state.currentConversationId!].messages, assistantMessage],
+              metadata: {
+                ...state.conversations[state.currentConversationId!].metadata,
+                lastUpdated: new Date(),
+                messageCount: state.conversations[state.currentConversationId!].metadata.messageCount + 1
+              }
+            };
+            
+            return {
+              messages: updatedConversation.messages,
+              conversations: {
+                ...state.conversations,
+                [state.currentConversationId!]: updatedConversation
+              },
+              streamingMessageId: assistantMessageId
+            };
+          });
+          
           // Block the graph name list from being sent to the MCP server
           const blockedServers = get().blockedServers || [];
           
