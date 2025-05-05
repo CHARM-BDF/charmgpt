@@ -57,6 +57,8 @@ export class LLMService implements LLMServiceInterface {
    * Initialize provider based on the current options
    */
   private initializeProvider(): void {
+    console.log(`🔄 LLMService: Initializing provider ${this.options.provider.toUpperCase()}`);
+    
     if (this.options.provider === 'anthropic') {
       this.provider = new AnthropicProvider({
         model: this.options.model
@@ -81,28 +83,24 @@ export class LLMService implements LLMServiceInterface {
    * @param options New provider options
    */
   setProvider(options: LLMServiceOptions): void {
-    console.log(`LLMService: Changing provider from ${this.options.provider} to ${options.provider}`);
+    if (!options.provider) {
+      console.error('❌ LLMService: No provider specified in options');
+      return;
+    }
     
-    // Store original options
-    const originalOptions = this.options;
+    console.log(`🔀 LLMService: Switching to provider ${options.provider.toUpperCase()}`);
+    
+    // Update options with the new provider settings
+    this.options = {
+      ...this.options,
+      ...options
+    };
     
     try {
-      // Update options and initialize the new provider
-      this.options = {
-        ...this.options,
-        ...options
-      };
-      
-      // Initialize the new provider
       this.initializeProvider();
-      
-      console.log(`LLMService: Provider changed to ${this.options.provider}, model ${this.options.model}`);
+      console.log(`✅ LLMService: Provider ${this.options.provider.toUpperCase()} initialized successfully`);
     } catch (error) {
-      // Restore original options and provider if there's an error
-      console.error(`LLMService: Error changing provider:`, error);
-      this.options = originalOptions;
-      this.initializeProvider();
-      throw error;
+      console.error(`❌ LLMService: Error in setProvider for ${this.options.provider}:`, error);
     }
   }
   
