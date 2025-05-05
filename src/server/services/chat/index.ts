@@ -7,6 +7,8 @@
 
 import { LLMService } from '../llm';
 import { MCPService, AnthropicTool } from '../mcp';
+import { MessageService, StoreFormat } from '../message';
+import { ArtifactService } from '../artifact';
 import { ReadableStream } from 'stream/web';
 import { getToolCallAdapter, ToolCall, ToolResult } from './adapters';
 
@@ -28,15 +30,28 @@ export class ChatService {
   private llmService: LLMService;
   /** MCP service for tool execution */
   private mcpService?: MCPService;
+  /** Message service for response formatting */
+  private messageService: MessageService;
+  /** Artifact service for artifact processing */
+  private artifactService: ArtifactService;
   
   /**
    * Create a new Chat Service
    * @param llmService The LLM service to use for provider interactions
    * @param mcpService Optional MCP service for tool execution
+   * @param messageService Optional message service for response formatting
+   * @param artifactService Optional artifact service for artifact processing
    */
-  constructor(llmService: LLMService, mcpService?: MCPService) {
+  constructor(
+    llmService: LLMService, 
+    mcpService?: MCPService,
+    messageService?: MessageService,
+    artifactService?: ArtifactService
+  ) {
     this.llmService = llmService;
     this.mcpService = mcpService;
+    this.messageService = messageService || new MessageService();
+    this.artifactService = artifactService || new ArtifactService();
     console.log('ChatService: Initialization complete');
   }
   
@@ -437,5 +452,147 @@ export class ChatService {
    */
   getCurrentProvider(): string {
     return this.llmService.getProvider();
+  }
+  
+  /**
+   * Process a chat with full artifact support
+   * This combines all the previous functionality with artifact processing
+   * 
+   * @param message The user message
+   * @param history Previous chat history
+   * @param options Chat options including model provider, blocked servers, and pinned artifacts
+   * @param statusHandler Optional callback for status updates
+   * @returns A readable stream of the final response with artifacts
+   */
+  async processChatWithArtifacts(
+    message: string,
+    history: ChatMessage[],
+    options: {
+      modelProvider: ModelType;
+      blockedServers?: string[];
+      pinnedGraph?: any;
+      temperature?: number;
+      maxTokens?: number;
+      pinnedArtifacts?: Array<{
+        id: string;
+        type: string;
+        title: string;
+        content: string;
+      }>;
+    },
+    statusHandler?: (status: string) => void
+  ): Promise<ReadableStream> {
+    // Ensure we have an MCP service for tool execution
+    if (!this.mcpService) {
+      throw new Error('MCPService not available. Tool execution is not possible.');
+    }
+    
+    // Notify status if handler provided
+    statusHandler?.('Initializing chat with artifacts...');
+    
+    // Set the LLM provider
+    this.llmService.setProvider({
+      provider: options.modelProvider as any,
+      temperature: options.temperature || 0.2,
+      maxTokens: options.maxTokens || 4000
+    });
+    
+    // Run sequential thinking to prepare the response
+    statusHandler?.('Starting sequential thinking process...');
+    const processedMessages = await this.runSequentialThinking(
+      message,
+      history,
+      [],  // We'll retrieve the MCP tools inside the method
+      [],  // We'll format the tools inside the method
+      options,
+      statusHandler
+    );
+    
+    // Create a base response to enhance with artifacts
+    statusHandler?.('Preparing final response with artifacts...');
+    const baseResponse: StoreFormat = {
+      thinking: '',
+      conversation: message,
+      artifacts: []
+    };
+    
+    // Collect artifacts
+    const collectedArtifacts = [];
+    
+    // Add pinned graph if provided
+    if (options.pinnedGraph) {
+      statusHandler?.('Adding pinned knowledge graph...');
+      collectedArtifacts.push({
+        type: 'application/vnd.knowledge-graph',
+        title: options.pinnedGraph.title || 'Knowledge Graph',
+        content: options.pinnedGraph.content
+      });
+    }
+    
+    // Add any other pinned artifacts
+    if (options.pinnedArtifacts && options.pinnedArtifacts.length > 0) {
+      statusHandler?.(`Adding ${options.pinnedArtifacts.length} pinned artifacts...`);
+      for (const artifact of options.pinnedArtifacts) {
+        collectedArtifacts.push({
+          type: artifact.type,
+          title: artifact.title,
+          content: artifact.content
+        });
+      }
+    }
+    
+    // Enhance the response with collected artifacts
+    const enhancedResponse = this.messageService.enhanceResponseWithArtifacts(
+      baseResponse,
+      collectedArtifacts
+    );
+    
+    // For now, use the placeholder streaming method
+    statusHandler?.('Streaming final response...');
+    return this.streamEnhancedResponse(enhancedResponse);
+  }
+  
+  /**
+   * Stream an enhanced response to the client
+   * This is a temporary implementation that will be replaced with actual streaming
+   * 
+   * @param response The enhanced response to stream
+   * @returns A readable stream of the response
+   */
+  private streamEnhancedResponse(response: StoreFormat): ReadableStream {
+    // In a real implementation, we would stream the response chunks appropriately
+    return new ReadableStream({
+      start(controller) {
+        // Send the main content
+        controller.enqueue(JSON.stringify({
+          type: 'content',
+          content: response.conversation,
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString()
+        }) + '\n');
+        
+        // Send artifacts if available
+        if (response.artifacts && response.artifacts.length > 0) {
+          for (const artifact of response.artifacts) {
+            controller.enqueue(JSON.stringify({
+              type: 'artifact',
+              artifact: {
+                id: artifact.id,
+                type: artifact.type,
+                title: artifact.title,
+                content: artifact.content,
+                position: artifact.position,
+                language: artifact.language
+              },
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString()
+            }) + '\n');
+          }
+        }
+        
+        // Close the stream to simulate completion
+        controller.close();
+      }
+    });
   }
 } 

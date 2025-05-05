@@ -8,6 +8,7 @@ import chatRouter from './routes/chat';
 import chatBasicRouter from './routes/chat-basic';
 import chatToolsRouter from './routes/chat-tools';
 import chatSequentialRouter from './routes/chat-sequential';
+import chatArtifactsRouter from './routes/chat-artifacts';
 import ollamaRouter from './routes/ollama_mcp';
 import serverStatusRouter from './routes/server-status';
 import storageRouter from './routes/storage';
@@ -16,6 +17,8 @@ import { MCPService, MCPLogMessage } from './services/mcp';
 import { LoggingService } from './services/logging';
 import { LLMService } from './services/llm';
 import { ChatService } from './services/chat';
+import { MessageService } from './services/message';
+import { ArtifactService } from './services/artifact';
 import { randomUUID } from 'crypto';
 
 // ES Module dirname equivalent
@@ -31,7 +34,14 @@ const port = 3001; // Explicitly set to 3001
 const mcpService = new MCPService();
 const loggingService = new LoggingService();
 const llmService = new LLMService(); // Initialize LLM Service
-const chatService = new ChatService(llmService, mcpService); // Initialize Chat Service with LLM Service and MCP Service
+const messageService = new MessageService(); // Initialize Message Service
+const artifactService = new ArtifactService(); // Initialize Artifact Service
+const chatService = new ChatService(
+  llmService, 
+  mcpService, 
+  messageService, 
+  artifactService
+); // Initialize Chat Service with all dependencies
 
 // Initialize logging directory
 const logDir = path.join(process.cwd(), 'logs');
@@ -52,6 +62,8 @@ console.log(`Log directory: ${logDir}`);
 app.locals.mcpService = mcpService;
 app.locals.loggingService = loggingService;
 app.locals.llmService = llmService; // Add LLM Service to app locals
+app.locals.messageService = messageService; // Add Message Service to app locals
+app.locals.artifactService = artifactService; // Add Artifact Service to app locals
 app.locals.chatService = chatService; // Add Chat Service to app locals
 
 // Enhanced debug log
@@ -129,6 +141,7 @@ app.use('/api/chat', chatRouter);
 app.use('/api/chat-basic', chatBasicRouter); // Basic chat route without tools
 app.use('/api/chat-tools', chatToolsRouter); // Chat route with tools support
 app.use('/api/chat-sequential', chatSequentialRouter); // Chat route with sequential thinking
+app.use('/api/chat-artifacts', chatArtifactsRouter); // Chat route with artifact processing
 app.use('/api/ollama', ollamaRouter);
 app.use('/api/server-status', serverStatusRouter);
 app.use('/api/storage', storageRouter);
@@ -157,6 +170,7 @@ app.listen(port, () => {
   console.log(`Basic Chat Service running at http://localhost:${port}/api/chat-basic`);
   console.log(`Chat with Tools running at http://localhost:${port}/api/chat-tools`);
   console.log(`Chat with Sequential Thinking running at http://localhost:${port}/api/chat-sequential`);
+  console.log(`Chat with Artifacts running at http://localhost:${port}/api/chat-artifacts`);
   
   // Send a test log message after a short delay
   // setTimeout(() => {

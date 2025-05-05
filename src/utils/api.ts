@@ -17,6 +17,10 @@ export const getApiUrl = (endpoint: string): string => {
  */
 export const API_ENDPOINTS = {
   CHAT: '/chat',
+  CHAT_BASIC: '/chat-basic',
+  CHAT_TOOLS: '/chat-tools',
+  CHAT_SEQUENTIAL: '/chat-sequential',
+  CHAT_ARTIFACTS: '/chat-artifacts',
   OLLAMA: '/ollama',
   // Add new endpoints here as they are created
 } as const; 
