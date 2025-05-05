@@ -81,33 +81,67 @@ export class OpenAIResponseFormatterAdapter implements ResponseFormatterAdapter 
    * Extract formatter output from OpenAI response
    */
   extractFormatterOutput(response: any): FormatterOutput {
+    console.log('🔍 DEBUG-OPENAI-FORMATTER: Extracting formatter output from OpenAI response');
+    
+    // Log the response structure for debugging
+    console.log('🔍 DEBUG-OPENAI-FORMATTER: Response structure:', JSON.stringify({
+      hasChoices: !!response.choices,
+      choicesLength: response.choices?.length || 0,
+      hasMessage: !!response.choices?.[0]?.message,
+      hasToolCalls: !!response.choices?.[0]?.message?.tool_calls,
+      toolCallsLength: response.choices?.[0]?.message?.tool_calls?.length || 0
+    }));
+    
     // Check if response has tool calls
     if (!response.choices || 
         !response.choices[0]?.message?.tool_calls || 
         response.choices[0].message.tool_calls.length === 0) {
+      console.error('❌ DEBUG-OPENAI-FORMATTER: Missing tool calls in response');
+      
+      // Log the content if there is no tool call
+      if (response.choices?.[0]?.message?.content) {
+        console.log('🔍 DEBUG-OPENAI-FORMATTER: Response contains content instead of tool calls:', 
+          response.choices[0].message.content.substring(0, 200) + '...');
+      }
+      
       throw new Error('Expected response_formatter tool call from OpenAI');
     }
     
     // Get first tool call
     const toolCall = response.choices[0].message.tool_calls[0];
+    console.log(`🔍 DEBUG-OPENAI-FORMATTER: Found tool call: ${toolCall.function.name}`);
     
     // Verify it's the response_formatter tool
     if (toolCall.function.name !== "response_formatter") {
+      console.error(`❌ DEBUG-OPENAI-FORMATTER: Wrong tool call: ${toolCall.function.name}`);
       throw new Error(`Expected response_formatter tool, got ${toolCall.function.name}`);
     }
     
     try {
+      // Log the raw arguments
+      console.log('🔍 DEBUG-OPENAI-FORMATTER: Raw arguments:', toolCall.function.arguments.substring(0, 200) + '...');
+      
       // Parse the arguments JSON string
       const formatterOutput = JSON.parse(toolCall.function.arguments);
       
+      // Log the parsed structure
+      console.log('🔍 DEBUG-OPENAI-FORMATTER: Parsed formatter output structure:', JSON.stringify({
+        hasThinking: !!formatterOutput.thinking,
+        hasConversation: !!formatterOutput.conversation,
+        isConversationArray: Array.isArray(formatterOutput.conversation),
+        conversationLength: Array.isArray(formatterOutput.conversation) ? formatterOutput.conversation.length : 0
+      }));
+      
       // Validate basic structure
       if (!formatterOutput.conversation || !Array.isArray(formatterOutput.conversation)) {
+        console.error('❌ DEBUG-OPENAI-FORMATTER: Invalid formatter output structure');
         throw new Error('Invalid formatter output structure: missing conversation array');
       }
       
+      console.log('✅ DEBUG-OPENAI-FORMATTER: Successfully extracted formatter output');
       return formatterOutput;
     } catch (error) {
-      console.error('Error parsing OpenAI formatter output:', error);
+      console.error('❌ DEBUG-OPENAI-FORMATTER: Error parsing OpenAI formatter output:', error);
       throw new Error(`Failed to parse OpenAI formatter output: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -116,22 +150,30 @@ export class OpenAIResponseFormatterAdapter implements ResponseFormatterAdapter 
    * Convert formatter output to store format
    */
   convertToStoreFormat(formatterOutput: FormatterOutput): StoreFormat {
-    const conversation: string[] = [];
+    console.log(`🔍 DEBUG-OPENAI-FORMATTER: Converting formatter output to store format`);
+    
+    // Process conversation items into the expected format
+    const processedConversation: Array<{type: string; content?: string; artifact?: any}> = [];
     const artifacts: Array<any> = [];
     let position = 0;
     
     // Process conversation items
     if (formatterOutput.conversation && Array.isArray(formatterOutput.conversation)) {
+      console.log(`🔍 DEBUG-OPENAI-FORMATTER: Processing ${formatterOutput.conversation.length} conversation items`);
+      
       formatterOutput.conversation.forEach(item => {
         if (item.type === 'text' && item.content) {
-          // Add text content to conversation
-          conversation.push(item.content);
+          // Add text content to processed conversation
+          processedConversation.push({
+            type: 'text',
+            content: item.content
+          });
         } 
         else if (item.type === 'artifact' && item.artifact) {
           // Generate unique ID for artifact
           const uniqueId = crypto.randomUUID();
           
-          // Add artifact
+          // Add artifact to the artifacts array
           artifacts.push({
             id: uniqueId,
             artifactId: uniqueId,
@@ -142,15 +184,27 @@ export class OpenAIResponseFormatterAdapter implements ResponseFormatterAdapter 
             language: item.artifact.language
           });
           
-          // Add artifact button to conversation
-          conversation.push(this.createArtifactButton(uniqueId, item.artifact.type, item.artifact.title));
+          // Add artifact reference to conversation
+          processedConversation.push({
+            type: 'artifact',
+            artifact: {
+              id: uniqueId,
+              type: item.artifact.type,
+              title: item.artifact.title,
+              content: item.artifact.content,
+              language: item.artifact.language
+            }
+          });
         }
       });
     }
     
+    console.log(`🔍 DEBUG-OPENAI-FORMATTER: Processed ${processedConversation.length} conversation items and ${artifacts.length} artifacts`);
+    
+    // Return the store format with array-structured conversation items
     return {
       thinking: formatterOutput.thinking,
-      conversation: conversation.join('\n\n'),
+      conversation: processedConversation,
       artifacts: artifacts.length > 0 ? artifacts : undefined
     };
   }

@@ -137,6 +137,11 @@ export class ChatService {
       toolChoice = { name: 'response_formatter' };
     }
     
+    // Log what we're sending to LLMService
+    console.log(`🔍 DEBUG-CHAT-SERVICE: Provider: ${options.modelProvider}`);
+    console.log(`🔍 DEBUG-CHAT-SERVICE: Sending toolChoice:`, JSON.stringify(toolChoice));
+    console.log(`🔍 DEBUG-CHAT-SERVICE: Formatter tool definition:`, JSON.stringify(formatterToolDefinition).substring(0, 100) + '...');
+    
     // Get the LLM response with formatter
     statusHandler?.(`Getting formatted response from ${options.modelProvider}...`);
     const llmResponse = await this.llmService.query({
@@ -144,10 +149,16 @@ export class ChatService {
       options: {
         temperature: options.temperature || 0.2,
         maxTokens: options.maxTokens || 4000,
-        toolChoice: toolChoice  // Add toolChoice to options
-      },
+        toolChoice: toolChoice as any,  // Use type assertion to bypass type checking
+        tools: [formatterToolDefinition]  // Add tools parameter with formatter tool
+      } as any, // Cast the entire options object to bypass type checking
       systemPrompt: this.buildSystemPromptWithContext(formattedHistory, [formatterToolDefinition], toolChoice)
     });
+    
+    // Log the response
+    console.log(`🔍 DEBUG-CHAT-SERVICE: Received raw response from LLM service`);
+    console.log(`🔍 DEBUG-CHAT-SERVICE: Response has tool calls:`, 
+      llmResponse.rawResponse?.choices?.[0]?.message?.tool_calls ? 'Yes' : 'No');
     
     // Extract the formatter output using the adapter
     statusHandler?.('Processing formatter output...');
@@ -195,6 +206,9 @@ export class ChatService {
     // Add tools if provided
     if (tools.length > 0) {
       systemPrompt += '# Available Tools\n\n';
+      systemPrompt += 'You have access to the following tools. USE THESE TOOLS WHEN APPROPRIATE to provide the best response.\n';
+      systemPrompt += 'You should prefer using tools over generating fictional information. For example, if asked about specific data that requires a tool, use the tool rather than making up an answer.\n\n';
+      
       tools.forEach(tool => {
         systemPrompt += `Tool: ${tool.name}\n`;
         systemPrompt += `Description: ${tool.description || 'No description provided'}\n\n`;
@@ -202,8 +216,7 @@ export class ChatService {
       
       // Add tool choice if specified
       if (toolChoice) {
-        const toolName = toolChoice.name;
-        systemPrompt += `# Required Action\n\nYou MUST use the ${toolName} tool to format your response. Do not respond directly with text, only use the ${toolName} tool.\n`;
+        systemPrompt += `# Required Action\n\nYou MUST use the ${toolChoice.name} tool to format your response. Do not respond directly with text, only use the ${toolChoice.name} tool.\n`;
       }
     }
     
@@ -465,12 +478,16 @@ export class ChatService {
       );
       
       // Get response from the LLM with tools
+      console.log(`🔍 DEBUG-SEQUENTIAL-THINKING: Sending query to LLM at line ${new Error().stack?.split('\n')[1]?.match(/(\d+):\d+\)$/)?.[1] || 'unknown'}`);
       const response = await this.llmService.query({
         prompt: latestMessage,
         options: {
           temperature: options.temperature || 0.2,
-          maxTokens: options.maxTokens || 4000
-        },
+          maxTokens: options.maxTokens || 4000,
+          // Add tools and toolChoice for OpenAI - using 'auto' encourages the model to use tools when appropriate
+          tools: providerTools,
+          toolChoice: modelProvider === 'openai' ? 'auto' : undefined
+        } as any, // Use type assertion to bypass type checking
         systemPrompt: this.buildSystemPromptWithContext(formattedHistory, providerTools)
       });
       
@@ -783,7 +800,7 @@ export class ChatService {
       message,
       history,
       [],  // We'll retrieve the MCP tools inside the method
-      [],  // We'll format the tools inside the method
+      options.modelProvider,  // Use the correct model provider from options
       options,
       statusHandler
     );
