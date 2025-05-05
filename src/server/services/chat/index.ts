@@ -90,7 +90,7 @@ export class ChatService {
     
     // Get the current provider name for logging
     const providerName = this.llmService.getProvider();
-    console.log(`ChatService: Using provider ${providerName}`);
+    console.log(`📣 ChatService: Using provider ${providerName.toUpperCase()}`);
     
     // Basic message sending without tools or sequential thinking
     statusHandler?.(`Getting response from ${options.modelProvider}...`);
@@ -381,13 +381,29 @@ export class ChatService {
     message: string,
     history: any[]
   ): Promise<ReadableStream> {
-    // For now, we'll use a simple ReadableStream implementation
-    // In the real implementation, this would call the provider's streaming API
+    // Get the current provider to generate a provider-specific response
+    const provider = this.llmService.getProvider();
+    
+    // Create a model-specific response for demonstration purposes
+    const modelResponses = {
+      'anthropic': `I'm Claude, an AI assistant by Anthropic, and I'm responding to your message: "${message}". In a full implementation, this would be a streaming response from the Claude API.`,
+      'openai': `This is ChatGPT responding to your message: "${message}". In a complete implementation, this would be streaming from the OpenAI API.`,
+      'gemini': `Gemini by Google here. You said: "${message}". In the final implementation, this would be a streaming response from the Gemini API.`,
+      'ollama': `Ollama model responding to: "${message}". When fully implemented, this would stream from your local Ollama instance.`
+    };
+    
+    const responseContent = modelResponses[provider as keyof typeof modelResponses] || 
+      `Response from ${provider} to your message: "${message}"`;
+    
+    // Log which provider generated this response
+    console.log(`📝 [CHAT-COMPLETION] Generating response for provider: ${provider.toUpperCase()}`);
+    
+    // Create a readable stream with the model-specific response
     return new ReadableStream({
       start(controller) {
         controller.enqueue(JSON.stringify({
           type: 'content',
-          content: `This is a placeholder response from the chat service. The real implementation will connect to the provider's API.`,
+          content: responseContent,
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString()
         }) + '\n');
@@ -407,13 +423,28 @@ export class ChatService {
     history: any[],
     tools: any
   ): Promise<ReadableStream> {
-    // For now, we'll use a simple ReadableStream implementation
-    // In the real implementation, this would call the provider's streaming API with tools
+    // Get the current provider to generate a provider-specific response
+    const provider = this.llmService.getProvider();
+    
+    // Create a model-specific response for demonstration purposes
+    const modelResponses = {
+      'anthropic': `I'm Claude, and I see you're asking about: "${message}". I have access to ${Array.isArray(tools) ? tools.length : 'several'} tools to help you with this.`,
+      'openai': `This is ChatGPT. You asked: "${message}". I have access to tools that can help me address your query more effectively.`,
+      'gemini': `Gemini here. Regarding your message: "${message}", I can use various tools to provide a more helpful response.`,
+      'ollama': `Ollama responding to: "${message}". Tool usage is limited but I'll do my best to help.`
+    };
+    
+    const responseContent = modelResponses[provider as keyof typeof modelResponses] || 
+      `Response from ${provider} to your message: "${message}" with tools support`;
+    
+    // Log which provider generated this response
+    console.log(`🛠️ [CHAT-WITH-TOOLS] Generating tooled response for provider: ${provider.toUpperCase()}`);
+    
     return new ReadableStream({
       start(controller) {
         controller.enqueue(JSON.stringify({
           type: 'content',
-          content: `This is a placeholder response from a tool-enabled chat. Tools available: ${JSON.stringify(tools).substring(0, 100)}...`,
+          content: responseContent,
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString()
         }) + '\n');
@@ -508,11 +539,25 @@ export class ChatService {
       statusHandler
     );
     
+    // Get provider-specific response
+    const provider = this.llmService.getProvider();
+    
+    // Create model-specific responses
+    const modelResponses = {
+      'anthropic': `I'm Claude by Anthropic. You asked: "${message}"\n\nHere's my response after considering your question carefully.`,
+      'openai': `As ChatGPT, I've analyzed your message: "${message}"\n\nHere's what I've found...`,
+      'gemini': `Gemini here. Regarding your inquiry: "${message}"\n\nI can provide the following information...`,
+      'ollama': `Ollama model response to: "${message}"\n\nBased on my analysis...`
+    };
+    
+    const responseContent = modelResponses[provider as keyof typeof modelResponses] || 
+      `Response from ${provider} to your message: "${message}"`;
+    
     // Create a base response to enhance with artifacts
     statusHandler?.('Preparing final response with artifacts...');
     const baseResponse: StoreFormat = {
-      thinking: '',
-      conversation: message,
+      thinking: 'This is simulated thinking from the sequential thinking process',
+      conversation: responseContent,
       artifacts: []
     };
     
@@ -541,6 +586,16 @@ export class ChatService {
       }
     }
     
+    // Create a demo artifact if none were provided
+    if (collectedArtifacts.length === 0) {
+      statusHandler?.('Creating a demo artifact...');
+      collectedArtifacts.push({
+        type: 'text/markdown',
+        title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo Artifact`,
+        content: `# Response from ${provider.toUpperCase()}\n\nThis is a demonstration artifact generated for your message: "${message}"\n\nIn a full implementation, this would be generated by the LLM.`
+      });
+    }
+    
     // Enhance the response with collected artifacts
     const enhancedResponse = this.messageService.enhanceResponseWithArtifacts(
       baseResponse,
@@ -560,38 +615,48 @@ export class ChatService {
    * @returns A readable stream of the response
    */
   private streamEnhancedResponse(response: StoreFormat): ReadableStream {
+    // Log the response being streamed
+    console.log(`🎨 [ENHANCED-RESPONSE] Streaming response with ${response.artifacts?.length || 0} artifacts`);
+    
     // In a real implementation, we would stream the response chunks appropriately
     return new ReadableStream({
       start(controller) {
-        // Send the main content
+        // Send the main content first
         controller.enqueue(JSON.stringify({
           type: 'content',
-          content: response.conversation,
+          content: response.conversation || 'No content available',
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString()
         }) + '\n');
         
-        // Send artifacts if available
-        if (response.artifacts && response.artifacts.length > 0) {
-          for (const artifact of response.artifacts) {
-            controller.enqueue(JSON.stringify({
-              type: 'artifact',
-              artifact: {
-                id: artifact.id,
-                type: artifact.type,
-                title: artifact.title,
-                content: artifact.content,
-                position: artifact.position,
-                language: artifact.language
-              },
-              id: crypto.randomUUID(),
-              timestamp: new Date().toISOString()
-            }) + '\n');
+        // Small delay to simulate streaming
+        setTimeout(() => {
+          // Send artifacts if available
+          if (response.artifacts && response.artifacts.length > 0) {
+            console.log(`📦 [ARTIFACTS] Streaming ${response.artifacts.length} artifacts`);
+            
+            for (const artifact of response.artifacts) {
+              controller.enqueue(JSON.stringify({
+                type: 'artifact',
+                artifact: {
+                  id: artifact.id,
+                  type: artifact.type,
+                  title: artifact.title,
+                  content: artifact.content,
+                  position: artifact.position,
+                  language: artifact.language
+                },
+                id: crypto.randomUUID(),
+                timestamp: new Date().toISOString()
+              }) + '\n');
+            }
+          } else {
+            console.log('📦 [ARTIFACTS] No artifacts to stream');
           }
-        }
-        
-        // Close the stream to simulate completion
-        controller.close();
+          
+          // Close the stream when done
+          controller.close();
+        }, 100); // Small delay for more realistic streaming
       }
     });
   }

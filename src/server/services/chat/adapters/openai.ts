@@ -36,17 +36,15 @@ export class OpenAIToolAdapter implements ToolCallAdapter {
    * @returns Tools in OpenAI format
    */
   convertToolDefinitions(tools: AnthropicTool[]): OpenAIFunction[] {
+    console.log('🟢 [ADAPTER: OPENAI] Converting tool definitions');
+    // Convert from MCP/Anthropic format to OpenAI format
     return tools.map(tool => ({
       type: 'function',
       function: {
         name: tool.name,
         description: tool.description,
-        parameters: {
-          ...tool.input_schema,
-          // Rename 'input_schema' to 'parameters' for OpenAI format
-          properties: tool.input_schema.properties || {},
-          required: tool.input_schema.required || []
-        }
+        // OpenAI uses 'parameters' instead of 'input_schema'
+        parameters: tool.input_schema
       }
     }));
   }
@@ -57,6 +55,7 @@ export class OpenAIToolAdapter implements ToolCallAdapter {
    * @returns Extracted tool calls
    */
   extractToolCalls(response: any): ToolCall[] {
+    console.log('🟢 [ADAPTER: OPENAI] Extracting tool calls from response');
     // Check if response has expected format
     if (!response || !response.tool_calls || !Array.isArray(response.tool_calls)) {
       return [];
@@ -88,7 +87,8 @@ export class OpenAIToolAdapter implements ToolCallAdapter {
    * @returns Results in OpenAI's format
    */
   formatToolResults(results: ToolResult[]): any[] {
-    // OpenAI expects tool results as separate messages with role 'tool'
+    console.log('🟢 [ADAPTER: OPENAI] Formatting tool results');
+    // OpenAI uses a different format for tool results
     return results.map(result => ({
       role: 'tool',
       tool_call_id: result.toolCallId,

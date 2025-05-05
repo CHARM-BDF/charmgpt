@@ -25,6 +25,7 @@ export class AnthropicToolAdapter implements ToolCallAdapter {
    * @returns Tools in Claude format
    */
   convertToolDefinitions(tools: AnthropicTool[]): AnthropicTool[] {
+    console.log('🔵 [ADAPTER: ANTHROPIC/CLAUDE] Converting tool definitions');
     // Claude tool format is the same as AnthropicTool, so no conversion needed
     return tools;
   }
@@ -35,6 +36,7 @@ export class AnthropicToolAdapter implements ToolCallAdapter {
    * @returns Extracted tool calls
    */
   extractToolCalls(response: any): ToolCall[] {
+    console.log('🔵 [ADAPTER: ANTHROPIC/CLAUDE] Extracting tool calls from response');
     // Check if response has expected format
     if (!response || !response.content || !Array.isArray(response.content)) {
       return [];
@@ -56,6 +58,7 @@ export class AnthropicToolAdapter implements ToolCallAdapter {
    * @returns Results in Claude's format
    */
   formatToolResults(results: ToolResult[]): any {
+    console.log('🔵 [ADAPTER: ANTHROPIC/CLAUDE] Formatting tool results');
     // Claude expects tool results in user messages with content blocks
     return {
       role: 'user',

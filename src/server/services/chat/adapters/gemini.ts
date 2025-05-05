@@ -29,21 +29,16 @@ export class GeminiToolAdapter implements ToolCallAdapter {
    * @returns Tools in Gemini format
    */
   convertToolDefinitions(tools: AnthropicTool[]): any {
-    const functionDeclarations = tools.map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: {
-        ...tool.input_schema,
-        properties: tool.input_schema.properties || {},
-        required: tool.input_schema.required || []
-      }
-    }));
-    
-    // Gemini expects tools wrapped in a specific structure
+    console.log('🟣 [ADAPTER: GEMINI] Converting tool definitions');
+    // Gemini expects tools in a specific format under 'functionDeclarations'
     return {
       tools: [
         {
-          functionDeclarations
+          functionDeclarations: tools.map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.input_schema
+          }))
         }
       ]
     };
@@ -55,6 +50,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
    * @returns Extracted tool calls
    */
   extractToolCalls(response: any): ToolCall[] {
+    console.log('🟣 [ADAPTER: GEMINI] Extracting tool calls from response');
     // Check if response has function calls available
     if (!response || typeof response.functionCalls !== 'function') {
       return [];
@@ -85,17 +81,23 @@ export class GeminiToolAdapter implements ToolCallAdapter {
    * @param results Tool results to format
    * @returns Results in Gemini's format
    */
-  formatToolResults(results: ToolResult[]): any[] {
-    // Gemini expects tool results in a functionResponse object
-    return results.map(result => ({
+  formatToolResults(results: ToolResult[]): any {
+    console.log('🟣 [ADAPTER: GEMINI] Formatting tool results');
+    // Gemini wants a specific format for function results
+    if (results.length === 0) {
+      return {};
+    }
+    
+    // Only use the first result for now
+    const result = results[0];
+    
+    return {
       functionResponse: {
-        name: result.name, // Gemini requires the name
+        name: result.name,
         response: {
-          result: typeof result.content === 'string'
-            ? result.content
-            : result.content
+          result: result.content
         }
       }
-    }));
+    };
   }
 } 

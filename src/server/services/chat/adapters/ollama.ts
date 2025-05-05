@@ -16,6 +16,7 @@ export class OllamaToolAdapter implements ToolCallAdapter {
    * @returns Tools in Ollama format (or empty array if not supported)
    */
   convertToolDefinitions(tools: AnthropicTool[]): any[] {
+    console.log('🟤 [ADAPTER: OLLAMA] Converting tool definitions (limited support)');
     console.warn('Ollama tool calling may not be fully supported');
     // Return a minimal compatible format or empty array
     return [];
@@ -27,6 +28,7 @@ export class OllamaToolAdapter implements ToolCallAdapter {
    * @returns Empty array as Ollama may not support tool calling yet
    */
   extractToolCalls(response: any): ToolCall[] {
+    console.log('🟤 [ADAPTER: OLLAMA] Extracting tool calls from response (not supported)');
     // Ollama may not support tool calling yet
     return [];
   }
@@ -37,6 +39,7 @@ export class OllamaToolAdapter implements ToolCallAdapter {
    * @returns Results in a basic format
    */
   formatToolResults(results: ToolResult[]): any[] {
+    console.log('🟤 [ADAPTER: OLLAMA] Formatting tool results (not supported)');
     // Since Ollama may not support tool calling, we simply return empty
     return [];
   }
