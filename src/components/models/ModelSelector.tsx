@@ -35,7 +35,10 @@ const ModelButton: React.FC<ModelButtonProps> = ({
           <img 
             src={icon} 
             alt={label} 
-            className="w-5 h-5"
+            className={`w-5 h-5 object-contain ${
+              model === 'gemini' || model === 'ollama' ? 'scale-125' : 
+              model === 'anthropic' ? 'scale-110' : ''
+            }`}
           />
         </button>
       </div>
@@ -56,18 +59,18 @@ export const ModelSelector: React.FC = () => {
   const models = [
     {
       id: 'anthropic' as ModelType,
-      name: 'Claude (Anthropic)',
+      name: 'Claude',
       logo: '/logos/claude_logo.png'
     },
     {
       id: 'openai' as ModelType,
-      name: 'GPT-4',
+      name: 'ChatGPT',
       logo: '/logos/openai_logo.png'
     },
     {
       id: 'gemini' as ModelType,
       name: 'Gemini',
-      logo: '/logos/gemini_logo.png'
+      logo: '/logos/gemini_logo.svg'
     },
     {
       id: 'ollama' as ModelType,

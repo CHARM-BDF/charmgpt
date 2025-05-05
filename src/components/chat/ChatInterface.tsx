@@ -180,7 +180,7 @@ export const ChatInterface: React.FC = () => {
 
                 {/* Animated Container for Controls */}
                 <div className={`flex items-center space-x-3 overflow-hidden transition-all duration-300 ease-in-out ${
-                  showSettings ? 'w-[412px] opacity-100' : 'w-0 opacity-0'
+                  showSettings ? 'w-[512px] opacity-100' : 'w-0 opacity-0'
                 }`}>
                   {/* Model Selection with dividers */}
                   <div className="flex items-center px-3 border-x border-gray-200 dark:border-gray-700">
@@ -239,6 +239,7 @@ export const ChatInterface: React.FC = () => {
                       onClick={toggleStreaming}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                       title={streamingEnabled ? "Disable streaming" : "Enable streaming"}
+                      data-testid="streaming-toggle"
                     >
                       <ForwardIcon 
                         className={`w-5 h-5 ${
