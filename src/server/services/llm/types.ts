@@ -8,8 +8,8 @@
  * Configuration options for the LLM Service
  */
 export interface LLMServiceOptions {
-  /** The LLM provider to use ('anthropic' is currently the only supported provider) */
-  provider?: 'anthropic';
+  /** The LLM provider to use */
+  provider?: 'anthropic' | 'openai' | 'gemini' | 'ollama';
   /** The model to use (defaults to claude-3-5-sonnet-20241022) */
   model?: string;
   /** Temperature setting for controlling randomness (0.0 to 1.0) */

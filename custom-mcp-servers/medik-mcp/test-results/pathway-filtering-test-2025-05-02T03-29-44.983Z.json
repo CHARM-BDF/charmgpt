@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-05-02T03:29:09.979Z",
+  "pairs": {
+    "TP53 to Breast cancer": {
+      "source": "UniProtKB:P04637",
+      "target": "MONDO:0005070",
+      "description": "TP53 to Breast cancer",
+      "originalNodes": null,
+      "originalLinks": null,
+      "standardFilteredNodes": null,
+      "standardFilteredLinks": null,
+      "enhancedFilteredNodes": null,
+      "enhancedFilteredLinks": null
+    },
+    "BRCA1 to BARD1": {
+      "source": "HGNC:1100",
+      "target": "HGNC:620",
+      "description": "BRCA1 to BARD1",
+      "originalNodes": null,
+      "originalLinks": null,
+      "standardFilteredNodes": null,
+      "standardFilteredLinks": null,
+      "enhancedFilteredNodes": null,
+      "enhancedFilteredLinks": null
+    }
+  },
+  "filteredGraphs": {}
+}

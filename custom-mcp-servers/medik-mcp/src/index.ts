@@ -701,17 +701,64 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                                     ? JSON.parse(knowledgeGraphArtifact.content) 
                                     : knowledgeGraphArtifact.content;
                                 
-                                // Apply filtering to remove nodes with only one connection
-                                const filteredGraph = filterLowConnectivityNodes(graph, new Set([curie]));
+                                // First, apply the standard filtering to remove nodes with only one connection
+                                let filteredGraph = filterLowConnectivityNodes(graph, new Set([curie]));
+                                
+                                // Then, apply more aggressive filtering for pathway analysis
+                                // Track which nodes are connected to source and target
+                                const connectedToSource = new Set<string>([curie]);
+                                const connectedToTarget = new Set<string>([curie]);
+                                
+                                // First pass: identify nodes connected to source or target (direct neighbors)
+                                filteredGraph.links.forEach((link: any) => {
+                                    if (link.source === curie) {
+                                        connectedToSource.add(link.target);
+                                    } else if (link.target === curie) {
+                                        connectedToSource.add(link.source);
+                                    }
+                                    
+                                    if (link.source === curie) {
+                                        connectedToTarget.add(link.target);
+                                    } else if (link.target === curie) {
+                                        connectedToTarget.add(link.source);
+                                    }
+                                });
+                                
+                                // Find nodes that connect to both source and target (potential pathway nodes)
+                                const pathwayNodes = new Set<string>([curie]);
+                                connectedToSource.forEach(nodeId => {
+                                    if (connectedToTarget.has(nodeId)) {
+                                        pathwayNodes.add(nodeId);
+                                    }
+                                });
+                                
+                                // Second pass: expand to include nodes that connect to pathway nodes
+                                const expandedPathwayNodes = new Set(pathwayNodes);
+                                filteredGraph.links.forEach((link: any) => {
+                                    if (pathwayNodes.has(link.source) && pathwayNodes.has(link.target)) {
+                                        expandedPathwayNodes.add(link.source);
+                                        expandedPathwayNodes.add(link.target);
+                                    }
+                                });
+                                
+                                // Keep only nodes that are on potential pathways
+                                filteredGraph.nodes = filteredGraph.nodes.filter((node: any) => 
+                                    expandedPathwayNodes.has(node.id)
+                                );
+                                
+                                // Keep only links between pathway nodes
+                                filteredGraph.links = filteredGraph.links.filter((link: any) => 
+                                    expandedPathwayNodes.has(link.source) && expandedPathwayNodes.has(link.target)
+                                );
                                 
                                 // Update the artifact content with the filtered graph
                                 knowledgeGraphArtifact.content = typeof knowledgeGraphArtifact.content === 'string'
                                     ? JSON.stringify(filteredGraph)
                                     : filteredGraph;
                                 
-                                console.error(`[medik-mcp] Filtered knowledge graph: ${filteredGraph.nodes.length} nodes, ${filteredGraph.links.length} links`);
-                            } catch (error) {
-                                console.error(`[medik-mcp] Error filtering knowledge graph:`, error);
+                                console.error(`[medik-mcp] Enhanced pathway filtering: ${filteredGraph.nodes.length} nodes, ${filteredGraph.links.length} links`);
+                            } catch (filterError) {
+                                console.error(`[medik-mcp] Error filtering knowledge graph:`, filterError);
                                 // If filtering fails, just use the original graph
                             }
                         }
@@ -1115,17 +1162,64 @@ ${response.content}
                                     ? JSON.parse(knowledgeGraphArtifact.content) 
                                     : knowledgeGraphArtifact.content;
                                 
-                                // Apply filtering to remove nodes with only one connection
-                                const filteredGraph = filterLowConnectivityNodes(graph, startingNodeIds);
+                                // First, apply the standard filtering to remove nodes with only one connection
+                                let filteredGraph = filterLowConnectivityNodes(graph, startingNodeIds);
+                                
+                                // Then, apply more aggressive filtering for pathway analysis
+                                // Track which nodes are connected to source and target
+                                const connectedToSource = new Set<string>([sourceCurie]);
+                                const connectedToTarget = new Set<string>([targetCurie]);
+                                
+                                // First pass: identify nodes connected to source or target (direct neighbors)
+                                filteredGraph.links.forEach((link: any) => {
+                                    if (link.source === sourceCurie) {
+                                        connectedToSource.add(link.target);
+                                    } else if (link.target === sourceCurie) {
+                                        connectedToSource.add(link.source);
+                                    }
+                                    
+                                    if (link.source === targetCurie) {
+                                        connectedToTarget.add(link.target);
+                                    } else if (link.target === targetCurie) {
+                                        connectedToTarget.add(link.source);
+                                    }
+                                });
+                                
+                                // Find nodes that connect to both source and target (potential pathway nodes)
+                                const pathwayNodes = new Set<string>([sourceCurie, targetCurie]);
+                                connectedToSource.forEach(nodeId => {
+                                    if (connectedToTarget.has(nodeId)) {
+                                        pathwayNodes.add(nodeId);
+                                    }
+                                });
+                                
+                                // Second pass: expand to include nodes that connect to pathway nodes
+                                const expandedPathwayNodes = new Set(pathwayNodes);
+                                filteredGraph.links.forEach((link: any) => {
+                                    if (pathwayNodes.has(link.source) && pathwayNodes.has(link.target)) {
+                                        expandedPathwayNodes.add(link.source);
+                                        expandedPathwayNodes.add(link.target);
+                                    }
+                                });
+                                
+                                // Keep only nodes that are on potential pathways
+                                filteredGraph.nodes = filteredGraph.nodes.filter((node: any) => 
+                                    expandedPathwayNodes.has(node.id)
+                                );
+                                
+                                // Keep only links between pathway nodes
+                                filteredGraph.links = filteredGraph.links.filter((link: any) => 
+                                    expandedPathwayNodes.has(link.source) && expandedPathwayNodes.has(link.target)
+                                );
                                 
                                 // Update the artifact content with the filtered graph
                                 knowledgeGraphArtifact.content = typeof knowledgeGraphArtifact.content === 'string'
                                     ? JSON.stringify(filteredGraph)
                                     : filteredGraph;
                                 
-                                console.error(`[medik-mcp] [Pathfinder:${requestId}] Filtered knowledge graph: ${filteredGraph.nodes.length} nodes, ${filteredGraph.links.length} links`);
+                                console.error(`[medik-mcp] Enhanced pathway filtering: ${filteredGraph.nodes.length} nodes, ${filteredGraph.links.length} links`);
                             } catch (filterError) {
-                                console.error(`[medik-mcp] [Pathfinder:${requestId}] Error filtering knowledge graph:`, filterError);
+                                console.error(`[medik-mcp] Error filtering knowledge graph:`, filterError);
                                 // If filtering fails, just use the original graph
                             }
                         }

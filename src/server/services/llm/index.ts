@@ -6,6 +6,8 @@
  */
 
 import { AnthropicProvider } from './providers/anthropic';
+import { OpenAIProvider } from './providers/openai';
+import { GeminiProvider } from './providers/gemini';
 import { LLMCache } from './cache';
 import { isValidJSON, extractJSONFromText } from './utils';
 import { 
@@ -21,7 +23,7 @@ import {
  */
 export class LLMService implements LLMServiceInterface {
   /** LLM provider instance */
-  private provider: LLMProvider;
+  private provider!: LLMProvider;
   /** Cache for LLM responses */
   private _cache: LLMCache;
   /** Service configuration */
@@ -43,18 +45,73 @@ export class LLMService implements LLMServiceInterface {
     console.log(`LLMService: Initializing with provider ${this.options.provider}, model ${this.options.model}`);
     
     // Initialize provider
-    if (this.options.provider === 'anthropic') {
-      this.provider = new AnthropicProvider({
-        model: this.options.model
-      });
-    } else {
-      throw new Error(`Unsupported LLM provider: ${this.options.provider}`);
-    }
+    this.initializeProvider();
     
     // Initialize cache
     this._cache = new LLMCache();
     
     console.log('LLMService: Initialization complete');
+  }
+  
+  /**
+   * Initialize provider based on the current options
+   */
+  private initializeProvider(): void {
+    if (this.options.provider === 'anthropic') {
+      this.provider = new AnthropicProvider({
+        model: this.options.model
+      });
+    } else if (this.options.provider === 'openai') {
+      this.provider = new OpenAIProvider({
+        model: this.options.model
+      });
+    } else if (this.options.provider === 'gemini') {
+      this.provider = new GeminiProvider({
+        model: this.options.model
+      });
+    } else if (this.options.provider === 'ollama') {
+      throw new Error(`Ollama provider not yet implemented`);
+    } else {
+      throw new Error(`Unsupported LLM provider: ${this.options.provider}`);
+    }
+  }
+  
+  /**
+   * Change the LLM provider at runtime
+   * @param options New provider options
+   */
+  setProvider(options: LLMServiceOptions): void {
+    console.log(`LLMService: Changing provider from ${this.options.provider} to ${options.provider}`);
+    
+    // Store original options
+    const originalOptions = this.options;
+    
+    try {
+      // Update options and initialize the new provider
+      this.options = {
+        ...this.options,
+        ...options
+      };
+      
+      // Initialize the new provider
+      this.initializeProvider();
+      
+      console.log(`LLMService: Provider changed to ${this.options.provider}, model ${this.options.model}`);
+    } catch (error) {
+      // Restore original options and provider if there's an error
+      console.error(`LLMService: Error changing provider:`, error);
+      this.options = originalOptions;
+      this.initializeProvider();
+      throw error;
+    }
+  }
+  
+  /**
+   * Get the current provider name
+   * @returns The current provider name
+   */
+  getProvider(): string {
+    return this.options.provider || 'anthropic';
   }
   
   /**

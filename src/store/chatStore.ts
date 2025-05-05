@@ -383,181 +383,63 @@ export const useChatStore = create<ChatState>()(
          * with an alternative communication method
          */
         processMessage: async (content: string) => {
-          console.log('ChatStore: Processing message:', content);
+          const { conversations, currentConversationId, activeCompletionId } = get();
           
-          set({ isLoading: true, error: null });
+          if (activeCompletionId) {
+            console.warn('ChatStore: Cannot process a new message while a completion is already in progress');
+            return;
+          }
           
+          // Get the selected model from the model store
+          const selectedModel = useModelStore.getState().selectedModel;
+          console.log(`ChatStore: Using model provider: ${selectedModel}`);
+          
+          const currentConversation = conversations[currentConversationId];
+          if (!currentConversation) {
+            console.error('ChatStore: No current conversation found');
+            return;
+          }
+          
+          // Block the graph name list from being sent to the MCP server
+          const blockedServers = get().blockedServers || [];
+          
+          // Get pinned graph if available
+          const pinnedGraphId = get().pinnedGraphId;
+          let pinnedGraph = null;
+          
+          if (pinnedGraphId) {
+            pinnedGraph = get().artifacts.find(a => a.id === pinnedGraphId);
+            if (pinnedGraph) {
+              console.log('ChatStore: Including pinned graph in message:', pinnedGraphId);
+            }
+          }
+
+          // Get all messages for the history
+          const messageHistory = currentConversation.messages
+            .filter(msg => msg.content.trim() !== '')
+            .map(msg => ({
+              role: msg.role,
+              content: msg.content
+            }));
+
+          // Choose the appropriate API endpoint based on the model
+          const endpoint = selectedModel === 'ollama' ? API_ENDPOINTS.OLLAMA : API_ENDPOINTS.CHAT;
+          const apiUrl = getApiUrl(endpoint);
+
+          // Check stringified request body
+          const requestBody = JSON.stringify({
+            message: content,
+            history: messageHistory,
+            blockedServers: blockedServers,
+            pinnedGraph: pinnedGraph,
+            modelProvider: selectedModel
+          });
+
+          console.log('Full request body stringified:', requestBody);
+          console.log('Parsing request body back:', JSON.parse(requestBody).blockedServers);
+          console.log('=== END DEBUG ===\n');
+
           try {
-            // Helper function to send status updates
-            const sendStatusUpdate = (status: string) => {
-              set((state: ChatState) => ({
-                messages: state.messages.map(msg => {
-                  if (msg.id === assistantMessageId) {
-                    const updatedMsg: MessageWithThinking = {
-                      ...msg,
-                      statusUpdates: [
-                        ...((msg.statusUpdates || []) as StatusUpdate[]),
-                        {
-                          id: crypto.randomUUID(),
-                          message: status,
-                          timestamp: new Date()
-                        }
-                      ]
-                    };
-                    return updatedMsg;
-                  }
-                  return msg;
-                }),
-                streamingContent: `_Status: ${status}_\n\n`
-              }));
-            };
-
-            // Process incoming status update from server
-            const processStatusUpdate = (data: { message: string; id?: string; timestamp?: string }) => {
-              set((state: ChatState) => {
-                const assistantMessage = state.messages.find(msg => msg.id === assistantMessageId);
-                console.log(`[ID DEBUG] In processStatusUpdate, found message: ${assistantMessage?.id === assistantMessageId ? 'MATCH' : 'NO MATCH'}`);
-                console.log(`[STATUS DEBUG] Processing update: "${data.message}"`);
-                console.log(`[STATUS DEBUG] Current message has ${assistantMessage?.statusUpdates?.length || 0} existing updates`);
-                
-                // Create new status update
-                const newUpdate: StatusUpdate = {
-                  id: data.id || crypto.randomUUID(),
-                  message: data.message,
-                  timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-                };
-                
-                // Update the messages with the new status update
-                const updatedMessages = state.messages.map(msg => {
-                  if (msg.id === assistantMessageId) {
-                    const existingUpdates = Array.isArray(msg.statusUpdates) ? msg.statusUpdates : [];
-                    console.log(`[STATUS DEBUG] Adding update to list of ${existingUpdates.length} updates`);
-                    
-                    return {
-                      ...msg,
-                      statusUpdates: [...existingUpdates, newUpdate],
-                      statusUpdatesCollapsed: false, // Always keep expanded during streaming
-                      isLastStatusUpdate: data.message === 'Finalizing response...' // Flag the final update
-                    } as MessageWithThinking;
-                  }
-                  return msg;
-                });
-                
-                return {
-                  messages: updatedMessages
-                };
-              });
-            };
-
-            // Get the selected model from the correct store
-            const selectedModel = useModelStore.getState().selectedModel;
-            console.log('ChatStore: Using model:', selectedModel);
-            
-            // Choose the appropriate API endpoint based on the model
-            const endpoint = selectedModel === 'ollama' ? API_ENDPOINTS.OLLAMA : API_ENDPOINTS.CHAT;
-            const apiUrl = getApiUrl(endpoint);
-
-            // Create assistant message for status updates
-            const assistantMessageId = crypto.randomUUID();
-            const assistantMessage: MessageWithThinking = {
-              role: 'assistant',
-              content: '_Status: Initializing..._',
-              id: assistantMessageId,
-              timestamp: new Date(),
-              statusUpdatesCollapsed: true, // Default to collapsed
-              statusUpdates: [] // Initialize with empty array
-            };
-
-            // Add assistant message to current conversation
-            set(state => {
-              // Get the current project conversation flow state to preserve it
-              const currentInProjectConversationFlow = state.inProjectConversationFlow;
-              
-              const updatedConversation = {
-                ...state.conversations[state.currentConversationId!],
-                messages: [...state.conversations[state.currentConversationId!].messages, assistantMessage],
-                metadata: {
-                  ...state.conversations[state.currentConversationId!].metadata,
-                  lastUpdated: new Date(),
-                  messageCount: state.conversations[state.currentConversationId!].metadata.messageCount + 1
-                }
-              };
-
-              return {
-                messages: updatedConversation.messages,
-                conversations: {
-                  ...state.conversations,
-                  [state.currentConversationId!]: updatedConversation
-                },
-                streamingMessageId: assistantMessageId,
-                streamingContent: '_Status: Initializing..._\n\n',
-                inProjectConversationFlow: currentInProjectConversationFlow // Preserve the flag
-              };
-            });
-
-            // After creating the assistant message
-            console.log(`[ID DEBUG] Initial assistantMessageId: ${assistantMessageId}`);
-            
-            // Get pinned graph if available
-            const pinnedGraphId = get().pinnedGraphId;
-            let pinnedGraph = null;
-            
-            if (pinnedGraphId) {
-              sendStatusUpdate('Retrieving pinned knowledge graph...');
-              const pinnedArtifact = get().artifacts.find(a => a.id === pinnedGraphId);
-              if (pinnedArtifact) {
-                console.log('ChatStore: Including pinned graph in message:', pinnedGraphId);
-                pinnedGraph = pinnedArtifact;
-                sendStatusUpdate('Knowledge graph retrieved');
-              }
-            }
-
-            // Get all messages for the history
-            sendStatusUpdate('Preparing message history...');
-            const messageHistory = get().messages
-              .filter(msg => msg.content.trim() !== '')
-              .map(msg => ({
-                role: msg.role,
-                content: msg.content
-              }));
-
-            sendStatusUpdate('Connecting to MCP server...');
-            
-            // Add extensive debug logging
-            const blockedServersToSend = useMCPStore.getState().getBlockedServers();
-            console.log('\n=== DEBUG: SENDING BLOCKED SERVERS TO API ===');
-            console.log('blockedServers value being sent in request:', blockedServersToSend);
-            console.log('blockedServers JSON stringified:', JSON.stringify(blockedServersToSend));
-            console.log('Type of blockedServers:', Array.isArray(blockedServersToSend) ? 'Array' : typeof blockedServersToSend);
-            console.log('Number of blocked servers:', blockedServersToSend.length);
-            
-            // Check if getBlockedServers actually works
-            const mcpStore = useMCPStore.getState();
-            console.log('Direct check of MCP store:');
-            if (mcpStore.servers && Array.isArray(mcpStore.servers)) {
-              const blockedServersDirectCheck = mcpStore.servers
-                .filter(server => server.status === 'blocked')
-                .map(server => server.name);
-              console.log('- Blocked servers by direct check:', blockedServersDirectCheck);
-              console.log('- Number of blocked servers by direct check:', blockedServersDirectCheck.length);
-              
-              if (JSON.stringify(blockedServersToSend) !== JSON.stringify(blockedServersDirectCheck)) {
-                console.warn('⚠️ DISCREPANCY DETECTED between getBlockedServers() and direct check!');
-              }
-            }
-            
-            // Check stringified request body
-            const requestBody = JSON.stringify({
-              message: content,
-              history: messageHistory,
-              blockedServers: blockedServersToSend,
-              pinnedGraph: pinnedGraph
-            });
-            
-            console.log('Full request body stringified:', requestBody);
-            console.log('Parsing request body back:', JSON.parse(requestBody).blockedServers);
-            console.log('=== END DEBUG ===\n');
-            
             const response = await fetch(apiUrl, {
               method: 'POST',
               headers: {
@@ -600,7 +482,26 @@ export const useChatStore = create<ChatState>()(
                   if (data.type === 'status') {
                     // Update the message with the status
                     console.log('[STREAM DEBUG] Processing status update:', data.message);
-                    processStatusUpdate(data);
+                    set((state: ChatState) => ({
+                      messages: state.messages.map(msg => {
+                        if (msg.id === assistantMessageId) {
+                          const updatedMsg: MessageWithThinking = {
+                            ...msg,
+                            statusUpdates: [
+                              ...((msg.statusUpdates || []) as StatusUpdate[]),
+                              {
+                                id: crypto.randomUUID(),
+                                message: data.message,
+                                timestamp: new Date()
+                              }
+                            ]
+                          };
+                          return updatedMsg;
+                        }
+                        return msg;
+                      }),
+                      streamingContent: `_Status: ${data.message}_\n\n`
+                    }));
                   } 
                   else if (data.type === 'result') {
                     // Store the final response for processing after the loop
@@ -649,17 +550,6 @@ export const useChatStore = create<ChatState>()(
               }
 
               // Update assistant message with thinking
-              sendStatusUpdate('Processing artifacts...');
-              
-              // Check all messages to ensure our ID is still valid
-              console.log(`[ID DEBUG] Before artifact processing - assistantMessageId: ${assistantMessageId}`);
-              const allMessages = get().messages;
-              const messageIds = allMessages.map(msg => msg.id);
-              console.log(`[ID DEBUG] Available message IDs in state:`, messageIds);
-              const messageIndex = messageIds.indexOf(assistantMessageId);
-              console.log(`[ID DEBUG] Message index in array: ${messageIndex}`);
-              
-              // Update the message with thinking first
               set(state => {
                 const updatedConversation = {
                   ...state.conversations[state.currentConversationId!],
@@ -712,41 +602,6 @@ export const useChatStore = create<ChatState>()(
               });
               
               // Final status update
-              sendStatusUpdate('Finalizing response...');
-              
-              // When ready to do final update, use our previously saved status updates
-              const currentMsg = get().messages.find(msg => msg.id === assistantMessageId);
-              console.log(`[ID DEBUG] After artifact processing - currentMsg found: ${currentMsg ? 'YES' : 'NO'}, id: ${currentMsg?.id}`);
-              console.log(`[ID DEBUG] Current messages in state:`, get().messages.map(msg => msg.id));
-              console.log(`[STATUS DEBUG] ---- FINAL RESPONSE HANDLING ----`);
-              console.log(`[STATUS DEBUG] Current message has ${currentMsg?.statusUpdates?.length || 0} status updates`);
-              console.log(`[STATUS DEBUG] Original preserved updates: ${savedStatusUpdates.length}`);
-              
-              // Merge in any new updates that were added during artifact processing
-              const finalStatusUpdates = [...savedStatusUpdates];
-              
-              // Add any new updates that might have been added after we preserved savedStatusUpdates
-              if (currentMsg?.statusUpdates && currentMsg.statusUpdates.length > 0) {
-                const lastPreservedTime = savedStatusUpdates.length > 0 
-                  ? savedStatusUpdates[savedStatusUpdates.length - 1].timestamp.getTime() 
-                  : 0;
-                
-                const newUpdates = currentMsg.statusUpdates.filter(update => {
-                  const updateTime = update.timestamp instanceof Date 
-                    ? update.timestamp.getTime() 
-                    : new Date(update.timestamp).getTime();
-                  return updateTime > lastPreservedTime;
-                });
-                
-                if (newUpdates.length > 0) {
-                  console.log(`[STATUS DEBUG] Adding ${newUpdates.length} new updates that occurred during artifact processing`);
-                  finalStatusUpdates.push(...newUpdates);
-                }
-              }
-              
-              // Use the merged list of status updates for the final message
-              const existingStatusUpdates = finalStatusUpdates;
-              
               set(state => {
                 const messagesInState = state.conversations[state.currentConversationId!].messages;
                 console.log(`[ID DEBUG] Messages in state during update:`, messagesInState.map(msg => msg.id));
@@ -758,11 +613,11 @@ export const useChatStore = create<ChatState>()(
                 const updatedMessages = messagesInState.map(msg => {
                   if (msg.id === assistantMessageId) {
                     console.log(`[ID DEBUG] Found message to update! ID: ${msg.id}`);
-                    console.log(`[FINAL DEBUG] Found message to update. Using all ${existingStatusUpdates.length} preserved updates.`);
+                    console.log(`[FINAL DEBUG] Found message to update. Using all ${savedStatusUpdates.length} preserved updates.`);
                     
                     return {
                       ...msg,
-                      statusUpdates: existingStatusUpdates,
+                      statusUpdates: savedStatusUpdates,
                       content: fullContent,
                       thinking: storeResponse.thinking,
                       artifactId: artifactIds[0],
@@ -790,7 +645,7 @@ export const useChatStore = create<ChatState>()(
                   allArtifactIds: artifactIds,
                   totalArtifacts: artifactIds.length,
                   contentLength: fullContent.length,
-                  statusUpdatesLength: Array.isArray(existingStatusUpdates) ? existingStatusUpdates.length : 0
+                  statusUpdatesLength: savedStatusUpdates.length
                 });
 
                 return {

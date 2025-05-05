@@ -7,6 +7,7 @@ import { MessageService, ChatMessage } from '../services/message';
 import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
 import { isValidKnowledgeGraph, KnowledgeGraph, mergeKnowledgeGraphs } from '../../utils/knowledgeGraphUtils';
+import { LLMService } from '../services/llm';
 // import path from 'path';
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 // Initialize services
 const messageService = new MessageService();
 const artifactService = new ArtifactService();
+const llmService = new LLMService();
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -25,6 +27,7 @@ router.post('/', async (req: Request<{}, {}, {
   message: string; 
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
   blockedServers?: string[];
+  modelProvider?: string;
   pinnedGraph?: {
     id: string;
     type: string;
@@ -34,6 +37,7 @@ router.post('/', async (req: Request<{}, {}, {
 }>, res: Response) => {
   const loggingService = req.app.locals.loggingService as LoggingService;
   const mcpService = req.app.locals.mcpService as MCPService;
+  const llmService = req.app.locals.llmService;
   
   // Set headers for streaming
   res.setHeader('Content-Type', 'application/json');
@@ -87,7 +91,19 @@ router.post('/', async (req: Request<{}, {}, {
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
-    const { message, history, blockedServers = [], pinnedGraph } = req.body;
+    const { message, history, blockedServers = [], modelProvider = 'claude', pinnedGraph } = req.body;
+    
+    // Set the LLM provider if one is specified and llmService is available
+    if (llmService && modelProvider) {
+      sendStatusUpdate(`Using ${modelProvider} as the model provider...`);
+      try {
+        llmService.setProvider({ provider: modelProvider as any });
+      } catch (error) {
+        console.error(`Error setting model provider to ${modelProvider}:`, error);
+        sendStatusUpdate(`⚠️ Failed to set model provider to ${modelProvider}, using default.`);
+      }
+    }
+    
     // Enhanced debug logging for blocked servers
     console.log('\n=== ENHANCED BLOCKED SERVERS DEBUG ===');
     console.log('Raw request body:', JSON.stringify(req.body).substring(0, 500) + '...');
