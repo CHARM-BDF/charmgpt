@@ -423,7 +423,8 @@ export const useChatStore = create<ChatState>()(
             }));
 
           // Choose the appropriate API endpoint based on the model
-          const endpoint = selectedModel === 'ollama' ? API_ENDPOINTS.OLLAMA : API_ENDPOINTS.CHAT;
+          // Use CHAT_ARTIFACTS for all providers as it's the most feature-complete endpoint
+          const endpoint = API_ENDPOINTS.CHAT_ARTIFACTS;
           const apiUrl = getApiUrl(endpoint);
 
           // Check stringified request body

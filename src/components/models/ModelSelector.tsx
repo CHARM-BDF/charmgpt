@@ -2,7 +2,7 @@ import React from 'react';
 import { useModelStore } from '../../store/modelStore';
 
 // Define the model type from the store for TypeScript
-type ModelType = 'claude' | 'ollama' | 'openai' | 'gemini';
+type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
 
 // Create a reusable ModelButton component for consistency
 interface ModelButtonProps {
@@ -55,8 +55,8 @@ export const ModelSelector: React.FC = () => {
   // Define model data for consistent rendering
   const models = [
     {
-      id: 'claude' as ModelType,
-      name: 'Claude',
+      id: 'anthropic' as ModelType,
+      name: 'Claude (Anthropic)',
       logo: '/logos/claude_logo.png'
     },
     {

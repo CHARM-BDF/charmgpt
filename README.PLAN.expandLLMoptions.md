@@ -973,3 +973,65 @@ This incremental approach ensures that each step builds on a stable foundation, 
 The implementation of a unified ChatService is a critical step in supporting multiple LLM providers in the MCP Server. By using the adapter pattern and carefully designing our abstraction layers, we can create a system that allows users to seamlessly switch between providers while maintaining all the existing functionality.
 
 This approach not only makes the codebase more maintainable but also future-proofs it against new providers that may be added in the future. The modular design means that adding a new provider is as simple as implementing a new adapter and strategy, without having to modify the core chat flow logic. 
+
+## Milestone 5: UI/Frontend Updates
+
+After analyzing the current UI components and store implementations, we need to make the following updates to fully support the multi-provider LLM integration:
+
+### Required UI Changes
+
+1. ✅ **Update ModelSelector Component**:
+   - In `src/components/models/ModelSelector.tsx`, change the `ModelType` definition from:
+     ```typescript
+     type ModelType = 'claude' | 'ollama' | 'openai' | 'gemini';
+     ```
+     to:
+     ```typescript
+     type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
+     ```
+   - Update the `models` array to use `'anthropic'` instead of `'claude'` for the ID value
+
+2. ✅ **Update Model Selection Logic**:
+   - Update the provider name in the `handleModelSelect` function:
+     ```typescript
+     const handleModelSelect = (model: ModelType) => {
+       console.log(`ModelSelector: Switching from ${selectedModel} to ${model}`);
+       setSelectedModel(model);
+     };
+     ```
+
+3. ✅ **UI Model Display**:
+   - Update the Claude model display name to "Claude (Anthropic)" for clarity, while keeping the logo the same
+
+### Store Integration
+
+1. ✅ **chatStore.ts Integration**:
+   - The `processMessage` function already retrieves the selected model from modelStore
+   - It passes this as `modelProvider` to the API
+   - Verify that it works with the updated 'anthropic' provider name
+
+2. ✅ **API Structure**:
+   - Confirm that all API endpoints (`chat-basic`, `chat-tools`, `chat-sequential`, and `chat-artifacts`) accept the `modelProvider` parameter
+   - Ensure the ChatService properly initializes with the correct provider
+
+### Testing Requirements
+
+1. Test model switching in the UI:
+   - Verify all 4 models can be selected via the UI
+   - Confirm the selected model is properly passed to the backend
+   - Check that the correct provider is initialized for each request
+
+2. Test conversation flow with different models:
+   - Create new conversations using each provider
+   - Verify tool usage works with each provider
+   - Confirm sequential thinking works across all providers
+   - Test artifact generation with each provider
+
+### Integration Verification
+
+The UI and backend integration seems mostly complete, but we should verify:
+
+1. Check that the ModelSelector component passes the correct provider name to the modelStore
+2. Confirm the chatStore forwards this selection to the API endpoints
+3. Verify the ChatService properly handles the provider selection
+4. Test end-to-end flow from UI selection to provider initialization 
