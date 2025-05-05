@@ -47,7 +47,17 @@ export interface ToolResponse {
 
 export interface StoreFormat {
   thinking?: string;
-  conversation: string;
+  conversation: string | Array<{
+    type: string;
+    content?: string;
+    artifact?: {
+      id: string;
+      type: string;
+      title: string;
+      content: string;
+      language?: string;
+    };
+  }>;
   artifacts?: Array<{
     id: string;
     artifactId?: string;
@@ -255,7 +265,6 @@ export class MessageService {
     // Start with existing artifacts or empty array
     const existingArtifacts = baseResponse.artifacts || [];
     let position = existingArtifacts.length;
-    const conversationAppends: string[] = [];
     
     // Process each artifact based on its type
     const processedArtifacts = artifacts.map(artifact => {
@@ -267,11 +276,6 @@ export class MessageService {
       
       // Handle content formatting based on type
       const content = this.formatArtifactContent(artifact);
-      
-      // Create button for this artifact if requested
-      if (appendButtons) {
-        conversationAppends.push(this.createArtifactButton(artifactId, artifact.type, artifact.title));
-      }
       
       // Check for metadata and log if present
       if (artifact.metadata) {
@@ -296,22 +300,61 @@ export class MessageService {
     
     console.log(`Processed ${processedArtifacts.length} artifacts successfully`);
     
-    // Handle conversation text if artifact buttons were added
-    let conversation = baseResponse.conversation;
-    if (appendButtons && conversationAppends.length > 0) {
-      conversation = `${conversation}\n\n${conversationAppends.join('\n\n')}`;
-      console.log(`Added ${conversationAppends.length} artifact buttons to conversation`);
+    // Handle conversation based on its type (string or array)
+    if (typeof baseResponse.conversation === 'string') {
+      // Legacy string format - add artifact buttons as text
+      let conversation = baseResponse.conversation;
+      
+      if (appendButtons && processedArtifacts.length > 0) {
+        const conversationAppends = processedArtifacts.map(artifact => 
+          this.createArtifactButton(artifact.id, artifact.type, artifact.title)
+        );
+        conversation = `${conversation}\n\n${conversationAppends.join('\n\n')}`;
+        console.log(`Added ${conversationAppends.length} artifact buttons to string conversation`);
+      }
+      
+      // Return updated response with all artifacts
+      return {
+        ...baseResponse,
+        conversation: conversation,
+        artifacts: [...existingArtifacts, ...processedArtifacts]
+      };
+    } else if (Array.isArray(baseResponse.conversation)) {
+      // New array format - add artifacts as elements
+      let conversationArray = [...baseResponse.conversation];
+      
+      if (appendButtons && processedArtifacts.length > 0) {
+        // Add each artifact as a new conversation item
+        const artifactItems = processedArtifacts.map(artifact => ({
+          type: 'artifact',
+          artifact: {
+            id: artifact.id,
+            type: artifact.type,
+            title: artifact.title,
+            content: artifact.content,
+            language: artifact.language
+          }
+        }));
+        
+        conversationArray = [...conversationArray, ...artifactItems];
+        console.log(`Added ${artifactItems.length} artifact items to array conversation`);
+      }
+      
+      // Return updated response with all artifacts
+      return {
+        ...baseResponse,
+        conversation: conversationArray,
+        artifacts: [...existingArtifacts, ...processedArtifacts]
+      };
+    } else {
+      console.log('❌ Unexpected conversation format, returning with artifacts only');
+      
+      // Return with just the artifacts added
+      return {
+        ...baseResponse,
+        artifacts: [...existingArtifacts, ...processedArtifacts]
+      };
     }
-    
-    // Return updated response with all artifacts
-    const result = {
-      ...baseResponse,
-      conversation: conversation,
-      artifacts: [...existingArtifacts, ...processedArtifacts]
-    };
-    
-    console.log('🟢🟢🟢 NEW PATH: Enhancement complete 🟢🟢🟢');
-    return result;
   }
   
   /**

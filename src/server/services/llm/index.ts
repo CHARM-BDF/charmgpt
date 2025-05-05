@@ -156,12 +156,45 @@ export class LLMService implements LLMServiceInterface {
   async query(request: LLMRequest): Promise<LLMResponse> {
     const { prompt, systemPrompt, responseFormat, contextData, options = {} } = request;
     
+    // Use type assertion to bypass type checking for debugging
+    const debugOptions = options as any;
+    
+    // Debug logging for options
+    console.log(`🔍 DEBUG-LLM-SERVICE: Query options received:`, JSON.stringify({
+      provider: this.options.provider,
+      responseFormat,
+      hasSystemPrompt: !!systemPrompt,
+      hasToolChoice: !!debugOptions.toolChoice,
+      hasTools: !!(debugOptions.tools && Array.isArray(debugOptions.tools) && debugOptions.tools.length > 0)
+    }));
+    
+    // If there are tools, log additional info
+    if (debugOptions.tools && Array.isArray(debugOptions.tools) && debugOptions.tools.length > 0) {
+      console.log(`🔍 DEBUG-LLM-SERVICE: Received ${debugOptions.tools.length} tools, first tool:`, 
+        debugOptions.tools[0].function?.name || 'unknown structure');
+    }
+    
+    // If there's a toolChoice, log it
+    if (debugOptions.toolChoice) {
+      console.log(`🔍 DEBUG-LLM-SERVICE: Received toolChoice:`, JSON.stringify(debugOptions.toolChoice));
+    }
+    
     // Merge default options with request-specific options
     const mergedOptions = {
       ...this.options,
       ...options,
       systemPrompt
     };
+    
+    // Use type assertion for merged options as well
+    const debugMergedOptions = mergedOptions as any;
+    
+    // Debug logging for merged options that will be sent to provider
+    console.log(`🔍 DEBUG-LLM-SERVICE: Passing to provider:`, JSON.stringify({
+      provider: this.options.provider,
+      hasToolChoice: !!debugMergedOptions.toolChoice,
+      hasTools: !!(debugMergedOptions.tools && Array.isArray(debugMergedOptions.tools) && debugMergedOptions.tools.length > 0)
+    }));
     
     // Check cache if enabled
     if (this.options.cacheResponses && options.skipCache !== true) {

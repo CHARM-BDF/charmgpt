@@ -1,0 +1,57 @@
+{
+  "model": "gpt-4-turbo-preview",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant. You MUST use the response_formatter tool to format your response. Do not respond directly with text, only use the response_formatter tool."
+    },
+    {
+      "role": "user",
+      "content": "What is the capital of France?"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "response_formatter",
+        "description": "Format all responses in a consistent JSON structure with direct array values, not string-encoded JSON",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "thinking": {
+              "type": "string",
+              "description": "Optional internal reasoning process, formatted in markdown"
+            },
+            "conversation": {
+              "type": "array",
+              "description": "Array of conversation segments and artifacts in order of appearance.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["text", "artifact"],
+                    "description": "Type of conversation segment"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Markdown formatted text content"
+                  }
+                },
+                "required": ["type"]
+              }
+            }
+          },
+          "required": ["conversation"]
+        }
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "response_formatter"
+    }
+  }
+} 
