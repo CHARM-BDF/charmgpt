@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
+    "@google/generative-ai": "^0.24.1",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@modelcontextprotocol/sdk": "^1.6.1",
@@ -48,6 +49,7 @@
     "mermaid": "^11.4.1",
     "multer": "^1.4.5-lts.1",
     "ollama": "^0.5.13",
+    "openai": "^4.97.0",
     "openapi-mcp-server": "^1.2.0-beta05",
     "pdf-parse": "^1.1.1",
     "postcss": "^8.5.1",
