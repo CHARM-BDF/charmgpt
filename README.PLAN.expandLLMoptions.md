@@ -665,224 +665,247 @@ The ChatService will need to maintain the following artifact processing steps th
 
 This will ensure that regardless of which LLM provider is selected in the UI, all artifact-related functionality will continue to work consistently, maintaining compatibility with the existing UI and user experience.
 
-## Technical Specification: ChatService Integration with LLMService
+## Technical Specification: ChatService Integration
 
-### Class Structure and Dependencies
+### Class Structure
 
 ```typescript
-/**
- * ChatService manages the complete chat flow with LLMs, including
- * sequential thinking, tool calling, and artifact processing.
- */
 export class ChatService {
   private llmService: LLMService;
   private messageService: MessageService;
   private artifactService: ArtifactService;
   private mcpService: MCPService;
   
-  constructor(
+  constructor(deps: {
     llmService: LLMService,
     messageService: MessageService,
     artifactService: ArtifactService,
     mcpService: MCPService
-  ) {
-    this.llmService = llmService;
-    this.messageService = messageService;
-    this.artifactService = artifactService;
-    this.mcpService = mcpService;
+  }) {
+    this.llmService = deps.llmService;
+    this.messageService = deps.messageService;
+    this.artifactService = deps.artifactService;
+    this.mcpService = deps.mcpService;
   }
   
-  // Methods will be implemented as described below
+  // Core chat processing method
+  async processChat(message, history, options, statusHandler);
+  
+  // Provider-specific implementations
+  private async runSequentialThinking(message, history, tools, options);
+  private async executeToolCall(toolCall, options);
+  private async generateFinalResponse(messages, tools, options);
 }
 ```
 
-### Key Method: processChat
+### Integration with Existing Services
+
+The ChatService will use:
+
+1. **LLMService**: For provider-agnostic LLM interactions
+2. **ToolCallAdapter**: For converting between MCP and provider-specific formats
+3. **MessageService**: For response formatting and artifact enhancement
+4. **ArtifactService**: For processing binary outputs and artifacts
+
+### Initialization in Server
 
 ```typescript
-/**
- * Process a complete chat from start to finish
- * @param message The user message
- * @param history Previous message history
- * @param options Chat processing options
- * @param statusHandler Optional callback for status updates
- * @returns A stream of response chunks
- */
-async processChat(
-  message: string,
-  history: ChatMessage[],
-  options: {
-    modelProvider: ModelType;
-    blockedServers?: string[];
-    pinnedGraph?: any;
-    temperature?: number;
-    maxTokens?: number;
-  },
-  statusHandler?: (status: string) => void
-): Promise<ReadableStream> {
-  // Set the LLM provider
-  this.llmService.setProvider({
-    provider: options.modelProvider as any,
-    temperature: options.temperature,
-    maxTokens: options.maxTokens
-  });
-  
-  // Get the appropriate tool adapter
-  const toolAdapter = getToolCallAdapter(options.modelProvider);
-  
-  // 1. Convert history to provider-specific format if needed
-  const formattedHistory = this.formatMessageHistory(history, options.modelProvider);
-  
-  // 2. Get available tools from MCP service
-  const mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
-  
-  // 3. Convert tools to provider-specific format
-  const formattedTools = toolAdapter.convertToolDefinitions(mcpTools);
-  
-  // 4. Run sequential thinking (provider-specific implementation)
-  const processedMessages = await this.runSequentialThinking(
-    message,
-    formattedHistory,
-    formattedTools,
-    options,
-    statusHandler
-  );
-  
-  // 5. Generate final response
-  const response = await this.generateFinalResponse(
-    processedMessages,
-    formattedTools,
-    options,
-    statusHandler
-  );
-  
-  // 6. Process artifacts and stream the final response
-  return this.streamProcessedResponse(response, processedMessages, statusHandler);
-}
+// In app.ts or server.ts
+const llmService = new LLMService();
+const messageService = new MessageService();
+const artifactService = new ArtifactService();
+const mcpService = new MCPService();
+
+const chatService = new ChatService({
+  llmService,
+  messageService,
+  artifactService,
+  mcpService
+});
+
+// Make it available to routes
+app.locals.chatService = chatService;
 ```
 
-### Integration with LLMService
-
-The ChatService will use the existing LLMService for direct interactions with the LLM providers. The main difference is that ChatService will handle:
-
-1. **Provider Switching**: Setting the appropriate provider on the LLMService
-2. **Tool Format Conversion**: Using the adapters to convert tool definitions and calls
-3. **Sequential Thinking**: Managing the sequential thinking workflow
-4. **Artifact Collection and Processing**: Handling artifacts from all sources
-5. **Response Formatting**: Ensuring consistent response format for the UI
-
-### Provider-Specific Sequential Thinking
+### Usage in Chat Route
 
 ```typescript
-/**
- * Run the sequential thinking process for a message
- * @param message User message
- * @param history Message history
- * @param tools Available tools
- * @param options Chat options
- * @param statusHandler Status update handler
- * @returns Processed messages with thinking steps
- */
-private async runSequentialThinking(
-  message: string,
-  history: any[],
-  tools: any[],
-  options: any,
-  statusHandler?: (status: string) => void
-): Promise<any[]> {
-  // Clone message history to avoid modifying the original
-  const workingMessages = [...history, { role: 'user', content: message }];
-  let isSequentialThinkingComplete = false;
+router.post('/', async (req, res) => {
+  const { message, history, modelProvider = 'claude', blockedServers = [], pinnedGraph } = req.body;
+  const chatService = req.app.locals.chatService;
   
-  // Get the appropriate tool adapter
-  const toolAdapter = getToolCallAdapter(options.modelProvider);
+  // Set up streaming response
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Transfer-Encoding', 'chunked');
   
-  // Sequential thinking loop
-  while (!isSequentialThinkingComplete) {
-    statusHandler?.('Analyzing request and planning response...');
-    
-    // Provider-specific call implementation
-    const toolResponse = await this.callProviderWithTools(
-      workingMessages,
-      tools,
-      options
+  try {
+    // Process the chat with the selected provider
+    const stream = await chatService.processChat(
+      message,
+      history,
+      {
+        modelProvider,
+        blockedServers,
+        pinnedGraph,
+        temperature: 0.2,
+        maxTokens: 4000
+      },
+      // Status update handler
+      (status) => {
+        res.write(JSON.stringify({ type: 'status', message: status }) + '\n');
+      }
     );
     
-    // Extract tool calls using the appropriate adapter
-    const toolCalls = toolAdapter.extractToolCalls(toolResponse);
-    
-    if (toolCalls.length > 0) {
-      statusHandler?.(`Executing ${toolCalls.length} tool(s)...`);
-      
-      // Process each tool call
-      for (const toolCall of toolCalls) {
-        // Execute the tool and get results
-        const toolResult = await this.executeToolCall(toolCall, options);
-        
-        // Format tool results for the provider
-        const formattedResults = toolAdapter.formatToolResults([toolResult]);
-        
-        // Add assistant message (tool call)
-        workingMessages.push({
-          role: 'assistant',
-          content: `Tool used: ${toolCall.name}\nArguments: ${JSON.stringify(toolCall.input)}`
-        });
-        
-        // Add user message (tool result)
-        workingMessages.push({
-          role: 'user',
-          content: typeof toolResult.content === 'string'
-            ? toolResult.content
-            : JSON.stringify(toolResult.content)
-        });
-        
-        // Check if this was sequential thinking tool
-        if (toolCall.name.includes('sequential-thinking')) {
-          try {
-            const result = typeof toolResult.content === 'string'
-              ? JSON.parse(toolResult.content)
-              : toolResult.content;
-            isSequentialThinkingComplete = !result.nextThoughtNeeded;
-          } catch (error) {
-            console.error('Error parsing sequential thinking result:', error);
-            isSequentialThinkingComplete = true;
-          }
-        }
-      }
-    } else {
-      // No tools used, end the loop
-      isSequentialThinkingComplete = true;
+    // Process the stream
+    const reader = stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
     }
+    
+    res.end();
+  } catch (error) {
+    res.write(JSON.stringify({ 
+      type: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }) + '\n');
+    res.end();
+  }
+});
+```
+
+## Implementation Approach: Incremental Development with Testing Milestones
+
+To avoid making large changes without testing, we'll break down the implementation into smaller, testable milestones. Each milestone will provide a functional improvement that can be tested before moving to the next step.
+
+### Milestone 1: Basic ChatService with Provider Switching
+
+First, we'll create a minimal viable implementation of the ChatService that handles just the basic chat functionality with provider switching:
+
+1. Create the basic ChatService class with:
+   - Constructor taking the LLMService as dependency
+   - `sendBasicMessage` method that accepts different providers
+   - Simple message history formatting
+
+2. Update the chat route to use this service for a simple chat flow (no tools or sequential thinking)
+
+3. Test that different providers work for basic messages
+
+**Sample Implementation:**
+```typescript
+// src/server/services/chat/index.ts
+export class ChatService {
+  private llmService: LLMService;
+  
+  constructor(llmService: LLMService) {
+    this.llmService = llmService;
   }
   
-  return workingMessages;
+  async sendBasicMessage(
+    message: string,
+    history: ChatMessage[],
+    options: {
+      modelProvider: ModelType;
+      temperature?: number;
+      maxTokens?: number;
+    },
+    statusHandler?: (status: string) => void
+  ): Promise<ReadableStream> {
+    // Set the LLM provider
+    this.llmService.setProvider({
+      provider: options.modelProvider as any,
+      temperature: options.temperature || 0.2,
+      maxTokens: options.maxTokens
+    });
+    
+    // Format history appropriately for the provider
+    const formattedHistory = this.formatMessageHistory(history, options.modelProvider);
+    
+    // Basic message sending without tools or sequential thinking
+    return this.llmService.getProvider().streamChatCompletion(
+      message,
+      formattedHistory
+    );
+  }
+  
+  private formatMessageHistory(
+    history: ChatMessage[],
+    providerType: ModelType
+  ): any[] {
+    // Basic history formatting for each provider
+    return history.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+  }
 }
 ```
 
-## Roadmap for Implementation
+This approach provides a clear testing point before continuing with more complex features.
 
-### Week 1: Core ChatService
+### Milestone 1 Test Results
 
-- Day 1-2: Create ChatService interface and base implementation
-- Day 3-4: Implement provider-specific strategies
-- Day 5: Add unit tests for core functionality
+We have successfully implemented and tested the basic ChatService with provider switching. The tests revealed:
 
-### Week 2: Sequential Thinking and Tool Calling
+1. **Provider Naming Adjustment**: 
+   - The LLMService expects `"anthropic"` as the provider name, not `"claude"` in the setProvider method
+   - `"openai"` and `"gemini"` provider names work correctly
 
-- Day 1-2: Abstract sequential thinking process
-- Day 3-4: Implement tool calling for all providers
-- Day 5: Add tests for sequential thinking and tool calling
+2. **Successful Implementation**:
+   - All providers (anthropic, openai, gemini) can be selected via the API
+   - Status updates are correctly sent during processing
+   - The placeholder response is correctly streamed to the client
+   - Message history formatting works as expected
 
-### Week 3: Chat Route Integration
+3. **Streaming Implementation**:
+   - Our temporary implementation of the `streamChatCompletion` method works as expected
+   - This will be replaced with actual provider-specific streaming implementations in Milestone 2
 
-- Day 1-2: Refactor chat route to use ChatService
-- Day 3: Implement streaming support
-- Day 4-5: Test and debug the complete flow
+4. **Next Steps**:
+   - Update ModelType definition to use `"anthropic"` instead of `"claude"` for consistency
+   - Implement the real provider-specific streaming in Milestone 2
+   - Add ModelSelector component updates to use the correct provider names
 
-### Week 4: UI Enhancements and Deployment
+The test results confirm that our basic ChatService architecture is working as intended and provides a solid foundation for the next milestone.
 
-- Day 1-2: Add provider-specific UI elements
-- Day 3: Implement frontend error handling
-- Day 4-5: Final testing and deployment
+### Milestone 2: Add Tool Adapter Integration
+
+After confirming Milestone 1 works correctly:
+
+1. Integrate the tool adapters with the ChatService:
+   - Add `getToolCallAdapter` utility
+   - Create a `sendMessageWithTools` method
+
+2. Update the chat route to use tool-enabled messaging
+
+3. Test basic tool calling with different providers
+
+### Milestone 3: Implement Sequential Thinking
+
+Once tool calling works correctly:
+
+1. Add sequential thinking support:
+   - Create a simplified version of the `runSequentialThinking` method
+   - Support only basic sequential thinking without complex tool chains
+
+2. Update the chat route to use sequential thinking when appropriate
+
+3. Test the sequential thinking process with different providers
+
+### Milestone 4: Complete Feature Parity
+
+With all core functionality working:
+
+1. Implement full artifact handling:
+   - Add knowledge graph support
+   - Support bibliographies and other special artifact types
+
+2. Enhance error handling and add retry logic
+
+3. Comprehensive testing across all providers
+
+This incremental approach ensures that each step builds on a stable foundation, making it easier to identify and fix issues early in the development process. Each milestone represents a clear stopping point where the system can be tested before moving forward.
 
 ## Conclusion
 

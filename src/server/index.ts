@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import chatRouter from './routes/chat';
+import chatBasicRouter from './routes/chat-basic';
 import ollamaRouter from './routes/ollama_mcp';
 import serverStatusRouter from './routes/server-status';
 import storageRouter from './routes/storage';
@@ -12,6 +13,7 @@ import llmRoutes from './routes/api/internal/llm';
 import { MCPService, MCPLogMessage } from './services/mcp';
 import { LoggingService } from './services/logging';
 import { LLMService } from './services/llm';
+import { ChatService } from './services/chat';
 import { randomUUID } from 'crypto';
 
 // ES Module dirname equivalent
@@ -27,6 +29,7 @@ const port = 3001; // Explicitly set to 3001
 const mcpService = new MCPService();
 const loggingService = new LoggingService();
 const llmService = new LLMService(); // Initialize LLM Service
+const chatService = new ChatService(llmService); // Initialize Chat Service with LLM Service
 
 // Initialize logging directory
 const logDir = path.join(process.cwd(), 'logs');
@@ -47,6 +50,7 @@ console.log(`Log directory: ${logDir}`);
 app.locals.mcpService = mcpService;
 app.locals.loggingService = loggingService;
 app.locals.llmService = llmService; // Add LLM Service to app locals
+app.locals.chatService = chatService; // Add Chat Service to app locals
 
 // Enhanced debug log
 console.log('\n=== MCP Service Initialization ===');
@@ -120,6 +124,7 @@ app.use((req, res, next) => {
 
 // Mount routes
 app.use('/api/chat', chatRouter);
+app.use('/api/chat-basic', chatBasicRouter);
 app.use('/api/ollama', ollamaRouter);
 app.use('/api/server-status', serverStatusRouter);
 app.use('/api/storage', storageRouter);
@@ -145,6 +150,7 @@ app.listen(port, () => {
   console.log(`API running at http://localhost:${port}`);
   console.log(`Client running at http://localhost:5173`);
   console.log(`LLM Service running at http://localhost:${port}/api/internal/llm`);
+  console.log(`Basic Chat Service running at http://localhost:${port}/api/chat-basic`);
   
   // Send a test log message after a short delay
   // setTimeout(() => {

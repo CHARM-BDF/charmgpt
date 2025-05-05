@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type ModelType = 'claude' | 'ollama' | 'openai' | 'gemini';
+type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
 
 interface ModelState {
   selectedModel: ModelType;
@@ -11,7 +11,7 @@ interface ModelState {
 export const useModelStore = create<ModelState>()(
   persist(
     (set, get) => ({
-      selectedModel: 'claude' as ModelType,
+      selectedModel: 'anthropic' as ModelType,
       setSelectedModel: (model) => {
         const currentModel = get().selectedModel;
         console.log('ModelStore: State update', {
