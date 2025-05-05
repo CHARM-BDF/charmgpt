@@ -11,13 +11,21 @@ import { MessageService, StoreFormat } from '../message';
 import { ArtifactService } from '../artifact';
 import { ReadableStream } from 'stream/web';
 import { getToolCallAdapter, ToolCall, ToolResult } from './adapters';
+import { getResponseFormatterAdapter, FormatterAdapterType } from './formatters';
+import { ResponseFormatterAdapter } from './formatters/types';
 
 // Importing types
 type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
 
-// Basic chat message type
+// Basic chat message type with union of valid roles
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
+  content: string | any[];
+}
+
+// Extended chat message with any role for provider-specific formatting
+interface ProviderChatMessage {
+  role: string;
   content: string | any[];
 }
 
@@ -53,6 +61,153 @@ export class ChatService {
     this.messageService = messageService || new MessageService();
     this.artifactService = artifactService || new ArtifactService();
     console.log('ChatService: Initialization complete');
+  }
+  
+  /**
+   * Process a chat message with full provider-agnostic support
+   * This method uses response formatter adapters to ensure consistent output format
+   * 
+   * @param message The user message
+   * @param history Previous chat history
+   * @param options Chat options including model provider, blocked servers, and pinned graph
+   * @param statusHandler Optional callback for status updates
+   * @returns A StoreFormat object with the processed response
+   */
+  async processChat(
+    message: string,
+    history: ChatMessage[],
+    options: {
+      modelProvider: ModelType;
+      blockedServers?: string[];
+      pinnedGraph?: any;
+      temperature?: number;
+      maxTokens?: number;
+    },
+    statusHandler?: (status: string) => void
+  ): Promise<StoreFormat> {
+    // Notify status if handler provided
+    statusHandler?.('Initializing chat processing...');
+    
+    // Set the LLM provider
+    this.llmService.setProvider({
+      provider: options.modelProvider as any,
+      temperature: options.temperature || 0.2,
+      maxTokens: options.maxTokens || 4000
+    });
+    
+    // Get available MCP tools
+    let mcpTools: AnthropicTool[] = [];
+    if (this.mcpService) {
+      statusHandler?.('Retrieving available tools...');
+      mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
+    }
+    
+    // Run sequential thinking with tools if needed
+    statusHandler?.('Processing with sequential thinking...');
+    const processedHistory = await this.runSequentialThinking(
+      message,
+      history,
+      mcpTools,
+      options.modelProvider,
+      {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens
+      },
+      statusHandler
+    );
+    
+    // Get the appropriate response formatter adapter
+    const formatterAdapter = getResponseFormatterAdapter(options.modelProvider as FormatterAdapterType);
+    const formatterToolDefinition = formatterAdapter.getResponseFormatterToolDefinition();
+    
+    // Get the latest message (should be the original user message added after thinking)
+    const latestMessage = processedHistory[processedHistory.length - 1].content as string;
+    
+    // Format history for provider
+    const formattedHistory = this.formatMessageHistory(
+      processedHistory.slice(0, -1), // Exclude the latest message
+      options.modelProvider
+    );
+    
+    // Handle provider-specific tool choice configurations
+    let toolChoice: any = { type: 'tool', name: 'response_formatter' };
+    
+    // For Anthropic, toolChoice is handled differently
+    if (options.modelProvider === 'anthropic') {
+      toolChoice = { name: 'response_formatter' };
+    }
+    
+    // Get the LLM response with formatter
+    statusHandler?.(`Getting formatted response from ${options.modelProvider}...`);
+    const llmResponse = await this.llmService.query({
+      prompt: latestMessage,
+      options: {
+        temperature: options.temperature || 0.2,
+        maxTokens: options.maxTokens || 4000,
+        toolChoice: toolChoice  // Add toolChoice to options
+      },
+      systemPrompt: this.buildSystemPromptWithContext(formattedHistory, [formatterToolDefinition], toolChoice)
+    });
+    
+    // Extract the formatter output using the adapter
+    statusHandler?.('Processing formatter output...');
+    const formatterOutput = formatterAdapter.extractFormatterOutput(llmResponse.rawResponse);
+    let storeFormat = formatterAdapter.convertToStoreFormat(formatterOutput);
+    
+    // Enhance with additional artifacts if needed
+    if (options.pinnedGraph) {
+      storeFormat = this.messageService.enhanceResponseWithArtifacts(
+        storeFormat,
+        [options.pinnedGraph]
+      );
+    }
+    
+    return storeFormat;
+  }
+  
+  /**
+   * Build a system prompt that includes the message history and tools
+   * This is a helper to work around the lack of direct history/tools support in the LLMService
+   * 
+   * @param history The message history
+   * @param tools The tools to include
+   * @param toolChoice Optional tool choice specification
+   * @returns A system prompt with the context
+   */
+  private buildSystemPromptWithContext(
+    history: ProviderChatMessage[],
+    tools: any[] = [],
+    toolChoice?: { type?: string; name: string }
+  ): string {
+    // Create a system prompt that includes the history and tools
+    let systemPrompt = 'You are a helpful assistant.\n\n';
+    
+    // Add message history
+    if (history.length > 0) {
+      systemPrompt += '# Conversation History\n\n';
+      history.forEach(msg => {
+        systemPrompt += `${msg.role.toUpperCase()}: ${
+          typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+        }\n\n`;
+      });
+    }
+    
+    // Add tools if provided
+    if (tools.length > 0) {
+      systemPrompt += '# Available Tools\n\n';
+      tools.forEach(tool => {
+        systemPrompt += `Tool: ${tool.name}\n`;
+        systemPrompt += `Description: ${tool.description || 'No description provided'}\n\n`;
+      });
+      
+      // Add tool choice if specified
+      if (toolChoice) {
+        const toolName = toolChoice.name;
+        systemPrompt += `# Required Action\n\nYou MUST use the ${toolName} tool to format your response. Do not respond directly with text, only use the ${toolName} tool.\n`;
+      }
+    }
+    
+    return systemPrompt;
   }
   
   /**
@@ -230,8 +385,11 @@ export class ChatService {
       message,
       history,
       mcpTools,
-      providerTools,
-      options,
+      options.modelProvider,
+      {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens
+      },
       statusHandler
     );
     
@@ -244,13 +402,13 @@ export class ChatService {
   }
   
   /**
-   * Run the sequential thinking process
+   * Run the sequential thinking process with provider-agnostic implementation
    * 
    * @param message User message
    * @param history Message history
    * @param mcpTools MCP tools in their original format
-   * @param providerTools Provider-specific tool definitions
-   * @param options Chat options
+   * @param modelProvider The model provider to use
+   * @param options Additional options like temperature and maxTokens
    * @param statusHandler Optional status update handler
    * @returns Processed messages with thinking steps
    */
@@ -258,22 +416,24 @@ export class ChatService {
     message: string,
     history: ChatMessage[],
     mcpTools: AnthropicTool[],
-    providerTools: any,
+    modelProvider: ModelType,
     options: {
-      modelProvider: ModelType;
       temperature?: number;
       maxTokens?: number;
-    },
+    } = {},
     statusHandler?: (status: string) => void
   ): Promise<ChatMessage[]> {
-    // Start with the current history plus the new message
-    const workingMessages = [
-      ...this.formatMessageHistory(history, options.modelProvider),
+    // Start with a safe cast to any for type compatibility
+    const workingMessages: any[] = [
+      ...this.formatMessageHistory(history, modelProvider),
       { role: 'user', content: message }
     ];
     
     // Get the tool adapter for this provider
-    const toolAdapter = getToolCallAdapter(options.modelProvider);
+    const toolAdapter = getToolCallAdapter(modelProvider);
+    
+    // Convert MCP tools to provider-specific format
+    const providerTools = toolAdapter.convertToolDefinitions(mcpTools);
     
     // Add a sequential-thinking tool if not already present
     const hasSequentialThinkingTool = mcpTools.some(tool => 
@@ -282,8 +442,7 @@ export class ChatService {
     // If we don't have a sequential thinking tool, we'll simulate one
     if (!hasSequentialThinkingTool) {
       statusHandler?.('Adding sequential thinking tool...');
-      // This is a placeholder for a real implementation
-      console.log('No sequential thinking tool found, using placeholder implementation');
+      // In the future, add a standard sequential thinking tool implementation
     }
     
     // Flag to control the sequential thinking loop
@@ -296,45 +455,106 @@ export class ChatService {
       thinkingSteps++;
       statusHandler?.(`Running thinking step ${thinkingSteps}...`);
       
-      // In a real implementation, we would:
-      // 1. Send the current messages to the LLM with tools
-      // 2. Extract any tool calls from the response
-      // 3. Execute the tools and get results
-      // 4. Add the results to the working messages
-      // 5. Check if we need another thinking step
+      // Get the latest message to send to the LLM
+      const latestMessage = workingMessages[workingMessages.length - 1].content as string;
       
-      // For this simplified implementation:
-      if (thinkingSteps >= 2) {
+      // Format history for the provider, excluding the latest message
+      const formattedHistory = this.formatMessageHistory(
+        workingMessages.slice(0, -1),
+        modelProvider
+      );
+      
+      // Get response from the LLM with tools
+      const response = await this.llmService.query({
+        prompt: latestMessage,
+        options: {
+          temperature: options.temperature || 0.2,
+          maxTokens: options.maxTokens || 4000
+        },
+        systemPrompt: this.buildSystemPromptWithContext(formattedHistory, providerTools)
+      });
+      
+      // Extract tool calls using the adapter
+      const toolCalls = toolAdapter.extractToolCalls(response.rawResponse);
+      
+      if (toolCalls.length === 0) {
+        // No tool calls, so we're done with sequential thinking
         isSequentialThinkingComplete = true;
+        statusHandler?.('No tool calls found, sequential thinking complete.');
+        continue;
+      }
+      
+      // Execute each tool and update conversation
+      for (const toolCall of toolCalls) {
+        statusHandler?.(`Executing tool: ${toolCall.name}...`);
         
-        // Add a simulated assistant message with the thinking result
+        if (!this.mcpService) {
+          throw new Error('MCPService not available. Tool execution is not possible.');
+        }
+        
+        // Get the original tool name from the MCP service
+        const originalToolName = this.mcpService.getOriginalToolName(toolCall.name);
+        
+        if (!originalToolName) {
+          statusHandler?.(`Unknown tool: ${toolCall.name}, skipping.`);
+          continue;
+        }
+        
+        // Split into server and tool name
+        const [serverName, toolName] = originalToolName.split(':');
+        
+        // Execute the tool call
+        const toolResult = await this.mcpService.callTool(
+          serverName,
+          toolName,
+          toolCall.input
+        );
+        
+        // Add tool usage to conversation
         workingMessages.push({
           role: 'assistant',
-          content: `After thinking step ${thinkingSteps}, I've completed my analysis.`
+          content: `Used tool: ${toolCall.name}\nArguments: ${JSON.stringify(toolCall.input)}`
         });
         
-        // Add the user's original message again for the final response
-        workingMessages.push({
-          role: 'user',
-          content: message
-        });
-      } else {
-        // Add simulated thinking step
-        workingMessages.push({
-          role: 'assistant',
-          content: `Thinking step ${thinkingSteps}: I need to analyze this further.`
-        });
-        
-        // Add simulated tool result
-        workingMessages.push({
-          role: 'user',
-          content: `Tool result for thinking step ${thinkingSteps}: Additional information to consider.`
-        });
+        // Process tool result
+        if (toolResult && typeof toolResult === 'object' && 'content' in toolResult) {
+          const textContent = Array.isArray(toolResult.content) 
+            ? toolResult.content.find((item: any) => item.type === 'text')?.text 
+            : toolResult.content;
+          
+          if (textContent) {
+            workingMessages.push({
+              role: 'user',
+              content: textContent
+            });
+            
+            // Check if this was sequential thinking tool
+            if (toolCall.name.includes('sequential-thinking')) {
+              try {
+                const result = JSON.parse(typeof textContent === 'string' ? textContent : JSON.stringify(textContent));
+                isSequentialThinkingComplete = !result.nextThoughtNeeded;
+                statusHandler?.(`Sequential thinking status: ${isSequentialThinkingComplete ? 'Complete' : 'Continuing'}`);
+              } catch (error) {
+                console.error('Error parsing sequential thinking result:', error);
+                isSequentialThinkingComplete = true;
+                statusHandler?.('Error in sequential thinking, marking as complete.');
+              }
+            }
+          }
+        }
       }
     }
     
+    // Add the original user message for the final response
+    if (isSequentialThinkingComplete) {
+      workingMessages.push({
+        role: 'user',
+        content: message
+      });
+    }
+    
     statusHandler?.(`Sequential thinking completed in ${thinkingSteps} steps.`);
-    return workingMessages;
+    return workingMessages as ChatMessage[];
   }
   
   /**
@@ -457,8 +677,7 @@ export class ChatService {
   
   /**
    * Format chat history based on the provider's requirements
-   * This simple version works for all providers but can be enhanced
-   * in later milestones for provider-specific formatting
+   * This handles provider-specific formatting requirements
    * 
    * @param history The chat history
    * @param providerType The provider type
@@ -467,14 +686,44 @@ export class ChatService {
   private formatMessageHistory(
     history: ChatMessage[],
     providerType: ModelType
-  ): any[] {
-    // Basic history formatting for each provider
-    // This simple implementation just passes through the history
-    // Later implementations will adapt for provider-specific formats
-    return history.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
+  ): ProviderChatMessage[] {
+    // Provider-specific message formatting
+    switch (providerType) {
+      case 'openai':
+        // OpenAI separates system messages from user/assistant
+        return history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+        
+      case 'anthropic':
+        // Anthropic has different content structure
+        return history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+        
+      case 'gemini':
+        // Gemini uses a different structure with parts
+        return history.map(msg => ({
+          role: msg.role === 'system' ? 'user' : msg.role, // Gemini doesn't have system role
+          content: msg.content
+        }));
+        
+      case 'ollama':
+        // Ollama is similar to OpenAI
+        return history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+        
+      default:
+        // Default formatting
+        return history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+    }
   }
   
   /**

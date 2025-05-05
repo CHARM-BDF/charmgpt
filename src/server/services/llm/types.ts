@@ -64,6 +64,12 @@ export interface LLMProviderOptions extends Partial<LLMServiceOptions> {
   apiKey?: string;
   /** System prompt to guide the LLM's behavior */
   systemPrompt?: string;
+  /** Message history for conversation context */
+  history?: any[];
+  /** Tools that the model can use */
+  tools?: any[];
+  /** Tool choice specification for providers */
+  toolChoice?: any;
 }
 
 /**

@@ -1,95 +1,89 @@
 /**
- * LLM Provider Test Script
+ * Test script for verifying the ChatService implementation with multiple providers
  * 
- * This script tests each LLM provider implementation in isolation.
+ * Run with: node test-providers.js
  */
 
-import 'dotenv/config';
-import { AnthropicProvider } from './src/server/services/llm/providers/anthropic.js';
-import { OpenAIProvider } from './src/server/services/llm/providers/openai.js';
-import { GeminiProvider } from './src/server/services/llm/providers/gemini.js';
+const { LLMService } = require('./dist/server/services/llm');
+const { ChatService } = require('./dist/server/services/chat');
+const { AnthropicResponseFormatterAdapter } = require('./dist/server/services/chat/formatters/anthropic');
+const { OpenAIResponseFormatterAdapter } = require('./dist/server/services/chat/formatters/openai');
+const { GeminiResponseFormatterAdapter } = require('./dist/server/services/chat/formatters/gemini');
 
-// Test a provider with a prompt
-async function testProvider(name, providerInstance) {
-  console.log(`\n======= Testing ${name} Provider =======`);
+// Sample message to test with
+const TEST_MESSAGE = "What is the capital of France?";
+
+// Test each provider
+async function testAllProviders() {
+  console.log("==== Testing ChatService with Multiple Providers ====\n");
+  
+  // Create services
+  const llmService = new LLMService();
+  const chatService = new ChatService(llmService);
+  
+  // Get formatter adapters for testing
+  const anthropicFormatter = new AnthropicResponseFormatterAdapter();
+  const openaiFormatter = new OpenAIResponseFormatterAdapter();
+  const geminiFormatter = new GeminiResponseFormatterAdapter();
+
+  // Test each provider
+  await testProvider(chatService, 'anthropic', anthropicFormatter);
+  await testProvider(chatService, 'openai', openaiFormatter);
+  await testProvider(chatService, 'gemini', geminiFormatter);
+  
+  console.log("\n==== Testing Complete ====");
+}
+
+// Test a specific provider
+async function testProvider(chatService, provider, formatterAdapter) {
+  console.log(`\n---- Testing ${provider.toUpperCase()} Provider ----\n`);
   
   try {
-    console.log(`Sending test query to ${name}...`);
+    console.log(`1. Getting tool definition for ${provider}...`);
+    const toolDef = formatterAdapter.getResponseFormatterToolDefinition();
+    console.log(`✅ Got tool definition: ${toolDef.name}`);
     
-    const startTime = Date.now();
-    const response = await providerInstance.query(
-      'Explain the difference between TypeScript and JavaScript in one sentence.'
+    console.log(`\n2. Testing LLM Service with ${provider}...`);
+    const llmService = chatService.llmService;
+    llmService.setProvider({ provider });
+    
+    // For basic query testing
+    const providerName = llmService.getProvider();
+    console.log(`✅ Provider set to: ${providerName}`);
+    
+    console.log(`\n3. Testing full ChatService processChat with ${provider}...`);
+    console.log(`Sending message: "${TEST_MESSAGE}"`);
+    
+    const result = await chatService.processChat(
+      TEST_MESSAGE,
+      [], // empty history
+      { modelProvider: provider },
+      (status) => console.log(`    Status: ${status}`)
     );
-    const duration = Date.now() - startTime;
     
-    console.log(`✅ ${name} response received in ${duration}ms`);
-    console.log('Content:', response.content);
-    console.log('Token usage:', response.usage);
+    console.log('\n✅ Received response:');
     
-    return true;
+    // Display partial response for verification
+    if (result.thinking) {
+      console.log(`\nThinking:\n${result.thinking.substring(0, 100)}...`);
+    }
+    
+    if (result.conversation) {
+      console.log(`\nConversation:\n${result.conversation.substring(0, 100)}...`);
+    }
+    
+    if (result.artifacts && result.artifacts.length > 0) {
+      console.log(`\nArtifacts: ${result.artifacts.length}`);
+      console.log(`First artifact: ${result.artifacts[0].title} (${result.artifacts[0].type})`);
+    }
+    
+    console.log(`\n✅ ${provider.toUpperCase()} TEST PASSED`);
   } catch (error) {
-    console.error(`❌ ${name} test failed:`, error);
-    return false;
+    console.error(`❌ ${provider.toUpperCase()} TEST FAILED:`, error);
   }
 }
 
-async function runTests() {
-  console.log('LLM Provider Test Script');
-  console.log('======================\n');
-  
-  const results = {};
-  
-  // Test Anthropic Provider
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      const anthropicProvider = new AnthropicProvider();
-      results.anthropic = await testProvider('Anthropic', anthropicProvider);
-    } catch (error) {
-      console.error('Error initializing Anthropic provider:', error);
-      results.anthropic = false;
-    }
-  } else {
-    console.log('⚠️ Skipping Anthropic test (ANTHROPIC_API_KEY not set)');
-    results.anthropic = false;
-  }
-  
-  // Test OpenAI Provider
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      const openaiProvider = new OpenAIProvider();
-      results.openai = await testProvider('OpenAI', openaiProvider);
-    } catch (error) {
-      console.error('Error initializing OpenAI provider:', error);
-      results.openai = false;
-    }
-  } else {
-    console.log('⚠️ Skipping OpenAI test (OPENAI_API_KEY not set)');
-    results.openai = false;
-  }
-  
-  // Test Gemini Provider
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      const geminiProvider = new GeminiProvider();
-      results.gemini = await testProvider('Gemini', geminiProvider);
-    } catch (error) {
-      console.error('Error initializing Gemini provider:', error);
-      results.gemini = false;
-    }
-  } else {
-    console.log('⚠️ Skipping Gemini test (GEMINI_API_KEY not set)');
-    results.gemini = false;
-  }
-  
-  // Print summary
-  console.log('\n======= Test Summary =======');
-  Object.entries(results).forEach(([provider, success]) => {
-    console.log(`${provider}: ${success ? '✅ PASSED' : '❌ FAILED'}`);
-  });
-}
-
-// Run the tests
-runTests().catch(error => {
-  console.error('Test script error:', error);
-  process.exit(1);
+// Run tests
+testAllProviders().catch(error => {
+  console.error("Error running tests:", error);
 }); 

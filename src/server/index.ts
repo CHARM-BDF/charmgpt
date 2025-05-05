@@ -16,9 +16,7 @@ import llmRoutes from './routes/api/internal/llm';
 import { MCPService, MCPLogMessage } from './services/mcp';
 import { LoggingService } from './services/logging';
 import { LLMService } from './services/llm';
-import { ChatService } from './services/chat';
-import { MessageService } from './services/message';
-import { ArtifactService } from './services/artifact';
+import { createChatService } from './services/chatServiceFactory';
 import { randomUUID } from 'crypto';
 
 // ES Module dirname equivalent
@@ -34,14 +32,6 @@ const port = 3001; // Explicitly set to 3001
 const mcpService = new MCPService();
 const loggingService = new LoggingService();
 const llmService = new LLMService(); // Initialize LLM Service
-const messageService = new MessageService(); // Initialize Message Service
-const artifactService = new ArtifactService(); // Initialize Artifact Service
-const chatService = new ChatService(
-  llmService, 
-  mcpService, 
-  messageService, 
-  artifactService
-); // Initialize Chat Service with all dependencies
 
 // Initialize logging directory
 const logDir = path.join(process.cwd(), 'logs');
@@ -62,9 +52,10 @@ console.log(`Log directory: ${logDir}`);
 app.locals.mcpService = mcpService;
 app.locals.loggingService = loggingService;
 app.locals.llmService = llmService; // Add LLM Service to app locals
-app.locals.messageService = messageService; // Add Message Service to app locals
-app.locals.artifactService = artifactService; // Add Artifact Service to app locals
-app.locals.chatService = chatService; // Add Chat Service to app locals
+
+// Create and register the chat service using the factory function
+app.locals.chatService = createChatService(app);
+console.log('Chat Service initialized and registered via factory');
 
 // Enhanced debug log
 console.log('\n=== MCP Service Initialization ===');

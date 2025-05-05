@@ -19,8 +19,18 @@ export class GeminiProvider implements LLMProvider {
     }
     
     this.client = new GoogleGenerativeAI(apiKey);
-    // Set default model to gemini-1.5-flash instead of gemini-pro
-    this.defaultModel = options.model || 'gemini-1.5-flash';
+    
+    // Override the incoming model parameter if it's a non-Gemini model
+    let modelToUse = options.model;
+    
+    // If no model specified or it's not a Gemini model, use the default
+    if (!modelToUse || modelToUse.includes('claude') || modelToUse.includes('gpt')) {
+      modelToUse = 'gemini-1.5-flash';
+      console.log(`GeminiProvider: Overriding non-Gemini model with default: ${modelToUse}`);
+    }
+    
+    // Set default model
+    this.defaultModel = modelToUse;
     
     console.log(`GeminiProvider: Initialized with model ${this.defaultModel}`);
   }
