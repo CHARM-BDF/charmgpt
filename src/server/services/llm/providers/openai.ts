@@ -19,8 +19,17 @@ export class OpenAIProvider implements LLMProvider {
     }
     
     this.client = new OpenAI({ apiKey });
+    // Override the incoming model parameter if it's a Claude model
+    let modelToUse = options.model;
+    
+    // If no model specified or it contains 'claude', use the default OpenAI model
+    if (!modelToUse || modelToUse.includes('claude')) {
+      modelToUse = 'gpt-4-turbo-preview';
+      console.log(`OpenAIProvider: Overriding Claude model with default OpenAI model: ${modelToUse}`);
+    }
+    
     // Set default model (GPT-4 Turbo is a good default)
-    this.defaultModel = options.model || 'gpt-4-turbo-preview';
+    this.defaultModel = modelToUse;
     
     console.log(`OpenAIProvider: Initialized with model ${this.defaultModel}`);
   }

@@ -1,8 +1,8 @@
 /**
- * Chat with Artifacts Route
+ * Chat Artifacts Route
  * 
- * This route provides an endpoint for testing the ChatService
- * with full artifact processing capabilities.
+ * Provides a route for chat interactions with artifact generation.
+ * This uses the new ChatService with response formatter adapters.
  */
 
 import express, { Request, Response } from 'express';
@@ -15,21 +15,10 @@ router.post('/', async (req: Request<{}, {}, {
   message: string; 
   history: Array<{ role: 'user' | 'assistant' | 'system'; content: string | any[] }>;
   modelProvider?: 'anthropic' | 'ollama' | 'openai' | 'gemini';
+  blockedServers?: string[];
+  pinnedGraph?: any;
   temperature?: number;
   maxTokens?: number;
-  blockedServers?: string[];
-  pinnedGraph?: {
-    id: string;
-    type: string;
-    title: string;
-    content: string | any;
-  };
-  pinnedArtifacts?: Array<{
-    id: string;
-    type: string;
-    title: string;
-    content: string | any;
-  }>;
 }>, res: Response) => {
   // Set headers for streaming
   res.setHeader('Content-Type', 'application/json');
@@ -62,56 +51,70 @@ router.post('/', async (req: Request<{}, {}, {
       message, 
       history, 
       modelProvider = 'anthropic',
-      temperature = 0.2,
-      maxTokens = 4000,
       blockedServers = [],
       pinnedGraph,
-      pinnedArtifacts = []
+      temperature = 0.2,
+      maxTokens = 4000
     } = req.body;
     
     // Initial status update
-    sendStatusUpdate('Processing request with artifact support...');
+    sendStatusUpdate('Processing request...');
     sendStatusUpdate(`Using model provider: ${modelProvider}`);
     
-    if (pinnedGraph) {
-      sendStatusUpdate(`Found pinned knowledge graph: ${pinnedGraph.title}`);
-    }
-    
-    if (pinnedArtifacts.length > 0) {
-      sendStatusUpdate(`Found ${pinnedArtifacts.length} pinned artifacts`);
-    }
-    
-    // Process the chat with artifact support
-    const stream = await chatService.processChatWithArtifacts(
+    // Process the chat with the ChatService
+    const response = await chatService.processChat(
       message,
       history,
       {
         modelProvider,
-        temperature,
-        maxTokens,
         blockedServers,
         pinnedGraph,
-        pinnedArtifacts
+        temperature,
+        maxTokens
       },
       // Pass the status handler to get updates
       sendStatusUpdate
     );
     
-    // Stream the response to the client
-    const reader = stream.getReader();
+    // Send the processed response
+    sendStatusUpdate('Response received, sending content...');
     
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      // Forward the streamed data to the client
-      res.write(value);
+    // Stream each part of the response
+    if (response.thinking) {
+      res.write(JSON.stringify({
+        type: 'thinking',
+        content: response.thinking,
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString()
+      }) + '\n');
+    }
+    
+    if (response.conversation && Array.isArray(response.conversation)) {
+      for (const item of response.conversation) {
+        if (typeof item === 'object' && item !== null) {
+          if (item.type === 'text' && item.content) {
+            res.write(JSON.stringify({
+              type: 'content',
+              content: item.content,
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString()
+            }) + '\n');
+          } else if (item.type === 'artifact' && item.artifact) {
+            res.write(JSON.stringify({
+              type: 'artifact',
+              artifact: item.artifact,
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString()
+            }) + '\n');
+          }
+        }
+      }
     }
     
     // Send a final completion message
     res.write(JSON.stringify({ 
       type: 'status', 
-      message: 'Artifact processing complete',
+      message: 'Response complete',
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       final: true

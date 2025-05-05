@@ -57,7 +57,8 @@ export class LLMService implements LLMServiceInterface {
    * Initialize provider based on the current options
    */
   private initializeProvider(): void {
-    console.log(`🔄 LLMService: Initializing provider ${this.options.provider.toUpperCase()}`);
+    const providerName = this.options.provider || 'anthropic';
+    console.log(`🔄 LLMService: Initializing provider ${providerName.toUpperCase()}`);
     
     if (this.options.provider === 'anthropic') {
       this.provider = new AnthropicProvider({
@@ -74,7 +75,7 @@ export class LLMService implements LLMServiceInterface {
     } else if (this.options.provider === 'ollama') {
       throw new Error(`Ollama provider not yet implemented`);
     } else {
-      throw new Error(`Unsupported LLM provider: ${this.options.provider}`);
+      throw new Error(`Unsupported LLM provider: ${providerName}`);
     }
   }
   
@@ -88,7 +89,8 @@ export class LLMService implements LLMServiceInterface {
       return;
     }
     
-    console.log(`🔀 LLMService: Switching to provider ${options.provider.toUpperCase()}`);
+    const providerName = options.provider;
+    console.log(`🔀 LLMService: Switching to provider ${providerName.toUpperCase()}`);
     
     // Update options with the new provider settings
     this.options = {
@@ -96,12 +98,46 @@ export class LLMService implements LLMServiceInterface {
       ...options
     };
     
+    // Reset model to provider-specific defaults if not explicitly set in options
+    // or if current model is incompatible with the new provider
+    if (!options.model || this.isIncompatibleModel(providerName, this.options.model)) {
+      if (providerName === 'anthropic') {
+        this.options.model = 'claude-3-5-sonnet-20241022';
+        console.log(`LLMService: Using default Anthropic model: ${this.options.model}`);
+      } else if (providerName === 'openai') {
+        this.options.model = 'gpt-4-turbo-preview';
+        console.log(`LLMService: Using default OpenAI model: ${this.options.model}`);
+      } else if (providerName === 'gemini') {
+        this.options.model = 'gemini-1.5-flash';
+        console.log(`LLMService: Using default Gemini model: ${this.options.model}`);
+      }
+    }
+    
     try {
       this.initializeProvider();
-      console.log(`✅ LLMService: Provider ${this.options.provider.toUpperCase()} initialized successfully`);
+      console.log(`✅ LLMService: Provider ${providerName.toUpperCase()} initialized successfully`);
     } catch (error) {
-      console.error(`❌ LLMService: Error in setProvider for ${this.options.provider}:`, error);
+      console.error(`❌ LLMService: Error in setProvider for ${providerName}:`, error);
     }
+  }
+  
+  /**
+   * Check if a model is incompatible with a provider
+   * @param provider The provider name
+   * @param model The model name
+   * @returns True if the model is incompatible with the provider
+   */
+  private isIncompatibleModel(provider: string, model: string | undefined): boolean {
+    if (!model) return true;
+    
+    if (provider === 'anthropic' && !model.includes('claude')) {
+      return true;
+    } else if (provider === 'openai' && model.includes('claude')) {
+      return true;
+    } else if (provider === 'gemini' && (model.includes('claude') || model.includes('gpt'))) {
+      return true;
+    }
+    return false;
   }
   
   /**
