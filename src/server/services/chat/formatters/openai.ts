@@ -218,7 +218,7 @@ export class OpenAIResponseFormatterAdapter implements ResponseFormatterAdapter 
     console.log(`🔍 DEBUG-OPENAI-FORMATTER: Converting formatter output to store format`);
     
     // Process conversation items into the expected format
-    const processedConversation: Array<{type: string; content?: string; artifact?: any}> = [];
+    const conversation: string[] = [];
     const artifacts: Array<any> = [];
     let position = 0;
     
@@ -228,11 +228,8 @@ export class OpenAIResponseFormatterAdapter implements ResponseFormatterAdapter 
       
       formatterOutput.conversation.forEach(item => {
         if (item.type === 'text' && item.content) {
-          // Add text content to processed conversation
-          processedConversation.push({
-            type: 'text',
-            content: item.content
-          });
+          // Add text content to conversation array as string
+          conversation.push(item.content);
         } 
         else if (item.type === 'artifact' && item.artifact) {
           // Generate unique ID for artifact
@@ -249,27 +246,19 @@ export class OpenAIResponseFormatterAdapter implements ResponseFormatterAdapter 
             language: item.artifact.language
           });
           
-          // Add artifact reference to conversation
-          processedConversation.push({
-            type: 'artifact',
-            artifact: {
-              id: uniqueId,
-              type: item.artifact.type,
-              title: item.artifact.title,
-              content: item.artifact.content,
-              language: item.artifact.language
-            }
-          });
+          // Add artifact button reference to conversation text array
+          conversation.push(this.createArtifactButton(uniqueId, item.artifact.type, item.artifact.title));
         }
       });
     }
     
-    console.log(`🔍 DEBUG-OPENAI-FORMATTER: Processed ${processedConversation.length} conversation items and ${artifacts.length} artifacts`);
+    console.log(`🔍 DEBUG-OPENAI-FORMATTER: Processed ${conversation.length} conversation items and ${artifacts.length} artifacts`);
     
-    // Return the store format with array-structured conversation items
+    // Join conversation text segments with double newlines
+    // This is the critical change to match the original MessageService behavior
     return {
       thinking: formatterOutput.thinking,
-      conversation: processedConversation,
+      conversation: conversation.join('\n\n'),  // Join text segments into a single string
       artifacts: artifacts.length > 0 ? artifacts : undefined
     };
   }
