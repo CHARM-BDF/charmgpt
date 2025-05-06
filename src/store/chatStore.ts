@@ -543,19 +543,34 @@ export const useChatStore = create<ChatState>()(
                   } 
                   else if (data.type === 'content') {
                     // Process complete content chunks - keep track of them but don't update UI until complete
-                    console.log('[STREAM DEBUG] Received content chunk');
+                    console.log('[STREAM DEBUG] Received content chunk:', {
+                      content: data.content?.substring(0, 100),
+                      lengthOfContent: data.content?.length || 0,
+                      messageId: assistantMessageId
+                    });
                     
                     // Store the content for later use in the final response
                     const contentData = data.content;
                     
                     // Add content to the assistant message immediately
+                    set((state: ChatState) => {
+                      console.log('[STREAM DEBUG] Current message content length:', 
+                        state.messages.find(m => m.id === assistantMessageId)?.content?.length || 0);
+                      
+                      return {
+                        messages: state.messages.map(msg => {
+                          if (msg.id === assistantMessageId) {
+                            console.log('[STREAM DEBUG] Updating message content:', msg.id);
+                            return { ...msg, content: contentData };
+                          }
+                          return msg;
+                        })
+                      };
+                    });
+                    
+                    // Also update the streaming content for immediate display
                     set((state: ChatState) => ({
-                      messages: state.messages.map(msg => {
-                        if (msg.id === assistantMessageId) {
-                          return { ...msg, content: contentData };
-                        }
-                        return msg;
-                      })
+                      streamingContent: contentData
                     }));
                   }
                   else if (data.type === 'artifact') {

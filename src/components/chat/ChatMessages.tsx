@@ -184,7 +184,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
           const messageWithThinking = message as MessageWithThinking;
           const isAssistant = message.role === 'assistant';
           const hasThinking = isAssistant && messageWithThinking.thinking;
-          const isStreaming = streamingMessageId === message.id;
+          const isStreaming = streamingMessageId === message.id && !chatStore.streamingComplete;
           
           return (
             <div
@@ -265,7 +265,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                                       <span className="opacity-70 mr-2">
                                         {(typeof update.timestamp === 'string' ? new Date(update.timestamp) : update.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
                                       </span>
-                                      {update.message}
+                                      <span>{update.message}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -309,9 +309,29 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                               </div>
                             )}
                             
-                            <AssistantMarkdown 
-                              content={message.content} 
-                            />
+                            {/* Debug info to see message content */}
+                            {process.env.NODE_ENV === 'development' && (
+                              <div className="text-xs text-gray-400 mb-2">
+                                Content length: {message.content?.length || 0}
+                                <br />
+                                isStreaming: {isStreaming ? 'true' : 'false'}
+                                <br />
+                                streamingComplete: {chatStore.streamingComplete ? 'true' : 'false'}
+                                <br />
+                                streamingMessageId: {chatStore.streamingMessageId || 'null'}
+                                <br />
+                                message.id: {message.id}
+                                <br />
+                                First 50 chars: {message.content ? message.content.substring(0, 50) + '...' : 'empty'}
+                              </div>
+                            )}
+                            
+                            {message.content?.includes("_Status:") ? (
+                               // Don't render the status messages as content
+                               <AssistantMarkdown content={message.content.replace(/^_Status:.*_\n\n?/gm, '')} />
+                            ) : (
+                               <AssistantMarkdown content={message.content} />
+                            )}
                           </>
                         )}
                       </div>
