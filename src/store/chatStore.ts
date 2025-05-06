@@ -44,6 +44,8 @@ export interface ChatState extends ConversationState {
   pinnedGraphId: string | null;
   chatInput: string; // New state for chat input
   inProjectConversationFlow: boolean; // Flag to track if we're continuing a project conversation
+  activeCompletionId?: string | null; // Optional ID of the active completion
+  blockedServers?: string[]; // Optional list of blocked servers
   
   // Existing message functions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
@@ -124,6 +126,8 @@ export const useChatStore = create<ChatState>()(
         pinnedGraphId: null,
         chatInput: '', // Initialize chat input
         inProjectConversationFlow: false, // Initialize the project conversation flow flag
+        activeCompletionId: null, // Initialize the active completion ID
+        blockedServers: [], // Initialize the blocked servers
         
         // New conversation state
         currentConversationId: null,
@@ -394,7 +398,7 @@ export const useChatStore = create<ChatState>()(
           const selectedModel = useModelStore.getState().selectedModel;
           console.log(`ChatStore: Using model provider: ${selectedModel}`);
           
-          const currentConversation = conversations[currentConversationId];
+          const currentConversation = conversations[currentConversationId as string];
           if (!currentConversation) {
             console.error('ChatStore: No current conversation found');
             return;
@@ -511,7 +515,7 @@ export const useChatStore = create<ChatState>()(
                 
                 try {
                   const data = JSON.parse(line);
-                  console.log('[STREAM DEBUG] Received chunk type:', data.type);
+                  console.log(`[STREAM DEBUG] Received chunk type:`, data.type);
                   
                   if (data.type === 'status') {
                     // Update the message with the status
@@ -537,6 +541,59 @@ export const useChatStore = create<ChatState>()(
                       streamingContent: `_Status: ${data.message}_\n\n`
                     }));
                   } 
+                  else if (data.type === 'content') {
+                    // Process complete content chunks - keep track of them but don't update UI until complete
+                    console.log('[STREAM DEBUG] Received content chunk');
+                    
+                    // Store the content for later use in the final response
+                    const contentData = data.content;
+                    
+                    // Add content to the assistant message immediately
+                    set((state: ChatState) => ({
+                      messages: state.messages.map(msg => {
+                        if (msg.id === assistantMessageId) {
+                          return { ...msg, content: contentData };
+                        }
+                        return msg;
+                      })
+                    }));
+                  }
+                  else if (data.type === 'artifact') {
+                    // Process artifact - don't update UI immediately
+                    console.log('[STREAM DEBUG] Received artifact:', data.artifact?.title);
+                    
+                    // Add the artifact to the store immediately
+                    if (data.artifact) {
+                      const artifactId = get().addArtifact({
+                        id: data.artifact.id || crypto.randomUUID(),
+                        artifactId: data.artifact.artifactId || crypto.randomUUID(),
+                        type: data.artifact.type,
+                        title: data.artifact.title,
+                        content: data.artifact.content,
+                        position: data.artifact.position || 0,
+                        language: data.artifact.language
+                      });
+                      
+                      // Associate artifact with the message
+                      set((state: ChatState) => {
+                        const updatedMessages = state.messages.map((msg: MessageWithThinking) => {
+                          if (msg.id === assistantMessageId) {
+                            const existingArtifactIds = msg.artifactIds || [];
+                            if (!existingArtifactIds.includes(artifactId)) {
+                              return { 
+                                ...msg,
+                                artifactId: msg.artifactId || artifactId,
+                                artifactIds: [...existingArtifactIds, artifactId]
+                              };
+                            }
+                          }
+                          return msg;
+                        });
+                        
+                        return { messages: updatedMessages };
+                      });
+                    }
+                  }
                   else if (data.type === 'result') {
                     // Store the final response for processing after the loop
                     console.log('[STREAM DEBUG] Received final result');
@@ -736,7 +793,9 @@ export const useChatStore = create<ChatState>()(
           isLoading: false,
           error: null,
           showArtifactWindow: false,
-          inProjectConversationFlow: false // Reset the flag when clearing chat
+          inProjectConversationFlow: false, // Reset the flag when clearing chat
+          activeCompletionId: null, // Reset the active completion ID
+          blockedServers: [] // Reset the blocked servers
         })),
 
         startStreaming: (messageId: string) => {
@@ -789,7 +848,9 @@ export const useChatStore = create<ChatState>()(
             artifacts: [],
             selectedArtifactId: null,
             showArtifactWindow: false,
-            inProjectConversationFlow: false // Reset project conversation flow when starting a new conversation
+            inProjectConversationFlow: false, // Reset project conversation flow when starting a new conversation
+            activeCompletionId: null, // Reset the active completion ID
+            blockedServers: [] // Reset the blocked servers
           }));
           
           return id;
@@ -811,7 +872,9 @@ export const useChatStore = create<ChatState>()(
             artifacts: conversation.artifacts || [],
             selectedArtifactId: null,
             showArtifactWindow: false,
-            inProjectConversationFlow: isProjectConversation // Set true if conversation belongs to a project
+            inProjectConversationFlow: isProjectConversation, // Set true if conversation belongs to a project
+            activeCompletionId: null, // Reset the active completion ID
+            blockedServers: [] // Reset the blocked servers
           });
         },
 
