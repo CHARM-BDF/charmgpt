@@ -172,6 +172,13 @@ export class LLMService implements LLMServiceInterface {
     if (debugOptions.tools && Array.isArray(debugOptions.tools) && debugOptions.tools.length > 0) {
       console.log(`🔍 DEBUG-LLM-SERVICE: Received ${debugOptions.tools.length} tools, first tool:`, 
         debugOptions.tools[0].function?.name || 'unknown structure');
+      
+      // Check if pubmed tool is in tools list
+      const hasPubmedTool = debugOptions.tools.some((tool: any) => 
+        (tool.function?.name && tool.function.name.includes('pubmed')) || 
+        (tool.name && tool.name.includes('pubmed'))
+      );
+      console.log(`🔍 DEBUG-LLM-SERVICE: Tools include pubmed: ${hasPubmedTool}`);
     }
     
     // If there's a toolChoice, log it
