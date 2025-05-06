@@ -13,6 +13,7 @@ import { ReadableStream } from 'stream/web';
 import { getToolCallAdapter, ToolCall, ToolResult } from './adapters';
 import { getResponseFormatterAdapter, FormatterAdapterType } from './formatters';
 import { ResponseFormatterAdapter } from './formatters/types';
+import { isValidKnowledgeGraph, mergeKnowledgeGraphs, KnowledgeGraph } from '../../../utils/knowledgeGraphUtils';
 
 // Importing types
 type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
@@ -27,6 +28,15 @@ interface ChatMessage {
 interface ProviderChatMessage {
   role: string;
   content: string | any[];
+}
+
+// Extended chat message with metadata for artifact storage
+interface EnhancedChatMessage extends ChatMessage {
+  bibliography?: any[];
+  knowledgeGraph?: KnowledgeGraph;
+  directArtifacts?: any[];
+  binaryOutputs?: any[];
+  grantMarkdown?: string;
 }
 
 /**
@@ -60,16 +70,16 @@ export class ChatService {
     this.mcpService = mcpService;
     this.messageService = messageService || new MessageService();
     this.artifactService = artifactService || new ArtifactService();
-    console.log('ChatService: Initialization complete');
+    console.log('ChatService: Initialization complete with enhanced artifact handling');
   }
   
   /**
-   * Process a chat message with full provider-agnostic support
-   * This method uses response formatter adapters to ensure consistent output format
+   * Process a chat with full artifact support
+   * This method processes a chat message with sequential thinking and returns a structured response
    * 
    * @param message The user message
    * @param history Previous chat history
-   * @param options Chat options including model provider, blocked servers, and pinned graph
+   * @param options Chat options including model provider, blocked servers, and pinned artifacts
    * @param statusHandler Optional callback for status updates
    * @returns A StoreFormat object with the processed response
    */
@@ -165,12 +175,91 @@ export class ChatService {
     const formatterOutput = formatterAdapter.extractFormatterOutput(llmResponse.rawResponse);
     let storeFormat = formatterAdapter.convertToStoreFormat(formatterOutput);
     
-    // Enhance with additional artifacts if needed
+    // ===== ARTIFACT COLLECTION PHASE =====
+    // This mirrors the artifact collection approach from chat.ts
+    statusHandler?.('Collecting artifacts from tool results...');
+    console.log(`🔍 ARTIFACT-COLLECTION: Beginning unified artifact collection phase`);
+    
+    // Initialize artifacts collection array
+    let artifactsToAdd = [];
+    
+    // Add any pinned graph if provided in options
     if (options.pinnedGraph) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Adding pinned graph from options`);
+      artifactsToAdd.push(options.pinnedGraph);
+    }
+    
+    // Handle bibliography if present in processed history
+    if ((processedHistory as any).bibliography) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Found bibliography with ${(processedHistory as any).bibliography.length} entries`);
+      artifactsToAdd.push({
+        type: 'application/vnd.bibliography',
+        title: 'Bibliography',
+        content: (processedHistory as any).bibliography
+      });
+    }
+    
+    // Handle knowledge graph if present
+    if ((processedHistory as any).knowledgeGraph) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Found knowledge graph`);
+      artifactsToAdd.push({
+        type: 'application/vnd.knowledge-graph',
+        title: 'Knowledge Graph',
+        content: (processedHistory as any).knowledgeGraph
+      });
+    }
+    
+    // Handle direct artifacts if present
+    if ((processedHistory as any).directArtifacts) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Processing ${(processedHistory as any).directArtifacts.length} direct artifacts`);
+      
+      for (const artifact of (processedHistory as any).directArtifacts) {
+        console.log(`🔍 ARTIFACT-COLLECTION: Adding direct artifact of type: ${artifact.type}`);
+        artifactsToAdd.push(artifact);
+      }
+    }
+    
+    // Handle binary outputs if present
+    if ((processedHistory as any).binaryOutputs) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Processing ${(processedHistory as any).binaryOutputs.length} binary outputs`);
+      
+      for (const binaryOutput of (processedHistory as any).binaryOutputs) {
+        // Use artifact service to process binary outputs
+        const processedArtifacts = this.artifactService.processBinaryOutput(binaryOutput, 0);
+        console.log(`🔍 ARTIFACT-COLLECTION: Processed ${processedArtifacts.length} artifacts from binary output`);
+        
+        // Add each processed artifact to the collection
+        for (const artifact of processedArtifacts) {
+          artifactsToAdd.push({
+            type: artifact.type,
+            title: artifact.title,
+            content: artifact.content,
+            language: artifact.language
+          });
+        }
+      }
+    }
+    
+    // Handle grant markdown if present
+    if ((processedHistory as any).grantMarkdown) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Found grant markdown data`);
+      artifactsToAdd.push({
+        type: 'text/markdown',
+        title: 'Grant Proposal',
+        content: (processedHistory as any).grantMarkdown,
+        language: 'markdown'
+      });
+    }
+    
+    // Apply all artifacts to the response
+    if (artifactsToAdd.length > 0) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Enhancing response with ${artifactsToAdd.length} artifacts`);
       storeFormat = this.messageService.enhanceResponseWithArtifacts(
         storeFormat,
-        [options.pinnedGraph]
+        artifactsToAdd
       );
+    } else {
+      console.log(`🔍 ARTIFACT-COLLECTION: No artifacts to add to response`);
     }
     
     return storeFormat;
@@ -191,7 +280,7 @@ export class ChatService {
     toolChoice?: { type?: string; name: string }
   ): string {
     // Create a system prompt that includes the history and tools
-    let systemPrompt = 'You are a helpful assistant.\n\n';
+    let systemPrompt = 'You are a helpful AI assistant with access to external tools and databases.\n\n';
     
     // Add message history
     if (history.length > 0) {
@@ -207,12 +296,38 @@ export class ChatService {
     if (tools.length > 0) {
       systemPrompt += '# Available Tools\n\n';
       systemPrompt += 'You have access to the following tools. USE THESE TOOLS WHEN APPROPRIATE to provide the best response.\n';
-      systemPrompt += 'You should prefer using tools over generating fictional information. For example, if asked about specific data that requires a tool, use the tool rather than making up an answer.\n\n';
+      systemPrompt += 'IMPORTANT: When users ask you to perform searches, retrieve data, or access external information, you MUST use the appropriate tool rather than making up a response.\n';
+      systemPrompt += 'For example:\n';
+      systemPrompt += '- If asked about PubMed or academic papers, use the pubmed-search tool\n';
+      systemPrompt += '- If asked to create visualizations, use the appropriate visualization tool\n';
+      systemPrompt += '- If asked about proteins or genes, use the appropriate biology tools\n\n';
+      
+      // Find tools with description to showcase
+      let describedTools = 0;
+      const MAX_TOOL_DESCRIPTIONS = 15; // Limit number of tools to describe
       
       tools.forEach(tool => {
-        systemPrompt += `Tool: ${tool.name}\n`;
-        systemPrompt += `Description: ${tool.description || 'No description provided'}\n\n`;
+        // Get tool name and description based on format
+        const toolName = tool.function?.name || tool.name || 'unknown';
+        const toolDescription = tool.function?.description || tool.description || 'No description provided';
+        
+        // Prioritize describing important tools first
+        const isPriorityTool = toolName.includes('pubmed') || 
+                              toolName.includes('brave_web_search') ||
+                              toolName.includes('python') ||
+                              toolName.includes('graph');
+                              
+        if (isPriorityTool || describedTools < MAX_TOOL_DESCRIPTIONS) {
+          systemPrompt += `Tool: ${toolName}\n`;
+          systemPrompt += `Description: ${toolDescription}\n\n`;
+          describedTools++;
+        }
       });
+      
+      // If there are more tools than we've described, mention that
+      if (describedTools < tools.length) {
+        systemPrompt += `... and ${tools.length - describedTools} more tools available.\n\n`;
+      }
       
       // Add tool choice if specified
       if (toolChoice) {
@@ -322,8 +437,22 @@ export class ChatService {
     // Get the appropriate tool adapter
     const toolAdapter = getToolCallAdapter(options.modelProvider);
     
-    // Convert tools to provider-specific format
+    // Convert MCP tools to provider-specific format
     const providerTools = toolAdapter.convertToolDefinitions(mcpTools);
+    
+    // Add detailed logging for tools
+    console.log(`🔎 TOOLS-DEBUG: Received ${mcpTools.length} MCP tools`);
+    
+    // Check if pubmed-search tool is present
+    const hasPubmedTool = mcpTools.some(tool => tool.name.includes('pubmed-search'));
+    console.log(`🔎 TOOLS-DEBUG: PubMed search tool present: ${hasPubmedTool}`);
+    
+    // Log the number of provider tools after conversion
+    console.log(`🔎 TOOLS-DEBUG: Converted to ${providerTools.length} provider tools`);
+    
+    // Log tool names for debugging
+    const toolNames = mcpTools.map(tool => tool.name).slice(0, 5);
+    console.log(`🔎 TOOLS-DEBUG: First 5 tool names: ${toolNames.join(', ')}`);
     
     // Format history appropriately for the provider
     const formattedHistory = this.formatMessageHistory(history, options.modelProvider);
@@ -435,7 +564,7 @@ export class ChatService {
       maxTokens?: number;
     } = {},
     statusHandler?: (status: string) => void
-  ): Promise<ChatMessage[]> {
+  ): Promise<any[]> {
     // Start with a safe cast to any for type compatibility
     const workingMessages: any[] = [
       ...this.formatMessageHistory(history, modelProvider),
@@ -479,6 +608,26 @@ export class ChatService {
       
       // Get response from the LLM with tools
       console.log(`🔍 DEBUG-SEQUENTIAL-THINKING: Sending query to LLM at line ${new Error().stack?.split('\n')[1]?.match(/(\d+):\d+\)$/)?.[1] || 'unknown'}`);
+      console.log(`🔎 TOOLS-DEBUG: Sending ${providerTools.length} tools to sequential thinking query`);
+      
+      // Print the toolChoice parameter
+      const toolChoiceValue = modelProvider === 'openai' ? 'auto' : undefined;
+      console.log(`🔎 TOOLS-DEBUG: Using toolChoice: ${JSON.stringify(toolChoiceValue)}`);
+      
+      // Log if we're including a PubMed tool
+      const includesPubmed = providerTools.some((tool: any) => 
+        typeof tool === 'object' && 
+        ((tool.function?.name && tool.function.name.includes('pubmed')) || 
+         (tool.name && tool.name.includes('pubmed')))
+      );
+      console.log(`🔎 TOOLS-DEBUG: Provider tools includes PubMed: ${includesPubmed}`);
+      
+      // Generate system prompt
+      const systemPrompt = this.buildSystemPromptWithContext(formattedHistory, providerTools);
+      
+      // Log first 500 chars of system prompt
+      console.log(`🔎 TOOLS-DEBUG: System prompt start: ${systemPrompt.substring(0, 500)}...`);
+      
       const response = await this.llmService.query({
         prompt: latestMessage,
         options: {
@@ -486,9 +635,9 @@ export class ChatService {
           maxTokens: options.maxTokens || 4000,
           // Add tools and toolChoice for OpenAI - using 'auto' encourages the model to use tools when appropriate
           tools: providerTools,
-          toolChoice: modelProvider === 'openai' ? 'auto' : undefined
+          toolChoice: toolChoiceValue
         } as any, // Use type assertion to bypass type checking
-        systemPrompt: this.buildSystemPromptWithContext(formattedHistory, providerTools)
+        systemPrompt: systemPrompt
       });
       
       // Extract tool calls using the adapter
@@ -520,6 +669,9 @@ export class ChatService {
         // Split into server and tool name
         const [serverName, toolName] = originalToolName.split(':');
         
+        console.log(`🔍 TOOL-EXECUTION: Executing tool ${toolCall.name} (${serverName}:${toolName})`);
+        console.log(`🔍 TOOL-EXECUTION: Input: ${JSON.stringify(toolCall.input)}`);
+        
         // Execute the tool call
         const toolResult = await this.mcpService.callTool(
           serverName,
@@ -527,51 +679,184 @@ export class ChatService {
           toolCall.input
         );
         
+        // Log detailed information about the tool result
+        console.log(`🔍 TOOL-EXECUTION: Raw result received from tool: ${JSON.stringify(toolResult, null, 2).substring(0, 1000)}...`);
+        console.log(`🔍 TOOL-EXECUTION: Result type: ${typeof toolResult}`);
+        
+        if (toolResult && typeof toolResult === 'object') {
+          console.log(`🔍 TOOL-EXECUTION: Result has 'content' property: ${Object.hasOwnProperty.call(toolResult, 'content')}`);
+          
+          if ('content' in toolResult) {
+            console.log(`🔍 TOOL-EXECUTION: Content type: ${typeof toolResult.content}`);
+          }
+        }
+        
         // Add tool usage to conversation
+        console.log(`🔍 TOOL-EXECUTION: Adding tool usage to conversation: ${toolCall.name}`);
         workingMessages.push({
           role: 'assistant',
           content: `Used tool: ${toolCall.name}\nArguments: ${JSON.stringify(toolCall.input)}`
         });
         
-        // Process tool result
-        if (toolResult && typeof toolResult === 'object' && 'content' in toolResult) {
-          const textContent = Array.isArray(toolResult.content) 
-            ? toolResult.content.find((item: any) => item.type === 'text')?.text 
-            : toolResult.content;
-          
-          if (textContent) {
-            workingMessages.push({
-              role: 'user',
-              content: textContent
-            });
+        // Process tool result based on chat.ts implementation
+        if (toolResult && typeof toolResult === 'object') {
+          // Handle text content for conversation
+          if ('content' in toolResult) {
+            const textContent = Array.isArray(toolResult.content) 
+              ? toolResult.content.find((item: any) => item.type === 'text')?.text 
+              : toolResult.content;
             
-            // Check if this was sequential thinking tool
-            if (toolCall.name.includes('sequential-thinking')) {
-              try {
-                const result = JSON.parse(typeof textContent === 'string' ? textContent : JSON.stringify(textContent));
-                isSequentialThinkingComplete = !result.nextThoughtNeeded;
-                statusHandler?.(`Sequential thinking status: ${isSequentialThinkingComplete ? 'Complete' : 'Continuing'}`);
-              } catch (error) {
-                console.error('Error parsing sequential thinking result:', error);
-                isSequentialThinkingComplete = true;
-                statusHandler?.('Error in sequential thinking, marking as complete.');
+            if (textContent) {
+              console.log(`🔍 TOOL-EXECUTION: Adding text content to conversation`);
+              workingMessages.push({
+                role: 'user',
+                content: textContent
+              });
+              
+              // Check if this was sequential thinking tool
+              if (toolCall.name.includes('sequential-thinking')) {
+                try {
+                  const result = JSON.parse(typeof textContent === 'string' ? textContent : JSON.stringify(textContent));
+                  isSequentialThinkingComplete = !result.nextThoughtNeeded;
+                  statusHandler?.(`Sequential thinking status: ${isSequentialThinkingComplete ? 'Complete' : 'Continuing'}`);
+                } catch (error) {
+                  console.error('Error parsing sequential thinking result:', error);
+                  isSequentialThinkingComplete = true;
+                  statusHandler?.('Error in sequential thinking, marking as complete.');
+                }
               }
+            } else {
+              console.log(`🔍 TOOL-EXECUTION: No text content found in tool result`);
             }
           }
+          
+          // Handle bibliography if present
+          if ('bibliography' in toolResult && toolResult.bibliography) {
+            console.log(`🔍 TOOL-EXECUTION: Bibliography data found in tool result`);
+            
+            // Initialize bibliography array if it doesn't exist
+            if (!(workingMessages as any).bibliography) {
+              (workingMessages as any).bibliography = [];
+              console.log(`🔍 TOOL-EXECUTION: Initialized bibliography array`);
+            }
+            
+            // Merge and deduplicate bibliography entries based on PMID
+            const currentBibliography = (workingMessages as any).bibliography;
+            const newBibliography = toolResult.bibliography as any[];
+            
+            // Create a map of existing PMIDs
+            const existingPmids = new Set(currentBibliography.map((entry: any) => entry.pmid));
+            
+            // Only add entries with new PMIDs
+            const uniqueNewEntries = newBibliography.filter((entry: any) => !existingPmids.has(entry.pmid));
+            
+            // Merge unique new entries with existing bibliography
+            (workingMessages as any).bibliography = [...currentBibliography, ...uniqueNewEntries];
+            console.log(`🔍 TOOL-EXECUTION: Added ${uniqueNewEntries.length} new bibliography entries`);
+          }
+          
+          // Handle knowledge graph artifacts if present
+          if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
+            console.log(`🔍 TOOL-EXECUTION: Found artifacts array in tool result with ${toolResult.artifacts.length} items`);
+            
+            // Check for knowledge graph artifacts
+            const knowledgeGraphArtifact = toolResult.artifacts.find((a: any) => 
+              a.type === 'application/vnd.knowledge-graph' && typeof a.content === 'string'
+            );
+            
+            if (knowledgeGraphArtifact) {
+              console.log(`🔍 TOOL-EXECUTION: Found knowledge graph artifact: ${knowledgeGraphArtifact.title || 'untitled'}`);
+              
+              try {
+                // Parse the knowledge graph content
+                const newGraph = JSON.parse(knowledgeGraphArtifact.content);
+                
+                // Check if knowledge graph exists and merge if it does
+                if ((workingMessages as any).knowledgeGraph) {
+                  console.log(`🔍 TOOL-EXECUTION: Merging with existing knowledge graph`);
+                  
+                  // Use utility function if available or simple assignment
+                  if (typeof mergeKnowledgeGraphs === 'function') {
+                    (workingMessages as any).knowledgeGraph = mergeKnowledgeGraphs(
+                      (workingMessages as any).knowledgeGraph, 
+                      newGraph
+                    );
+                  } else {
+                    // Simple merge logic (placeholder)
+                    (workingMessages as any).knowledgeGraph = {
+                      nodes: [...(workingMessages as any).knowledgeGraph.nodes, ...newGraph.nodes],
+                      links: [...(workingMessages as any).knowledgeGraph.links, ...newGraph.links]
+                    };
+                  }
+                } else {
+                  // First knowledge graph, just set it
+                  console.log(`🔍 TOOL-EXECUTION: Setting initial knowledge graph`);
+                  (workingMessages as any).knowledgeGraph = newGraph;
+                }
+              } catch (error) {
+                console.error('Error processing knowledge graph:', error);
+              }
+            }
+            
+            // Store all artifacts for later processing
+            if (!(workingMessages as any).directArtifacts) {
+              (workingMessages as any).directArtifacts = [];
+            }
+            
+            for (const artifact of toolResult.artifacts) {
+              console.log(`🔍 TOOL-EXECUTION: Storing artifact of type ${artifact.type}: ${artifact.title || 'untitled'}`);
+              (workingMessages as any).directArtifacts.push(artifact);
+            }
+          }
+          
+          // Handle binary output if present
+          if ('binaryOutput' in toolResult && toolResult.binaryOutput) {
+            console.log(`🔍 TOOL-EXECUTION: Found binary output in tool result`);
+            
+            // Initialize binaryOutputs array if it doesn't exist
+            if (!(workingMessages as any).binaryOutputs) {
+              (workingMessages as any).binaryOutputs = [];
+            }
+            
+            // Add binary output to the collection
+            (workingMessages as any).binaryOutputs.push(toolResult.binaryOutput);
+          }
+          
+          // Handle grant markdown if present
+          if ('grantMarkdown' in toolResult && toolResult.grantMarkdown) {
+            console.log(`🔍 TOOL-EXECUTION: Found grant markdown in tool result`);
+            (workingMessages as any).grantMarkdown = toolResult.grantMarkdown;
+          }
+        } else {
+          console.log(`🔍 TOOL-EXECUTION: Tool result not in expected format, unable to process fully`);
         }
       }
     }
     
     // Add the original user message for the final response
     if (isSequentialThinkingComplete) {
+      console.log(`🔍 SEQUENTIAL-THINKING: Adding original message to working messages for final response: "${message}"`);
       workingMessages.push({
         role: 'user',
         content: message
       });
     }
     
+    console.log(`🔍 SEQUENTIAL-THINKING: Final working messages: ${workingMessages.length} messages`);
+    console.log(`🔍 SEQUENTIAL-THINKING: Message roles: ${workingMessages.map(msg => msg.role).join(', ')}`);
+    console.log(`🔍 SEQUENTIAL-THINKING: Additional data collected:`, JSON.stringify({
+      hasBibliography: !!(workingMessages as any).bibliography,
+      bibliographyEntries: (workingMessages as any).bibliography?.length || 0,
+      hasKnowledgeGraph: !!(workingMessages as any).knowledgeGraph,
+      hasDirectArtifacts: !!(workingMessages as any).directArtifacts,
+      directArtifactsCount: (workingMessages as any).directArtifacts?.length || 0,
+      hasBinaryOutputs: !!(workingMessages as any).binaryOutputs,
+      binaryOutputsCount: (workingMessages as any).binaryOutputs?.length || 0,
+      hasGrantMarkdown: !!(workingMessages as any).grantMarkdown
+    }));
+    
     statusHandler?.(`Sequential thinking completed in ${thinkingSteps} steps.`);
-    return workingMessages as ChatMessage[];
+    return workingMessages;
   }
   
   /**
@@ -858,8 +1143,7 @@ export class ChatService {
       collectedArtifacts.push({
         type: 'text/markdown',
         title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo Artifact`,
-        content: `# Response from ${provider.toUpperCase()}\n\nThis is a demonstration artifact generated for your message: "${message}"\n\nIn a full implementation, this would be generated by the LLM.`
-      });
+        content: `# Response from ${provider.toUpperCase()}\n\nThis is a demonstration artifact generated for your message: "${message}"\n\nIn a full implementation, this would be generated by the LLM.`      });
     }
     
     // Enhance the response with collected artifacts

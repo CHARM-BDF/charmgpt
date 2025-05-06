@@ -36,17 +36,25 @@ export class OpenAIToolAdapter implements ToolCallAdapter {
    * @returns Tools in OpenAI format
    */
   convertToolDefinitions(tools: AnthropicTool[]): OpenAIFunction[] {
-    console.log('🟢 [ADAPTER: OPENAI] Converting tool definitions');
+    console.log(`🟢 [ADAPTER: OPENAI] Converting ${tools.length} tool definitions`);
+    
     // Convert from MCP/Anthropic format to OpenAI format
-    return tools.map(tool => ({
-      type: 'function',
-      function: {
-        name: tool.name,
-        description: tool.description,
-        // OpenAI uses 'parameters' instead of 'input_schema'
-        parameters: tool.input_schema
+    return tools.map(tool => {
+      // Log the tool structure for debugging
+      if (!tool.name || !tool.input_schema) {
+        console.error(`❌ [ADAPTER: OPENAI] Invalid tool format for: ${JSON.stringify(tool).substring(0, 100)}...`);
       }
-    }));
+      
+      return {
+        type: 'function',
+        function: {
+          name: tool.name || 'unknown-tool',
+          description: tool.description || 'No description provided',
+          // OpenAI uses 'parameters' instead of 'input_schema'
+          parameters: tool.input_schema || { type: "object", properties: {} }
+        }
+      };
+    });
   }
   
   /**
@@ -56,13 +64,39 @@ export class OpenAIToolAdapter implements ToolCallAdapter {
    */
   extractToolCalls(response: any): ToolCall[] {
     console.log('🟢 [ADAPTER: OPENAI] Extracting tool calls from response');
-    // Check if response has expected format
-    if (!response || !response.tool_calls || !Array.isArray(response.tool_calls)) {
+    
+    // Log the response structure for debugging
+    console.log(`🔍 [ADAPTER: OPENAI] Response structure: ${JSON.stringify({
+      hasChoices: !!response?.choices,
+      choicesLength: response?.choices?.length || 0,
+      hasMessage: !!response?.choices?.[0]?.message,
+      hasToolCalls: !!response?.choices?.[0]?.message?.tool_calls,
+      toolCallsLength: response?.choices?.[0]?.message?.tool_calls?.length || 0
+    })}`);
+    
+    // Check if response has the expected OpenAI format with tool calls in choices[0].message
+    const toolCalls = response?.choices?.[0]?.message?.tool_calls;
+    if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) {
+      // Also check the direct format as a fallback (for compatibility)
+      if (response?.tool_calls && Array.isArray(response.tool_calls) && response.tool_calls.length > 0) {
+        console.log('🟢 [ADAPTER: OPENAI] Found tool calls directly on response object');
+        return this.processToolCalls(response.tool_calls);
+      }
+      console.log('🟢 [ADAPTER: OPENAI] No tool calls found in response');
       return [];
     }
     
-    // Process the tool_calls array
-    return response.tool_calls.map((call: OpenAIToolCall) => {
+    console.log(`🟢 [ADAPTER: OPENAI] Found ${toolCalls.length} tool calls in response`);
+    return this.processToolCalls(toolCalls);
+  }
+  
+  /**
+   * Process tool calls into the standardized format
+   * @param toolCalls The tool calls from the OpenAI response
+   * @returns Processed tool calls
+   */
+  private processToolCalls(toolCalls: OpenAIToolCall[]): ToolCall[] {
+    return toolCalls.map((call: OpenAIToolCall) => {
       let input;
       
       // Parse the arguments from JSON string
