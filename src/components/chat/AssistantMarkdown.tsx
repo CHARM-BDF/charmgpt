@@ -139,6 +139,13 @@ interface CodeBlockAccumulator {
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
   const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
 
+  // Add debug logging
+  console.log('AssistantMarkdown received content:', {
+    contentLength: content?.length || 0,
+    firstChars: content?.substring(0, 100) || 'empty',
+    isString: typeof content === 'string'
+  });
+
   // Process content to properly format buttons and sections
   const processContent = (rawContent: string): string => {
     // Split content into sections and wrap each in a div
