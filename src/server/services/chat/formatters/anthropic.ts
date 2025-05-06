@@ -78,9 +78,27 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
    * Extract formatter output from Anthropic response
    */
   extractFormatterOutput(response: any): FormatterOutput {
-    // Check if response has content and tool_use
+    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Extracting formatter output from Anthropic response');
+    
+    // Log the response structure for debugging
+    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Response structure:', JSON.stringify({
+      hasContent: !!response.content,
+      contentLength: response.content?.length || 0,
+      contentTypes: response.content?.map((block: any) => block.type).join(', ') || 'none'
+    }));
+    
+    // Check if response has content
     if (!response.content || response.content.length === 0) {
-      throw new Error('Empty response from Anthropic');
+      console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Empty response from Anthropic');
+      
+      // Return fallback formatter output
+      return {
+        thinking: "Anthropic returned an empty response",
+        conversation: [{
+          type: 'text',
+          content: "The model did not return any content. Please try again."
+        }]
+      };
     }
     
     // Find tool_use content block
@@ -88,41 +106,130 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       block.type === 'tool_use' && block.name === 'response_formatter'
     );
     
+    // If no tool_use block, look for text content as fallback
     if (!toolUseBlock) {
-      throw new Error('Expected response_formatter tool use in Anthropic response');
+      console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: No response_formatter tool use found - falling back to text content');
+      
+      // Find text blocks
+      const textBlocks = response.content
+        .filter((block: any) => block.type === 'text' && block.text)
+        .map((block: any) => block.text);
+      
+      if (textBlocks.length > 0) {
+        console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Found ${textBlocks.length} text blocks to use as fallback`);
+        
+        // Return fallback formatter output with combined text
+        return {
+          thinking: "Response formatted from text content",
+          conversation: [{
+            type: 'text',
+            content: textBlocks.join('\n\n')
+          }]
+        };
+      }
+      
+      console.error('❌ DEBUG-ANTHROPIC-FORMATTER: No usable content in Anthropic response');
+      return {
+        thinking: "No usable content in Anthropic response",
+        conversation: [{
+          type: 'text',
+          content: "The model did not provide a properly formatted response. Please try again."
+        }]
+      };
     }
     
-    // Get formatter output from tool input
-    const formatterOutput = toolUseBlock.input;
+    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found response_formatter tool use');
     
-    // Validate basic structure
-    if (!formatterOutput.conversation || !Array.isArray(formatterOutput.conversation)) {
-      throw new Error('Invalid formatter output structure: missing conversation array');
+    try {
+      // Get formatter output from tool input
+      const formatterOutput = toolUseBlock.input;
+      
+      // Log the parsed structure
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Formatter output structure:', JSON.stringify({
+        hasThinking: !!formatterOutput.thinking,
+        hasConversation: !!formatterOutput.conversation,
+        isConversationArray: Array.isArray(formatterOutput.conversation),
+        conversationLength: Array.isArray(formatterOutput.conversation) ? formatterOutput.conversation.length : 0
+      }));
+      
+      // Validate basic structure
+      if (!formatterOutput.conversation) {
+        console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Missing conversation array - creating fallback');
+        
+        // Create a fallback conversation array with any available thinking
+        return {
+          thinking: formatterOutput.thinking || "Formatter output was incomplete",
+          conversation: [{
+            type: 'text',
+            content: formatterOutput.content || formatterOutput.text || "The model didn't provide a properly structured response"
+          }]
+        };
+      }
+      
+      // If conversation is not an array, convert it to an array
+      if (!Array.isArray(formatterOutput.conversation)) {
+        console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Conversation is not an array - converting to array');
+        
+        // Convert string or object conversation to array
+        if (typeof formatterOutput.conversation === 'string') {
+          formatterOutput.conversation = [{
+            type: 'text',
+            content: formatterOutput.conversation
+          }];
+        } else if (typeof formatterOutput.conversation === 'object') {
+          formatterOutput.conversation = [formatterOutput.conversation];
+        } else {
+          formatterOutput.conversation = [{
+            type: 'text',
+            content: "The model provided an invalid conversation format"
+          }];
+        }
+      }
+      
+      console.log('✅ DEBUG-ANTHROPIC-FORMATTER: Successfully extracted formatter output');
+      return formatterOutput;
+    } catch (error) {
+      console.error('❌ DEBUG-ANTHROPIC-FORMATTER: Error processing Anthropic formatter output:', error);
+      
+      // Create a fallback response with error message
+      return {
+        thinking: "Error processing formatter output",
+        conversation: [{
+          type: 'text',
+          content: `The model response could not be properly formatted. Error: ${error instanceof Error ? error.message : String(error)}`
+        }]
+      };
     }
-    
-    return formatterOutput;
   }
   
   /**
    * Convert formatter output to store format
    */
   convertToStoreFormat(formatterOutput: FormatterOutput): StoreFormat {
-    const conversation: string[] = [];
+    console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Converting formatter output to store format`);
+    
+    // Process conversation items into the expected format
+    const processedConversation: Array<{type: string; content?: string; artifact?: any}> = [];
     const artifacts: Array<any> = [];
     let position = 0;
     
     // Process conversation items
     if (formatterOutput.conversation && Array.isArray(formatterOutput.conversation)) {
+      console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processing ${formatterOutput.conversation.length} conversation items`);
+      
       formatterOutput.conversation.forEach(item => {
         if (item.type === 'text' && item.content) {
-          // Add text content to conversation
-          conversation.push(item.content);
+          // Add text content to processed conversation
+          processedConversation.push({
+            type: 'text',
+            content: item.content
+          });
         } 
         else if (item.type === 'artifact' && item.artifact) {
           // Generate unique ID for artifact
           const uniqueId = crypto.randomUUID();
           
-          // Add artifact
+          // Add artifact to the artifacts array
           artifacts.push({
             id: uniqueId,
             artifactId: uniqueId,
@@ -133,15 +240,27 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
             language: item.artifact.language
           });
           
-          // Add artifact button to conversation
-          conversation.push(this.createArtifactButton(uniqueId, item.artifact.type, item.artifact.title));
+          // Add artifact reference to conversation
+          processedConversation.push({
+            type: 'artifact',
+            artifact: {
+              id: uniqueId,
+              type: item.artifact.type,
+              title: item.artifact.title,
+              content: item.artifact.content,
+              language: item.artifact.language
+            }
+          });
         }
       });
     }
     
+    console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processed ${processedConversation.length} conversation items and ${artifacts.length} artifacts`);
+    
+    // Return the store format with array-structured conversation items
     return {
       thinking: formatterOutput.thinking,
-      conversation: conversation.join('\n\n'),
+      conversation: processedConversation,
       artifacts: artifacts.length > 0 ? artifacts : undefined
     };
   }
