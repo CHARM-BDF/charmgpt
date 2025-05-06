@@ -10,9 +10,11 @@ We have successfully implemented the following components:
    - Updated all type definitions to support multiple providers
    - Fixed model name conflicts when switching between providers
    - Fixed tool selection in OpenAI provider to properly use domain-specific tools
-   - Enhanced system prompt to encourage appropriate tool usage
-   See also: [README.PLAN.expandLLMoptions.TOOL-SELECTION-FIX.md](./README.PLAN.expandLLMoptions.TOOL-SELECTION-FIX.md) for details on the tool selection fix implementation.
-   - [README.PLAN.expandLLMoptions.RESPONSE-FORMATTER-FIX.md](./README.PLAN.expandLLMoptions.RESPONSE-FORMATTER-FIX.md) for details on the response formatter fix.
+   - Enhanced system prompt to encourage appropriate tool selection and usage
+
+See also:
+- [README.PLAN.expandLLMoptions.TOOL-SELECTION-FIX.md](./README.PLAN.expandLLMoptions.TOOL-SELECTION-FIX.md) for details on the tool selection fix implementation.
+- [README.PLAN.expandLLMoptions.RESPONSE-FORMATTER-FIX.md](./README.PLAN.expandLLMoptions.RESPONSE-FORMATTER-FIX.md) for details on the response formatter fix.
 
 2. ✅ **Tool Calling Integration**:
    - Created adapter classes for different provider tool calling formats
