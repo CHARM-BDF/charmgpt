@@ -96,6 +96,13 @@ export class OpenAIProvider implements LLMProvider {
       if (debugParams.messages) {
         debugParams.messages = `[${debugParams.messages.length} messages]`;
       }
+      // Truncate tools array to prevent excessive logging
+      if (debugParams.tools && Array.isArray(debugParams.tools)) {
+        const toolCount = debugParams.tools.length;
+        debugParams.tools = debugParams.tools.length > 0 
+          ? [`${toolCount} tools (first: ${debugParams.tools[0]?.function?.name || 'unknown'})`] 
+          : [];
+      }
       console.log(`🔧 DEBUG-API-PARAMS: Final OpenAI request params:`, JSON.stringify(debugParams));
       
       // Make API request
