@@ -62,11 +62,90 @@ router.post('/', async (req: Request<{}, {}, {
       maxTokens = 4000
     } = req.body;
     
+    // Add detailed logging for blocked servers
+    console.log('\n🔍 [CHAT-ARTIFACTS] === BLOCKED SERVERS DEBUG ===');
+    console.log('🔍 [CHAT-ARTIFACTS] Raw blockedServers from request:', JSON.stringify(blockedServers));
+    console.log('🔍 [CHAT-ARTIFACTS] Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
+    console.log('🔍 [CHAT-ARTIFACTS] BlockedServers length:', Array.isArray(blockedServers) ? blockedServers.length : 0);
+    
+    if (Array.isArray(blockedServers) && blockedServers.length > 0) {
+      console.log('🔍 [CHAT-ARTIFACTS] Individual blocked servers:');
+      blockedServers.forEach((server, index) => {
+        console.log(`  [${index}] "${server}" (type: ${typeof server})`);
+      });
+      
+      // Test if these server names actually exist in our system
+      try {
+        const mcpService = req.app.locals.mcpService;
+        if (mcpService && typeof mcpService.getServerNames === 'function') {
+          const actualServerNames = Array.from(mcpService.getServerNames());
+          console.log('\n🔍 [CHAT-ARTIFACTS] === BLOCKED SERVERS VALIDATION ===');
+          console.log('🔍 [CHAT-ARTIFACTS] Actual server names from MCP service:', JSON.stringify(actualServerNames));
+          
+          // Check if blocked servers exist in actual server names
+          const validBlocked = blockedServers.filter(blocked => actualServerNames.includes(blocked));
+          const invalidBlocked = blockedServers.filter(blocked => !actualServerNames.includes(blocked));
+          
+          console.log('🔍 [CHAT-ARTIFACTS] Valid blocked servers:', JSON.stringify(validBlocked));
+          console.log('🔍 [CHAT-ARTIFACTS] Invalid/unknown blocked servers:', JSON.stringify(invalidBlocked));
+          
+          if (invalidBlocked.length > 0) {
+            console.log('⚠️ [CHAT-ARTIFACTS] WARNING: Some blocked servers do not exist in MCP service!');
+          }
+          console.log('🔍 [CHAT-ARTIFACTS] === END BLOCKED SERVERS VALIDATION ===\n');
+        }
+      } catch (err) {
+        console.error('Error validating blocked servers:', err);
+      }
+    }
+    
+    // Get available servers info for comparison
+    try {
+      const mcpService = req.app.locals.mcpService;
+      if (mcpService) {
+        const allMcpServers = Array.from(mcpService.getServerNames?.() || []);
+        
+        if (allMcpServers.length > 0) {
+          console.log('\n🔍 [CHAT-ARTIFACTS] === SERVER AVAILABILITY PREDICTION ===');
+          console.log(`🔍 [CHAT-ARTIFACTS] Total MCP servers: ${allMcpServers.length}`);
+          
+          // Predict which servers should be blocked
+          const predictedBlocked = allMcpServers.filter(serverName => 
+            Array.isArray(blockedServers) && 
+            blockedServers.some(blockedName => serverName === blockedName)
+          );
+          
+          // Predict which servers should be allowed
+          const predictedAllowed = allMcpServers.filter(serverName => 
+            !predictedBlocked.includes(serverName)
+          );
+          
+          console.log(`🔍 [CHAT-ARTIFACTS] Predicted BLOCKED servers (${predictedBlocked.length}): ${JSON.stringify(predictedBlocked)}`);
+          console.log(`🔍 [CHAT-ARTIFACTS] Predicted ALLOWED servers (${predictedAllowed.length}): ${JSON.stringify(predictedAllowed)}`);
+          console.log('🔍 [CHAT-ARTIFACTS] === END SERVER AVAILABILITY PREDICTION ===\n');
+        } else {
+          console.log('🔍 [CHAT-ARTIFACTS] Unable to get list of all MCP servers');
+        }
+      } else {
+        console.log('🔍 [CHAT-ARTIFACTS] No MCP service available for server prediction');
+      }
+    } catch (err) {
+      console.log('🔍 [CHAT-ARTIFACTS] Error predicting server availability:', err);
+    }
+    
+    console.log('🔍 [CHAT-ARTIFACTS] === END BLOCKED SERVERS DEBUG ===\n');
+    
     // Initial status update
     sendStatusUpdate('Processing request...');
     sendStatusUpdate(`Using model provider: ${modelProvider}`);
     
     // Process the chat with the ChatService
+    console.log('🔍 [CHAT-ARTIFACTS] Calling chatService.processChat with options:');
+    console.log('🔍 [CHAT-ARTIFACTS] - modelProvider:', modelProvider);
+    console.log('🔍 [CHAT-ARTIFACTS] - blockedServers:', JSON.stringify(blockedServers));
+    console.log('🔍 [CHAT-ARTIFACTS] - temperature:', temperature);
+    console.log('🔍 [CHAT-ARTIFACTS] - maxTokens:', maxTokens);
+    
     const response = await chatService.processChat(
       message,
       history,

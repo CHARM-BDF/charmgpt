@@ -37,10 +37,10 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3) || [];
   
-  console.log('ConversationDrawer: All projects:', projects?.length || 0);
-  console.log('ConversationDrawer: Regular projects:', regularProjects.length);
-  console.log('ConversationDrawer: Grant review projects:', grantReviewProjects.length);
-  console.log('ConversationDrawer: Project types:', projects?.map(p => ({ id: p.id.substring(0, 6), name: p.name, type: p.type })));
+  // console.log('ConversationDrawer: All projects:', projects?.length || 0);
+  // console.log('ConversationDrawer: Regular projects:', regularProjects.length);
+  // console.log('ConversationDrawer: Grant review projects:', grantReviewProjects.length);
+  // console.log('ConversationDrawer: Project types:', projects?.map(p => ({ id: p.id.substring(0, 6), name: p.name, type: p.type })));
   
   // Handle clicks outside the drawer to collapse it
   useEffect(() => {

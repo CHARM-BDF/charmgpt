@@ -59,10 +59,6 @@
         "./custom-mcp-servers/medik-mcp/dist/medik-mcp/src/index.js"
       ]
     },
-    "mondo-api": {
-      "command": "npx",
-      "args": ["openapi-mcp-server", "./custom-mcp-servers/openapi-mcp-input/monarchOpenAPI.yaml"]
-    },
     "python": {
       "command": "node",
       "args": [
@@ -98,12 +94,6 @@
       "command": "node",
       "args": [
         "./custom-mcp-servers/aims-review-mcp/dist/index.js"
-      ]
-    },
-    "cal2-mcp": {
-      "command": "node",
-      "args": [
-        "./custom-mcp-servers/cal2-mcp/dist/index.js"
       ]
     }
   }

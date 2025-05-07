@@ -105,11 +105,42 @@ export class ChatService {
       maxTokens: options.maxTokens || 4000
     });
     
+    // Add detailed logging for blocked servers if provided in options
+    if (options.blockedServers) {
+      console.log('\n=== Processing Blocked Servers in ChatService ===');
+      console.log('Received blockedServers:', options.blockedServers);
+      console.log('[index.ts Type of blockedServers:', Array.isArray(options.blockedServers) ? 'Array' : typeof options.blockedServers);
+      
+      // Ensure blockedServers is a valid array
+      const blockedServers = Array.isArray(options.blockedServers) 
+        ? options.blockedServers.map(s => String(s)) 
+        : [];
+      
+      console.log('Sanitized blockedServers:', blockedServers);
+      console.log('These servers will be blocked in the LLM tools\n');
+      
+      // Reassign back to options
+      options.blockedServers = blockedServers;
+    }
+    
     // Get available MCP tools
     let mcpTools: AnthropicTool[] = [];
     if (this.mcpService) {
       statusHandler?.('Retrieving available tools...');
-      mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
+      
+      // Enhanced debugging for MCP tools and blocked servers
+      console.log(`\n💡 [CHAT SERVICE] Getting available tools with blocked servers list`);
+      console.log(`💡 [CHAT SERVICE] Blocked servers (before passing to MCP):`, options.blockedServers);
+      console.log(`💡 [CHAT SERVICE] blockedServers type:`, Array.isArray(options.blockedServers) ? 'Array' : typeof options.blockedServers);
+      console.log(`💡 [CHAT SERVICE] blockedServers length:`, options.blockedServers?.length || 0);
+      
+      try {
+        mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
+        console.log(`💡 [CHAT SERVICE] Retrieved ${mcpTools.length} tools from MCP service`);
+      } catch (error) {
+        console.error(`💡 [CHAT SERVICE] Error getting MCP tools:`, error);
+        statusHandler?.('Error retrieving MCP tools, proceeding with limited functionality...');
+      }
     }
     
     // Run sequential thinking with tools if needed
@@ -152,6 +183,19 @@ export class ChatService {
     console.log(`🔍 DEBUG-CHAT-SERVICE: Sending toolChoice:`, JSON.stringify(toolChoice));
     console.log(`🔍 DEBUG-CHAT-SERVICE: Formatter tool definition:`, JSON.stringify(formatterToolDefinition).substring(0, 100) + '...');
     
+    // Build the system prompt for formatter
+    const formatterSystemPrompt = this.buildSystemPromptWithContext(formattedHistory, [formatterToolDefinition], toolChoice);
+    
+    // Log detailed information about what's being sent to the formatter LLM
+    console.log(`🔍 [FORMATTER INPUT] === BEGIN FORMATTER INPUT LOG ===`);
+    console.log(`🔍 [FORMATTER INPUT] Provider: ${options.modelProvider}`);
+    console.log(`🔍 [FORMATTER INPUT] Tool Choice: ${JSON.stringify(toolChoice)}`);
+    console.log(`🔍 [FORMATTER INPUT] Latest Message: ${latestMessage.substring(0, 1000)}${latestMessage.length > 1000 ? '...' : ''}`);
+    console.log(`🔍 [FORMATTER INPUT] System Prompt: ${formatterSystemPrompt.substring(0, 1000)}${formatterSystemPrompt.length > 1000 ? '...' : ''}`);
+    console.log(`🔍 [FORMATTER INPUT] Temperature: ${options.temperature || 0.2}`);
+    console.log(`🔍 [FORMATTER INPUT] Max Tokens: ${options.maxTokens || 4000}`);
+    console.log(`🔍 [FORMATTER INPUT] === END FORMATTER INPUT LOG ===`);
+    
     // Get the LLM response with formatter
     statusHandler?.(`Getting formatted response from ${options.modelProvider}...`);
     const llmResponse = await this.llmService.query({
@@ -162,7 +206,7 @@ export class ChatService {
         toolChoice: toolChoice as any,  // Use type assertion to bypass type checking
         tools: [formatterToolDefinition]  // Add tools parameter with formatter tool
       } as any, // Cast the entire options object to bypass type checking
-      systemPrompt: this.buildSystemPromptWithContext(formattedHistory, [formatterToolDefinition], toolChoice)
+      systemPrompt: formatterSystemPrompt
     });
     
     // Log the response
@@ -173,6 +217,12 @@ export class ChatService {
     // Extract the formatter output using the adapter
     statusHandler?.('Processing formatter output...');
     const formatterOutput = formatterAdapter.extractFormatterOutput(llmResponse.rawResponse);
+    
+    // Log the extracted formatter output
+    console.log(`🔍 [FORMATTER OUTPUT] === BEGIN FORMATTER OUTPUT LOG ===`);
+    console.log(`🔍 [FORMATTER OUTPUT] Raw formatter output:`, JSON.stringify(formatterOutput, null, 2));
+    console.log(`🔍 [FORMATTER OUTPUT] === END FORMATTER OUTPUT LOG ===`);
+    
     let storeFormat = formatterAdapter.convertToStoreFormat(formatterOutput);
     
     // ===== ARTIFACT COLLECTION PHASE =====
@@ -261,6 +311,20 @@ export class ChatService {
     } else {
       console.log(`🔍 ARTIFACT-COLLECTION: No artifacts to add to response`);
     }
+    
+    // Log the final store format that will be returned
+    console.log(`🔍 [STORE FORMAT] === BEGIN STORE FORMAT LOG ===`);
+    console.log(`🔍 [STORE FORMAT] Final store format conversation:`, typeof storeFormat.conversation === 'string' 
+      ? storeFormat.conversation.substring(0, 500) + (storeFormat.conversation.length > 500 ? '...' : '')
+      : JSON.stringify(storeFormat.conversation).substring(0, 500) + '...');
+    console.log(`🔍 [STORE FORMAT] Artifacts count:`, storeFormat.artifacts ? storeFormat.artifacts.length : 0);
+    if (storeFormat.artifacts && storeFormat.artifacts.length > 0) {
+      storeFormat.artifacts.forEach((artifact, index) => {
+        console.log(`🔍 [STORE FORMAT] Artifact #${index+1} type:`, artifact.type);
+        console.log(`🔍 [STORE FORMAT] Artifact #${index+1} title:`, artifact.title);
+      });
+    }
+    console.log(`🔍 [STORE FORMAT] === END STORE FORMAT LOG ===`);
     
     return storeFormat;
   }

@@ -27,12 +27,12 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
   const regularProjects = projects?.filter(project => project.type !== 'grant_review') || [];
   const grantReviewProjects = projects?.filter(project => project.type === 'grant_review') || [];
 
-  console.log('ProjectDrawer: All projects:', projects?.length || 0, 'projects');
-  console.log('ProjectDrawer: Regular projects:', regularProjects.length, 'projects');
-  console.log('ProjectDrawer: Grant review projects:', grantReviewProjects.length, 'projects');
-  console.log('ProjectDrawer: Project types:', projects?.map(p => ({ id: p.id, name: p.name, type: p.type })));
+  // console.log('ProjectDrawer: All projects:', projects?.length || 0, 'projects');
+  // console.log('ProjectDrawer: Regular projects:', regularProjects.length, 'projects');
+  // console.log('ProjectDrawer: Grant review projects:', grantReviewProjects.length, 'projects');
+  // console.log('ProjectDrawer: Project types:', projects?.map(p => ({ id: p.id, name: p.name, type: p.type })));
 
-  console.log('ProjectDrawer rendering, currentMode:', currentMode);
+  // console.log('ProjectDrawer rendering, currentMode:', currentMode);
 
   // Track mouse position for drawer activation
   useEffect(() => {
