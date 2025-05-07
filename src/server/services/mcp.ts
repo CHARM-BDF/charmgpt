@@ -303,15 +303,43 @@ export class MCPService {
     console.log('Checking available servers and their tools...');
     
     // Enhanced debugging for blockedServers
-    console.log('Blocked servers:', blockedServers);
-    console.log('Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
-    console.log('blockedServers.length:', blockedServers.length);
+    console.log('💡 [MCP TRACE] Blocked servers list (raw):', blockedServers);
+    console.log('💡 [MCP TRACE] Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
+    console.log('💡 [MCP TRACE] blockedServers.length:', blockedServers.length);
     
     if (Array.isArray(blockedServers)) {
-      console.log('Individual blocked servers:');
+      console.log('💡 [MCP TRACE] Individual blocked servers:');
       blockedServers.forEach((server, index) => {
         console.log(`  [${index}] "${server}" (type: ${typeof server})`);
       });
+      
+      // Check for mapping issues by trying to match each blocked server
+      console.log('💡 [MCP TRACE] Checking if any servers would be blocked:');
+      const mcpServerNames = Array.from(this.mcpClients.keys());
+      console.log('💡 [MCP TRACE] Available server names:', mcpServerNames);
+      
+      let potentialBlocks = 0;
+      for (const serverToBlock of blockedServers) {
+        const exactMatches = mcpServerNames.filter(name => name === serverToBlock);
+        const partialMatches = mcpServerNames.filter(name => 
+          name.includes(serverToBlock) || serverToBlock.includes(name)
+        );
+        
+        console.log(`💡 [MCP TRACE] Server "${serverToBlock}": ` +
+          `${exactMatches.length} exact matches, ${partialMatches.length} partial matches`);
+          
+        if (exactMatches.length > 0) {
+          console.log(`  - Exact matches: ${exactMatches.join(', ')}`);
+          potentialBlocks += exactMatches.length;
+        }
+        
+        if (partialMatches.length > 0) {
+          console.log(`  - Partial matches: ${partialMatches.join(', ')}`);
+          potentialBlocks += partialMatches.length - exactMatches.length; // Don't double count
+        }
+      }
+      
+      console.log(`💡 [MCP TRACE] Total potential blocks: ${potentialBlocks}`);
     } else {
       console.error('⚠️ blockedServers is not an array! This will cause filtering to fail.');
     }
@@ -322,21 +350,29 @@ export class MCPService {
     for (const [serverName, client] of this.mcpClients.entries()) {
       try {
         console.log(`\nServer: "${serverName}"`);
-        const isBlocked = Array.isArray(blockedServers) && 
-                          blockedServers.some(s => s === serverName);
-        console.log(`Status check: includes("${serverName}") = ${isBlocked}`);
-        console.log(`Final Status: ${isBlocked ? 'BLOCKED' : 'AVAILABLE'}`);
         
-        // Enhanced debugging of the includes check
+        // Technical names should be exact matches since we're passing the correct names
+        const isBlocked = Array.isArray(blockedServers) && 
+                         blockedServers.some(blockedName => 
+                           serverName === blockedName
+                         );
+                           
+        console.log(`💡 [MCP TRACE] Status check: "${serverName}" blocked? ${isBlocked}`);
+        console.log(`Final Status: ${isBlocked ? '🚫 BLOCKED' : '✅ ALLOWED'} - Server "${serverName}"`);
+        
+        // Enhanced debugging of the matching check  
         if (Array.isArray(blockedServers) && blockedServers.length > 0) {
-          console.log('Checking equality with each blocked server:');
-          blockedServers.forEach((s, i) => {
-            console.log(`  [${i}] "${s}" === "${serverName}" ? ${s === serverName}`);
+          console.log('💡 [MCP TRACE] Checking exact matches with each blocked server:');
+          console.log('💡 [MCP TRACE] IMPORTANT: Using exact string matching (===) for server names.');
+          console.log('💡 [MCP TRACE] Make sure client sends full server names from /api/server-names endpoint.');
+          blockedServers.forEach((blockedName, i) => {
+            const exactMatch = blockedName === serverName;
+            console.log(`  [${i}] "${blockedName}" === "${serverName}" ? ${exactMatch}`);
           });
         }
         
         if (isBlocked) {
-          console.log(`Skipping blocked server: ${serverName}`);
+          console.log(`💡 [MCP TRACE] Skipping blocked server: ${serverName}`);
           continue;
         }
 
@@ -388,12 +424,46 @@ export class MCPService {
     
     console.log('\n=== Tool Selection Summary ===');
     console.log(`Total tools available to LLM: ${mcpTools.length}`);
+    
+    // Log allowed servers summary
+    const allServerNames = Array.from(this.mcpClients.keys());
+    const blockedServerNames = allServerNames.filter(name => 
+      Array.isArray(blockedServers) && blockedServers.some(blockedName => name === blockedName)
+    );
+    const allowedServerNames = allServerNames.filter(name => 
+      !blockedServerNames.includes(name)
+    );
+    
+    console.log('\n=== Server Availability Summary ===');
+    console.log(`Total servers: ${allServerNames.length}`);
+    console.log(`Blocked servers: ${blockedServerNames.length} - ${JSON.stringify(blockedServerNames)}`);
+    console.log(`Allowed servers: ${allowedServerNames.length} - ${JSON.stringify(allowedServerNames)}`);
+    
     if (mcpTools.length > 0) {
       console.log('\nAvailable Tools List:');
       mcpTools.forEach(tool => {
         // console.log(`- [${tool.name}] ${tool.description}`);
         console.log(`- ${tool.name}`);
       });
+      
+      // Group tools by server for better visibility
+      console.log('\nTools Grouped By Server:');
+      const toolsByServer = new Map<string, string[]>();
+      
+      mcpTools.forEach(tool => {
+        // Extract server name from the tool name (format is usually serverName-toolName)
+        const serverName = tool.name.split('-')[0];
+        if (!toolsByServer.has(serverName)) {
+          toolsByServer.set(serverName, []);
+        }
+        toolsByServer.get(serverName)?.push(tool.name);
+      });
+      
+      // Print tools grouped by server
+      for (const [serverName, tools] of toolsByServer.entries()) {
+        console.log(`Server "${serverName}": ${tools.length} tools`);
+        tools.forEach(tool => console.log(`  - ${tool}`));
+      }
     }
     console.log('=============================\n');
     
@@ -457,6 +527,11 @@ export class MCPService {
 
   getServerStatus(serverName: string): boolean {
     return this.serverStatuses[serverName] || false;
+  }
+
+  // Add method to get all server names for logging/debugging
+  getServerNames(): Set<string> {
+    return new Set(this.mcpClients.keys());
   }
 
   // Add cleanup method

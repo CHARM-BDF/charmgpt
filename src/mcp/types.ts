@@ -26,6 +26,7 @@ export interface MCPServerState extends MCPServerInfo {
   status: 'inactive' | 'active' | 'blocked';
   tools?: MCPTool[];
   isRunning: boolean;  // To maintain compatibility with existing code
+  displayName?: string; // User-friendly name for display in the UI
 }
 
 export interface MCPToolResult {

@@ -30,6 +30,13 @@ This document provides a current status update on the multi-provider LLM impleme
    - ✅ Each provider uses appropriate default models when not specified
    - ✅ Compatible model validation prevents using incorrect models with providers
 
+5. **Chat Route Architecture**
+   - ✅ Multiple specialized routes implemented for different chat capabilities
+   - ✅ `/api/chat-artifacts` is the primary route for chat with artifact support
+   - ✅ ChatService uses factory pattern for consistent creation
+   - ✅ Chat routes pass parameters like blockedServers to ChatService
+   - ✅ Structured streaming response format with proper typing
+
 ### Known Issues
 
 1. **Response Formatting**

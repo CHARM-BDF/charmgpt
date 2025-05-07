@@ -64,19 +64,19 @@ async function getServerStatuses(mcpService: MCPService) {
     // Get all available tools to extract server information
     const tools = await mcpService.getAllAvailableTools([]);
     
-    // Extract unique server names from tool names
-    const serverNames = new Set<string>();
-    tools.forEach(tool => {
-        const serverName = tool.name.split('-')[0];
-        if (serverName) {
-            serverNames.add(serverName);
-        }
-    });
+    // Get server names directly from mcpService instead of parsing from tool names
+    // This ensures we get the exact technical names without any splitting/parsing
+    const serverNames = mcpService.getServerNames();
+    
+    // Add detailed logging of server names
+    console.log('\n=== DEBUG: getServerStatuses ===');
+    console.log('Available server names from mcpService:', JSON.stringify(Array.from(serverNames)));
+    console.log('Total server names:', serverNames.size);
     
     // For each server, get its tools
     for (const serverName of serverNames) {
         try {
-            // Filter tools for this server
+            // Filter tools for this server - use startsWith to match the prefix pattern
             const serverTools = tools
                 .filter(tool => tool.name.startsWith(`${serverName}-`))
                 .map(tool => ({
@@ -108,6 +108,13 @@ async function getServerStatuses(mcpService: MCPService) {
             });
         }
     }
+    
+    // Log the final server status list
+    console.log('Server statuses to be returned to client:');
+    serverStatuses.forEach(s => {
+        console.log(`  ${s.name}: ${s.status} (isRunning: ${s.isRunning}, tools: ${s.tools?.length || 0})`);
+    });
+    console.log('=== END DEBUG: getServerStatuses ===\n');
     
     return serverStatuses;
 }

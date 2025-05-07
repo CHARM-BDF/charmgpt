@@ -18,6 +18,8 @@ import { LoggingService } from './services/logging';
 import { LLMService } from './services/llm';
 import { createChatService } from './services/chatServiceFactory';
 import { randomUUID } from 'crypto';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 // ES Module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -137,6 +139,30 @@ app.use('/api/ollama', ollamaRouter);
 app.use('/api/server-status', serverStatusRouter);
 app.use('/api/storage', storageRouter);
 app.use('/api/internal/llm', llmRoutes); // Mount LLM API routes
+
+// Add new endpoint for server names
+app.get('/api/server-names', (req, res) => {
+  try {
+    const mcpService = app.locals.mcpService as MCPService;
+    if (!mcpService) {
+      return res.status(500).json({ error: 'MCP service not initialized' });
+    }
+    
+    // Get the actual server names directly from the MCP service
+    const serverNames = Array.from(mcpService.getServerNames());
+    
+    // Add detailed logging
+    console.log('\n=== DEBUG: /api/server-names response ===');
+    console.log('Returning server names:', JSON.stringify(serverNames));
+    console.log('Total server names:', serverNames.length);
+    console.log('=== END DEBUG: /api/server-names response ===\n');
+    
+    res.json({ serverNames });
+  } catch (error) {
+    console.error('Error fetching server names:', error);
+    res.status(500).json({ error: 'Failed to fetch server names' });
+  }
+});
 
 // Add cleanup handlers for graceful shutdown
 process.on('SIGINT', () => {

@@ -56,7 +56,7 @@
     "medik-mcp": {
       "command": "node",
       "args": [
-        "./custom-mcp-servers/medik-mcp/dist/index.js"
+        "./custom-mcp-servers/medik-mcp/dist/medik-mcp/src/index.js"
       ]
     },
     "mondo-api": {
@@ -100,18 +100,11 @@
         "./custom-mcp-servers/aims-review-mcp/dist/index.js"
       ]
     },
-  
-    "cal-mcp": {
+    "cal2-mcp": {
       "command": "node",
       "args": [
-        "./custom-mcp-servers/cal-mcp/dist/index.js"
-      ],
-      "env": {
-        "CALDAV_SERVER_URL": "${CALDAV_SERVER_URL}",
-        "CALDAV_USERNAME": "${CALDAV_USERNAME}",
-        "CALDAV_PASSWORD": "${CALDAV_PASSWORD}",
-        "CALDAV_DEFAULT_CALENDAR": "${CALDAV_DEFAULT_CALENDAR}"
-      }
+        "./custom-mcp-servers/cal2-mcp/dist/index.js"
+      ]
     }
   }
 }

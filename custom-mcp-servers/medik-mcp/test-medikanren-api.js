@@ -17,16 +17,21 @@ const __dirname = path.dirname(__filename);
 // Configuration
 const CONFIG = {
   // MediKanren API base URL
-  apiBase: "https://medikanren.metareflective.app",
+  // apiBase: "https://medikanren.metareflective.app",
+  apiBase: "http://bore.pub:9191",
+
+  // http://bore.pub:9191
   
   // Test entities to query - all IDs from logs
   testEntities: [
-    "NCBIGene:841",  // CASP8 - initially failed but succeeded later
-    "NCBIGene:5594", // MAPK1 - initially failed but succeeded later
-    "HGNC:1509",     // Consistently succeeded in logs
-    "HGNC:6871",     // Consistently succeeded in logs
-    "HGNC:1100",     // BRCA1 - showed mixed success/failure in original test
+    // "NCBIGene:841",  // CASP8 - initially failed but succeeded later
+    // "NCBIGene:5594", // MAPK1 - initially failed but succeeded later
+    // "HGNC:1509",     // Consistently succeeded in logs
+    // "HGNC:6871",     // Consistently succeeded in logs
+    // "HGNC:1100",     // BRCA1 - showed mixed success/failure in original test
     "MONDO:0007254", // Breast cancer
+    "MONDO:0005015", // diabetes
+    "MONDO:0850306"  //latent autoimmune diagetes
   ],
   
   // Number of times to repeat each test (reduced for quicker results)
@@ -262,12 +267,16 @@ async function main() {
   // Start with basic connectivity test
   const isConnected = await testConnectivity();
   if (!isConnected) {
-    log('❌ Cannot proceed with tests - API is not reachable', 'ERROR');
-    process.exit(1);
+    log('Attempting to wake up the server before continuing...', 'WARNING');
+    await wakeUpServer();
   }
   
   // Test each entity one by one
   for (const entity of CONFIG.testEntities) {
+    // Try to wake up the server before testing each entity
+    log(`Sending a wake-up ping before testing ${entity}...`, 'INFO');
+    await wakeUpServer();
+    
     allResults.entityResults[entity] = await testEntityQueries(entity);
     
     // Check for inconsistent behavior
@@ -564,8 +573,48 @@ async function testConnectivity() {
     }
   } catch (error) {
     log(`❌ Query endpoint is not reachable: ${error.message}`, 'ERROR');
+    log(`Continuing with tests anyway - the server may need to wake up`, 'WARNING');
     return false;
   }
+}
+
+// Try to wake up the server
+async function wakeUpServer() {
+  log('Attempting to wake up the server with some simple queries...', 'INFO');
+  
+  // We'll try a few different simple queries
+  const wakeupQueries = [
+    { e1: 'Known->X', e2: 'biolink:related_to', e3: 'MONDO:0005148' },
+    { e1: 'X->Known', e2: 'biolink:related_to', e3: 'MONDO:0005148' },
+    { e1: 'Known->X', e2: 'biolink:related_to', e3: 'NCBIGene:841' }
+  ];
+  
+  for (const params of wakeupQueries) {
+    const queryParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      queryParams.append(key, value);
+    }
+    
+    const url = `${CONFIG.apiBase}/query?${queryParams.toString()}`;
+    log(`Sending wake-up ping with: ${params.e1} ${params.e2} ${params.e3}`, 'INFO');
+    
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        log(`✅ Server responded to wake-up ping! (${Array.isArray(data) ? data.length : 'non-array'} result)`, 'SUCCESS');
+        return true;
+      }
+    } catch (error) {
+      log(`Wake-up ping failed: ${error.message}`, 'WARNING');
+    }
+    
+    // Wait a bit before the next attempt
+    await sleep(2000);
+  }
+  
+  log(`Server wake-up attempts complete. Proceeding with tests.`, 'INFO');
+  return false;
 }
 
 // Test retry strategies with different delays
