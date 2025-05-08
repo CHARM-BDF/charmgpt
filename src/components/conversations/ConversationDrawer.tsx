@@ -108,7 +108,10 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
           title="Expand Sidebar"
           aria-label="Expand Sidebar"
         >
-          <ArrowsPointingOutIcon className="w-6 h-6" />
+          <div className="flex -space-x-3">
+            <ChevronRightIcon className="w-5 h-5" />
+            <ChevronRightIcon className="w-5 h-5" />
+          </div>
         </button>
         
         {/* New chat button */}
