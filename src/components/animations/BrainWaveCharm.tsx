@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Brain } from 'lucide-react';
+import { useChatStore } from '../../store/chatStore';
 
-interface BrainWaveCharmProps {
-  isLoading?: boolean;
-}
+// Remove isLoading from props since we'll get it from store
+interface BrainWaveCharmProps {}
 
 // C(-.-.)-H(....)-A(.-)-R(.-.)-M(--) GPT(--./.--./-) 
 const morseWidths = [
@@ -27,7 +27,15 @@ const morseWidths = [
   'border-4'
 ];
 
-const BrainWaveCharm: React.FC<BrainWaveCharmProps> = ({ isLoading = false }) => {
+const BrainWaveCharm: React.FC<BrainWaveCharmProps> = () => {
+  // Get isLoading directly from store
+  const isLoading = useChatStore(state => state.isLoading);
+  
+  // Log when isLoading changes
+  useEffect(() => {
+    console.log('[BrainWaveCharm] isLoading changed:', isLoading);
+  }, [isLoading]);
+  
   return (
     <div className="flex items-center">
       <div className="relative font-bold tracking-wider flex items-center">

@@ -19,24 +19,31 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   const processMessage = useChatStore(state => state.processMessage);
   const createNewChat = useChatStore(state => state.startNewConversation);
   const { selectedProjectId } = useProjectStore();
-  
+
+  // ADDING THIS FOR TESTING
+  useEffect(() => {
+    const defaultText = 'lookup three papers on cancer and summarize\nyou pick a different aspect of it that you are interested in the most. do this again for testing';
+    updateChatInput(defaultText, false);
+    setLocalInput(defaultText);
+  }, []);
+
   useEffect(() => {
     console.log('Selected Project ID:', selectedProjectId);
   }, [selectedProjectId]);
 
   const addConversationToProject = useProjectStore(state => state.addConversationToProject);
-  
+
   // Local state for input to debounce updates to the store
   const [localInput, setLocalInput] = useState(chatInput);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Update local input when chatInput changes from elsewhere
   useEffect(() => {
     if (chatInput !== localInput) {
       setLocalInput(chatInput);
     }
   }, [chatInput]);
-  
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
@@ -54,7 +61,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
       handleInputChange(newInput);
     }
   });
-  
+
   // Update the input handling to be immediate instead of debounced
   const handleInputChange = (value: string) => {
     console.log('1. handleInputChange called with:', value);
@@ -63,7 +70,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     handleFileRefInputChange(value);
     updateChatInput(value, false);
   };
-  
+
   // Auto-resize textarea as content grows
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -87,17 +94,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     if (!localInput.trim()) return;
 
     console.log('ChatInput: Submitting message:', localInput);
-    
+
     // Get the project conversation flow state
     const inProjectConversationFlow = useChatStore.getState().inProjectConversationFlow;
     console.log('ChatInput: inProjectConversationFlow:', inProjectConversationFlow);
-    
+
     // Only create a new conversation if we have a project ID AND we're not continuing a flow
     if (selectedProjectId && !inProjectConversationFlow) {
       const conversationId = createNewChat();
       if (conversationId) {
         addConversationToProject(selectedProjectId, conversationId, `Project Chat ${new Date().toLocaleString()}`);
-        
+
         // Add user message to chat store first
         addMessage({
           role: 'user',
@@ -106,7 +113,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
         // Transition to chat interface immediately
         onBack?.();
-        
+
         try {
           await processMessage(localInput);
           console.log('ChatInput: Message processed successfully');
@@ -117,18 +124,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     } else {
       // Get current conversation state
       const currentConversationId = useChatStore.getState().currentConversationId;
-      
+
       // Only create a new chat if there isn't an active conversation
       if (!currentConversationId) {
         createNewChat();
       }
-      
+
       // Add message to current conversation (either existing or newly created)
       addMessage({
         role: 'user',
         content: localInput
       });
-      
+
       try {
         await processMessage(localInput);
         console.log('ChatInput: Message processed successfully');
@@ -138,7 +145,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     }
 
     // Clear the input after sending
-    handleInputChange('');
+    // Set back to default text after sending
+    handleInputChange('lookup three papers on cancer and summarize\nyou pick a different aspect of it that you are interested in the most. do this again for testing');
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -162,7 +170,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
       <div className="w-full max-w-4xl mx-auto px-4 flex relative">
         {/* Popup moved outside form but inside the container */}
         {isActive && position && selectedProjectId ? (
-          <div 
+          <div
             className="absolute z-[9999] bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
             style={{
               bottom: '120px',  // Position above the input
@@ -186,7 +194,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
             />
           </div>
         ) : null}
-        
+
         <form onSubmit={handleSubmit} className="relative w-full flex">
           <textarea
             ref={textareaRef}
