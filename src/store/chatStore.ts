@@ -238,7 +238,7 @@ export const useChatStore = create<ChatState>()(
         },
 
         clearMessages: () => {
-          console.log('ChatStore: Clearing all messages and artifacts');
+          // console.log('ChatStore: Clearing all messages and artifacts');
           set({ 
             messages: [],
             artifacts: [],
@@ -247,11 +247,11 @@ export const useChatStore = create<ChatState>()(
         },
 
         addMessage: (message) => set((state) => {
-          console.log('[STATE UPDATE: addMessage] Starting:', {
-            hasCurrentConversation: !!state.currentConversationId,
-            currentMessages: state.messages.length,
-            messageContent: message.content?.substring(0, 50) + '...'
-          });
+          // console.log('[STATE UPDATE: addMessage] Starting:', {
+          //   hasCurrentConversation: !!state.currentConversationId,
+          //   currentMessages: state.messages.length,
+          //   messageContent: message.content?.substring(0, 50) + '...'
+          // });
 
           if (!message.content || message.content.trim() === '') {
             console.warn('ChatStore: Attempted to add empty message, ignoring');
@@ -260,14 +260,14 @@ export const useChatStore = create<ChatState>()(
           
           // If no current conversation, create one first
           if (!state.currentConversationId) {
-            console.log('[STATE UPDATE: conversation] Creating new conversation');
+            // console.log('[STATE UPDATE: conversation] Creating new conversation');
             const conversationId = get().startNewConversation();
             state = get(); // Get fresh state after conversation creation
-            console.log('[STATE UPDATE: conversation] Created:', {
-              conversationId,
-              currentConversationId: state.currentConversationId,
-              conversationCount: Object.keys(state.conversations).length
-            });
+            // console.log('[STATE UPDATE: conversation] Created:', {
+            //   conversationId,
+            //   currentConversationId: state.currentConversationId,
+            //   conversationCount: Object.keys(state.conversations).length
+            // });
           }
 
           const newMessage = {
@@ -276,11 +276,11 @@ export const useChatStore = create<ChatState>()(
             timestamp: new Date(),
           };
 
-          console.log('[STATE UPDATE: message] Created:', {
-            messageId: newMessage.id,
-            role: newMessage.role,
-            contentPreview: newMessage.content?.substring(0, 50) + '...'
-          });
+          // console.log('[STATE UPDATE: message] Created:', {
+          //   messageId: newMessage.id,
+          //   role: newMessage.role,
+          //   contentPreview: newMessage.content?.substring(0, 50) + '...'
+          // });
 
           // Update conversation first
           const updatedConversation = {
@@ -293,15 +293,15 @@ export const useChatStore = create<ChatState>()(
             }
           };
 
-          console.log('[STATE UPDATE: conversation] Updated:', {
-            conversationId: state.currentConversationId,
-            messageCount: updatedConversation.messages.length,
-            metadata: {
-              lastUpdated: updatedConversation.metadata.lastUpdated,
-              messageCount: updatedConversation.metadata.messageCount,
-              projectId: updatedConversation.metadata.projectId
-            }
-          });
+          // console.log('[STATE UPDATE: conversation] Updated:', {
+          //   conversationId: state.currentConversationId,
+          //   messageCount: updatedConversation.messages.length,
+          //   metadata: {
+          //     lastUpdated: updatedConversation.metadata.lastUpdated,
+          //     messageCount: updatedConversation.metadata.messageCount,
+          //     projectId: updatedConversation.metadata.projectId
+          //   }
+          // });
 
           // Return complete state update, deriving messages from conversation
           const newState = {
@@ -312,11 +312,11 @@ export const useChatStore = create<ChatState>()(
             }
           };
 
-          console.log('[STATE UPDATE: final] State updated:', {
-            messagesLength: newState.messages.length,
-            conversationsCount: Object.keys(newState.conversations).length,
-            currentConversationMessages: newState.conversations[state.currentConversationId!].messages.length
-          });
+          // console.log('[STATE UPDATE: final] State updated:', {
+          //   messagesLength: newState.messages.length,
+          //   conversationsCount: Object.keys(newState.conversations).length,
+          //   currentConversationMessages: newState.conversations[state.currentConversationId!].messages.length
+          // });
 
           return newState;
         }),
@@ -426,15 +426,20 @@ export const useChatStore = create<ChatState>()(
          */
         processMessage: async (content: string) => {
           const { conversations, currentConversationId, activeCompletionId } = get();
+          console.log('[DEBUG] Starting processMessage');
           
           if (activeCompletionId) {
             console.warn('ChatStore: Cannot process a new message while a completion is already in progress');
             return;
           }
           
+          // Set loading state to true at the start
+          console.log('[DEBUG] Before setting isLoading to true:', get().isLoading);
+          set({ isLoading: true });
+          console.log('[DEBUG] After setting isLoading to true:', get().isLoading);
+          
           // Get the selected model from the model store
           const selectedModel = useModelStore.getState().selectedModel;
-          console.log(`ChatStore: Using model provider: ${selectedModel}`);
           
           const currentConversation = conversations[currentConversationId as string];
           if (!currentConversation) {
@@ -457,19 +462,19 @@ export const useChatStore = create<ChatState>()(
             timestamp: new Date()
           };
 
-          console.log('[STATE UPDATE 1] Creating initial assistant message:', {
-            id: assistantMessageId,
-            content: assistantMessage.content,
-            statusUpdatesCount: assistantMessage.statusUpdates.length
-          });
+          // console.log('[STATE UPDATE 1] Creating initial assistant message:', {
+          //   id: assistantMessageId,
+          //   content: assistantMessage.content,
+          //   statusUpdatesCount: assistantMessage.statusUpdates.length
+          // });
 
           // Add the assistant message to the conversation immediately
           set(state => {
-            console.log('[STATE UPDATE 2] Adding assistant message to state:', {
-              messageId: assistantMessageId,
-              existingMessagesCount: state.messages.length,
-              currentConversationId: state.currentConversationId
-            });
+            // console.log('[STATE UPDATE 2] Adding assistant message to state:', {
+            //   messageId: assistantMessageId,
+            //   existingMessagesCount: state.messages.length,
+            //   currentConversationId: state.currentConversationId
+            // });
 
             // Preserve existing messages exactly as they are
             const existingMessages = state.conversations[state.currentConversationId!].messages.map(msg => ({
@@ -574,6 +579,8 @@ export const useChatStore = create<ChatState>()(
             });
 
             if (!response.ok) {
+              console.log('[STATE UPDATE] Setting isLoading to false due to !response.ok');
+              set({ isLoading: false });
               throw new Error('Failed to get response from chat API');
             }
 
@@ -587,7 +594,10 @@ export const useChatStore = create<ChatState>()(
               const { done, value } = await reader.read();
               
               if (done) {
-                console.log('[STREAM DEBUG] Stream reader done. Final buffer:', buffer);
+                console.log('[STATE UPDATE] Stream reader done');
+                console.log('[STATE UPDATE] Resetting isLoading to false');
+                set({ isLoading: false });
+                console.log('[STATE UPDATE] Current isLoading state:', get().isLoading);
                 break;
               }
               
@@ -612,19 +622,19 @@ export const useChatStore = create<ChatState>()(
                   console.log(`[STREAM DEBUG] Received chunk type:`, data.type);
                   
                   if (data.type === 'status') {
-                    console.log('[STATE UPDATE 3 - Status] Processing status update:', {
-                      messageId: assistantMessageId,
-                      statusMessage: data.message,
-                      timestamp: new Date().toISOString()
-                    });
+                    // console.log('[STATE UPDATE 3 - Status] Processing status update:', {
+                    //   messageId: assistantMessageId,
+                    //   statusMessage: data.message,
+                    //   timestamp: new Date().toISOString()
+                    // });
                     
                     set((state: ChatState) => {
                       const currentMessage = state.conversations[state.currentConversationId!].messages.find(msg => msg.id === assistantMessageId);
-                      console.log('[STATE UPDATE 3 - Status] Current message state:', {
-                        found: !!currentMessage,
-                        currentContent: currentMessage?.content,
-                        currentStatusCount: currentMessage?.statusUpdates?.length || 0
-                      });
+                      // console.log('[STATE UPDATE 3 - Status] Current message state:', {
+                      //   found: !!currentMessage,
+                      //   currentContent: currentMessage?.content,
+                      //   currentStatusCount: currentMessage?.statusUpdates?.length || 0
+                      // });
 
                       // Update conversation first
                       const updatedConversation = {
@@ -658,21 +668,21 @@ export const useChatStore = create<ChatState>()(
                     });
                   } 
                   else if (data.type === 'content') {
-                    console.log('[STATE UPDATE 4 - Content] Received content chunk:', {
-                      messageId: assistantMessageId,
-                      contentPreview: data.content?.substring(0, 100),
-                      contentLength: data.content?.length || 0
-                    });
+                    // console.log('[STATE UPDATE 4 - Content] Received content chunk:', {
+                    //   messageId: assistantMessageId,
+                    //   contentPreview: data.content?.substring(0, 100),
+                    //   contentLength: data.content?.length || 0
+                    // });
                     
                     set((state: ChatState) => {
-                      const currentMessage = state.conversations[state.currentConversationId!].messages.find(msg => msg.id === assistantMessageId);
-                      console.log('[STATE UPDATE 4 - Content] Current message state before update:', {
-                        found: !!currentMessage,
-                        currentContent: currentMessage?.content?.substring(0, 100),
-                        currentStatusCount: currentMessage?.statusUpdates?.length || 0
-                      });
+                      // const currentMessage = state.conversations[state.currentConversationId!].messages.find(msg => msg.id === assistantMessageId);
+                      // console.log('[STATE UPDATE 4 - Content] Current message state before update:', {
+                      //   found: !!currentMessage,
+                      //   currentContent: currentMessage?.content?.substring(0, 100),
+                      //   currentStatusCount: currentMessage?.statusUpdates?.length || 0
+                      // });
                       
-                      console.log('[STATE UPDATE 4 - Content] About to update state with content');
+                      // console.log('[STATE UPDATE 4 - Content] About to update state with content');
                       
                       // Update conversation first
                       const updatedConversation = {
@@ -689,7 +699,6 @@ export const useChatStore = create<ChatState>()(
                         })
                       };
 
-                      // Return complete state update
                       return {
                         messages: updatedConversation.messages, // Derive from conversation
                         conversations: {
@@ -701,8 +710,8 @@ export const useChatStore = create<ChatState>()(
                   }
                   else if (data.type === 'artifact') {
                     // Process artifact - don't update UI immediately
-                    console.log('[STREAM DEBUG] Received artifact:', data.artifact?.title);
-                    console.log('[STATE UPDATE - Artifact] About to add artifact to state');
+                    // console.log('[STREAM DEBUG] Received artifact:', data.artifact?.title);
+                    // console.log('[STATE UPDATE - Artifact] About to add artifact to state');
                     
                     // Add the artifact to the store immediately
                     if (data.artifact) {
@@ -718,12 +727,12 @@ export const useChatStore = create<ChatState>()(
                       
                       // Associate artifact with the message
                       set((state: ChatState) => {
-                        console.log('[STATE UPDATE - Artifact] About to update message with artifact reference');
+                        // console.log('[STATE UPDATE - Artifact] About to update message with artifact reference');
                         const updatedMessages = state.messages.map((msg: MessageWithThinking) => {
                           if (msg.id === assistantMessageId) {
                             const existingArtifactIds = msg.artifactIds || [];
                             if (!existingArtifactIds.includes(artifactId)) {
-                              console.log('[STATE UPDATE - Artifact] Adding artifact reference to message');
+                              // console.log('[STATE UPDATE - Artifact] Adding artifact reference to message');
                               return { 
                                 ...msg,
                                 artifactId: msg.artifactId || artifactId,
@@ -734,20 +743,20 @@ export const useChatStore = create<ChatState>()(
                           return msg;
                         });
                         
-                        console.log('[STATE UPDATE - Artifact] State update with artifact reference complete');
+                        // console.log('[STATE UPDATE - Artifact] State update with artifact reference complete');
                         return { messages: updatedMessages };
                       });
                     }
                   }
                   else if (data.type === 'result') {
                     // Store the final response for processing after the loop
-                    console.log('[STREAM DEBUG] Received final result data:', {
-                      hasResponse: !!data.response,
-                      responseType: typeof data.response,
-                      responseKeys: data.response ? Object.keys(data.response) : [],
-                      conversationType: data.response?.conversation ? typeof data.response.conversation : 'none',
-                      thinkingPresent: !!data.response?.thinking
-                    });
+                    // console.log('[STREAM DEBUG] Received final result data:', {
+                    //   hasResponse: !!data.response,
+                    //   responseType: typeof data.response,
+                    //   responseKeys: data.response ? Object.keys(data.response) : [],
+                    //   conversationType: data.response?.conversation ? typeof data.response.conversation : 'none',
+                    //   thinkingPresent: !!data.response?.thinking
+                    // });
                     finalResponse = data.response;
                   }
                   else if (data.type === 'error') {
@@ -761,34 +770,14 @@ export const useChatStore = create<ChatState>()(
 
             // Process the final response
             if (finalResponse) {
-              console.log(`[FINAL DEBUG] Processing final response`, {
-                finalResponsePresent: !!finalResponse,
-                finalResponseType: typeof finalResponse,
-                finalResponseKeys: Object.keys(finalResponse)
-              });
+              console.log('[STATE UPDATE] Processing final response');
               const startTime = Date.now();
               
               // CRITICAL: Capture status updates BEFORE artifact processing
               const beforeFinalMsg = get().messages.find(msg => msg.id === assistantMessageId);
-              console.log(`[FINAL DEBUG] Before processing final: Message has ${beforeFinalMsg?.statusUpdates?.length || 0} status updates`);
-              
-              // Save ALL status updates right away
               const savedStatusUpdates = beforeFinalMsg?.statusUpdates || [];
-              console.log(`[FINAL DEBUG] Saved ${savedStatusUpdates.length} status updates before any processing`);
               
               const storeResponse = finalResponse;
-
-              // Log the storeResponse structure 
-              console.log(`[FINAL DEBUG] storeResponse keys:`, Object.keys(storeResponse));
-              console.log(`[FINAL DEBUG] storeResponse has thinking:`, !!storeResponse.thinking);
-              console.log(`[FINAL DEBUG] storeResponse has conversation:`, !!storeResponse.conversation);
-              
-              // Inspect the top-level conversation structure
-              if (typeof storeResponse.conversation === 'string') {
-                console.log(`[FINAL DEBUG] storeResponse.conversation is a string of length:`, storeResponse.conversation.length);
-              } else if (storeResponse.conversation) {
-                console.log(`[FINAL DEBUG] storeResponse.conversation type:`, typeof storeResponse.conversation);
-              }
 
               let fullContent = '';
               if (typeof storeResponse.conversation === 'string') {
@@ -847,58 +836,54 @@ export const useChatStore = create<ChatState>()(
                 messageId: assistantMessageId
               });
               
-              // Final status update
+              // Final message update
               set(state => {
-                // Create complete message with all updates
-                const updatedMessages = state.messages.map(msg => {
-                  if (msg.id === assistantMessageId) {
-                    return {
-                      ...msg,
-                      statusUpdates: savedStatusUpdates,
-                      content: fullContent,
-                      thinking: storeResponse.thinking,
-                      artifactId: artifactIds[0],
-                      artifactIds: artifactIds.length > 0 ? artifactIds : undefined,
-                      statusUpdatesCollapsed: msg.statusUpdatesCollapsed
-                    };
-                  }
-                  return msg;
-                });
-
-                // Ensure conversation storage gets the exact same complete messages
-                const updatedConversation = {
-                  ...state.conversations[state.currentConversationId!],
-                  messages: updatedMessages.map(msg => ({
-                    ...msg,
-                    statusUpdates: msg.statusUpdates ? [...msg.statusUpdates] : undefined,
-                    artifactIds: msg.artifactIds ? [...msg.artifactIds] : undefined
-                  })),
-                  metadata: {
-                    ...state.conversations[state.currentConversationId!].metadata,
-                    lastUpdated: new Date()
-                  }
-                };
-
-                return {
-                  messages: updatedMessages,
+                const newState = {
+                  messages: state.messages.map(msg => {
+                    if (msg.id === assistantMessageId) {
+                      return {
+                        ...msg,
+                        statusUpdates: savedStatusUpdates,
+                        content: fullContent,
+                        thinking: storeResponse.thinking,
+                        artifactId: artifactIds[0],
+                        artifactIds: artifactIds.length > 0 ? artifactIds : undefined,
+                        statusUpdatesCollapsed: msg.statusUpdatesCollapsed
+                      };
+                    }
+                    return msg;
+                  }),
                   conversations: {
                     ...state.conversations,
-                    [state.currentConversationId!]: updatedConversation
+                    [state.currentConversationId!]: {
+                      ...state.conversations[state.currentConversationId!],
+                      messages: state.messages.map(msg => ({
+                        ...msg,
+                        statusUpdates: msg.statusUpdates ? [...msg.statusUpdates] : undefined,
+                        artifactIds: msg.artifactIds ? [...msg.artifactIds] : undefined
+                      })),
+                      metadata: {
+                        ...state.conversations[state.currentConversationId!].metadata,
+                        lastUpdated: new Date()
+                      }
+                    }
                   },
                   streamingMessageId: null,
                   streamingContent: fullContent,
-                  streamingComplete: true,
-                  isLoading: false
+                  streamingComplete: true
                 };
+                return newState;
               });
 
+              // Separate state update specifically for isLoading
+              console.log('[DEBUG] Explicitly resetting isLoading state');
               set({ isLoading: false });
-              
+              console.log('[DEBUG] isLoading state after explicit reset:', get().isLoading);
             }
 
           } catch (error) {
             console.error('ChatStore: Error processing message:', error);
-            
+            console.log('[DEBUG] Error occurred, isLoading before set:', get().isLoading);
             // Get the current project conversation flow state to preserve it
             const currentInProjectConversationFlow = get().inProjectConversationFlow;
             
@@ -908,8 +893,9 @@ export const useChatStore = create<ChatState>()(
               streamingMessageId: null,
               streamingContent: '',
               streamingComplete: true,
-              inProjectConversationFlow: currentInProjectConversationFlow // Preserve the flag
+              inProjectConversationFlow: currentInProjectConversationFlow
             });
+            console.log('[DEBUG] After error handling, isLoading:', get().isLoading);
             
             // Update the message to show the error
             const errorMessageId = get().streamingMessageId;
@@ -920,10 +906,13 @@ export const useChatStore = create<ChatState>()(
                     { ...msg, content: `_Error: ${error instanceof Error ? error.message : 'Unknown error'}_` } : 
                     msg
                 ),
-                inProjectConversationFlow: state.inProjectConversationFlow // Preserve the flag
+                inProjectConversationFlow: state.inProjectConversationFlow
               }));
             }
           }
+          
+          console.log('[DEBUG] Final state at end of processMessage');
+          console.log('[DEBUG] Final isLoading state:', get().isLoading);
         },
 
         clearChat: () => set(_state => ({
@@ -998,26 +987,26 @@ export const useChatStore = create<ChatState>()(
 
         switchConversation: (id: string) => {
           const state = get();
-          console.log('[STATE UPDATE: switch] Starting:', {
-            fromConversationId: state.currentConversationId,
-            toConversationId: id,
-            currentMessagesCount: state.messages.length
-          });
+          // console.log('[STATE UPDATE: switch] Starting:', {
+          //   fromConversationId: state.currentConversationId,
+          //   toConversationId: id,
+          //   currentMessagesCount: state.messages.length
+          // });
 
           const conversation = state.conversations[id];
           if (!conversation) {
-            console.warn('[STATE UPDATE: switch] Error: Non-existent conversation:', id);
+            // console.warn('[STATE UPDATE: switch] Error: Non-existent conversation:', id);
             return;
           }
 
           // Preserve project relationship
           const isProjectConversation = !!conversation.metadata.projectId;
-          console.log('[STATE UPDATE: switch] Details:', {
-            conversationId: id,
-            messageCount: conversation.messages.length,
-            isProjectConversation,
-            projectId: conversation.metadata.projectId
-          });
+          // console.log('[STATE UPDATE: switch] Details:', {
+          //   conversationId: id,
+          //   messageCount: conversation.messages.length,
+          //   isProjectConversation,
+          //   projectId: conversation.metadata.projectId
+          // });
 
           set({
             currentConversationId: id,
@@ -1028,11 +1017,11 @@ export const useChatStore = create<ChatState>()(
             inProjectConversationFlow: isProjectConversation
           });
 
-          console.log('[STATE UPDATE: switch] Complete:', {
-            newCurrentId: id,
-            messageCount: conversation.messages.length,
-            hasProject: isProjectConversation
-          });
+          // console.log('[STATE UPDATE: switch] Complete:', {
+          //   newCurrentId: id,
+          //   messageCount: conversation.messages.length,
+          //   hasProject: isProjectConversation
+          // });
         },
 
         renameConversation: (id: string, name: string) => {
@@ -1114,7 +1103,7 @@ export const useChatStore = create<ChatState>()(
           const baseArtifact = state.artifacts.find(a => a.id === baseArtifactId);
           
           if (!baseArtifact || (baseArtifact.type !== 'application/vnd.ant.knowledge-graph' && baseArtifact.type !== 'application/vnd.knowledge-graph')) {
-            console.error('updateGraphArtifact: Base artifact not found or not a knowledge graph');
+            // console.error('updateGraphArtifact: Base artifact not found or not a knowledge graph');
             return null;
           }
           
@@ -1188,7 +1177,7 @@ export const useChatStore = create<ChatState>()(
             
             return newArtifactId;
           } catch (error) {
-            console.error('updateGraphArtifact: Failed to update graph:', error);
+            // console.error('updateGraphArtifact: Failed to update graph:', error);
             return null;
           }
         },
@@ -1243,7 +1232,7 @@ export const useChatStore = create<ChatState>()(
           return latestArtifact;
         },
         setPinnedGraphId: (id: string | null) => {
-          console.log('ChatStore: Setting pinned graph ID to', id);
+          // console.log('ChatStore: Setting pinned graph ID to', id);
           set({ pinnedGraphId: id });
         },
         toggleStatusUpdatesCollapsed: (messageId: string) => {
@@ -1268,7 +1257,7 @@ export const useChatStore = create<ChatState>()(
         },
         // Add new function to set project conversation flow state
         setProjectConversationFlow: (enabled: boolean) => {
-          console.log('ChatStore: Setting project conversation flow state:', enabled);
+          // console.log('ChatStore: Setting project conversation flow state:', enabled);
           set({ inProjectConversationFlow: enabled });
         },
       };

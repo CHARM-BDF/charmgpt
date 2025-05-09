@@ -383,7 +383,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
           );
         })}
         <div className="h-8 flex items-center px-6 mb-24">
-          <BrainWaveCharm isLoading={isLoading} />
+          <BrainWaveCharm />
           {process.env.NODE_ENV === 'development' && (
             <button
               onClick={() => {
