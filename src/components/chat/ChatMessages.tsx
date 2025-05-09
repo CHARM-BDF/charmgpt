@@ -272,66 +272,33 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                               </div>
                             )}
                             
+                            {/* Show streaming content */}
                             <AssistantMarkdown content={streamingContent} />
-                            <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
+                            {!chatStore.streamingComplete && <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />}
                           </>
                         ) : (
                           // For completed messages
                           <>
                             {/* Status Updates Section */}
                             {message.statusUpdates && Array.isArray(message.statusUpdates) && message.statusUpdates.length > 0 && (
-                              <div className="mt-2">
-                                {/* Only show collapse button when not streaming */}
-                                {!message.thinking && (
-                                  <button
-                                    onClick={() => toggleStatusUpdatesCollapsed(message.id)}
-                                    className="text-xs text-gray-500 hover:text-gray-700"
-                                  >
-                                    {message.statusUpdatesCollapsed ? 'Show' : 'Hide'} processing steps
-                                  </button>
-                                )}
-                                
-                                {/* Always show status updates during streaming, respect collapse state when complete */}
-                                {(!message.statusUpdatesCollapsed || message.thinking) && (
-                                  <div className="mt-1 rounded-md bg-blue-50 p-2">
-                                    <div className="text-sm text-blue-700">
-                                      {message.statusUpdates.map((update: StatusUpdate) => (
-                                        <div key={update.id} className="flex items-start space-x-2">
-                                          <span className="text-xs text-blue-500">
-                                            {(typeof update.timestamp === 'string' ? new Date(update.timestamp) : update.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
-                                          </span>
-                                          <span>{update.message}</span>
-                                        </div>
-                                      ))}
-                                    </div>
+                              <div className="mb-3">
+                                <div className="rounded-md bg-blue-50 p-2">
+                                  <div className="text-sm text-blue-700">
+                                    {message.statusUpdates.map((update: StatusUpdate) => (
+                                      <div key={update.id} className="flex items-start space-x-2">
+                                        <span className="text-xs text-blue-500">
+                                          {(typeof update.timestamp === 'string' ? new Date(update.timestamp) : update.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                                        </span>
+                                        <span>{update.message}</span>
+                                      </div>
+                                    ))}
                                   </div>
-                                )}
+                                </div>
                               </div>
                             )}
                             
-                            {/* Debug info to see message content */}
-                            {process.env.NODE_ENV === 'development' && (
-                              <div className="text-xs text-gray-400 mb-2">
-                                Content length: {message.content?.length || 0}
-                                <br />
-                                isStreaming: {isStreaming ? 'true' : 'false'}
-                                <br />
-                                streamingComplete: {chatStore.streamingComplete ? 'true' : 'false'}
-                                <br />
-                                streamingMessageId: {chatStore.streamingMessageId || 'null'}
-                                <br />
-                                message.id: {message.id}
-                                <br />
-                                First 50 chars: {message.content ? message.content.substring(0, 50) + '...' : 'empty'}
-                              </div>
-                            )}
-                            
-                            {message.content?.includes("_Status:") ? (
-                               // Don't render the status messages as content
-                               <AssistantMarkdown content={message.content.replace(/^_Status:.*_\n\n?/gm, '')} />
-                            ) : (
-                               <AssistantMarkdown content={message.content} />
-                            )}
+                            {/* Show message content */}
+                            <AssistantMarkdown content={message.content} />
                           </>
                         )}
                       </div>
@@ -417,6 +384,30 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
         })}
         <div className="h-8 flex items-center px-6 mb-24">
           <BrainWaveCharm isLoading={isLoading} />
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              onClick={() => {
+                console.log('Full Conversation State:', {
+                  messages: messages.map(msg => ({
+                    id: msg.id,
+                    role: msg.role,
+                    content: msg.content,
+                    statusUpdates: msg.statusUpdates,
+                    statusUpdatesCollapsed: msg.statusUpdatesCollapsed,
+                    thinking: msg.thinking,
+                    timestamp: msg.timestamp
+                  })),
+                  isLoading,
+                  streamingMessageId,
+                  streamingContent,
+                  streamingComplete: chatStore.streamingComplete
+                });
+              }}
+              className="ml-4 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded"
+            >
+              Debug State
+            </button>
+          )}
           <div ref={messagesEndRef} />
         </div>
       </div>
