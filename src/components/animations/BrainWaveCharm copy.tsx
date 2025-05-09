@@ -24,7 +24,7 @@ const BrainWaveCharm: React.FC<BrainWaveCharmProps> = ({ isLoading = false }) =>
             />
           ))}
         </div>
-        <span className="inline-flex items-center bg-gradient-to-r from-[#4F46E5] to-[#6366F1] bg-clip-text text-transparent text-3xl">CHARM GPT</span>
+        <span className="inline-flex items-center bg-gradient-to-r from-[#4F46E5] to-[#6366F1] bg-clip-text text-transparent text-3xl">CHARM-MCP</span>
       </div>
     </div>
   );

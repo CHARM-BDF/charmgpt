@@ -216,19 +216,19 @@ export const useMCPStore = create<MCPStoreState>()(
             getBlockedServers: () => {
                 const state = get();
                 
-                console.log('\n=== DEBUG: GET BLOCKED SERVERS ===');
-                console.log('Current server data from state:');
-                state.servers.forEach(server => {
-                    console.log(`Server "${server.name}": status=${server.status}, isRunning=${server.isRunning}`);
-                });
+                // console.log('\n=== DEBUG: GET BLOCKED SERVERS ===');
+                // console.log('Current server data from state:');
+                // state.servers.forEach(server => {
+                //     console.log(`Server "${server.name}": status=${server.status}, isRunning=${server.isRunning}`);
+                // });
                 
                 // Get blocked servers from state - servers with status='blocked'
                 const blockedServers = state.servers
                     .filter(server => server.status === 'blocked')
                     .map(server => server.name);
                 
-                console.log(`Filtered blocked servers (${blockedServers.length}):`, blockedServers);
-                console.log('=== END DEBUG: GET BLOCKED SERVERS ===\n');
+                // console.log(`Filtered blocked servers (${blockedServers.length}):`, blockedServers);
+                // console.log('=== END DEBUG: GET BLOCKED SERVERS ===\n');
                 
                 return blockedServers;
             },

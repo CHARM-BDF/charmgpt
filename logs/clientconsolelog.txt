@@ -1,0 +1,276 @@
+=== Debug Log Summary ===
+
+debug.ts:52 
+== [STATE UPDATE ==
+
+debug.ts:53 [STATE UPDATE: addMessage] Starting: [object Object]
+debug.ts:53 [STATE UPDATE: message] Created: [object Object]
+debug.ts:53 [STATE UPDATE: conversation] Updated: [object Object]
+debug.ts:53 [STATE UPDATE: final] State updated: [object Object]
+debug.ts:53 [STATE UPDATE 1] Creating initial assistant message: [object Object]
+debug.ts:53 [STATE UPDATE 2] Adding assistant message to state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 4 - Content] Received content chunk: [object Object]
+debug.ts:53 [STATE UPDATE 4 - Content] Current message state before update: [object Object]
+debug.ts:53 [STATE UPDATE 4 - Content] About to update state with content
+debug.ts:53 [STATE UPDATE 4 - Content] State update complete
+debug.ts:53 [STATE UPDATE - Artifact] About to add artifact to state
+debug.ts:53 [STATE UPDATE - Artifact] About to update message with artifact reference
+debug.ts:53 [STATE UPDATE - Artifact] Adding artifact reference to message
+debug.ts:53 [STATE UPDATE - Artifact] State update with artifact reference complete
+debug.ts:53 [STATE UPDATE - Artifact] About to add artifact to state
+debug.ts:53 [STATE UPDATE - Artifact] About to update message with artifact reference
+debug.ts:53 [STATE UPDATE - Artifact] Adding artifact reference to message
+debug.ts:53 [STATE UPDATE - Artifact] State update with artifact reference complete
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE: addMessage] Starting: [object Object]
+debug.ts:53 [STATE UPDATE: message] Created: [object Object]
+debug.ts:53 [STATE UPDATE: conversation] Updated: [object Object]
+debug.ts:53 [STATE UPDATE: final] State updated: [object Object]
+debug.ts:53 [STATE UPDATE 1] Creating initial assistant message: [object Object]
+debug.ts:53 [STATE UPDATE 2] Adding assistant message to state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:53 [STATE UPDATE 4 - Content] Received content chunk: [object Object]
+debug.ts:53 [STATE UPDATE 4 - Content] Current message state before update: [object Object]
+debug.ts:53 [STATE UPDATE 4 - Content] About to update state with content
+debug.ts:53 [STATE UPDATE 4 - Content] State update complete
+debug.ts:53 [STATE UPDATE - Artifact] About to add artifact to state
+debug.ts:53 [STATE UPDATE - Artifact] About to update message with artifact reference
+debug.ts:53 [STATE UPDATE - Artifact] Adding artifact reference to message
+debug.ts:53 [STATE UPDATE - Artifact] State update with artifact reference complete
+debug.ts:53 [STATE UPDATE 3 - Status] Processing status update: [object Object]
+debug.ts:53 [STATE UPDATE 3 - Status] Current message state: [object Object]
+debug.ts:52 
+== ChatStore: ==
+
+debug.ts:53 ChatStore: Using model provider: openai
+debug.ts:53 ChatStore: Updating chat input with:  (replace)
+debug.ts:53 ChatStore: Updating chat input with: lookup three papers on cancer and summarize
+you pick a different aspect of it that you are interested in the most. do this again for testing (replace)
+debug.ts:53 ChatStore: Using model provider: openai
+debug.ts:53 ChatStore: Updating chat input with:  (replace)
+debug.ts:52 
+== [STREAM DEBUG] ==
+
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Processing request...","id":"0f1b6df6-c929-4b49-8d2e-93ba5eb2691d","timestamp":"2025-05-09T00:42:56.041Z"}
+{"type":"status","message":"Using model provider: openai","id":"d7b4a015-a869-4caa-9cc9-ec3d48bd5b7f","timestamp":"2025-05-09T00:42:56.042Z"}
+{"type":"status","message":"Initializing chat processing...","id":"00e715a7-f207-4e13-a5ae-4a8316575107","timestamp":"2025-05-09T00:42:56.044Z"}
+{"type":"status","message":"Retrieving available tools...","id":"3ff0469b-0f36-4d12-b981-457bcb19c264","timestamp":"2025-05-09T00:42:56.049Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 4
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Processing request...","id":"0f1b6df6-c929-4b49-8d2e-93ba5eb2691d","timestamp":"2025-05-09T00:42:56.041Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Using model provider: openai","id":"d7b4a015-a869-4caa-9cc9-ec3d48bd5b7f","timestamp":"2025-05-09T00:42:56.042Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Initializing chat processing...","id":"00e715a7-f207-4e13-a5ae-4a8316575107","timestamp":"2025-05-09T00:42:56.044Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Retrieving available tools...","id":"3ff0469b-0f36-4d12-b981-457bcb19c264","timestamp":"2025-05-09T00:42:56.049Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Processing with sequential thinking...","id":"b963f820-5166-419c-8e22-06bd655fe6cc","timestamp":"2025-05-09T00:42:56.183Z"}
+{"type":"status","message":"Adding sequential thinking tool...","id":"593db700-6e72-4429-932a-2e81c7a2d344","timestamp":"2025-05-09T00:42:56.185Z"}
+{"type":"status","message":"Running thinking step 1...","id":"03e90e21-13a8-4165-87bb-8fab17676f52","timestamp":"2025-05-09T00:42:56.185Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 3
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Processing with sequential thinking...","id":"b963f820-5166-419c-8e22-06bd655fe6cc","timestamp":"2025-05-09T00:42:56.183Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Adding sequential thinking tool...","id":"593db700-6e72-4429-932a-2e81c7a2d344","timestamp":"2025-05-09T00:42:56.185Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Running thinking step 1...","id":"03e90e21-13a8-4165-87bb-8fab17676f52","timestamp":"2025-05-09T00:42:56.185Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Executing tool: pubmed-search...","id":"88f7ebf6-27e4-4a70-a148-3c1963117150","timestamp":"2025-05-09T00:42:58.767Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 1
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Executing tool: pubmed-search...","id":"88f7ebf6-27e4-4a70-a148-3c1963117150","timestamp":"2025-05-09T00:42:58.767Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Executing tool: pubmed-search...","id":"116c4d8e-ddfc-4898-a80a-ead2056b46cc","timestamp":"2025-05-09T00:42:59.884Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 1
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Executing tool: pubmed-search...","id":"116c4d8e-ddfc-4898-a80a-ead2056b46cc","timestamp":"2025-05-09T00:42:59.884Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Running thinking step 2...","id":"2c0b13d1-7976-443b-80d4-c37d36fcbd02","timestamp":"2025-05-09T00:43:00.213Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 1
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Running thinking step 2...","id":"2c0b13d1-7976-443b-80d4-c37d36fcbd02","timestamp":"2025-05-09T00:43:00.213Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"No tool calls found, sequential thinking complete.","id":"b6c6e706-30d8-42b8-9ed5-52a5f2391da0","timestamp":"2025-05-09T00:43:20.366Z"}
+{"type":"status","message":"Sequential thinking completed in 2 steps.","id":"9b5393dc-100d-49d8-9b0a-699810eacf66","timestamp":"2025-05-09T00:43:20.367Z"}
+{"type":"status","message":"Getting formatted response from openai...","id":"efe174d7-717e-48c9-99eb-a666dfcd8feb","timestamp":"2025-05-09T00:43:20.371Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 3
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"No tool calls found, sequential thinking complete.","id":"b6c6e706-30d8-42b8-9ed5-52a5f2391da0","timestamp":"2025-05-09T00:43:20.366Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Sequential thinking completed in 2 steps.","id":"9b5393dc-100d-49d8-9b0a-699810eacf66","timestamp":"2025-05-09T00:43:20.367Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Getting formatted response from openai...","id":"efe174d7-717e-48c9-99eb-a666dfcd8feb","timestamp":"2025-05-09T00:43:20.371Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Processing formatter output...","id":"74e1cbbd-ccbb-44d8-a9bd-7ed875f02eed","timestamp":"2025-05-09T00:43:24.946Z"}
+{"type":"status","message":"Collecting artifacts from tool results...","id":"64edebb4-0522-4c2e-b432-f46f26a1c693","timestamp":"2025-05-09T00:43:24.952Z"}
+{"type":"status","message":"Response received, sending content...","id":"a025424a-5bf9-423a-b9c3-7d5158304304","timestamp":"2025-05-09T00:43:24.959Z"}
+{"type":"thinking","content":"To fulfill the user's request, I will first conduct a search for three papers on cancer to summarize. Then, I will select an aspect of cancer that interests me the most for a deeper dive. After summarizing these papers, I will repeat the process for cancer testing, focusing on a different aspect that catches my interest.","id":"ca377d42-8724-44ff-83aa-67bbb37d673d","timestamp":"2025-05-09T00:43:24.960Z"}
+{"type":"content","content":"I'm currently searching for relevant papers on cancer and cancer testing to provide you with summaries and insights. This will involve selecting specific aspects of each topic that are particularly interesting or significant. Please give me a moment to gather and analyze the information.\n\n<button class=\"artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline\" data-artifact-id=\"vnd.bibliography-382ee436-b9b3-4abb-a478-771bfb25c0b0\" data-artifact-type=\"application/vnd.bibliography\" style=\"cursor: pointer; background: none; border: none; padding: 0;\">📎 Bibliography</button>\n\n<button class=\"artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline\" data-artifact-id=\"vnd.bibliography-3f4bf028-1e76-431f-bf90-46d504708eac\" data-artifact-type=\"application/vnd.bibliography\" style=\"cursor: pointer; background: none; border: none; padding: 0;\">📎 Bibliography</button>","id":"fd8198f3-8d54-45d2-b608-9954aa6232e6","timestamp":"2025-05-09T00:43:24.961Z"}
+{"type":"artifact","artifact":{"id":"vnd.bibliography-382ee436-b9b3-4abb-a478-771bfb25c0b0","artifactId":"vnd.bibliography-382ee436-b9b3-4abb-a478-771bfb25c0b0","type":"application/vnd.bibliography","title":"Bibliography","content":"[{\"authors\":[\"Leng Q\",\"Wan M\",\"Ou-Yang X\",\"Wang Y\",\"Zhang G\",\"Wang W\",\"Wu P\",\"Gao Y\",\"Hu X\",\"Yi H\"],\"year\":\"2025\",\"title\":\"Authorship Trends in Nephrology and Urology.\",\"journal\":\"Nephrology, dialysis, transplantation : official publication of the European Dialysis and Transplant Association - European Renal Association\",\"pmid\":\"40338631\"},{\"authors\":[\"Thomas N\",\"García-Prieto CA\",\"Dreval K\",\"Hilton LK\",\"Abramson JS\",\"Bartlett NL\",\"Bethony J\",\"Bowen J\",\"Bryan AC\",\"Casper C\",\"Dyer MA\",\"Gastier-Foster JM\",\"Gerrie AS\",\"Greiner TC\",\"Griner NB\",\"Gross TG\",\"Harris N\",\"Irvin JD\",\"Jaffe ES\",\"Leal FE\",\"Mbulaiteye SM\",\"Mullighan CG\",\"Mungall AJ\",\"Mungall KL\",\"Namirembe C\",\"Noy A\",\"Ogwang MD\",\"Orem J\",\"Ott G\",\"Petrello H\",\"Reynolds SJ\",\"Swerdlow SH\",\"Traverse-Glehen A\",\"Wilson WH\",\"Marra MA\",\"Staudt LM\",\"Scott DW\",\"Esteller M\",\"Morin RD\"],\"year\":\"2025\",\"title\":\"DNA methylation epitypes of Burkitt lymphoma with distinct molecular and clinical features.\",\"journal\":\"Blood cancer discovery\",\"pmid\":\"40338627\"},{\"authors\":[\"Xu J\",\"Luo X\",\"Su W\",\"Jia G\",\"Cai H\",\"Li D\",\"Li R\",\"Wang X\",\"Yang Y\",\"Wang T\",\"Zuo C\"],\"year\":\"2025\",\"title\":\"Turning Waste into Treasure: Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis to Improve Iodine-131-Based Transarterial Radioembolization for Liver Tumors.\",\"journal\":\"ACS applied materials & interfaces\",\"pmid\":\"40338615\"}]","position":0},"id":"c99a4c5c-7d69-4b53-84a7-7404a8502e9b","timestamp":"2025-05-09T00:43:24.961Z"}
+{"type":"artifact","artifact":{"id":"vnd.bibliography-3f4bf028-1e76-431f-bf90-46d504708eac","artifactId":"vnd.bibliography-3f4bf028-1e76-431f-bf90-46d504708eac","type":"application/vnd.bibliography","title":"Bibliography","content":"[{\"authors\":[\"Nikolova S\",\"Ma W\",\"Sagoo GS\",\"Punekar Y\",\"Sheppard E\"],\"year\":\"2025\",\"title\":\"Cost-effectiveness of companion BRCA testing and adjuvant olaparib treatment in patients with BRCA-mutated high-risk HER2-negative early breast cancer.\",\"journal\":\"Frontiers in oncology\",\"pmid\":\"40303990\"},{\"authors\":[\"Järbur E\",\"Godtman RA\",\"Bonander C\",\"Strömberg U\",\"Bratt O\"],\"year\":\"2025\",\"title\":\"Associations between neighbourhood characteristics and participation in a population-based organised prostate cancer testing (OPT) programme: A register-based study of 50-year-old men.\",\"journal\":\"PloS one\",\"pmid\":\"40300134\"},{\"authors\":[\"Olsson K\",\"Delilovic S\",\"Enelius MB\",\"Hägglund A\",\"Lantz A\",\"Richter A\"],\"year\":\"2025\",\"title\":\"Men's experiences of the Swedish Organised Prostate Cancer Testing programme: a qualitative study.\",\"journal\":\"BJU international\",\"pmid\":\"40189214\"}]","position":1},"id":"8f140677-d52d-4815-b746-b4039a018bad","timestamp":"2025-05-09T00:43:24.962Z"}
+{"type":"status","message":"Response complete","id":"07f8bd0b-0a86-4ebf-af5f-fb7ab520b12d","timestamp":"2025-05-09T00:43:24.962Z","final":true}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 8
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Processing formatter output...","id":"74e1cbbd-ccbb-44d8-a9bd-7ed875f02eed","timestamp":"2025-05-09T00:43:24.946Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Collecting artifacts from tool results...","id":"64edebb4-0522-4c2e-b432-f46f26a1c693","timestamp":"2025-05-09T00:43:24.952Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Response received, sending content...","id":"a025424a-5bf9-423a-b9c3-7d5158304304","timestamp":"2025-05-09T00:43:24.959Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"thinking","content":"To fulfill the user's request, I will first conduct a search for three papers on cancer to summarize. Then, I will select an aspect of cancer that interests me the most for a deeper dive. After summarizing these papers, I will repeat the process for cancer testing, focusing on a different aspect that catches my interest.","id":"ca377d42-8724-44ff-83aa-67bbb37d673d","timestamp":"2025-05-09T00:43:24.960Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: thinking
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"content","content":"I'm currently searching for relevant papers on cancer and cancer testing to provide you with summaries and insights. This will involve selecting specific aspects of each topic that are particularly interesting or significant. Please give me a moment to gather and analyze the information.\n\n<button class=\"artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline\" data-artifact-id=\"vnd.bibliography-382ee436-b9b3-4abb-a478-771bfb25c0b0\" data-artifact-type=\"application/vnd.bibliography\" style=\"cursor: pointer; background: none; border: none; padding: 0;\">📎 Bibliography</button>\n\n<button class=\"artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline\" data-artifact-id=\"vnd.bibliography-3f4bf028-1e76-431f-bf90-46d504708eac\" data-artifact-type=\"application/vnd.bibliography\" style=\"cursor: pointer; background: none; border: none; padding: 0;\">📎 Bibliography</button>","id":"fd8198f3-8d54-45d2-b608-9954aa6232e6","timestamp":"2025-05-09T00:43:24.961Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: content
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"artifact","artifact":{"id":"vnd.bibliography-382ee436-b9b3-4abb-a478-771bfb25c0b0","artifactId":"vnd.bibliography-382ee436-b9b3-4abb-a478-771bfb25c0b0","type":"application/vnd.bibliography","title":"Bibliography","content":"[{\"authors\":[\"Leng Q\",\"Wan M\",\"Ou-Yang X\",\"Wang Y\",\"Zhang G\",\"Wang W\",\"Wu P\",\"Gao Y\",\"Hu X\",\"Yi H\"],\"year\":\"2025\",\"title\":\"Authorship Trends in Nephrology and Urology.\",\"journal\":\"Nephrology, dialysis, transplantation : official publication of the European Dialysis and Transplant Association - European Renal Association\",\"pmid\":\"40338631\"},{\"authors\":[\"Thomas N\",\"García-Prieto CA\",\"Dreval K\",\"Hilton LK\",\"Abramson JS\",\"Bartlett NL\",\"Bethony J\",\"Bowen J\",\"Bryan AC\",\"Casper C\",\"Dyer MA\",\"Gastier-Foster JM\",\"Gerrie AS\",\"Greiner TC\",\"Griner NB\",\"Gross TG\",\"Harris N\",\"Irvin JD\",\"Jaffe ES\",\"Leal FE\",\"Mbulaiteye SM\",\"Mullighan CG\",\"Mungall AJ\",\"Mungall KL\",\"Namirembe C\",\"Noy A\",\"Ogwang MD\",\"Orem J\",\"Ott G\",\"Petrello H\",\"Reynolds SJ\",\"Swerdlow SH\",\"Traverse-Glehen A\",\"Wilson WH\",\"Marra MA\",\"Staudt LM\",\"Scott DW\",\"Esteller M\",\"Morin RD\"],\"year\":\"2025\",\"title\":\"DNA methylation epitypes of Burkitt lymphoma with distinct molecular and clinical features.\",\"journal\":\"Blood cancer discovery\",\"pmid\":\"40338627\"},{\"authors\":[\"Xu J\",\"Luo X\",\"Su W\",\"Jia G\",\"Cai H\",\"Li D\",\"Li R\",\"Wang X\",\"Yang Y\",\"Wang T\",\"Zuo C\"],\"year\":\"2025\",\"title\":\"Turning Waste into Treasure: Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis to Improve Iodine-131-Based Transarterial Radioembolization for Liver Tumors.\",\"journal\":\"ACS applied materials & interfaces\",\"pmid\":\"40338615\"}]","position":0},"id":"c99a4c5c-7d69-4b53-84a7-7404a8502e9b","timestamp":"2025-05-09T00:43:24.961Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: artifact
+debug.ts:53 [STREAM DEBUG] Received artifact: Bibliography
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"artifact","artifact":{"id":"vnd.bibliography-3f4bf028-1e76-431f-bf90-46d504708eac","artifactId":"vnd.bibliography-3f4bf028-1e76-431f-bf90-46d504708eac","type":"application/vnd.bibliography","title":"Bibliography","content":"[{\"authors\":[\"Nikolova S\",\"Ma W\",\"Sagoo GS\",\"Punekar Y\",\"Sheppard E\"],\"year\":\"2025\",\"title\":\"Cost-effectiveness of companion BRCA testing and adjuvant olaparib treatment in patients with BRCA-mutated high-risk HER2-negative early breast cancer.\",\"journal\":\"Frontiers in oncology\",\"pmid\":\"40303990\"},{\"authors\":[\"Järbur E\",\"Godtman RA\",\"Bonander C\",\"Strömberg U\",\"Bratt O\"],\"year\":\"2025\",\"title\":\"Associations between neighbourhood characteristics and participation in a population-based organised prostate cancer testing (OPT) programme: A register-based study of 50-year-old men.\",\"journal\":\"PloS one\",\"pmid\":\"40300134\"},{\"authors\":[\"Olsson K\",\"Delilovic S\",\"Enelius MB\",\"Hägglund A\",\"Lantz A\",\"Richter A\"],\"year\":\"2025\",\"title\":\"Men's experiences of the Swedish Organised Prostate Cancer Testing programme: a qualitative study.\",\"journal\":\"BJU international\",\"pmid\":\"40189214\"}]","position":1},"id":"8f140677-d52d-4815-b746-b4039a018bad","timestamp":"2025-05-09T00:43:24.962Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: artifact
+debug.ts:53 [STREAM DEBUG] Received artifact: Bibliography
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Response complete","id":"07f8bd0b-0a86-4ebf-af5f-fb7ab520b12d","timestamp":"2025-05-09T00:43:24.962Z","final":true}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Stream reader done. Final buffer: 
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Processing request...","id":"6e548fc7-3e26-4bdd-b9cd-b776594e565f","timestamp":"2025-05-09T00:43:54.245Z"}
+{"type":"status","message":"Using model provider: openai","id":"ceda7a85-7bdf-4024-92ea-258bcfb1c992","timestamp":"2025-05-09T00:43:54.246Z"}
+{"type":"status","message":"Initializing chat processing...","id":"b989ed18-7d24-4b0f-a87b-efd14e71de9f","timestamp":"2025-05-09T00:43:54.248Z"}
+{"type":"status","message":"Retrieving available tools...","id":"2b7c4004-81b3-416f-84a0-03b4bda99acc","timestamp":"2025-05-09T00:43:54.251Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 4
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Processing request...","id":"6e548fc7-3e26-4bdd-b9cd-b776594e565f","timestamp":"2025-05-09T00:43:54.245Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Using model provider: openai","id":"ceda7a85-7bdf-4024-92ea-258bcfb1c992","timestamp":"2025-05-09T00:43:54.246Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Initializing chat processing...","id":"b989ed18-7d24-4b0f-a87b-efd14e71de9f","timestamp":"2025-05-09T00:43:54.248Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Retrieving available tools...","id":"2b7c4004-81b3-416f-84a0-03b4bda99acc","timestamp":"2025-05-09T00:43:54.251Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Processing with sequential thinking...","id":"5b7b9a1e-8f67-4c9e-94ca-5528843a199b","timestamp":"2025-05-09T00:43:54.431Z"}
+{"type":"status","message":"Adding sequential thinking tool...","id":"c6edc063-a668-4d1d-b027-579f47ff71a2","timestamp":"2025-05-09T00:43:54.432Z"}
+{"type":"status","message":"Running thinking step 1...","id":"ae984b40-d44b-4bfb-997f-5291e6f739d9","timestamp":"2025-05-09T00:43:54.433Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 3
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Processing with sequential thinking...","id":"5b7b9a1e-8f67-4c9e-94ca-5528843a199b","timestamp":"2025-05-09T00:43:54.431Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Adding sequential thinking tool...","id":"c6edc063-a668-4d1d-b027-579f47ff71a2","timestamp":"2025-05-09T00:43:54.432Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Running thinking step 1...","id":"ae984b40-d44b-4bfb-997f-5291e6f739d9","timestamp":"2025-05-09T00:43:54.433Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Executing tool: pubmed-search...","id":"36949721-ae9c-4803-be78-ea4a2ec4ac1b","timestamp":"2025-05-09T00:43:56.209Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 1
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Executing tool: pubmed-search...","id":"36949721-ae9c-4803-be78-ea4a2ec4ac1b","timestamp":"2025-05-09T00:43:56.209Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Running thinking step 2...","id":"7cbc78b1-16b6-4980-976d-3b40795d1b12","timestamp":"2025-05-09T00:43:56.788Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 1
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Running thinking step 2...","id":"7cbc78b1-16b6-4980-976d-3b40795d1b12","timestamp":"2025-05-09T00:43:56.788Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"No tool calls found, sequential thinking complete.","id":"7d9bba31-e784-4628-9fe7-6ff71c88ce2d","timestamp":"2025-05-09T00:44:13.705Z"}
+{"type":"status","message":"Sequential thinking completed in 2 steps.","id":"3fd7748e-aee9-4822-8e84-9e344a24c081","timestamp":"2025-05-09T00:44:13.707Z"}
+{"type":"status","message":"Getting formatted response from openai...","id":"ce4625d2-4ed7-4b33-a91b-581999ce68d7","timestamp":"2025-05-09T00:44:13.711Z"}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 3
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"No tool calls found, sequential thinking complete.","id":"7d9bba31-e784-4628-9fe7-6ff71c88ce2d","timestamp":"2025-05-09T00:44:13.705Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Sequential thinking completed in 2 steps.","id":"3fd7748e-aee9-4822-8e84-9e344a24c081","timestamp":"2025-05-09T00:44:13.707Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Getting formatted response from openai...","id":"ce4625d2-4ed7-4b33-a91b-581999ce68d7","timestamp":"2025-05-09T00:44:13.711Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Raw chunk received: {"type":"status","message":"Processing formatter output...","id":"13b9a2c5-481e-4450-92b4-200d9ca3d9df","timestamp":"2025-05-09T00:44:24.879Z"}
+{"type":"status","message":"Collecting artifacts from tool results...","id":"e5c552ed-c4cf-4ac3-b3d4-2dc184b6b9aa","timestamp":"2025-05-09T00:44:24.883Z"}
+{"type":"status","message":"Response received, sending content...","id":"3fb9cb94-3f66-444a-870b-22dba0bcbe77","timestamp":"2025-05-09T00:44:24.889Z"}
+{"type":"content","content":"I've found three recent papers on cancer, each focusing on different aspects of the disease and its treatment. Here's a brief summary of each, highlighting the aspect I find most intriguing:\n\n1. **Authorship Trends in Nephrology and Urology (2025)**: This paper, although not directly related to cancer biology or treatment, provides an interesting insight into the evolving landscape of medical research authorship in fields that frequently deal with cancer. The focus on nephrology and urology, specialties that often encounter kidney and bladder cancers, respectively, could indirectly shed light on how cancer research and clinical practices might be evolving in these areas.\n\n2. **DNA Methylation Epitypes of Burkitt Lymphoma (2025)**: This study delves into the epigenetics of Burkitt Lymphoma, identifying two distinct DNA methylation patterns associated with different clinical and molecular features. The concept of epitypes and their potential role in refining risk assessment and treatment strategies for Burkitt Lymphoma patients is particularly fascinating. It underscores the importance of understanding cancer at the molecular level, beyond just genetic mutations, to improve patient outcomes.\n\n3. **Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis in Liver Tumors (2025)**: The innovative approach of leveraging radiation byproducts to induce ferroptosis, a form of cell death different from apoptosis, in liver tumor treatment is compelling. This paper presents a novel method to enhance the efficacy of transarterial radioembolization for liver tumors by combining it with ferroptosis induction. The integration of multiple treatment modalities to overcome resistance to traditional therapies is a promising direction for cancer treatment.\n\nAmong these, the study on **Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis in Liver Tumors** stands out the most to me. The innovative use of radiation byproducts to trigger a different cell death pathway in cancer treatment is a groundbreaking approach that could significantly improve the effectiveness of existing therapies.\n\n<button class=\"artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline\" data-artifact-id=\"vnd.bibliography-4d6607fd-6922-4292-84ee-4a5489cc48cb\" data-artifact-type=\"application/vnd.bibliography\" style=\"cursor: pointer; background: none; border: none; padding: 0;\">📎 Bibliography</button>","id":"954fa30e-cec2-40e7-8bdb-a32d36b97525","timestamp":"2025-05-09T00:44:24.890Z"}
+{"type":"artifact","artifact":{"id":"vnd.bibliography-4d6607fd-6922-4292-84ee-4a5489cc48cb","artifactId":"vnd.bibliography-4d6607fd-6922-4292-84ee-4a5489cc48cb","type":"application/vnd.bibliography","title":"Bibliography","content":"[{\"authors\":[\"Leng Q\",\"Wan M\",\"Ou-Yang X\",\"Wang Y\",\"Zhang G\",\"Wang W\",\"Wu P\",\"Gao Y\",\"Hu X\",\"Yi H\"],\"year\":\"2025\",\"title\":\"Authorship Trends in Nephrology and Urology.\",\"journal\":\"Nephrology, dialysis, transplantation : official publication of the European Dialysis and Transplant Association - European Renal Association\",\"pmid\":\"40338631\"},{\"authors\":[\"Thomas N\",\"García-Prieto CA\",\"Dreval K\",\"Hilton LK\",\"Abramson JS\",\"Bartlett NL\",\"Bethony J\",\"Bowen J\",\"Bryan AC\",\"Casper C\",\"Dyer MA\",\"Gastier-Foster JM\",\"Gerrie AS\",\"Greiner TC\",\"Griner NB\",\"Gross TG\",\"Harris N\",\"Irvin JD\",\"Jaffe ES\",\"Leal FE\",\"Mbulaiteye SM\",\"Mullighan CG\",\"Mungall AJ\",\"Mungall KL\",\"Namirembe C\",\"Noy A\",\"Ogwang MD\",\"Orem J\",\"Ott G\",\"Petrello H\",\"Reynolds SJ\",\"Swerdlow SH\",\"Traverse-Glehen A\",\"Wilson WH\",\"Marra MA\",\"Staudt LM\",\"Scott DW\",\"Esteller M\",\"Morin RD\"],\"year\":\"2025\",\"title\":\"DNA methylation epitypes of Burkitt lymphoma with distinct molecular and clinical features.\",\"journal\":\"Blood cancer discovery\",\"pmid\":\"40338627\"},{\"authors\":[\"Xu J\",\"Luo X\",\"Su W\",\"Jia G\",\"Cai H\",\"Li D\",\"Li R\",\"Wang X\",\"Yang Y\",\"Wang T\",\"Zuo C\"],\"year\":\"2025\",\"title\":\"Turning Waste into Treasure: Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis to Improve Iodine-131-Based Transarterial Radioembolization for Liver Tumors.\",\"journal\":\"ACS applied materials & interfaces\",\"pmid\":\"40338615\"}]","position":0},"id":"12d0fde5-7ceb-4446-8239-725fd82bfc6b","timestamp":"2025-05-09T00:44:24.891Z"}
+{"type":"status","message":"Response complete","id":"82057ce5-f743-4b59-a215-43e284b290be","timestamp":"2025-05-09T00:44:24.891Z","final":true}
+
+debug.ts:53 [STREAM DEBUG] Processing lines: 6
+debug.ts:53 [STREAM DEBUG] Remaining buffer: 
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Processing formatter output...","id":"13b9a2c5-481e-4450-92b4-200d9ca3d9df","timestamp":"2025-05-09T00:44:24.879Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Collecting artifacts from tool results...","id":"e5c552ed-c4cf-4ac3-b3d4-2dc184b6b9aa","timestamp":"2025-05-09T00:44:24.883Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Response received, sending content...","id":"3fb9cb94-3f66-444a-870b-22dba0bcbe77","timestamp":"2025-05-09T00:44:24.889Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"content","content":"I've found three recent papers on cancer, each focusing on different aspects of the disease and its treatment. Here's a brief summary of each, highlighting the aspect I find most intriguing:\n\n1. **Authorship Trends in Nephrology and Urology (2025)**: This paper, although not directly related to cancer biology or treatment, provides an interesting insight into the evolving landscape of medical research authorship in fields that frequently deal with cancer. The focus on nephrology and urology, specialties that often encounter kidney and bladder cancers, respectively, could indirectly shed light on how cancer research and clinical practices might be evolving in these areas.\n\n2. **DNA Methylation Epitypes of Burkitt Lymphoma (2025)**: This study delves into the epigenetics of Burkitt Lymphoma, identifying two distinct DNA methylation patterns associated with different clinical and molecular features. The concept of epitypes and their potential role in refining risk assessment and treatment strategies for Burkitt Lymphoma patients is particularly fascinating. It underscores the importance of understanding cancer at the molecular level, beyond just genetic mutations, to improve patient outcomes.\n\n3. **Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis in Liver Tumors (2025)**: The innovative approach of leveraging radiation byproducts to induce ferroptosis, a form of cell death different from apoptosis, in liver tumor treatment is compelling. This paper presents a novel method to enhance the efficacy of transarterial radioembolization for liver tumors by combining it with ferroptosis induction. The integration of multiple treatment modalities to overcome resistance to traditional therapies is a promising direction for cancer treatment.\n\nAmong these, the study on **Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis in Liver Tumors** stands out the most to me. The innovative use of radiation byproducts to trigger a different cell death pathway in cancer treatment is a groundbreaking approach that could significantly improve the effectiveness of existing therapies.\n\n<button class=\"artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline\" data-artifact-id=\"vnd.bibliography-4d6607fd-6922-4292-84ee-4a5489cc48cb\" data-artifact-type=\"application/vnd.bibliography\" style=\"cursor: pointer; background: none; border: none; padding: 0;\">📎 Bibliography</button>","id":"954fa30e-cec2-40e7-8bdb-a32d36b97525","timestamp":"2025-05-09T00:44:24.890Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: content
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"artifact","artifact":{"id":"vnd.bibliography-4d6607fd-6922-4292-84ee-4a5489cc48cb","artifactId":"vnd.bibliography-4d6607fd-6922-4292-84ee-4a5489cc48cb","type":"application/vnd.bibliography","title":"Bibliography","content":"[{\"authors\":[\"Leng Q\",\"Wan M\",\"Ou-Yang X\",\"Wang Y\",\"Zhang G\",\"Wang W\",\"Wu P\",\"Gao Y\",\"Hu X\",\"Yi H\"],\"year\":\"2025\",\"title\":\"Authorship Trends in Nephrology and Urology.\",\"journal\":\"Nephrology, dialysis, transplantation : official publication of the European Dialysis and Transplant Association - European Renal Association\",\"pmid\":\"40338631\"},{\"authors\":[\"Thomas N\",\"García-Prieto CA\",\"Dreval K\",\"Hilton LK\",\"Abramson JS\",\"Bartlett NL\",\"Bethony J\",\"Bowen J\",\"Bryan AC\",\"Casper C\",\"Dyer MA\",\"Gastier-Foster JM\",\"Gerrie AS\",\"Greiner TC\",\"Griner NB\",\"Gross TG\",\"Harris N\",\"Irvin JD\",\"Jaffe ES\",\"Leal FE\",\"Mbulaiteye SM\",\"Mullighan CG\",\"Mungall AJ\",\"Mungall KL\",\"Namirembe C\",\"Noy A\",\"Ogwang MD\",\"Orem J\",\"Ott G\",\"Petrello H\",\"Reynolds SJ\",\"Swerdlow SH\",\"Traverse-Glehen A\",\"Wilson WH\",\"Marra MA\",\"Staudt LM\",\"Scott DW\",\"Esteller M\",\"Morin RD\"],\"year\":\"2025\",\"title\":\"DNA methylation epitypes of Burkitt lymphoma with distinct molecular and clinical features.\",\"journal\":\"Blood cancer discovery\",\"pmid\":\"40338627\"},{\"authors\":[\"Xu J\",\"Luo X\",\"Su W\",\"Jia G\",\"Cai H\",\"Li D\",\"Li R\",\"Wang X\",\"Yang Y\",\"Wang T\",\"Zuo C\"],\"year\":\"2025\",\"title\":\"Turning Waste into Treasure: Radiation Byproduct-Induced Fe(III)/Fe(II) Conversion for Efficient Ferroptosis to Improve Iodine-131-Based Transarterial Radioembolization for Liver Tumors.\",\"journal\":\"ACS applied materials & interfaces\",\"pmid\":\"40338615\"}]","position":0},"id":"12d0fde5-7ceb-4446-8239-725fd82bfc6b","timestamp":"2025-05-09T00:44:24.891Z"}
+debug.ts:53 [STREAM DEBUG] Received chunk type: artifact
+debug.ts:53 [STREAM DEBUG] Received artifact: Bibliography
+debug.ts:53 [STREAM DEBUG] Processing line: {"type":"status","message":"Response complete","id":"82057ce5-f743-4b59-a215-43e284b290be","timestamp":"2025-05-09T00:44:24.891Z","final":true}
+debug.ts:53 [STREAM DEBUG] Received chunk type: status
+debug.ts:53 [STREAM DEBUG] Stream reader done. Final buffer: 

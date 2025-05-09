@@ -11,7 +11,7 @@ const BrainWaveCharmStatic: React.FC = () => {
             className="stroke-[#4F46E5] stroke-2" 
           />
         </div>
-        <span className="ml-2 text-xl font-semibold bg-gradient-to-r from-[#4F46E5] to-[#6366F1] bg-clip-text text-transparent">CHARM GPT</span>
+        <span className="ml-2 text-xl font-semibold bg-gradient-to-r from-[#4F46E5] to-[#6366F1] bg-clip-text text-transparent">CHARM-MCP</span>
       </div>
     </div>
   );

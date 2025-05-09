@@ -185,6 +185,57 @@ Now that you have the application running, you can:
 - If build fails due to network issues, check your internet connection and try again
 - If the application doesn't start, check that all dependencies are installed with `npm install`
 
+### Debug Logging Utility
+
+Located in `src/utils/debug.ts`, this utility helps collect and organize debug logs for easier troubleshooting.
+
+#### Usage:
+
+1. In Browser DevTools Console:
+```javascript
+// Start collecting logs
+const stop = collectDebugLogs();
+
+// Perform actions you want to debug
+// ... do your actions ...
+
+// Stop and display collected logs
+const logs = stop();
+```
+
+2. Logs are automatically categorized by type:
+- State Updates: `[STATE UPDATE]`
+- Stream Debug: `[STREAM DEBUG]`
+- Final Debug: `[FINAL DEBUG]`
+- ID Debug: `[ID DEBUG]`
+- ChatStore: `ChatStore:`
+- Errors: `Error:`
+
+#### Server Logs
+
+Server-side logs are automatically saved to the `./logs` directory:
+- Application logs: `./logs/app.log`
+- Error logs: `./logs/error.log`
+- Debug logs: `./logs/debug.log`
+
+These log files are useful for debugging server-side issues or when the browser console isn't sufficient.
+
+#### Adding Custom Logging:
+
+To make your logs work with this utility, use these prefixes in your `console.log` calls:
+```javascript
+console.log('[STATE UPDATE: yourCategory]', { your: 'data' });
+console.log('[STREAM DEBUG]', 'your message');
+```
+
+The utility will automatically collect and group these logs for easier debugging.
+
+#### Benefits:
+- Organized, categorized log output
+- Easier tracking of state changes
+- Simplified debugging of async operations
+- Clean console output for specific debugging tasks
+
 ### MCP Server Issues
 
 - If an MCP server fails to start, check its logs in the console output
@@ -200,70 +251,6 @@ Now that you have the application running, you can:
 - If the build process is interrupted, you can simply run the build command again - Docker will use cached layers when possible
 - If you encounter memory issues during the build, try increasing the resources allocated to Docker in Docker Desktop settings
 - For Mac with Apple Silicon (M1/M2/M3), the `--platform linux/amd64` flag is essential for compatibility
-
-# CalDAV MCP Server
-
-This is a Model Context Protocol (MCP) server that provides access to calendars via two different backends:
-
-1. **CalDAV Protocol** - For accessing Apple iCloud calendars
-2. **EventKit Framework** - For accessing all macOS Calendar.app calendars, including Exchange
-
-## Features
-
-- Access calendars from multiple providers
-- List available calendars
-- Retrieve calendar events with filtering options
-- Supports switching between CalDAV and EventKit backends
-
-## Setup
-
-### Installation
-
-```bash
-# Clone the repository
-cd /path/to/charm-mcp/custom-mcp-servers/cal-mcp
-
-# Install dependencies
-npm install
-```
-
-### Configuration
-
-#### CalDAV Backend (Default)
-
-The CalDAV backend connects directly to iCloud calendars using the CalDAV protocol.
-
-Add these variables to your root .env file:
-
-```
-CALDAV_SERVER_URL=https://caldav.icloud.com
-CALDAV_USERNAME=your.email@icloud.com
-CALDAV_PASSWORD=your-app-specific-password
-CALDAV_DEFAULT_CALENDAR=Calendar
-```
-
-> Note: For Apple Calendar, you must use an app-specific password generated at https://appleid.apple.com/ rather than your regular Apple ID password.
-
-#### EventKit Backend (macOS Only)
-
-The EventKit backend uses the native macOS Calendar framework to access all calendars (iCloud, Exchange, etc.).
-
-1. First build the helper:
-```bash
-cd bin/CalendarHelper
-./build.sh
-```
-
-2. Edit the build.sh script to include your Developer ID for code signing
-3. Run the helper once manually to grant permissions:
-```bash
-./bin/CalendarHelper/CalendarHelper list-calendars
-```
-
-4. Use the EventKit backend by setting an environment variable:
-```
-CAL_BACKEND=eventkit
-```
 
 ### Building and Running
 
