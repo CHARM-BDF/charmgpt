@@ -69,8 +69,8 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
 
 // mediKanren API configuration
 // const MEDIKANREN_API_BASE = "https://medikanren.loca.lt/";
-// const MEDIKANREN_API_BASE = "https://medikanren.metareflective.app";
-const MEDIKANREN_API_BASE = "http://bore.pub:9191";
+const MEDIKANREN_API_BASE = "https://medikanren2.metareflective.app";
+// const MEDIKANREN_API_BASE = "http://bore.pub:9191";
 // http://bore.pub:9191/
 // https://medikanren.loca.lt/
 const DEBUG = false;  // Set to false to reduce logging

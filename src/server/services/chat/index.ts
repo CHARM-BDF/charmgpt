@@ -191,6 +191,7 @@ export class ChatService {
     console.log(`🔍 [FORMATTER INPUT] Provider: ${options.modelProvider}`);
     console.log(`🔍 [FORMATTER INPUT] Tool Choice: ${JSON.stringify(toolChoice)}`);
     console.log(`🔍 [FORMATTER INPUT] Latest Message: ${latestMessage.substring(0, 1000)}${latestMessage.length > 1000 ? '...' : ''}`);
+    console.log(`🔍 [FORMATTER-REQUEST] Message: ${latestMessage.substring(0, 1000)}${latestMessage.length > 1000 ? '...' : ''}`);
     console.log(`🔍 [FORMATTER INPUT] System Prompt: ${formatterSystemPrompt.substring(0, 1000)}${formatterSystemPrompt.length > 1000 ? '...' : ''}`);
     console.log(`🔍 [FORMATTER INPUT] Temperature: ${options.temperature || 0.2}`);
     console.log(`🔍 [FORMATTER INPUT] Max Tokens: ${options.maxTokens || 4000}`);
@@ -221,6 +222,7 @@ export class ChatService {
     // Log the extracted formatter output
     console.log(`🔍 [FORMATTER OUTPUT] === BEGIN FORMATTER OUTPUT LOG ===`);
     console.log(`🔍 [FORMATTER OUTPUT] Raw formatter output:`, JSON.stringify(formatterOutput, null, 2));
+    console.log(`🔍 [FORMATTER-RESPONSE] Output: ${JSON.stringify(formatterOutput)}`);
     console.log(`🔍 [FORMATTER OUTPUT] === END FORMATTER OUTPUT LOG ===`);
     
     let storeFormat = formatterAdapter.convertToStoreFormat(formatterOutput);
@@ -377,7 +379,6 @@ export class ChatService {
         
         // Prioritize describing important tools first
         const isPriorityTool = toolName.includes('pubmed') || 
-                              toolName.includes('brave_web_search') ||
                               toolName.includes('python') ||
                               toolName.includes('graph');
                               
@@ -671,8 +672,9 @@ export class ChatService {
       );
       
       // Get response from the LLM with tools
-      console.log(`🔍 DEBUG-SEQUENTIAL-THINKING: Sending query to LLM at line ${new Error().stack?.split('\n')[1]?.match(/(\d+):\d+\)$/)?.[1] || 'unknown'}`);
+      console.log(`🔍 DEBUG-SEQUENTIAL-THINKING: Sending query to LLM at line 673`);
       console.log(`🔎 TOOLS-DEBUG: Sending ${providerTools.length} tools to sequential thinking query`);
+      console.log(`🔍 [TOOL-CALLER-INPUT] Query: ${latestMessage}`);
       
       // Print the toolChoice parameter
       const toolChoiceValue = modelProvider === 'openai' ? 'auto' : undefined;
@@ -692,6 +694,15 @@ export class ChatService {
       // Log first 500 chars of system prompt
       console.log(`🔎 TOOLS-DEBUG: System prompt start: ${systemPrompt.substring(0, 500)}...`);
       
+      // Inside runSequentialThinking method, before the LLM query
+      console.log(`🔍 [TOOL-CALLER-INPUT] Sending to tool caller:`, JSON.stringify({
+        message: latestMessage,
+        tools: providerTools.map((tool: { function?: { name?: string; description?: string }; name?: string; description?: string }) => ({
+          name: tool.function?.name || tool.name,
+          description: tool.function?.description || tool.description
+        }))
+      }));
+      
       const response = await this.llmService.query({
         prompt: latestMessage,
         options: {
@@ -703,6 +714,9 @@ export class ChatService {
         } as any, // Use type assertion to bypass type checking
         systemPrompt: systemPrompt
       });
+      
+      // After the LLM response
+      console.log(`🔍 [TOOL-CALLER-RESPONSE] Received from tool caller:`, JSON.stringify(response.rawResponse));
       
       // Extract tool calls using the adapter
       const toolCalls = toolAdapter.extractToolCalls(response.rawResponse);
@@ -735,6 +749,7 @@ export class ChatService {
         
         console.log(`🔍 TOOL-EXECUTION: Executing tool ${toolCall.name} (${serverName}:${toolName})`);
         console.log(`🔍 TOOL-EXECUTION: Input: ${JSON.stringify(toolCall.input)}`);
+        console.log(`🔍 [MCP-REQUEST] Server: ${serverName}, Tool: ${toolName}, Input: ${JSON.stringify(toolCall.input)}`);
         
         // Execute the tool call
         const toolResult = await this.mcpService.callTool(
@@ -746,6 +761,7 @@ export class ChatService {
         // Log detailed information about the tool result
         console.log(`🔍 TOOL-EXECUTION: Raw result received from tool: ${JSON.stringify(toolResult, null, 2).substring(0, 1000)}...`);
         console.log(`🔍 TOOL-EXECUTION: Result type: ${typeof toolResult}`);
+        console.log(`🔍 [MCP-RESPONSE] Result: ${JSON.stringify(toolResult)}`);
         
         if (toolResult && typeof toolResult === 'object') {
           console.log(`🔍 TOOL-EXECUTION: Result has 'content' property: ${Object.hasOwnProperty.call(toolResult, 'content')}`);
@@ -795,29 +811,29 @@ export class ChatService {
           }
           
           // Handle bibliography if present
-          if ('bibliography' in toolResult && toolResult.bibliography) {
-            console.log(`🔍 TOOL-EXECUTION: Bibliography data found in tool result`);
+          // if ('bibliography' in toolResult && toolResult.bibliography) {
+          //   console.log(`🔍 TOOL-EXECUTION: Bibliography data found in tool result`);
             
-            // Initialize bibliography array if it doesn't exist
-            if (!(workingMessages as any).bibliography) {
-              (workingMessages as any).bibliography = [];
-              console.log(`🔍 TOOL-EXECUTION: Initialized bibliography array`);
-            }
+          //   // Initialize bibliography array if it doesn't exist
+          //   if (!(workingMessages as any).bibliography) {
+          //     (workingMessages as any).bibliography = [];
+          //     console.log(`🔍 TOOL-EXECUTION: Initialized bibliography array`);
+          //   }
             
-            // Merge and deduplicate bibliography entries based on PMID
-            const currentBibliography = (workingMessages as any).bibliography;
-            const newBibliography = toolResult.bibliography as any[];
+          //   // Merge and deduplicate bibliography entries based on PMID
+          //   const currentBibliography = (workingMessages as any).bibliography;
+          //   const newBibliography = toolResult.bibliography as any[];
             
-            // Create a map of existing PMIDs
-            const existingPmids = new Set(currentBibliography.map((entry: any) => entry.pmid));
+          //   // Create a map of existing PMIDs
+          //   const existingPmids = new Set(currentBibliography.map((entry: any) => entry.pmid));
             
-            // Only add entries with new PMIDs
-            const uniqueNewEntries = newBibliography.filter((entry: any) => !existingPmids.has(entry.pmid));
+          //   // Only add entries with new PMIDs
+          //   const uniqueNewEntries = newBibliography.filter((entry: any) => !existingPmids.has(entry.pmid));
             
-            // Merge unique new entries with existing bibliography
-            (workingMessages as any).bibliography = [...currentBibliography, ...uniqueNewEntries];
-            console.log(`🔍 TOOL-EXECUTION: Added ${uniqueNewEntries.length} new bibliography entries`);
-          }
+          //   // Merge unique new entries with existing bibliography
+          //   (workingMessages as any).bibliography = [...currentBibliography, ...uniqueNewEntries];
+          //   console.log(`🔍 TOOL-EXECUTION: Added ${uniqueNewEntries.length} new bibliography entries`);
+          // }
           
           // Handle knowledge graph artifacts if present
           if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {

@@ -17,8 +17,8 @@ const __dirname = path.dirname(__filename);
 // Configuration
 const CONFIG = {
   // MediKanren API base URL
-  // apiBase: "https://medikanren.metareflective.app",
-  apiBase: "http://bore.pub:9191",
+  apiBase: "https://medikanren2.metareflective.app",
+  // apiBase: "http://bore.pub:9191",
 
   // http://bore.pub:9191
   
