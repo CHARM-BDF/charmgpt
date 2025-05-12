@@ -1,5 +1,265 @@
 # Response Formatting Comparison and Implementation Plan
 
+## File Structure Overview
+
+The response formatting system spans multiple directories and involves several interconnected components. Here's a comprehensive overview of all files involved in the process:
+
+1. **Original Implementation Files**:
+   ```
+   /src/server/routes/chat.ts                 # Original implementation with response formatting logic
+   /src/services/message.ts                   # Contains message service implementation
+   ```
+
+2. **New Implementation Files**:
+   ```
+   /src/server/services/chat/formatters/
+   ├── index.ts                              # Formatter interface and exports
+   ├── types.ts                              # Type definitions for formatters
+   ├── openai.ts                             # OpenAI formatter implementation
+   ├── anthropic.ts                          # Anthropic formatter implementation
+   ├── gemini.ts                             # Gemini formatter implementation
+   └── __tests__/                            # Test files for formatters
+       ├── anthropic.test.ts
+       ├── gemini.test.ts
+       ├── openai.test.ts
+       └── test-gemini.js
+   ```
+
+3. **Chat Service and Factory**:
+   ```
+   /src/server/services/chat/
+   ├── index.ts                              # Main chat service implementation
+   └── adapters/
+       ├── index.ts                          # Adapter exports
+       ├── types.ts                          # Adapter type definitions
+       ├── anthropic.ts                      # Anthropic adapter
+       ├── gemini.ts                         # Gemini adapter
+       ├── openai.ts                         # OpenAI adapter
+       └── ollama.ts                         # Ollama adapter
+   /src/server/services/chatServiceFactory.ts # Factory for creating chat services
+   ```
+
+4. **Supporting Server Files**:
+   ```
+   /src/server/routes/
+   ├── chat-basic.ts                      # Basic chat functionality
+   ├── chat-tools.ts                      # Chat tools implementation
+   ├── chat-artifacts.ts                  # Artifact handling
+   └── chat-sequential.ts                 # Sequential chat processing
+   
+   /src/server/services/
+   ├── artifact.ts                        # Artifact service
+   ├── message.ts                         # Message handling service
+   └── logging.ts                         # Logging service
+   ```
+
+5. **Type Definitions and Store**:
+   ```
+   /src/types/
+   ├── chat.ts                           # Chat-related type definitions
+   └── artifacts.ts                      # Artifact-related type definitions
+   
+   /src/store/
+   ├── chatStore.ts                      # Chat state management
+   └── modelStore.ts                     # Model state management
+   ```
+
+6. **Frontend Components**:
+   ```
+   /src/components/chat/
+   ├── ChatInput.tsx                     # Chat input component
+   ├── ChatMessages.tsx                  # Chat messages display
+   ├── ChatInterface.tsx                 # Main chat interface
+   └── AssistantMarkdown.tsx            # Markdown rendering for assistant messages
+   
+   /src/components/artifacts/
+   ├── ArtifactContent.tsx              # Artifact content display
+   ├── ArtifactControls.tsx             # Artifact control components
+   ├── ArtifactDrawer.tsx               # Artifact drawer component
+   └── ArtifactWindow.tsx               # Artifact window component
+   ```
+
+7. **Testing and Debug Tools**:
+   ```
+   /src/server/
+   ├── test-formatter.ts                # Formatter testing utility
+   ├── test-formatter.js               # JavaScript version of formatter testing
+   └── test-model-switching.js         # Model switching tests
+   ```
+
+### Architecture Overview
+
+The response formatting system follows a clean architectural pattern:
+
+1. **Provider-Specific Adapters**:
+   - Located in `/src/server/services/chat/adapters/`
+   - Handle raw LLM responses from different providers
+   - Normalize provider-specific formats into a standard interface
+
+2. **Response Formatters**:
+   - Located in `/src/server/services/chat/formatters/`
+   - Transform normalized responses into the application's standard format
+   - Each provider has its own formatter implementation
+   - Comprehensive test coverage in `__tests__/` directory
+
+3. **Chat Services**:
+   - Main service coordinates message flow and formatting
+   - Factory pattern used for service creation
+   - Clear separation between core chat logic and provider-specific handling
+
+4. **Frontend Components**:
+   - Modular design with separate components for different functionalities
+   - Clear separation between chat and artifact handling
+   - Consistent rendering of formatted messages and artifacts
+
+This organization provides:
+- Easy maintenance and extension of the system
+- Simple process for adding new providers
+- Isolated testing of each component
+- Clear separation of concerns
+
+## Standardized Artifact Handling
+
+The system currently supports two methods of handling artifacts, with a clear direction towards using the standardized `artifacts` array approach:
+
+### 1. Current Standardized Approach (Preferred)
+
+The system uses a standardized approach for handling artifacts through the `artifacts` array in MCP responses. This is the recommended way to handle all artifact types:
+
+```typescript
+interface StandardMCPResponse {
+  /** Array of content items for the chat interface */
+  content: MCPContentItem[];
+  
+  /** Standardized array of structured artifacts - PREFERRED METHOD */
+  artifacts?: MCPArtifact[];
+  
+  /** Optional metadata about the response */
+  metadata?: MCPResponseMetadata;
+}
+```
+
+### 2. Legacy Support (Deprecated)
+
+For backward compatibility, the system still supports legacy artifact fields. These are marked as deprecated and will be phased out:
+
+```typescript
+interface StandardMCPResponse {
+  // ... standard fields above ...
+  
+  /** @deprecated Use artifacts array instead */
+  bibliography?: any[];
+  
+  /** @deprecated Use artifacts array instead */
+  grantMarkdown?: string;
+  
+  /** @deprecated Use artifacts array instead */
+  knowledgeGraph?: any;
+}
+```
+
+### Migration Path
+
+When implementing new MCPs or updating existing ones:
+
+1. **Use the Standardized Approach**:
+   ```typescript
+   // ✅ Recommended way
+   return {
+     content: [{
+       type: "text",
+       text: formattedContent
+     }],
+     artifacts: [{
+       type: "application/vnd.bibliography",
+       title: "Bibliography",
+       content: bibliographyData
+     }]
+   };
+   ```
+
+2. **Avoid Legacy Fields**:
+   ```typescript
+   // ❌ Deprecated way
+   return {
+     content: [...],
+     bibliography: bibliographyData  // Avoid using legacy fields
+   };
+   ```
+
+### Artifact Processing Flow
+
+The standardized approach processes artifacts in a consistent way:
+
+1. **MCP Server Response**:
+   ```typescript
+   // Handle artifacts array from standardized MCP response format
+   if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
+     for (const artifact of toolResult.artifacts) {
+       if (!(messages as any).directArtifacts) {
+         (messages as any).directArtifacts = [];
+       }
+       (messages as any).directArtifacts.push(artifact);
+     }
+   }
+   ```
+
+2. **Legacy Format Processing**:
+   ```typescript
+   // Handle legacy bibliography if present
+   if ('bibliography' in toolResult && toolResult.bibliography) {
+     // Convert to standardized artifact format
+     artifactsToAdd.push({
+       type: 'application/vnd.bibliography',
+       title: 'Bibliography',
+       content: toolResult.bibliography
+     });
+   }
+   ```
+
+3. **Final Enhancement**:
+   ```typescript
+   // Apply all artifacts in one operation
+   if (artifactsToAdd.length > 0) {
+     storeResponse = messageService.enhanceResponseWithArtifacts(
+       storeResponse, 
+       artifactsToAdd
+     );
+   }
+   ```
+
+### Benefits of Standardized Approach
+
+1. **Consistency**:
+   - All artifacts follow the same structure
+   - Processing pipeline is unified
+   - Easier to maintain and debug
+
+2. **Extensibility**:
+   - New artifact types can be added without modifying the processing pipeline
+   - MCPs can define custom artifact types
+   - UI can handle new artifact types through type-based rendering
+
+3. **Better Type Safety**:
+   - Well-defined interfaces for artifacts
+   - Type checking for artifact content
+   - Clear separation between content and metadata
+
+4. **Simplified Processing**:
+   - Single collection point for artifacts
+   - Unified enhancement function
+   - Consistent error handling
+
+### Legacy Format Conversion
+
+The system automatically converts legacy formats to the standardized format:
+
+- `bibliography` → `application/vnd.bibliography` artifact
+- `grantMarkdown` → `text/markdown` artifact
+- `knowledgeGraph` → `application/vnd.knowledge-graph` artifact
+
+This conversion ensures consistent processing while maintaining backward compatibility.
+
 ## Current Setup Analysis
 
 ### Original Implementation (`chat.ts`)
