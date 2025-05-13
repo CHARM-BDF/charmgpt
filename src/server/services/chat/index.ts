@@ -14,6 +14,8 @@ import { getToolCallAdapter, ToolCall, ToolResult } from './adapters';
 import { getResponseFormatterAdapter, FormatterAdapterType } from './formatters';
 import { ResponseFormatterAdapter } from './formatters/types';
 import { isValidKnowledgeGraph, mergeKnowledgeGraphs, KnowledgeGraph } from '../../../utils/knowledgeGraphUtils';
+import { systemPrompt } from './systemPrompt';
+import { toolCallingSystemPrompt } from './systemPrompt_tools';
 
 // Importing types
 type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
@@ -105,42 +107,14 @@ export class ChatService {
       maxTokens: options.maxTokens || 4000
     });
     
-    // Add detailed logging for blocked servers if provided in options
-    if (options.blockedServers) {
-      console.log('\n=== Processing Blocked Servers in ChatService ===');
-      console.log('Received blockedServers:', options.blockedServers);
-      console.log('[index.ts Type of blockedServers:', Array.isArray(options.blockedServers) ? 'Array' : typeof options.blockedServers);
-      
-      // Ensure blockedServers is a valid array
-      const blockedServers = Array.isArray(options.blockedServers) 
-        ? options.blockedServers.map(s => String(s)) 
-        : [];
-      
-      console.log('Sanitized blockedServers:', blockedServers);
-      console.log('These servers will be blocked in the LLM tools\n');
-      
-      // Reassign back to options
-      options.blockedServers = blockedServers;
-    }
+    // Track tool executions
+    const toolExecutions: Array<{name: string; description: string}> = [];
     
     // Get available MCP tools
     let mcpTools: AnthropicTool[] = [];
     if (this.mcpService) {
       statusHandler?.('Retrieving available tools...');
-      
-      // Enhanced debugging for MCP tools and blocked servers
-      console.log(`\n💡 [CHAT SERVICE] Getting available tools with blocked servers list`);
-      console.log(`💡 [CHAT SERVICE] Blocked servers (before passing to MCP):`, options.blockedServers);
-      console.log(`💡 [CHAT SERVICE] blockedServers type:`, Array.isArray(options.blockedServers) ? 'Array' : typeof options.blockedServers);
-      console.log(`💡 [CHAT SERVICE] blockedServers length:`, options.blockedServers?.length || 0);
-      
-      try {
-        mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
-        console.log(`💡 [CHAT SERVICE] Retrieved ${mcpTools.length} tools from MCP service`);
-      } catch (error) {
-        console.error(`💡 [CHAT SERVICE] Error getting MCP tools:`, error);
-        statusHandler?.('Error retrieving MCP tools, proceeding with limited functionality...');
-      }
+      mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
     }
     
     // Run sequential thinking with tools if needed
@@ -154,15 +128,13 @@ export class ChatService {
         temperature: options.temperature,
         maxTokens: options.maxTokens
       },
-      statusHandler
+      statusHandler,
+      toolExecutions // Pass toolExecutions array to track usage
     );
     
     // Get the appropriate response formatter adapter
     const formatterAdapter = getResponseFormatterAdapter(options.modelProvider as FormatterAdapterType);
     const formatterToolDefinition = formatterAdapter.getResponseFormatterToolDefinition();
-    
-    // Get the latest message (should be the original user message added after thinking)
-    const latestMessage = processedHistory[processedHistory.length - 1].content as string;
     
     // Format history for provider
     const formattedHistory = this.formatMessageHistory(
@@ -178,10 +150,12 @@ export class ChatService {
       toolChoice = { name: 'response_formatter' };
     }
     
-    // Log what we're sending to LLMService
-    console.log(`🔍 DEBUG-CHAT-SERVICE: Provider: ${options.modelProvider}`);
-    console.log(`🔍 DEBUG-CHAT-SERVICE: Sending toolChoice:`, JSON.stringify(toolChoice));
-    console.log(`🔍 DEBUG-CHAT-SERVICE: Formatter tool definition:`, JSON.stringify(formatterToolDefinition).substring(0, 100) + '...');
+    // Create structured prompt for formatter using sequential thinking data
+    const structuredPrompt = this.formatSequentialThinkingData(
+      message, // Original query
+      processedHistory, // All processed messages
+      toolExecutions // Tool execution history
+    );
     
     // Build the system prompt for formatter
     const formatterSystemPrompt = this.buildSystemPromptWithContext(formattedHistory, [formatterToolDefinition], toolChoice);
@@ -190,23 +164,20 @@ export class ChatService {
     console.log(`🔍 [FORMATTER INPUT] === BEGIN FORMATTER INPUT LOG ===`);
     console.log(`🔍 [FORMATTER INPUT] Provider: ${options.modelProvider}`);
     console.log(`🔍 [FORMATTER INPUT] Tool Choice: ${JSON.stringify(toolChoice)}`);
-    console.log(`🔍 [FORMATTER INPUT] Latest Message: ${latestMessage.substring(0, 1000)}${latestMessage.length > 1000 ? '...' : ''}`);
-    console.log(`🔍 [FORMATTER-REQUEST] Message: ${latestMessage.substring(0, 1000)}${latestMessage.length > 1000 ? '...' : ''}`);
+    console.log(`🔍 [FORMATTER INPUT] Structured Prompt: ${structuredPrompt.substring(0, 1000)}${structuredPrompt.length > 1000 ? '...' : ''}`);
     console.log(`🔍 [FORMATTER INPUT] System Prompt: ${formatterSystemPrompt.substring(0, 1000)}${formatterSystemPrompt.length > 1000 ? '...' : ''}`);
-    console.log(`🔍 [FORMATTER INPUT] Temperature: ${options.temperature || 0.2}`);
-    console.log(`🔍 [FORMATTER INPUT] Max Tokens: ${options.maxTokens || 4000}`);
     console.log(`🔍 [FORMATTER INPUT] === END FORMATTER INPUT LOG ===`);
     
     // Get the LLM response with formatter
     statusHandler?.(`Getting formatted response from ${options.modelProvider}...`);
     const llmResponse = await this.llmService.query({
-      prompt: latestMessage,
+      prompt: structuredPrompt, // Use structured prompt instead of just latestMessage
       options: {
         temperature: options.temperature || 0.2,
         maxTokens: options.maxTokens || 4000,
-        toolChoice: toolChoice as any,  // Use type assertion to bypass type checking
-        tools: [formatterToolDefinition]  // Add tools parameter with formatter tool
-      } as any, // Cast the entire options object to bypass type checking
+        toolChoice: toolChoice as any,
+        tools: [formatterToolDefinition]
+      } as any,
       systemPrompt: formatterSystemPrompt
     });
     
@@ -345,28 +316,28 @@ export class ChatService {
     tools: any[] = [],
     toolChoice?: { type?: string; name: string }
   ): string {
-    // Create a system prompt that includes the history and tools
-    let systemPrompt = 'You are a helpful AI assistant with access to external tools and databases.\n\n';
-    
+    // Use the toolCallingSystemPrompt for the tool-calling phase
+    let updatedSystemPrompt = toolCallingSystemPrompt;
+
     // Add message history
     if (history.length > 0) {
-      systemPrompt += '# Conversation History\n\n';
+      updatedSystemPrompt += '\n\n# Conversation History\n\n';
       history.forEach(msg => {
-        systemPrompt += `${msg.role.toUpperCase()}: ${
+        updatedSystemPrompt += `${msg.role.toUpperCase()}: ${
           typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
         }\n\n`;
       });
     }
-    
+
     // Add tools if provided
     if (tools.length > 0) {
-      systemPrompt += '# Available Tools\n\n';
-      systemPrompt += 'You have access to the following tools. USE THESE TOOLS WHEN APPROPRIATE to provide the best response.\n';
-      systemPrompt += 'IMPORTANT: When users ask you to perform searches, retrieve data, or access external information, you MUST use the appropriate tool rather than making up a response.\n';
-      systemPrompt += 'For example:\n';
-      systemPrompt += '- If asked about PubMed or academic papers, use the pubmed-search tool\n';
-      systemPrompt += '- If asked to create visualizations, use the appropriate visualization tool\n';
-      systemPrompt += '- If asked about proteins or genes, use the appropriate biology tools\n\n';
+      updatedSystemPrompt += '\n\n# Available Tools\n\n';
+      updatedSystemPrompt += 'You have access to the following tools. USE THESE TOOLS WHEN APPROPRIATE to provide the best response.\n';
+      updatedSystemPrompt += 'IMPORTANT: When users ask you to perform searches, retrieve data, or access external information, you MUST use the appropriate tool rather than making up a response.\n';
+      updatedSystemPrompt += 'For example:\n';
+      updatedSystemPrompt += '- If asked about PubMed or academic papers, use the pubmed-search tool\n';
+      updatedSystemPrompt += '- If asked to create visualizations, use the appropriate visualization tool\n';
+      updatedSystemPrompt += '- If asked about proteins or genes, use the appropriate biology tools\n\n';
       
       // Find tools with description to showcase
       let describedTools = 0;
@@ -383,24 +354,29 @@ export class ChatService {
                               toolName.includes('graph');
                               
         if (isPriorityTool || describedTools < MAX_TOOL_DESCRIPTIONS) {
-          systemPrompt += `Tool: ${toolName}\n`;
-          systemPrompt += `Description: ${toolDescription}\n\n`;
+          updatedSystemPrompt += `Tool: ${toolName}\n`;
+          updatedSystemPrompt += `Description: ${toolDescription}\n\n`;
           describedTools++;
         }
       });
       
       // If there are more tools than we've described, mention that
       if (describedTools < tools.length) {
-        systemPrompt += `... and ${tools.length - describedTools} more tools available.\n\n`;
+        updatedSystemPrompt += `... and ${tools.length - describedTools} more tools available.\n\n`;
       }
       
       // Add tool choice if specified
       if (toolChoice) {
-        systemPrompt += `# Required Action\n\nYou MUST use the ${toolChoice.name} tool to format your response. Do not respond directly with text, only use the ${toolChoice.name} tool.\n`;
+        updatedSystemPrompt += `# Required Action\n\nYou MUST use the ${toolChoice.name} tool to format your response. Do not respond directly with text, only use the ${toolChoice.name} tool.\n`;
       }
     }
     
-    return systemPrompt;
+    // Use the systemPrompt for the formatting phase
+    if (toolChoice?.name === 'response_formatter') {
+      updatedSystemPrompt = systemPrompt;
+    }
+    
+    return updatedSystemPrompt;
   }
   
   /**
@@ -628,7 +604,8 @@ export class ChatService {
       temperature?: number;
       maxTokens?: number;
     } = {},
-    statusHandler?: (status: string) => void
+    statusHandler?: (status: string) => void,
+    toolExecutions: Array<{name: string; description: string}> = []
   ): Promise<any[]> {
     // Start with a safe cast to any for type compatibility
     const workingMessages: any[] = [
@@ -750,6 +727,12 @@ export class ChatService {
         console.log(`🔍 TOOL-EXECUTION: Executing tool ${toolCall.name} (${serverName}:${toolName})`);
         console.log(`🔍 TOOL-EXECUTION: Input: ${JSON.stringify(toolCall.input)}`);
         console.log(`🔍 [MCP-REQUEST] Server: ${serverName}, Tool: ${toolName}, Input: ${JSON.stringify(toolCall.input)}`);
+        
+        // Track tool execution
+        toolExecutions.push({
+          name: toolCall.name,
+          description: `Used ${toolName} on ${serverName} server with input: ${JSON.stringify(toolCall.input)}`
+        });
         
         // Execute the tool call
         const toolResult = await this.mcpService.callTool(
@@ -1290,4 +1273,53 @@ export class ChatService {
       }
     });
   }
+
+  /**
+   * Format sequential thinking data into a structured prompt for the formatter
+   */
+  private formatSequentialThinkingData(
+    originalQuery: string,
+    processedMessages: any[],
+    toolExecutions: any[] = []
+  ): string {
+    let prompt = `<SYSTEM>
+You are an AI assistant tasked with creating comprehensive, accurate responses based on information gathered through tools. The information below has already been collected in response to the user's query. Your job is to synthesize this information into a helpful response.
+</SYSTEM>
+
+<ORIGINAL_QUERY>
+${originalQuery}
+</ORIGINAL_QUERY>
+
+<TOOL_EXECUTION_SUMMARY>
+The following tools were executed to gather information:
+${toolExecutions.map((tool, index) => `${index + 1}. ${tool.name}: ${tool.description}`).join('\n')}
+</TOOL_EXECUTION_SUMMARY>
+
+<GATHERED_DATA>
+${processedMessages.filter(msg => msg.role === 'user' && msg.content !== originalQuery)
+  .map(msg => msg.content)
+  .join('\n\n')}
+</GATHERED_DATA>`;
+
+  // Add bibliography if present
+  if ((processedMessages as any).bibliography) {
+    prompt += `\n\n<BIBLIOGRAPHY>\n${JSON.stringify((processedMessages as any).bibliography, null, 2)}\n</BIBLIOGRAPHY>`;
+  }
+
+  prompt += `\n\n<RESPONSE_REQUIREMENTS>
+1. Provide a concise summary of the gathered information
+2. Highlight key findings or innovations
+3. Identify common themes or connections
+4. Format your response in clear, readable sections
+5. THIS INFORMATION IS NEW TO THE USER - they have not seen this data yet
+</RESPONSE_REQUIREMENTS>
+
+<STATE_INFORMATION>
+- Data gathering phase: COMPLETE
+- Information presented to user: NONE
+- Response type needed: FULL SUMMARY OF FINDINGS
+</STATE_INFORMATION>`;
+
+  return prompt;
+}
 } 

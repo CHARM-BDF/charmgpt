@@ -18,6 +18,6 @@ echo "Extracting sections from $LOG_FILE..."
 echo "Output will be saved to: $OUTPUT_FILE"
 
 # Extract all matching lines directly to output file
-grep "\[TOOL-CALLER-INPUT\]\|\[TOOL-CALLER-RESPONSE\]\|\[MCP-REQUEST\]\|\[MCP-RESPONSE\]\|\[FORMATTER-REQUEST\]\|\[FORMATTER-RESPONSE\]" "$LOG_FILE" > "$OUTPUT_FILE"
+grep "\[TOOL-CALLER-INPUT\]\|\[TOOL-CALLER-RESPONSE\]\|\[MCP-REQUEST\]\|\[MCP-RESPONSE\]\|\[FORMATTER-REQUEST\]\|\[FORMATTER-RESPONSE\]\|\[FORMATTER INPUT\]" "$LOG_FILE" > "$OUTPUT_FILE"
 
 echo "Extraction complete. Results saved to: $OUTPUT_FILE" 
