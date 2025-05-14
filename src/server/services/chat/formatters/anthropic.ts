@@ -98,6 +98,10 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       contentTypes: response.content?.map((block: any) => block.type).join(', ') || 'none'
     }));
     
+    // Enhanced logging for detailed response inspection
+    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Full response structure (first 500 chars):', 
+      JSON.stringify(response).substring(0, 500));
+    
     // Check if response has content
     if (!response.content || response.content.length === 0) {
       console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Empty response from Anthropic');
@@ -116,6 +120,43 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
     const toolUseBlock = response.content.find((block: any) => 
       block.type === 'tool_use' && block.name === 'response_formatter'
     );
+    
+    // Log detailed information about tool block
+    if (toolUseBlock) {
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found tool_use block with name:', toolUseBlock.name);
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Tool input structure:', JSON.stringify({
+        hasThinking: !!toolUseBlock.input?.thinking,
+        hasConversation: !!toolUseBlock.input?.conversation,
+        isConversationArray: Array.isArray(toolUseBlock.input?.conversation),
+        conversationLength: Array.isArray(toolUseBlock.input?.conversation) 
+          ? toolUseBlock.input.conversation.length 
+          : 0
+      }));
+      
+      // Log a sample of the conversation content if available
+      if (Array.isArray(toolUseBlock.input?.conversation) && toolUseBlock.input.conversation.length > 0) {
+        console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: First conversation item:', 
+          JSON.stringify(toolUseBlock.input.conversation[0]));
+        
+        // Check for artifacts in the conversation
+        const artifactItems = toolUseBlock.input.conversation.filter((item: any) => 
+          item.type === 'artifact' && item.artifact
+        );
+        
+        console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Found ${artifactItems.length} artifact items in conversation`);
+        
+        if (artifactItems.length > 0) {
+          console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: First artifact sample:', 
+            JSON.stringify(artifactItems[0]));
+        }
+      }
+    } else {
+      console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: No response_formatter tool_use block found');
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Available content blocks:',
+        response.content.map((block: any) => 
+          `type=${block.type}, name=${block.name || 'n/a'}`
+        ).join('; '));
+    }
     
     // If no tool_use block, look for text content as fallback
     if (!toolUseBlock) {
@@ -218,6 +259,12 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
    */
   convertToStoreFormat(formatterOutput: FormatterOutput): StoreFormat {
     console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Converting formatter output to store format`);
+    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Formatter output structure:', JSON.stringify({
+      hasThinking: !!formatterOutput.thinking,
+      hasConversation: !!formatterOutput.conversation,
+      isConversationArray: Array.isArray(formatterOutput.conversation),
+      conversationLength: Array.isArray(formatterOutput.conversation) ? formatterOutput.conversation.length : 0
+    }));
     
     // Process conversation items into the expected format
     const processedConversation: Array<{type: string; content?: string; artifact?: any}> = [];
@@ -228,17 +275,32 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
     if (formatterOutput.conversation && Array.isArray(formatterOutput.conversation)) {
       console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processing ${formatterOutput.conversation.length} conversation items`);
       
-      formatterOutput.conversation.forEach(item => {
+      // Map of item types for debugging
+      const itemTypes = formatterOutput.conversation.map(item => item.type);
+      console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Conversation item types: ${itemTypes.join(', ')}`);
+      
+      // Count artifact items for debugging
+      const artifactItems = formatterOutput.conversation.filter(item => item.type === 'artifact');
+      console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Found ${artifactItems.length} artifact items in conversation`);
+      
+      formatterOutput.conversation.forEach((item, index) => {
+        console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processing conversation item #${index+1}, type=${item.type}`);
+        
         if (item.type === 'text' && item.content) {
           // Add text content to processed conversation
+          console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Adding text content (${item.content.length} chars)`);
           processedConversation.push({
             type: 'text',
             content: item.content
           });
         } 
         else if (item.type === 'artifact' && item.artifact) {
+          // Log artifact details
+          console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processing artifact: ${item.artifact.title}, type=${item.artifact.type}`);
+          
           // Generate unique ID for artifact
           const uniqueId = crypto.randomUUID();
+          console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Generated uniqueId: ${uniqueId}`);
           
           // Add artifact to the artifacts array
           artifacts.push({
@@ -262,11 +324,26 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
               language: item.artifact.language
             }
           });
+          
+          console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Added artifact to processed conversation and artifacts list`);
+        } else {
+          console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Skipping item with invalid format:`, JSON.stringify(item));
         }
       });
     }
     
     console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processed ${processedConversation.length} conversation items and ${artifacts.length} artifacts`);
+    
+    // Log structure of the first few artifacts for debugging
+    if (artifacts.length > 0) {
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: First artifact details:', JSON.stringify({
+        id: artifacts[0].id,
+        type: artifacts[0].type,
+        title: artifacts[0].title,
+        contentLength: artifacts[0].content?.length || 0,
+        position: artifacts[0].position
+      }));
+    }
     
     // Return the store format with array-structured conversation items
     return {

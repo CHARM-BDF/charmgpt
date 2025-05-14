@@ -641,8 +641,15 @@ export const useChatStore = create<ChatState>()(
                         ...state.conversations[state.currentConversationId!],
                         messages: state.conversations[state.currentConversationId!].messages.map(msg => {
                           if (msg.id === assistantMessageId) {
+                            // Only update content if we're still in the initial status stage
+                            // (no real content has been received yet)
+                            const contentUpdate = msg.content === '_Processing your request..._' ?
+                              `_Status: ${data.message}_\n\n` : 
+                              msg.content;
+                              
                             return {
                               ...msg,
+                              content: contentUpdate,
                               statusUpdates: [
                                 ...((msg.statusUpdates || []) as StatusUpdate[]),
                                 {
@@ -689,9 +696,18 @@ export const useChatStore = create<ChatState>()(
                         ...state.conversations[state.currentConversationId!],
                         messages: state.conversations[state.currentConversationId!].messages.map(msg => {
                           if (msg.id === assistantMessageId) {
+                            // Get current content
+                            const currentContent = msg.content || '';
+                            // Only accumulate content if it's not a status message
+                            const contentToUse = currentContent.startsWith('_Status:') ? 
+                              data.content : 
+                              currentContent + data.content;
+                            
+                            console.log('[CONTENT ACCUMULATION] Adding new content chunk, total length:', contentToUse.length);
+                            
                             return {
                               ...msg,
-                              content: data.content,
+                              content: contentToUse,
                               statusUpdates: msg.statusUpdates || [] // Preserve existing status updates
                             };
                           }
@@ -776,12 +792,26 @@ export const useChatStore = create<ChatState>()(
               // CRITICAL: Capture status updates BEFORE artifact processing
               const beforeFinalMsg = get().messages.find(msg => msg.id === assistantMessageId);
               const savedStatusUpdates = beforeFinalMsg?.statusUpdates || [];
+              // Save accumulated content too
+              const accumulatedContent = beforeFinalMsg?.content || '';
+              console.log('[CONTENT ACCUMULATION] Pre-final processing content length:', accumulatedContent.length);
               
               const storeResponse = finalResponse;
 
               let fullContent = '';
               if (typeof storeResponse.conversation === 'string') {
-                fullContent = storeResponse.conversation;
+                // Preserve accumulated content over final content if it exists and is substantial
+                // This prevents losing streamed content if the final response is incomplete
+                fullContent = (accumulatedContent.length > 50 && 
+                              !accumulatedContent.startsWith('_Status') && 
+                              !accumulatedContent.startsWith('_Processing')) ? 
+                                accumulatedContent : 
+                                storeResponse.conversation;
+                console.log('[CONTENT PRESERVATION] Using content source:', 
+                  (accumulatedContent.length > 50 && 
+                   !accumulatedContent.startsWith('_Status') && 
+                   !accumulatedContent.startsWith('_Processing')) ? 
+                    'accumulated' : 'final response');
               }
 
               // Update assistant message with thinking
