@@ -204,20 +204,34 @@ router.post('/', async (req: Request<{}, {}, {
               res.write(JSON.stringify(responseData) + '\n');
             } else if (item.type === 'artifact' && item.artifact) {
               console.log(`🔍 DEBUG-CHAT-ROUTE: Sending artifact of type ${item.artifact.type}`);
-              const responseData = {
+              // Create artifact data
+              const artifactData = {
                 type: 'artifact',
                 artifact: item.artifact,
                 id: crypto.randomUUID(),
                 timestamp: new Date().toISOString()
               };
               console.log(`📤 DEBUG-CHAT-ROUTE: Artifact Response: ${JSON.stringify({
-                id: responseData.id,
-                type: responseData.type,
+                id: artifactData.id,
+                type: artifactData.type,
                 artifactType: item.artifact.type,
                 artifactTitle: item.artifact.title,
                 contentLength: item.artifact.content ? item.artifact.content.length : 0
               })}`);
-              res.write(JSON.stringify(responseData) + '\n');
+              res.write(JSON.stringify(artifactData) + '\n');
+              
+              // For Claude compatibility, also send an artifact button reference
+              // This ensures the UI shows links to artifacts even in array format
+              const uniqueId = item.artifact.id || artifactData.id;
+              const buttonHtml = `<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${uniqueId}" data-artifact-type="${item.artifact.type}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 ${item.artifact.title}</button>`;
+              const buttonData = {
+                type: 'content',
+                content: buttonHtml,
+                id: crypto.randomUUID(),
+                timestamp: new Date().toISOString()
+              };
+              console.log(`📤 DEBUG-CHAT-ROUTE: Adding artifact button reference for UI compatibility`);
+              res.write(JSON.stringify(buttonData) + '\n');
             } else {
               console.log(`🔍 DEBUG-CHAT-ROUTE: Unknown conversation item type: ${item.type}`);
             }
@@ -252,6 +266,47 @@ router.post('/', async (req: Request<{}, {}, {
               artifactTitle: artifact.title,
               contentLength: artifact.content ? artifact.content.length : 0
             })}`);
+            res.write(JSON.stringify(artifactData) + '\n');
+          }
+        }
+      } else if (typeof response.conversation === 'object') {
+        // Handle object conversation format (possible Claude custom format)
+        console.log(`🔍 DEBUG-CHAT-ROUTE: Processing object conversation (special case)`);
+        // Convert object to string or extract content if possible
+        let content = "The model provided a response in an unexpected format.";
+        
+        // Use type assertion to handle the unknown object structure
+        const conversationObj = response.conversation as Record<string, any>;
+        
+        if (conversationObj && typeof conversationObj.content === 'string') {
+          content = conversationObj.content;
+        } else {
+          try {
+            content = JSON.stringify(conversationObj);
+          } catch (err) {
+            console.error('Error stringifying response object:', err);
+          }
+        }
+        
+        const responseData = {
+          type: 'content',
+          content,
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString()
+        };
+        console.log(`📤 DEBUG-CHAT-ROUTE: Object Response converted to: ${JSON.stringify(responseData).substring(0, 200)}${JSON.stringify(responseData).length > 200 ? '...' : ''}`);
+        res.write(JSON.stringify(responseData) + '\n');
+        
+        // Process artifacts same as string case
+        if (response.artifacts && Array.isArray(response.artifacts)) {
+          console.log(`🔍 DEBUG-CHAT-ROUTE: Sending ${response.artifacts.length} artifacts from artifacts array`);
+          for (const artifact of response.artifacts) {
+            const artifactData = {
+              type: 'artifact',
+              artifact,
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString()
+            };
             res.write(JSON.stringify(artifactData) + '\n');
           }
         }
