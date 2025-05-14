@@ -407,58 +407,60 @@ router.post('/', async (req: Request<{}, {}, {
       tools: [{
         name: "response_formatter",
         description: "Format all responses in a consistent JSON structure with direct array values, not string-encoded JSON",
-        input_schema: {
-          type: "object",
-          properties: {
-            thinking: {
-              type: "string",
-              description: "Optional internal reasoning process, formatted in markdown"
-            },
-            conversation: {
-              type: "array",
-              description: "Array of conversation segments and artifacts in order of appearance. Return as a direct array, not as a string-encoded JSON.",
-              items: {
-                type: "object",
-                properties: {
-                  type: {
-                    type: "string",
-                    enum: ["text", "artifact"],
-                    description: "Type of conversation segment"
-                  },
-                  content: {
-                    type: "string",
-                    description: "Markdown formatted text content"
-                  },
-                  artifact: {
-                    type: "object",
-                    description: "Artifact details",
-                    properties: {
-                      type: {
-                        type: "string",
-                        enum: [
-                          "text/markdown",
-                          "application/vnd.ant.code",
-                          "image/svg+xml",
-                          "application/vnd.mermaid",
-                          "text/html",
-                          "application/vnd.react",
-                          "application/vnd.bibliography",
-                          "application/vnd.knowledge-graph"
-                        ]
-                      },
-                      id: { type: "string" },
-                      title: { type: "string" },
-                      content: { type: "string" },
-                      language: { type: "string" }
+        custom: {
+          input_schema: {
+            type: "object",
+            properties: {
+              thinking: {
+                type: "string",
+                description: "Optional internal reasoning process, formatted in markdown"
+              },
+              conversation: {
+                type: "array",
+                description: "Array of conversation segments and artifacts in order of appearance. Return as a direct array, not as a string-encoded JSON.",
+                items: {
+                  type: "object",
+                  properties: {
+                    type: {
+                      type: "string",
+                      enum: ["text", "artifact"],
+                      description: "Type of conversation segment"
                     },
-                    required: ["type", "id", "title", "content"]
-                  }
-                },
-                required: ["type"]
+                    content: {
+                      type: "string",
+                      description: "Markdown formatted text content"
+                    },
+                    artifact: {
+                      type: "object",
+                      description: "Artifact details",
+                      properties: {
+                        type: {
+                          type: "string",
+                          enum: [
+                            "text/markdown",
+                            "application/vnd.ant.code",
+                            "image/svg+xml",
+                            "application/vnd.mermaid",
+                            "text/html",
+                            "application/vnd.react",
+                            "application/vnd.bibliography",
+                            "application/vnd.knowledge-graph"
+                          ]
+                        },
+                        id: { type: "string" },
+                        title: { type: "string" },
+                        content: { type: "string" },
+                        language: { type: "string" }
+                      },
+                      required: ["type", "id", "title", "content"]
+                    }
+                  },
+                  required: ["type"]
+                }
               }
-            }
-          },
-          required: ["conversation"]
+            },
+            required: ["conversation"]
+          }
         }
       }],
       tool_choice: { type: "tool", name: "response_formatter" }
