@@ -75,6 +75,17 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
   }
   
   /**
+   * Get the tool choice object for the response formatter
+   * This is a separate method to make it clear what the tool choice should be
+   */
+  getResponseFormatterToolChoice(): any {
+    return {
+      type: "tool",
+      name: "response_formatter"
+    };
+  }
+  
+  /**
    * Extract formatter output from Anthropic response
    */
   extractFormatterOutput(response: any): FormatterOutput {
