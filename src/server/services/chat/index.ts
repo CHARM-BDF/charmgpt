@@ -147,7 +147,7 @@ export class ChatService {
     
     // For Anthropic, toolChoice is handled differently
     if (options.modelProvider === 'anthropic') {
-      toolChoice = { name: 'response_formatter' };
+      toolChoice = { type: 'tool', name: 'response_formatter' };
     }
     
     // Create structured prompt for formatter using sequential thinking data

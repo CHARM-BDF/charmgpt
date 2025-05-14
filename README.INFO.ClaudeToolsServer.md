@@ -421,8 +421,9 @@ const userMessage = {
 
 ### 3. Tool Choice Format
 ```typescript
+// IMPORTANT: Both fields are required
 {
-  type: 'tool',
+  type: 'tool',  // The 'type' field is required
   name: 'tool_name'
 }
 ```
@@ -484,3 +485,8 @@ If encountering "tools.0.custom.input_schema: Field required" error:
 2. Verify tool format matches the example format in section 4
 3. Check both chat adapter and LLM provider for consistent format
 4. Run test script to confirm working formats
+
+If encountering "tool_choice.type: Field required" error:
+1. Ensure tool_choice includes both `type` and `name` fields
+2. Verify tool_choice format is: `{ type: "tool", name: "tool_name" }`
+3. Don't use simplified format `{ name: "tool_name" }` for Anthropic
