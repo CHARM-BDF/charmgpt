@@ -25,21 +25,30 @@ The response formatting system spans multiple directories and involves several i
        └── test-gemini.js
    ```
 
-3. **Chat Service and Factory**:
+3. **Chat Service Adapters**:
    ```
-   /src/server/services/chat/
-   ├── index.ts                              # Main chat service implementation
-   └── adapters/
-       ├── index.ts                          # Adapter exports
-       ├── types.ts                          # Adapter type definitions
-       ├── anthropic.ts                      # Anthropic adapter
-       ├── gemini.ts                         # Gemini adapter
-       ├── openai.ts                         # OpenAI adapter
-       └── ollama.ts                         # Ollama adapter
-   /src/server/services/chatServiceFactory.ts # Factory for creating chat services
+   /src/server/services/chat/adapters/
+   ├── index.ts                              # Exports adapter interfaces and implementations, provides factory functions
+   ├── types.ts                              # Defines adapter interfaces and common types for tool handling
+   ├── anthropic.ts                          # Anthropic API adapter - handles Claude model tool calls and formatting
+   ├── gemini.ts                             # Gemini API adapter - handles Google's Gemini model tool calls and formatting
+   ├── openai.ts                             # OpenAI API adapter - handles GPT models tool calls and formatting
+   ├── ollama.ts                             # Ollama adapter - handles self-hosted model tool calls and formatting
+   ├── test-claude-tool-format.sh            # Test script for verifying Claude tool formatting
+   └── test-ollama-tool-format.sh            # Test script for verifying Ollama tool formatting
    ```
 
-4. **Supporting Server Files**:
+4. **Chat Service Implementation**:
+   ```
+   /src/server/services/chat/index.ts        # Main chat service implementation - orchestrates message handling,
+                                             # manages communication with LLM providers via adapters, 
+                                             # implements sequential thinking, executes tool calls,
+                                             # handles response formatting, processes artifacts,
+                                             # and provides multiple chat processing methods including
+                                             # basic messaging, tool execution, and artifact enhancement
+   ```
+
+5. **Supporting Server Files**:
    ```
    /src/server/routes/
    ├── chat-basic.ts                      # Basic chat functionality
@@ -53,7 +62,7 @@ The response formatting system spans multiple directories and involves several i
    └── logging.ts                         # Logging service
    ```
 
-5. **Type Definitions and Store**:
+6. **Type Definitions and Store**:
    ```
    /src/types/
    ├── chat.ts                           # Chat-related type definitions
@@ -64,7 +73,7 @@ The response formatting system spans multiple directories and involves several i
    └── modelStore.ts                     # Model state management
    ```
 
-6. **Frontend Components**:
+7. **Frontend Components**:
    ```
    /src/components/chat/
    ├── ChatInput.tsx                     # Chat input component
@@ -79,7 +88,7 @@ The response formatting system spans multiple directories and involves several i
    └── ArtifactWindow.tsx               # Artifact window component
    ```
 
-7. **Testing and Debug Tools**:
+8. **Testing and Debug Tools**:
    ```
    /src/server/
    ├── test-formatter.ts                # Formatter testing utility

@@ -31,6 +31,46 @@ Tool management service:
 - Tool execution
 - Response processing
 
+## Data Processing and Artifact Handling
+
+### 1. Request Processing (via chat-artifacts.ts)
+- Handles POST requests with user messages and chat history
+- Supports multiple model providers (anthropic, ollama, openai, gemini)
+- Streams response data with chunked encoding
+- Processes blocked servers for tool availability
+- Provides status updates during processing
+
+### 2. Chat Processing (via chat/index.ts)
+- Implements sequential thinking with tools
+- Maintains state across multiple steps:
+  - Collects bibliography data from tool results
+  - Builds knowledge graphs from multiple sources
+  - Tracks direct artifacts from tool outputs
+  - Processes binary outputs into structured artifacts
+  - Preserves special content like grant markdown
+
+### 3. Artifact Collection
+- Gathers artifacts from multiple sources:
+  - Tool execution results
+  - Pinned graphs from previous interactions
+  - Bibliography entries for citations
+  - Knowledge graphs built during processing
+  - Binary outputs converted to artifacts
+  - Direct artifacts provided by tools
+
+### 4. Response Formatting and Streaming
+- Formats response data based on provider type
+- Handles different content formats:
+  - Array-based content (Anthropic)
+  - String content (OpenAI)
+  - Object content (special cases)
+- Streams multiple response types:
+  - Thinking steps
+  - Text content
+  - Artifacts
+  - Status updates
+- Generates artifact buttons for UI interaction
+
 ## OpenAI Integration Flow
 
 ### 1. Initial Setup
@@ -198,4 +238,72 @@ this.llmService.setProvider({
 - Enhanced formatting
 - Better streaming
 - Artifact optimization
-- Content processing 
+- Content processing
+
+## Ollama Integration Status
+
+### Current Implementation State
+
+1. **Placeholder Integration**
+   - Ollama is defined as a provider option in the system
+   - Basic adapter structure exists in `/src/server/services/chat/adapters/ollama.ts`
+   - UI allows selection of Ollama in ModelSelector component
+   - Routes are established for Ollama endpoints
+
+2. **Key Limitations**
+   - LLM provider not yet implemented (`throw new Error("Ollama provider not yet implemented")`)
+   - Tool adapter methods return empty arrays
+   - No actual connection to Ollama API in the core integration
+   - Separate implementation in `/src/server/routes/ollama_mcp.ts` uses direct API calls
+
+3. **Format Compatibility with OpenAI**
+   - Ollama expects similar tool format as OpenAI:
+     ```typescript
+     {
+       type: 'function',
+       function: {
+         name: string,
+         description: string,
+         parameters: JSONSchema
+       }
+     }
+     ```
+   - Response format differences not yet addressed
+
+### Required Changes for Full Integration
+
+1. **LLM Provider Implementation**
+   - Create a dedicated Ollama provider in `/src/server/services/llm/providers/ollama.ts`
+   - Implement connection to Ollama API with appropriate error handling
+   - Add model selection logic for available Ollama models
+
+2. **Tool Adapter Completion**
+   - Update `OllamaToolAdapter` to properly convert tool definitions
+   - Implement extraction of tool calls from Ollama responses
+   - Properly format tool results for Ollama
+
+3. **Response Formatting**
+   - Create formatter adapter for Ollama responses
+   - Handle Ollama-specific response structures
+   - Ensure artifacts are properly extracted
+
+4. **Streaming Support**
+   - Implement streaming for real-time responses
+   - Handle chunked response format
+
+5. **Error Handling**
+   - Add Ollama-specific error handling
+   - Implement reconnection logic
+   - Add fallbacks for common Ollama errors
+
+### Integration Strategy
+
+To complete the Ollama integration, the most efficient approach would be:
+
+1. Study the existing separate implementation in `ollama_mcp.ts`
+2. Port the key components to match the architecture in `/src/server/services/llm/`
+3. Update tool adapter to map between MCP and Ollama formats
+4. Implement proper response handling in the formatter
+5. Test with a range of Ollama models (particularly Llama 3.2)
+
+This approach would leverage the existing compatible formats between OpenAI and Ollama while addressing Ollama-specific behaviors and limitations. 
