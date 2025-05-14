@@ -172,12 +172,6 @@ export class ChatService {
     console.log(`🔍 [FORMATTER INPUT] System Prompt: ${formatterSystemPrompt.substring(0, 1000)}${formatterSystemPrompt.length > 1000 ? '...' : ''}`);
     console.log(`🔍 [FORMATTER INPUT] === END FORMATTER INPUT LOG ===`);
     
-    // Add detailed logging of the tools being sent to the LLM
-    console.log(`🔍 [LLM QUERY] === BEGIN TOOL FORMAT LOG ===`);
-    console.log(`🔍 [LLM QUERY] Tools being sent:`, JSON.stringify([formatterToolDefinition], null, 2));
-    console.log(`🔍 [LLM QUERY] Tool choice being sent:`, JSON.stringify(toolChoice, null, 2));
-    console.log(`🔍 [LLM QUERY] === END TOOL FORMAT LOG ===`);
-    
     // Get the LLM response with formatter
     statusHandler?.(`Getting formatted response from ${options.modelProvider}...`);
     const llmResponse = await this.llmService.query({
