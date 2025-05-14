@@ -19,6 +19,7 @@ import { ProjectDrawer } from '../projects/ProjectDrawer';
 import { ProjectListView } from '../projects/ProjectListView';
 import { ProjectView } from '../projects/ProjectView';
 import { GrantReviewListView } from '../projects/GrantReviewListView';
+import { useModelStore } from '../../store/modelStore';
 
 // Add this new component for the editable conversation title
 const ConversationTitle: React.FC = () => {
@@ -96,6 +97,7 @@ export const ChatInterface: React.FC = () => {
   const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
   const { projects, selectedProjectId, selectProject } = useProjectStore();
+  const { selectedModel } = useModelStore();
   
   // Get current conversation ID only - avoid excessive re-renders from other conversation data
   const currentConversationId = useChatStore(state => state.currentConversationId);
@@ -130,6 +132,26 @@ export const ChatInterface: React.FC = () => {
     }
     setShowProjectView(true);
   }, [conversationProjectId, selectProject]);
+
+  // Define model data for consistent rendering
+  const models = {
+    anthropic: {
+      name: 'Claude',
+      logo: '/logos/claude_logo.png'
+    },
+    openai: {
+      name: 'ChatGPT',
+      logo: '/logos/openai_logo.png'
+    },
+    gemini: {
+      name: 'Gemini',
+      logo: '/logos/gemini_logo.svg'
+    },
+    ollama: {
+      name: 'Ollama',
+      logo: '/logos/ollama_logo.png'
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-200 dark:bg-gray-900">
@@ -176,6 +198,21 @@ export const ChatInterface: React.FC = () => {
                     <ServerIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                   </button>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">MCP Server</span>
+                </div>
+
+                {/* Selected Model Display */}
+                <div className="flex flex-col items-center whitespace-nowrap">
+                  <div className="p-2">
+                    <img 
+                      src={models[selectedModel].logo} 
+                      alt={models[selectedModel].name} 
+                      className={`w-5 h-5 object-contain ${
+                        selectedModel === 'gemini' || selectedModel === 'ollama' ? 'scale-125' : 
+                        selectedModel === 'anthropic' ? 'scale-110' : ''
+                      }`}
+                    />
+                  </div>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{models[selectedModel].name}</span>
                 </div>
 
                 {/* Animated Container for Controls */}
