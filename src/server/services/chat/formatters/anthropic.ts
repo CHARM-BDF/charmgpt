@@ -266,8 +266,8 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       conversationLength: Array.isArray(formatterOutput.conversation) ? formatterOutput.conversation.length : 0
     }));
     
-    // Process conversation items into the expected format
-    const processedConversation: Array<{type: string; content?: string; artifact?: any}> = [];
+    // Process conversation items into the expected format (matching OpenAI adapter)
+    const conversation: string[] = [];
     const artifacts: Array<any> = [];
     let position = 0;
     
@@ -287,12 +287,9 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
         console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processing conversation item #${index+1}, type=${item.type}`);
         
         if (item.type === 'text' && item.content) {
-          // Add text content to processed conversation
+          // Add text content to conversation array as string (matching OpenAI adapter)
           console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Adding text content (${item.content.length} chars)`);
-          processedConversation.push({
-            type: 'text',
-            content: item.content
-          });
+          conversation.push(item.content);
         } 
         else if (item.type === 'artifact' && item.artifact) {
           // Log artifact details
@@ -313,26 +310,17 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
             language: item.artifact.language
           });
           
-          // Add artifact reference to conversation
-          processedConversation.push({
-            type: 'artifact',
-            artifact: {
-              id: uniqueId,
-              type: item.artifact.type,
-              title: item.artifact.title,
-              content: item.artifact.content,
-              language: item.artifact.language
-            }
-          });
+          // Add artifact button reference to conversation text array (matching OpenAI adapter)
+          conversation.push(this.createArtifactButton(uniqueId, item.artifact.type, item.artifact.title));
           
-          console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Added artifact to processed conversation and artifacts list`);
+          console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Added artifact button reference to conversation array`);
         } else {
           console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Skipping item with invalid format:`, JSON.stringify(item));
         }
       });
     }
     
-    console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processed ${processedConversation.length} conversation items and ${artifacts.length} artifacts`);
+    console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Processed ${conversation.length} conversation items and ${artifacts.length} artifacts`);
     
     // Log structure of the first few artifacts for debugging
     if (artifacts.length > 0) {
@@ -345,10 +333,10 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       }));
     }
     
-    // Return the store format with array-structured conversation items
+    // Return the store format with string conversation (matching OpenAI adapter)
     return {
       thinking: formatterOutput.thinking,
-      conversation: processedConversation,
+      conversation: conversation.join('\n\n'),  // Join text segments into a single string with artifact buttons embedded
       artifacts: artifacts.length > 0 ? artifacts : undefined
     };
   }
