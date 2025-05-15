@@ -1,0 +1,11 @@
+{
+  "version": "0.0.0",
+  "name": "charm-mcp",
+  "dependencies": {
+    "@google/genai": {
+      "version": "0.14.0",
+      "resolved": "https://registry.npmjs.org/@google/genai/-/genai-0.14.0.tgz",
+      "overridden": false
+    }
+  }
+}
