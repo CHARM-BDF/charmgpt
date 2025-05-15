@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
+    "@google/genai": "^0.14.0",
     "@google/generative-ai": "^0.24.1",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",

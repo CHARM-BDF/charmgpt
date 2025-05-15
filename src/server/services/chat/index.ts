@@ -632,16 +632,61 @@ export class ChatService {
     
     // Get the tool adapter for this provider
     const toolAdapter = getToolCallAdapter(modelProvider);
+    console.log(`🔍 [TOOL-CONVERSION-START] === BEGIN TOOL CONVERSION PROCESS ===`);
+    console.log(`🔍 [TOOL-CONVERSION-START] Model provider: ${modelProvider}`);
+    console.log(`🔍 [TOOL-CONVERSION-START] Number of MCP tools: ${mcpTools.length}`);
+    console.log(`🔍 [TOOL-CONVERSION-START] Sample MCP tool names: ${mcpTools.slice(0, 3).map(t => t.name).join(', ')}${mcpTools.length > 3 ? '...' : ''}`);
+    console.log(`🔍 [TOOL-CONVERSION-START] Adapter type: ${toolAdapter.constructor.name}`);
     
     // Convert MCP tools to provider-specific format
+    console.log(`🔍 [TOOL-CONVERSION-INPUT] Raw MCP tools input (first tool sample): ${JSON.stringify(mcpTools[0] || {}, null, 2).substring(0, 500)}...`);
     const providerTools = toolAdapter.convertToolDefinitions(mcpTools);
+    console.log(`🔍 [TOOL-CONVERSION-OUTPUT] Provider tools output type: ${typeof providerTools}`);
+    console.log(`🔍 [TOOL-CONVERSION-OUTPUT] Provider tools is array? ${Array.isArray(providerTools)}`);
+    console.log(`🔍 [TOOL-CONVERSION-OUTPUT] Provider tools structure: ${JSON.stringify(providerTools, null, 2).substring(0, 500)}...`);
+    
+    // Add special provider-specific logs
+    if (modelProvider === 'gemini') {
+      console.log(`🔍 [GEMINI-TOOLS-DEBUG] === GEMINI TOOLS STRUCTURE INSPECTION ===`);
+      console.log(`🔍 [GEMINI-TOOLS-DEBUG] Provider tools keys: ${Object.keys(providerTools || {}).join(', ')}`);
+      if (providerTools && typeof providerTools === 'object') {
+        if ('tools' in providerTools) {
+          console.log(`🔍 [GEMINI-TOOLS-DEBUG] Found 'tools' key in providerTools object`);
+          console.log(`🔍 [GEMINI-TOOLS-DEBUG] providerTools.tools is array? ${Array.isArray(providerTools.tools)}`);
+          console.log(`🔍 [GEMINI-TOOLS-DEBUG] providerTools.tools length: ${Array.isArray(providerTools.tools) ? providerTools.tools.length : 'N/A'}`);
+        } else {
+          console.log(`🔍 [GEMINI-TOOLS-DEBUG] No 'tools' key found in providerTools object`);
+        }
+      }
+      console.log(`🔍 [GEMINI-TOOLS-DEBUG] === END GEMINI TOOLS INSPECTION ===`);
+    }
+    
+    // Add detailed logging for tools
+    console.log(`🔎 TOOLS-DEBUG: Sending ${Array.isArray(providerTools) ? providerTools.length : 
+      ((providerTools && 'tools' in providerTools && Array.isArray(providerTools.tools)) ? providerTools.tools.length : 'undefined')} tools to sequential thinking query`);
     
     // Add a sequential-thinking tool if not already present
     const hasSequentialThinkingTool = mcpTools.some(tool => 
       tool.name.includes('sequential-thinking'));
       
+    // Check for sequential thinking tool in providerTools based on structure
+    const hasProviderSequentialThinkingTool = Array.isArray(providerTools) ? 
+      providerTools.some(tool => {
+        const name = tool.function?.name || tool.name;
+        return name && name.includes('sequential-thinking');
+      }) : 
+      providerTools && 'tools' in providerTools && Array.isArray(providerTools.tools) ?
+        providerTools.tools.some((tool: any) => {
+          const declarations = tool.functionDeclarations;
+          if (Array.isArray(declarations)) {
+            return declarations.some((fn: any) => fn.name && fn.name.includes('sequential-thinking'));
+          }
+          return false;
+        }) : 
+        false;
+      
     // If we don't have a sequential thinking tool, we'll simulate one
-    if (!hasSequentialThinkingTool) {
+    if (!hasSequentialThinkingTool && !hasProviderSequentialThinkingTool) {
       statusHandler?.('Adding sequential thinking tool...');
       // In the future, add a standard sequential thinking tool implementation
     }
@@ -674,43 +719,159 @@ export class ChatService {
       const toolChoiceValue = modelProvider === 'openai' ? 'auto' : undefined;
       console.log(`🔎 TOOLS-DEBUG: Using toolChoice: ${JSON.stringify(toolChoiceValue)}`);
       
-      // Log if we're including a PubMed tool
-      const includesPubmed = providerTools.some((tool: any) => 
-        typeof tool === 'object' && 
-        ((tool.function?.name && tool.function.name.includes('pubmed')) || 
-         (tool.name && tool.name.includes('pubmed')))
-      );
-      console.log(`🔎 TOOLS-DEBUG: Provider tools includes PubMed: ${includesPubmed}`);
-      
       // Generate system prompt
       const systemPrompt = this.buildSystemPromptWithContext(formattedHistory, providerTools);
       
       // Log first 500 chars of system prompt
       console.log(`🔎 TOOLS-DEBUG: System prompt start: ${systemPrompt.substring(0, 500)}...`);
       
-      // Inside runSequentialThinking method, before the LLM query
-      console.log(`🔍 [TOOL-CALLER-INPUT] Sending to tool caller:`, JSON.stringify({
-        message: latestMessage,
-        tools: providerTools.map((tool: { function?: { name?: string; description?: string }; name?: string; description?: string }) => ({
-          name: tool.function?.name || tool.name,
-          description: tool.function?.description || tool.description
-        }))
-      }));
+      // Inside runSequentialThinking method, before the LLM query (around line 700)
+      console.log(`🔍 [TOOL-CONVERSION-FINAL] === FINAL TOOL DATA BEFORE LLM QUERY ===`);
+      console.log(`🔍 [TOOL-CONVERSION-FINAL] Provider: ${modelProvider}`);
+      console.log(`🔍 [TOOL-CONVERSION-FINAL] Tools type: ${typeof providerTools}`);
+      console.log(`🔍 [TOOL-CONVERSION-FINAL] Tool choice: ${JSON.stringify(toolChoiceValue)}`);
       
-      const response = await this.llmService.query({
-        prompt: latestMessage,
-        options: {
-          temperature: options.temperature || 0.2,
-          maxTokens: options.maxTokens || 4000,
-          // Add tools and toolChoice for OpenAI - using 'auto' encourages the model to use tools when appropriate
-          tools: providerTools,
-          toolChoice: toolChoiceValue
-        } as any, // Use type assertion to bypass type checking
-        systemPrompt: systemPrompt
-      });
+      // Add provider-specific logging for the final tools structure
+      if (modelProvider === 'gemini') {
+        const toolsToSend = providerTools && 'tools' in providerTools ? providerTools.tools : providerTools;
+        console.log(`🔍 [GEMINI-TOOLS-FINAL] Actual tools to be sent to Gemini: ${JSON.stringify({
+          toolsType: typeof toolsToSend,
+          isArray: Array.isArray(toolsToSend),
+          length: Array.isArray(toolsToSend) ? toolsToSend.length : 'N/A',
+          structure: JSON.stringify(toolsToSend).substring(0, 300) + '...'
+        })}`);
+        
+        // Add detailed logging of the EXACT payload being sent to Gemini
+        const geminiPayload = {
+          prompt: latestMessage,
+          tools: modelProvider === 'gemini' && providerTools && 'tools' in providerTools ? 
+            providerTools.tools : providerTools,
+          toolChoice: toolChoiceValue,
+          systemPrompt: systemPrompt && systemPrompt.length > 100 ? 
+            `${systemPrompt.substring(0, 100)}...` : systemPrompt
+        };
+        
+        console.log(`🔍 [GEMINI-REQUEST-PAYLOAD] === GEMINI API REQUEST PAYLOAD ===`);
+        console.log(`🔍 [GEMINI-REQUEST-PAYLOAD] Query: ${latestMessage.substring(0, 100)}${latestMessage.length > 100 ? '...' : ''}`);
+        console.log(`🔍 [GEMINI-REQUEST-PAYLOAD] Tool structure to Gemini: ${JSON.stringify(geminiPayload.tools, null, 2).substring(0, 500)}...`);
+        console.log(`🔍 [GEMINI-REQUEST-PAYLOAD] === END GEMINI API REQUEST PAYLOAD ===`);
+      }
+      console.log(`🔍 [TOOL-CONVERSION-FINAL] === END FINAL TOOL DATA ===`);
       
-      // After the LLM response
-      console.log(`🔍 [TOOL-CALLER-RESPONSE] Received from tool caller:`, JSON.stringify(response.rawResponse));
+      // Restore the original tool caller input log
+      try {
+        // Create a safe representation of tools based on provider structure
+        const toolsForLogging = Array.isArray(providerTools) ? 
+          providerTools.map((tool: { function?: { name?: string; description?: string }; name?: string; description?: string }) => ({
+            name: tool.function?.name || tool.name,
+            description: tool.function?.description || tool.description
+          })) : 
+          (providerTools && 'tools' in providerTools && Array.isArray(providerTools.tools)) ?
+            providerTools.tools.flatMap((tool: any) => {
+              const functionDeclarations = tool.functionDeclarations || [];
+              return functionDeclarations.map((fn: any) => ({
+                name: fn.name,
+                description: fn.description
+              }));
+            }) :
+            [];
+            
+        console.log(`🔍 [TOOL-CALLER-INPUT] Sending to tool caller:`, JSON.stringify({
+          message: latestMessage,
+          tools: toolsForLogging
+        }));
+      } catch (error) {
+        console.log(`🔍 [TOOL-CALLER-INPUT] Error formatting tool caller input: ${error}`);
+      }
+      
+      // Make the LLM query with adjusted tools for Gemini
+      let response;
+      try {
+        response = await this.llmService.query({
+          prompt: latestMessage,
+          options: {
+            temperature: options.temperature || 0.2,
+            maxTokens: options.maxTokens || 4000,
+            // Add tools and toolChoice for OpenAI - using 'auto' encourages the model to use tools when appropriate
+            tools: modelProvider === 'gemini' && providerTools && 'tools' in providerTools ? 
+              providerTools.tools : providerTools,
+            toolChoice: toolChoiceValue
+          } as any, // Use type assertion to bypass type checking
+          systemPrompt: systemPrompt
+        });
+        
+        // Log the response received from LLM service with detailed information
+        console.log(`🔍 [GEMINI-RESPONSE] === LLM RESPONSE STRUCTURE ===`);
+        console.log(`🔍 [GEMINI-RESPONSE] Response has tool calls: ${response.rawResponse?.choices?.[0]?.message?.tool_calls ? 'Yes' : 'No'}`);
+        console.log(`🔍 [GEMINI-RESPONSE] Response type: ${typeof response.rawResponse}`);
+        
+        // For Gemini, log specialized response structure
+        if (modelProvider === 'gemini') {
+          // Log key properties and structure based on Gemini's response format
+          const geminiResponse = response.rawResponse;
+          console.log(`🔍 [GEMINI-RESPONSE] Response properties: ${Object.keys(geminiResponse || {}).join(', ')}`);
+          
+          // Check for candidates
+          if (geminiResponse && 'candidates' in geminiResponse) {
+            console.log(`🔍 [GEMINI-RESPONSE] Has candidates: ${Array.isArray(geminiResponse.candidates)}`);
+            console.log(`🔍 [GEMINI-RESPONSE] Number of candidates: ${Array.isArray(geminiResponse.candidates) ? geminiResponse.candidates.length : 0}`);
+            
+            // Check first candidate if available
+            if (Array.isArray(geminiResponse.candidates) && geminiResponse.candidates.length > 0) {
+              const firstCandidate = geminiResponse.candidates[0];
+              console.log(`🔍 [GEMINI-RESPONSE] First candidate properties: ${Object.keys(firstCandidate || {}).join(', ')}`);
+              
+              // Check for content in the candidate
+              if (firstCandidate && 'content' in firstCandidate) {
+                console.log(`🔍 [GEMINI-RESPONSE] Candidate content properties: ${Object.keys(firstCandidate.content || {}).join(', ')}`);
+                
+                // Check for function calls specifically
+                if (firstCandidate.content && 'parts' in firstCandidate.content) {
+                  const contentParts = firstCandidate.content.parts;
+                  console.log(`🔍 [GEMINI-RESPONSE] Content parts count: ${Array.isArray(contentParts) ? contentParts.length : 0}`);
+                  
+                  // Look for function calls in the parts
+                  if (Array.isArray(contentParts)) {
+                    const functionCalls = contentParts.filter(part => part && 'functionCall' in part);
+                    console.log(`🔍 [GEMINI-RESPONSE] Found function calls: ${functionCalls.length > 0 ? 'Yes' : 'No'}`);
+                    
+                    if (functionCalls.length > 0) {
+                      // Log details of the function calls
+                      functionCalls.forEach((call, index) => {
+                        console.log(`🔍 [GEMINI-RESPONSE] Function call #${index + 1}:`);
+                        console.log(`🔍 [GEMINI-RESPONSE] - Name: ${call.functionCall.name}`);
+                        console.log(`🔍 [GEMINI-RESPONSE] - Args: ${JSON.stringify(call.functionCall.args)}`);
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Log a sanitized summary of the raw response (avoiding massive dumps of text)
+        console.log(`🔍 [GEMINI-RESPONSE] Sanitized response summary: ${JSON.stringify(response.rawResponse).substring(0, 500)}...`);
+        console.log(`🔍 [GEMINI-RESPONSE] === END LLM RESPONSE STRUCTURE ===`);
+        
+      } catch (error: unknown) {
+        // Detailed error logging
+        console.error(`❌ [GEMINI-ERROR] Error during LLM query:`, error);
+        console.error(`❌ [GEMINI-ERROR] Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
+        console.error(`❌ [GEMINI-ERROR] Error message: ${error instanceof Error ? error.message : String(error)}`);
+        
+        if (error instanceof Error && 'response' in error) {
+          const errorWithResponse = error as any; // cast to any to access non-standard property
+          console.error(`❌ [GEMINI-ERROR] API response error:`, JSON.stringify(errorWithResponse.response || {}).substring(0, 1000));
+        }
+        
+        if (error instanceof Error) {
+          console.error(`❌ [GEMINI-ERROR] Stack trace: ${error.stack}`);
+        }
+        
+        // Rethrow to maintain existing error flow
+        throw error;
+      }
       
       // Extract tool calls using the adapter
       const toolCalls = toolAdapter.extractToolCalls(response.rawResponse);

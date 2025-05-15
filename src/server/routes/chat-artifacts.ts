@@ -326,8 +326,37 @@ router.post('/', async (req: Request<{}, {}, {
     
     // End the response
     res.end();
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`🔍 ERROR-CHAT-ROUTE: Error processing chat-artifacts request`, error);
+    
+    // Enhanced error logging for better debugging
+    console.error(`❌ [CHAT-ARTIFACTS-ERROR] === DETAILED ERROR INFORMATION ===`);
+    console.error(`❌ [CHAT-ARTIFACTS-ERROR] Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
+    console.error(`❌ [CHAT-ARTIFACTS-ERROR] Error message: ${error instanceof Error ? error.message : String(error)}`);
+    
+    // Check for API response error information
+    if (error instanceof Error && 'response' in error) {
+      const errorWithResponse = error as any; // cast to any to access non-standard property
+      console.error(`❌ [CHAT-ARTIFACTS-ERROR] API response error: ${JSON.stringify(errorWithResponse.response || {}).substring(0, 1000)}`);
+    }
+    
+    // Log the stack trace for better debugging
+    if (error instanceof Error) {
+      console.error(`❌ [CHAT-ARTIFACTS-ERROR] Stack trace: ${error.stack}`);
+      
+      // Check for additional Gemini-specific error properties
+      const errorObj = error as any;
+      if (errorObj.code) {
+        console.error(`❌ [CHAT-ARTIFACTS-ERROR] Error code: ${errorObj.code}`);
+      }
+      if (errorObj.status) {
+        console.error(`❌ [CHAT-ARTIFACTS-ERROR] Error status: ${errorObj.status}`);
+      }
+      if (errorObj.details) {
+        console.error(`❌ [CHAT-ARTIFACTS-ERROR] Error details: ${JSON.stringify(errorObj.details)}`);
+      }
+    }
+    console.error(`❌ [CHAT-ARTIFACTS-ERROR] === END DETAILED ERROR INFORMATION ===`);
     
     // Send error as a status update
     res.write(JSON.stringify({ 

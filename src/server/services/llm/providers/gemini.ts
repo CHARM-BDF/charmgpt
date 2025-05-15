@@ -1,14 +1,14 @@
 /**
- * Google Gemini LLM Provider
+ * Google Gemini LLM Provider using the new @google/genai SDK
  * 
  * This file implements the Google Gemini provider for the LLM Service.
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI, FunctionCallingConfigMode } from '@google/genai';
 import { LLMProvider, LLMProviderOptions, LLMProviderResponse } from '../types';
 
 export class GeminiProvider implements LLMProvider {
-  private client: GoogleGenerativeAI;
+  private client: GoogleGenAI;
   private defaultModel: string;
   
   constructor(options: LLMProviderOptions = {}) {
@@ -18,14 +18,14 @@ export class GeminiProvider implements LLMProvider {
       throw new Error('Gemini API key is required. Set it in options or GEMINI_API_KEY environment variable.');
     }
     
-    this.client = new GoogleGenerativeAI(apiKey);
+    this.client = new GoogleGenAI({ apiKey });
     
     // Override the incoming model parameter if it's a non-Gemini model
     let modelToUse = options.model;
     
     // If no model specified or it's not a Gemini model, use the default
     if (!modelToUse || modelToUse.includes('claude') || modelToUse.includes('gpt')) {
-      modelToUse = 'gemini-1.5-flash';
+      modelToUse = 'gemini-2.0-flash';
       console.log(`GeminiProvider: Overriding non-Gemini model with default: ${modelToUse}`);
     }
     
@@ -37,18 +37,15 @@ export class GeminiProvider implements LLMProvider {
   
   async query(prompt: string, options: LLMProviderOptions = {}): Promise<LLMProviderResponse> {
     // Get options with defaults
-    const model = options.model || this.defaultModel;
+    const modelName = options.model || this.defaultModel;
     const temperature = options.temperature ?? 0.7;
     const maxTokens = options.maxTokens || 4000;
     const systemPrompt = options.systemPrompt || '';
     
     try {
-      console.log(`GeminiProvider: Sending query to ${model} (temp: ${temperature})`);
+      console.log(`GeminiProvider: Sending query to ${modelName} (temp: ${temperature})`);
       
-      // Create model instance
-      const geminiModel = this.client.getGenerativeModel({ model });
-      
-      // Prepare chat history with system prompt if available
+      // Prepare message content
       const contents = [];
       
       // Add system prompt if provided
@@ -58,7 +55,6 @@ export class GeminiProvider implements LLMProvider {
           parts: [{ text: `[System instruction] ${systemPrompt}` }]
         });
         
-        // Add model response to acknowledge system instruction
         contents.push({
           role: 'model',
           parts: [{ text: "I'll follow those instructions." }]
@@ -71,28 +67,90 @@ export class GeminiProvider implements LLMProvider {
         parts: [{ text: prompt }]
       });
       
-      // Make API request
-      const result = await geminiModel.generateContent({
+      // Prepare request
+      const request: any = {
+        model: modelName,
         contents,
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
-        },
-      });
+        config: {
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+          }
+        }
+      };
       
-      const response = result.response;
-      const content = response.text();
+      // Add tools and function calling config if tools are provided
+      if (options.tools) {
+        // Add tools configuration
+        request.config.tools = options.tools;
+        
+        // Extract function names for allowed function list
+        const functionNames: string[] = [];
+        if (Array.isArray(options.tools)) {
+          for (const tool of options.tools) {
+            if (tool.functionDeclarations) {
+              for (const func of tool.functionDeclarations) {
+                if (func.name) functionNames.push(func.name);
+              }
+            }
+          }
+        } else if (options.tools && 'tools' in options.tools) {
+          const nestedTools = (options.tools as any).tools;
+          if (Array.isArray(nestedTools)) {
+            for (const tool of nestedTools) {
+              if (tool.functionDeclarations) {
+                for (const func of tool.functionDeclarations) {
+                  if (func.name) functionNames.push(func.name);
+                }
+              }
+            }
+          }
+        }
+        
+        // Add function calling configuration
+        request.config.toolConfig = {
+          functionCallingConfig: {
+            mode: FunctionCallingConfigMode.ANY,
+            allowedFunctionNames: functionNames.length > 0 ? functionNames : undefined
+          }
+        };
+        
+        console.log(`GeminiProvider: Added function calling config with ${functionNames.length} functions: ${functionNames.join(', ')}`);
+      }
+      
+      // Handle specific tool choice if provided
+      if (options.toolChoice && typeof options.toolChoice === 'object' && 'name' in options.toolChoice) {
+        request.config.toolConfig = request.config.toolConfig || {};
+        request.config.toolConfig.functionCallingConfig = request.config.toolConfig.functionCallingConfig || 
+          { mode: FunctionCallingConfigMode.ANY };
+          
+        request.config.toolConfig.functionCallingConfig.allowedFunctionNames = [options.toolChoice.name];
+        console.log(`GeminiProvider: Set allowed function to: ${options.toolChoice.name}`);
+      }
+      
+      // Log the configuration
+      console.log(`GeminiProvider: Config: ${JSON.stringify({
+        hasTools: !!request.config.tools,
+        hasToolConfig: !!request.config.toolConfig,
+        temperature
+      })}`);
+      
+      // Make API request
+      const response = await this.client.models.generateContent(request);
+      
+      // Extract text from response - text is a property getter, not a method
+      const responseText = response?.text || '';
       
       // Format the response - Gemini doesn't provide token counts directly
       // so we make an approximation based on content length
-      const estimatedTokens = Math.ceil(prompt.length / 4) + Math.ceil(content.length / 4);
+      const estimatedTokens = Math.ceil(prompt.length / 4) + Math.ceil(responseText.length / 4);
       
       return {
-        content,
+        content: responseText,
         rawResponse: response,
         usage: {
           promptTokens: Math.ceil(prompt.length / 4),
-          completionTokens: Math.ceil(content.length / 4),
+          completionTokens: Math.ceil(responseText.length / 4),
           totalTokens: estimatedTokens
         }
       };
