@@ -9,12 +9,14 @@ import { FormatterAdapterType, ResponseFormatterAdapter } from './types';
 import { AnthropicResponseFormatterAdapter } from './anthropic';
 import { OpenAIResponseFormatterAdapter } from './openai';
 import { GeminiResponseFormatterAdapter } from './gemini';
+import { OllamaResponseFormatterAdapter } from './ollama';
 
 // Export all formatter adapters
 export * from './types';
 export * from './anthropic';
 export * from './openai';
 export * from './gemini';
+export * from './ollama';
 
 /**
  * Factory function to get the response formatter adapter for a provider
@@ -30,9 +32,8 @@ export function getResponseFormatterAdapter(provider: FormatterAdapterType): Res
     case 'gemini':
       return new GeminiResponseFormatterAdapter();
     case 'ollama':
-      // Ollama doesn't support structured responses the same way
-      // Fall back to a simple formatter that creates text-only responses
-      return new OpenAIResponseFormatterAdapter(); // Use OpenAI adapter as fallback
+      // Use the dedicated Ollama formatter adapter
+      return new OllamaResponseFormatterAdapter();
     default:
       throw new Error(`Unsupported provider for response formatting: ${provider}`);
   }

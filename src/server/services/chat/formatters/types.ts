@@ -8,6 +8,11 @@
 import { StoreFormat } from '../../message';
 
 /**
+ * Type for supported formatter adapter providers
+ */
+export type FormatterAdapterType = 'anthropic' | 'openai' | 'gemini' | 'ollama';
+
+/**
  * Interface for provider-specific response formatter adapters
  */
 export interface ResponseFormatterAdapter {
@@ -33,23 +38,50 @@ export interface ResponseFormatterAdapter {
 }
 
 /**
- * Provider types for response formatter adapters
- */
-export type FormatterAdapterType = 'anthropic' | 'openai' | 'gemini' | 'ollama';
-
-/**
- * Standard formatter output structure
+ * Interface for the formatter output structure
  */
 export interface FormatterOutput {
+  /**
+   * Optional internal reasoning process
+   */
   thinking?: string;
+  
+  /**
+   * Array of conversation segments and artifacts
+   */
   conversation: Array<{
+    /**
+     * Type of conversation segment
+     */
     type: 'text' | 'artifact';
+    
+    /**
+     * Markdown formatted text content
+     */
     content?: string;
+    
+    /**
+     * Artifact details
+     */
     artifact?: {
+      /**
+       * Artifact type
+       */
       type: string;
-      id?: string;
+      
+      /**
+       * Artifact title
+       */
       title: string;
+      
+      /**
+       * Artifact content
+       */
       content: string;
+      
+      /**
+       * Optional language for code artifacts
+       */
       language?: string;
     };
   }>;
