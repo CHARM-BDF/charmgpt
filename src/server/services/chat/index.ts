@@ -903,8 +903,32 @@ export class ChatService {
         const [serverName, toolName] = originalToolName.split(':');
         
         console.log(`🔍 TOOL-EXECUTION: Executing tool ${toolCall.name} (${serverName}:${toolName})`);
+        
+        // Enhanced debugging for tool call structure
+        // Cast to any to access properties that may not be in the interface
+        const anyToolCall = toolCall as any;
+        console.log(`🔍 TOOL-EXECUTION-DEBUG: ToolCall ID: ${anyToolCall.id || toolCall.toolUseId || 'unknown'}`);
+        console.log(`🔍 TOOL-EXECUTION-DEBUG: ToolCall structure: ${JSON.stringify({
+          id: anyToolCall.id || toolCall.toolUseId,
+          name: toolCall.name,
+          operation: anyToolCall.operation,
+          hasInput: !!toolCall.input,
+          hasArguments: !!anyToolCall.arguments,
+          inputType: toolCall.input ? typeof toolCall.input : 'undefined',
+          inputIsArray: Array.isArray(toolCall.input),
+          inputKeys: toolCall.input ? Object.keys(toolCall.input) : []
+        })}`);
+        
         console.log(`🔍 TOOL-EXECUTION: Input: ${JSON.stringify(toolCall.input)}`);
         console.log(`🔍 [MCP-REQUEST] Server: ${serverName}, Tool: ${toolName}, Input: ${JSON.stringify(toolCall.input)}`);
+        
+        // If input is undefined but arguments exists, try to use arguments instead
+        if (!toolCall.input && anyToolCall.arguments) {
+          console.log(`🔍 TOOL-EXECUTION-FIX: Input is undefined but arguments exists, using arguments instead`);
+          // @ts-ignore - Temporarily assign arguments to input for compatibility
+          toolCall.input = anyToolCall.arguments;
+          console.log(`🔍 TOOL-EXECUTION-FIX: Updated input: ${JSON.stringify(toolCall.input)}`);
+        }
         
         // Track tool execution
         toolExecutions.push({

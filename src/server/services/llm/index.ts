@@ -8,6 +8,7 @@
 import { AnthropicProvider } from './providers/anthropic';
 import { OpenAIProvider } from './providers/openai';
 import { GeminiProvider } from './providers/gemini';
+import { OllamaProvider } from './providers/ollama';
 import { LLMCache } from './cache';
 import { isValidJSON, extractJSONFromText } from './utils';
 import { 
@@ -15,7 +16,8 @@ import {
   LLMServiceOptions,
   LLMRequest,
   LLMResponse,
-  LLMProvider
+  LLMProvider,
+  LLMProviderOptions
 } from './types';
 
 /**
@@ -73,7 +75,9 @@ export class LLMService implements LLMServiceInterface {
         model: this.options.model
       });
     } else if (this.options.provider === 'ollama') {
-      throw new Error(`Ollama provider not yet implemented`);
+      this.provider = new OllamaProvider({
+        model: this.options.model
+      }) as LLMProvider;
     } else {
       throw new Error(`Unsupported LLM provider: ${providerName}`);
     }
@@ -110,6 +114,9 @@ export class LLMService implements LLMServiceInterface {
       } else if (providerName === 'gemini') {
         this.options.model = 'gemini-2.0-flash';
         console.log(`LLMService: Using default Gemini model: ${this.options.model}`);
+      } else if (providerName === 'ollama') {
+        this.options.model = 'llama3.2:latest';
+        console.log(`LLMService: Using default Ollama model: ${this.options.model}`);
       }
     }
     
@@ -135,6 +142,8 @@ export class LLMService implements LLMServiceInterface {
     } else if (provider === 'openai' && model.includes('claude')) {
       return true;
     } else if (provider === 'gemini' && (model.includes('claude') || model.includes('gpt'))) {
+      return true;
+    } else if (provider === 'ollama' && (model.includes('claude') || model.includes('gpt') || model.includes('gemini'))) {
       return true;
     }
     return false;
