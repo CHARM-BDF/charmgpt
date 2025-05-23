@@ -209,6 +209,29 @@ export class OllamaToolAdapter implements ToolCallAdapter {
       
       // Fix pubmed-search operator values - ensure they are valid values 
       if (normalizedToolName.includes('pubmed') && normalizedToolName.includes('search') && Array.isArray(args.terms)) {
+        // First ensure each object in terms array has a 'term' property
+        args.terms = args.terms.filter(term => {
+          if (!term || typeof term !== 'object') {
+            console.error('🟤 [ADAPTER: OLLAMA] Removing invalid term (not an object):', term);
+            return false;
+          }
+          
+          // Ensure term has a 'term' property
+          if (!term.term || typeof term.term !== 'string' || term.term.trim() === '') {
+            console.error('🟤 [ADAPTER: OLLAMA] Removing term without valid term property:', term);
+            return false;
+          }
+          
+          return true;
+        });
+        
+        // If filtering removed all terms, add a default one
+        if (args.terms.length === 0) {
+          args.terms = [{ term: "cancer research", operator: "AND" }];
+          console.log(`🟤 [ADAPTER: OLLAMA] All terms were invalid, added default term: ${JSON.stringify(args.terms)}`);
+        }
+        
+        // Now normalize operators on the valid terms
         args.terms = args.terms.map((term: any, index: number) => {
           // Check if this is the first term or has an empty operator
           if (index === 0 || !term.operator || term.operator === '') {
@@ -217,7 +240,23 @@ export class OllamaToolAdapter implements ToolCallAdapter {
           }
           return term;
         });
-        console.log(`🟤 [ADAPTER: OLLAMA] Normalized pubmed-search operators: ${JSON.stringify(args.terms)}`);
+        
+        console.log(`🟤 [ADAPTER: OLLAMA] Normalized pubmed-search terms: ${JSON.stringify(args.terms)}`);
+      }
+      
+      // Ensure max_results is a number for pubmed-search
+      if (normalizedToolName.includes('pubmed') && normalizedToolName.includes('search') && args.max_results !== undefined) {
+        if (typeof args.max_results === 'string') {
+          const parsedMaxResults = parseInt(args.max_results, 10);
+          if (!isNaN(parsedMaxResults)) {
+            args.max_results = parsedMaxResults;
+            console.log(`🟤 [ADAPTER: OLLAMA] Converted max_results from string to number: ${args.max_results}`);
+          } else {
+            // If parsing fails, delete the invalid parameter to use default
+            delete args.max_results;
+            console.log(`🟤 [ADAPTER: OLLAMA] Deleted invalid max_results parameter`);
+          }
+        }
       }
       
       // Log the converted tool call
