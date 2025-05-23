@@ -110,8 +110,35 @@ export class OllamaToolAdapter implements ToolCallAdapter {
         operation = parts.slice(1).join('.');
       }
       
-      // Convert underscores back to hyphens for MCP compatibility
-      toolName = toolName.replace ? toolName.replace(/_/g, '-') : toolName;
+      // CRITICAL FIX: Convert Ollama's response back to the exact anthropic format
+      // The anthropic format is: "server-tool_name" where:
+      // - server and tool are separated by hyphen
+      // - underscores within tool name are preserved
+      // 
+      // Ollama receives: "python_execute_python" (all underscores)
+      // We need to convert back to: "python-execute_python" (hyphen between server-tool, preserve underscores in tool name)
+      
+      let normalizedToolName = toolName;
+      
+      console.log(`🟤 [ADAPTER: OLLAMA] Original tool name from Ollama: "${toolName}"`);
+      
+      // Strategy: Convert the first underscore to hyphen (server_tool → server-tool)
+      // but preserve underscores within the tool name itself
+      if (toolName.includes('_')) {
+        const underscoreIndex = toolName.indexOf('_');
+        if (underscoreIndex > 0) {
+          // Replace only the first underscore with hyphen (server_tool → server-tool)
+          normalizedToolName = toolName.substring(0, underscoreIndex) + '-' + toolName.substring(underscoreIndex + 1);
+          console.log(`🟤 [ADAPTER: OLLAMA] Converted first underscore to hyphen: ${toolName} → ${normalizedToolName}`);
+        }
+      } else if (toolName.includes('-') && toolName.includes('execute-python')) {
+        // Fallback: Handle the case where Ollama unexpectedly returns "python-execute-python" (all hyphens)
+        // Convert it to the correct format: "python-execute_python"
+        normalizedToolName = toolName.replace('execute-python', 'execute_python');
+        console.log(`🟤 [ADAPTER: OLLAMA] Applied fallback for all-hyphens format: ${toolName} → ${normalizedToolName}`);
+      }
+      
+      console.log(`🟤 [ADAPTER: OLLAMA] Final normalized tool name: "${normalizedToolName}"`);
       
       // Process arguments - ensure it's an object
       let args: Record<string, any> = {};
@@ -133,7 +160,7 @@ export class OllamaToolAdapter implements ToolCallAdapter {
           }
         } else if (typeof toolCall.function.arguments === 'object') {
           // For pubmed-search, ensure there's a proper terms array
-          if (toolName === 'pubmed-search') {
+          if (normalizedToolName.includes('pubmed') && normalizedToolName.includes('search')) {
             const argsObj = toolCall.function.arguments as Record<string, any>;
             if (!argsObj.terms) {
               const query = argsObj.query || '';
@@ -155,7 +182,7 @@ export class OllamaToolAdapter implements ToolCallAdapter {
       }
       
       // Special case for pubmed-search - ensure it has the required format
-      if (toolName === 'pubmed-search' && (!args.terms || !Array.isArray(args.terms))) {
+      if (normalizedToolName.includes('pubmed') && normalizedToolName.includes('search') && (!args.terms || !Array.isArray(args.terms))) {
         // If terms exists but is a string that looks like JSON, try to parse it
         if (typeof args.terms === 'string') {
           try {
@@ -181,7 +208,7 @@ export class OllamaToolAdapter implements ToolCallAdapter {
       }
       
       // Fix pubmed-search operator values - ensure they are valid values 
-      if (toolName === 'pubmed-search' && Array.isArray(args.terms)) {
+      if (normalizedToolName.includes('pubmed') && normalizedToolName.includes('search') && Array.isArray(args.terms)) {
         args.terms = args.terms.map((term: any, index: number) => {
           // Check if this is the first term or has an empty operator
           if (index === 0 || !term.operator || term.operator === '') {
@@ -194,14 +221,14 @@ export class OllamaToolAdapter implements ToolCallAdapter {
       }
       
       // Log the converted tool call
-      console.log(`🟤 [ADAPTER: OLLAMA] Converted tool call: ${toolName}${operation ? '/' + operation : ''}`);
+      console.log(`🟤 [ADAPTER: OLLAMA] Converted tool call: ${normalizedToolName}${operation ? '/' + operation : ''}`);
       console.log(`🟤 [ADAPTER: OLLAMA] Final tool arguments: ${JSON.stringify(args)}`);
       
       // IMPORTANT: Create the tool call with BOTH input and arguments properties
       // This ensures compatibility with different parts of the system
       const toolCallResult = {
         id: generateId(),
-        name: toolName,
+        name: normalizedToolName, // Use the normalized name that should match toolNameMapping
         operation: operation,
         arguments: args,
         input: args, // Add input property for MCP execution system
