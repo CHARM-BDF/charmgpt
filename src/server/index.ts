@@ -13,13 +13,12 @@ import ollamaRouter from './routes/ollama_mcp';
 import serverStatusRouter from './routes/server-status';
 import storageRouter from './routes/storage';
 import llmRoutes from './routes/api/internal/llm';
+import apiKeysRouter from './routes/api-keys';
 import { MCPService, MCPLogMessage } from './services/mcp';
 import { LoggingService } from './services/logging';
 import { LLMService } from './services/llm';
 import { createChatService } from './services/chatServiceFactory';
 import { randomUUID } from 'crypto';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
 
 // ES Module dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -139,6 +138,7 @@ app.use('/api/ollama', ollamaRouter);
 app.use('/api/server-status', serverStatusRouter);
 app.use('/api/storage', storageRouter);
 app.use('/api/internal/llm', llmRoutes); // Mount LLM API routes
+app.use('/api/api-keys', apiKeysRouter); // Mount API keys route
 
 // Add new endpoint for server names
 app.get('/api/server-names', (req, res) => {
