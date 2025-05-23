@@ -388,6 +388,11 @@ export class MCPService {
             const anthropicName = `${serverName}-${tool.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
             this.toolNameMapping.set(anthropicName, originalName);
             
+            console.log(`🔧 [TOOL-REGISTRATION] Server: "${serverName}", Tool: "${tool.name}"`);
+            console.log(`🔧 [TOOL-REGISTRATION] Original name: "${originalName}"`);
+            console.log(`🔧 [TOOL-REGISTRATION] Anthropic name: "${anthropicName}"`);
+            console.log(`🔧 [TOOL-REGISTRATION] Mapping: "${anthropicName}" → "${originalName}"`);
+            
             // Extract and process schema definitions
             const definitions = tool.inputSchema.$defs || {};
             
@@ -510,7 +515,22 @@ export class MCPService {
   }
 
   getOriginalToolName(anthropicName: string): string | undefined {
-    return this.toolNameMapping.get(anthropicName);
+    const result = this.toolNameMapping.get(anthropicName);
+    
+    if (!result) {
+      console.log(`🔍 [TOOL-LOOKUP] Tool name not found: "${anthropicName}"`);
+      
+      // Try to find close matches for debugging
+      const possibleMatches = Array.from(this.toolNameMapping.keys()).filter(key => 
+        key.includes(anthropicName.split('-')[0]) || key.includes(anthropicName.split('-')[1] || '')
+      );
+      
+      if (possibleMatches.length > 0) {
+        console.log(`🔍 [TOOL-LOOKUP] Possible matches: ${possibleMatches.join(', ')}`);
+      }
+    }
+    
+    return result;
   }
 
   async callTool(serverName: string, toolName: string, args: Record<string, unknown>) {

@@ -22,7 +22,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
   // ADDING THIS FOR TESTING
   useEffect(() => {
-    const defaultText = 'lookup three papers on cancer and summarize\nyou pick a different aspect of it that you are interested in the most. do this again for testing';
+    const defaultText = 'make a sin wave plot using python';
     updateChatInput(defaultText, false);
     setLocalInput(defaultText);
   }, []);
@@ -146,7 +146,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
     // Clear the input after sending
     // Set back to default text after sending
-    handleInputChange('lookup three papers on cancer and summarize\nyou pick a different aspect of it that you are interested in the most. do this again for testing');
+    handleInputChange('make a sin wave plot using python');
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
