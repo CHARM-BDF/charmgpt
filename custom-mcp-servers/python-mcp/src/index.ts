@@ -54,8 +54,7 @@ const PYTHON_EXECUTION_TOOL = {
       },
       dataFiles: {
         type: "object",
-        description: "Map of variable names to file paths",
-        additionalProperties: { type: "string" }
+        description: "Map of variable names to file paths"
       },
       timeout: {
         type: "number",
