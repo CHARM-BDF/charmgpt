@@ -109,34 +109,16 @@ export class OllamaToolAdapter implements ToolCallAdapter {
         toolName = parts[0];
         operation = parts.slice(1).join('.');
       }
-      
-      // CRITICAL FIX: Convert Ollama's response back to the exact anthropic format
-      // The anthropic format is: "server-tool_name" where:
-      // - server and tool are separated by hyphen
-      // - underscores within tool name are preserved
-      // 
-      // Ollama receives: "python_execute_python" (all underscores)
-      // We need to convert back to: "python-execute_python" (hyphen between server-tool, preserve underscores in tool name)
-      
-      let normalizedToolName = toolName;
+  
+      const normalizedToolName = toolName
+        .replace('pubmed_search', 'pubmed-search')
+        .replace('_execute_', '-execute_')
+        .replace('medik_mcp_run_query', 'medik-mcp-run-query')
+        .replace('medik_mcp_get_everything', 'medik-mcp-get-everything');
       
       console.log(`🟤 [ADAPTER: OLLAMA] Original tool name from Ollama: "${toolName}"`);
       
-      // Strategy: Convert the first underscore to hyphen (server_tool → server-tool)
-      // but preserve underscores within the tool name itself
-      if (toolName.includes('_')) {
-        const underscoreIndex = toolName.indexOf('_');
-        if (underscoreIndex > 0) {
-          // Replace only the first underscore with hyphen (server_tool → server-tool)
-          normalizedToolName = toolName.substring(0, underscoreIndex) + '-' + toolName.substring(underscoreIndex + 1);
-          console.log(`🟤 [ADAPTER: OLLAMA] Converted first underscore to hyphen: ${toolName} → ${normalizedToolName}`);
-        }
-      } else if (toolName.includes('-') && toolName.includes('execute-python')) {
-        // Fallback: Handle the case where Ollama unexpectedly returns "python-execute-python" (all hyphens)
-        // Convert it to the correct format: "python-execute_python"
-        normalizedToolName = toolName.replace('execute-python', 'execute_python');
-        console.log(`🟤 [ADAPTER: OLLAMA] Applied fallback for all-hyphens format: ${toolName} → ${normalizedToolName}`);
-      }
+      
       
       console.log(`🟤 [ADAPTER: OLLAMA] Final normalized tool name: "${normalizedToolName}"`);
       
