@@ -22,7 +22,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
   // ADDING THIS FOR TESTING
   useEffect(() => {
-    const defaultText = 'make a sin wave plot using python';
+    const defaultText = '';
     updateChatInput(defaultText, false);
     setLocalInput(defaultText);
   }, []);
@@ -146,7 +146,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
     // Clear the input after sending
     // Set back to default text after sending
-    handleInputChange('make a sin wave plot using python');
+    handleInputChange('');
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
