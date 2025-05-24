@@ -25,7 +25,7 @@ import {
  */
 export class LLMService implements LLMServiceInterface {
   /** LLM provider instance */
-  private provider!: LLMProvider;
+  private provider: LLMProvider | null = null;
   /** Cache for LLM responses */
   private _cache: LLMCache;
   /** Service configuration */
@@ -44,10 +44,7 @@ export class LLMService implements LLMServiceInterface {
       cacheResponses: options.cacheResponses ?? true
     };
     
-    console.log(`LLMService: Initializing with provider ${this.options.provider}, model ${this.options.model}`);
-    
-    // Initialize provider
-    this.initializeProvider();
+    console.log(`LLMService: Initialized with default settings - provider will be set on first use`);
     
     // Initialize cache
     this._cache = new LLMCache();
@@ -222,6 +219,11 @@ export class LLMService implements LLMServiceInterface {
     }
     
     console.log(`LLMService: Sending query with format ${responseFormat || 'default'}`);
+    
+    // Ensure provider is initialized  
+    if (!this.provider) {
+      throw new Error('LLM provider not initialized. Call setProvider() first.');
+    }
     
     // Get response from provider
     const response = await this.provider.query(prompt, mergedOptions);
