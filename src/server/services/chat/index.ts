@@ -755,10 +755,20 @@ export class ChatService {
     let thinkingSteps = 0;
     const MAX_THINKING_STEPS = 5; // Safety limit
     
+    // Track previous tool calls to detect loops
+    const previousToolCalls = new Set<string>();
+    let consecutiveNoProgressSteps = 0;
+    
+    // Track LLM response text for termination logic
+    let responseText = '';
+    
     // Sequential thinking loop
     while (!isSequentialThinkingComplete && thinkingSteps < MAX_THINKING_STEPS) {
       thinkingSteps++;
       statusHandler?.(`Running thinking step ${thinkingSteps}...`);
+      
+      // Declare toolCalls variable at the beginning of the loop
+      let toolCalls: any[] = [];
       
       // Get the latest message to send to the LLM
       const latestMessage = workingMessages[workingMessages.length - 1].content as string;
@@ -933,13 +943,58 @@ export class ChatService {
       }
       
       // Extract tool calls using the adapter
-      const toolCalls = toolAdapter.extractToolCalls(response.rawResponse);
+      toolCalls = toolAdapter.extractToolCalls(response.rawResponse);
+      
+      // Check if the LLM response contains "DATA GATHERING COMPLETE"
+      responseText = response.rawResponse?.choices?.[0]?.message?.content || 
+                          response.rawResponse?.message?.content || 
+                          response.rawResponse?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      // Log the LLM's reasoning for this step
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] === LLM REASONING ANALYSIS ===`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] LLM Response Text: ${typeof responseText === 'string' ? responseText.substring(0, 200) + (responseText.length > 200 ? '...' : '') : 'No text response'}`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] Tool calls requested: ${toolCalls.length}`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] Tools being called: ${toolCalls.map(tc => tc.name).join(', ')}`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] LLM's reasoning for continuing: ${responseText || 'No explicit reasoning provided'}`);
+      
+      // Send detailed status updates to UI
+      if (responseText && responseText.trim()) {
+        statusHandler?.(`Step ${thinkingSteps}: LLM reasoning - ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
+      }
+      
+      if (toolCalls.length > 0) {
+        statusHandler?.(`Step ${thinkingSteps}: Executing ${toolCalls.length} tool(s) - ${toolCalls.map(tc => tc.name).join(', ')}`);
+      }
+      
+      if (typeof responseText === 'string' && responseText.includes('DATA GATHERING COMPLETE')) {
+        isSequentialThinkingComplete = true;
+        statusHandler?.('LLM indicated data gathering is complete.');
+        console.log(`🔍 SEQUENTIAL-THINKING: LLM responded with DATA GATHERING COMPLETE`);
+        break; // Exit the loop immediately
+      }
       
       if (toolCalls.length === 0) {
         // No tool calls, so we're done with sequential thinking
         isSequentialThinkingComplete = true;
         statusHandler?.('No tool calls found, sequential thinking complete.');
         continue;
+      }
+      
+      // Check for repeated tool calls (potential infinite loop)
+      const currentToolCallSignature = toolCalls.map(tc => `${tc.name}:${JSON.stringify(tc.input)}`).join('|');
+      if (previousToolCalls.has(currentToolCallSignature)) {
+        consecutiveNoProgressSteps++;
+        console.log(`🔍 SEQUENTIAL-THINKING: Detected repeated tool calls (step ${consecutiveNoProgressSteps})`);
+        
+        if (consecutiveNoProgressSteps >= 2) {
+          isSequentialThinkingComplete = true;
+          statusHandler?.('Detected repeated tool calls, stopping sequential thinking.');
+          console.log(`🔍 SEQUENTIAL-THINKING: Stopping due to repeated tool calls`);
+          break;
+        }
+      } else {
+        consecutiveNoProgressSteps = 0;
+        previousToolCalls.add(currentToolCallSignature);
       }
       
       // Execute each tool and update conversation
@@ -1001,6 +1056,28 @@ export class ChatService {
           toolName,
           toolCall.input
         );
+        
+        // Add status update for tool execution result
+        const textContent = Array.isArray(toolResult.content) 
+          ? toolResult.content.find((item: any) => item.type === 'text')?.text 
+          : toolResult.content;
+        
+        if (textContent && typeof textContent === 'string') {
+          // Check for errors in the tool result
+          if (textContent.includes('Error:') || textContent.includes('SyntaxError') || textContent.includes('Traceback')) {
+            if (textContent.includes('SyntaxError')) {
+              statusHandler?.(`Tool ${toolCall.name}: Syntax error detected - LLM will attempt to fix`);
+            } else if (textContent.includes('Docker container exited')) {
+              statusHandler?.(`Tool ${toolCall.name}: Runtime error - LLM will retry`);
+            } else {
+              statusHandler?.(`Tool ${toolCall.name}: Error occurred - ${textContent.substring(0, 100)}...`);
+            }
+          } else {
+            statusHandler?.(`Tool ${toolCall.name}: Executed successfully`);
+          }
+        } else {
+          statusHandler?.(`Tool ${toolCall.name}: Completed (no text output)`);
+        }
         
         // Log detailed information about the tool result
         console.log(`🔍 TOOL-EXECUTION: Raw result received from tool: ${JSON.stringify(toolResult, null, 2).substring(0, 1000)}...`);
@@ -1176,6 +1253,38 @@ export class ChatService {
           console.log(`🔍 TOOL-EXECUTION: Tool result not in expected format, unable to process fully`);
         }
       }
+      
+      // Log why the loop is continuing or ending (moved inside the loop)
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] === END OF STEP ANALYSIS ===`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] Step completed. Status:`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - isSequentialThinkingComplete: ${isSequentialThinkingComplete}`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - thinkingSteps: ${thinkingSteps}/${MAX_THINKING_STEPS}`);
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - consecutiveNoProgressSteps: ${consecutiveNoProgressSteps}`);
+      
+      if (!isSequentialThinkingComplete && thinkingSteps < MAX_THINKING_STEPS) {
+        console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] ➡️  CONTINUING to next step because:`);
+        console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - LLM did not say "DATA GATHERING COMPLETE"`);
+        console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - No repeated tool call pattern detected`);
+        console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - Haven't reached max steps (${MAX_THINKING_STEPS})`);
+        statusHandler?.(`Continuing to step ${thinkingSteps + 1} - LLM requested more tool calls`);
+      } else {
+        let reason = '';
+        if (isSequentialThinkingComplete) {
+          if (responseText && responseText.includes('DATA GATHERING COMPLETE')) {
+            reason = 'LLM indicated data gathering complete';
+          } else if (consecutiveNoProgressSteps >= 2) {
+            reason = 'Detected repeated tool calls (no progress)';
+          } else {
+            reason = 'Sequential thinking marked complete';
+          }
+        } else if (thinkingSteps >= MAX_THINKING_STEPS) {
+          reason = `Reached maximum steps (${MAX_THINKING_STEPS})`;
+        }
+        
+        console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] 🛑 STOPPING sequential thinking: ${reason}`);
+        statusHandler?.(`Sequential thinking stopped after ${thinkingSteps} steps: ${reason}`);
+      }
+      console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] === END OF STEP ANALYSIS ===`);
     }
     
     // Add the original user message for the final response

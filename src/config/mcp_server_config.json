@@ -4,10 +4,8 @@
       "command": "node",
       "args": [
         "./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
-        "/Users/andycrouse/Desktop",
-        "/Users/andycrouse/Downloads",
-        "/Users/andycrouse/Documents/GitHub/MCP/pubmed-mcp"
-      ]
+        "/Users/dr.crouse/Desktop",
+        "/Users/dr.crouse/Downloads"      ]
     },
     "brave-search": {
       "command": "node",
