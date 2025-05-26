@@ -592,6 +592,31 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, function (request, ex
                 formattedResult = _k.sent();
                 if (DEBUG)
                     console.error("MEDIK: Promise resolved successfully, got formatted result");
+                
+                // Log knowledge graph statistics
+                if (formattedResult.artifacts && formattedResult.artifacts.length > 0) {
+                    var knowledgeGraphArtifact_1 = formattedResult.artifacts.find(function (a) { return a.type === 'application/vnd.knowledge-graph'; });
+                    if (knowledgeGraphArtifact_1 && knowledgeGraphArtifact_1.content) {
+                        try {
+                            var graphContent = typeof knowledgeGraphArtifact_1.content === 'string'
+                                ? JSON.parse(knowledgeGraphArtifact_1.content)
+                                : knowledgeGraphArtifact_1.content;
+                            var nodeCount = graphContent.nodes ? graphContent.nodes.length : 0;
+                            var edgeCount = graphContent.links ? graphContent.links.length : 0;
+                            
+                            sendStructuredLog(server, 'info', "Knowledge graph generated with ".concat(nodeCount, " nodes and ").concat(edgeCount, " edges"), {
+                                toolName: 'run-query',
+                                nodeCount: nodeCount,
+                                edgeCount: edgeCount,
+                                queryParams: { e1: e1, e2: e2, e3: e3 },
+                                timestamp: new Date().toISOString()
+                            });
+                        } catch (parseError) {
+                            console.error("MEDIK: Error parsing knowledge graph for statistics:", parseError);
+                        }
+                    }
+                }
+                
                 if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
                     if (DEBUG)
                         console.error("MEDIK: Filtered out ".concat(formattedResult.filteredCount, " relationships involving ").concat(formattedResult.filteredNodeCount, " unique CAID nodes"));
@@ -782,6 +807,17 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, function (request, ex
                                 ? JSON.stringify(filteredGraph)
                                 : filteredGraph;
                             console.error("[medik-mcp] Enhanced pathway filtering: ".concat(filteredGraph.nodes.length, " nodes, ").concat(filteredGraph.links.length, " links"));
+                            
+                            // Log filtered knowledge graph statistics
+                            sendStructuredLog(server, 'info', "Bidirectional knowledge graph filtered to ".concat(filteredGraph.nodes.length, " nodes and ").concat(filteredGraph.links.length, " edges"), {
+                                toolName: 'get-everything',
+                                originalNodeCount: graph.nodes.length,
+                                originalEdgeCount: graph.links.length,
+                                filteredNodeCount: filteredGraph.nodes.length,
+                                filteredEdgeCount: filteredGraph.links.length,
+                                curie: curie_1,
+                                timestamp: new Date().toISOString()
+                            });
                         }
                         catch (filterError) {
                             console.error("[medik-mcp] Error filtering knowledge graph:", filterError);
@@ -888,6 +924,31 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, function (request, ex
             case 19:
                 formattedResult = _k.sent();
                 console.error("MEDIK: Promise resolved successfully, got formatted result");
+                
+                // Log network neighborhood knowledge graph statistics
+                if (formattedResult.artifacts && formattedResult.artifacts.length > 0) {
+                    var knowledgeGraphArtifact_2 = formattedResult.artifacts.find(function (a) { return a.type === 'application/vnd.knowledge-graph'; });
+                    if (knowledgeGraphArtifact_2 && knowledgeGraphArtifact_2.content) {
+                        try {
+                            var graphContent_1 = typeof knowledgeGraphArtifact_2.content === 'string'
+                                ? JSON.parse(knowledgeGraphArtifact_2.content)
+                                : knowledgeGraphArtifact_2.content;
+                            var nodeCount_1 = graphContent_1.nodes ? graphContent_1.nodes.length : 0;
+                            var edgeCount_1 = graphContent_1.links ? graphContent_1.links.length : 0;
+                            
+                            sendStructuredLog(server, 'info', "Network neighborhood knowledge graph generated with ".concat(nodeCount_1, " nodes and ").concat(edgeCount_1, " edges"), {
+                                toolName: 'network-neighborhood',
+                                nodeCount: nodeCount_1,
+                                edgeCount: edgeCount_1,
+                                curies: curies,
+                                timestamp: new Date().toISOString()
+                            });
+                        } catch (parseError_1) {
+                            console.error("MEDIK: Error parsing network neighborhood knowledge graph for statistics:", parseError_1);
+                        }
+                    }
+                }
+                
                 // Log the filtering results
                 if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
                     console.error("MEDIK: Filtered out ".concat(formattedResult.filteredCount, " relationships involving ").concat(formattedResult.filteredNodeCount, " unique CAID nodes"));
@@ -1155,6 +1216,19 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, function (request, ex
                                 ? JSON.stringify(filteredGraph)
                                 : filteredGraph;
                             console.error("[medik-mcp] Enhanced pathway filtering: ".concat(filteredGraph.nodes.length, " nodes, ").concat(filteredGraph.links.length, " links"));
+                            
+                            // Log filtered knowledge graph statistics
+                            sendStructuredLog(server, 'info', "Pathway discovery knowledge graph filtered to ".concat(filteredGraph.nodes.length, " nodes and ").concat(filteredGraph.links.length, " edges"), {
+                                toolName: 'find-pathway',
+                                requestId: requestId,
+                                originalNodeCount: graph.nodes.length,
+                                originalEdgeCount: graph.links.length,
+                                filteredNodeCount: filteredGraph.nodes.length,
+                                filteredEdgeCount: filteredGraph.links.length,
+                                sourceCurie: sourceCurie_1,
+                                targetCurie: targetCurie_1,
+                                timestamp: new Date().toISOString()
+                            });
                         }
                         catch (filterError) {
                             console.error("[medik-mcp] Error filtering knowledge graph:", filterError);
@@ -1368,6 +1442,14 @@ function filterLowConnectivityNodes(graph, startingNodeIds) {
         return nodesToKeep.has(link.source) && nodesToKeep.has(link.target);
     });
     console.log("[medik-mcp] Filtered graph: ".concat(filteredNodes.length, " nodes, ").concat(filteredLinks.length, " links"));
+    
+    // Log filtering statistics if we have a significant reduction
+    var nodeReduction = graph.nodes.length - filteredNodes.length;
+    var linkReduction = graph.links.length - filteredLinks.length;
+    if (nodeReduction > 0 || linkReduction > 0) {
+        console.log("[medik-mcp] Filtering removed ".concat(nodeReduction, " nodes and ").concat(linkReduction, " links"));
+    }
+    
     // Return new graph object
     return {
         nodes: filteredNodes,
