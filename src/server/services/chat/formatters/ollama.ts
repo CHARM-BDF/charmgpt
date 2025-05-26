@@ -80,36 +80,32 @@ export class OllamaResponseFormatterAdapter implements ResponseFormatterAdapter 
   }
 
   /**
-   * Extract formatter output from Ollama's response
-   * 
-   * Ollama may not properly use the tool call format, so this method
-   * handles both tool call responses and direct text responses.
+   * Extract formatter output from Ollama response
    */
   extractFormatterOutput(response: any): FormatterOutput {
     console.log('🟤 [OLLAMA-FORMATTER] Extracting formatter output from Ollama response');
-
+    
     // Log the response structure for debugging
     console.log('🟤 [OLLAMA-FORMATTER] Response structure:', JSON.stringify({
-      type: typeof response,
       hasMessage: !!response?.message,
-      hasToolCalls: !!response?.message?.tool_calls,
+      hasToolCalls: !!(response?.message?.tool_calls && response.message.tool_calls.length > 0),
+      toolCallsCount: response?.message?.tool_calls?.length || 0,
       hasContent: !!response?.message?.content,
-      messageType: typeof response?.message,
-      contentType: typeof response?.message?.content,
-      contentLength: response?.message?.content?.length || 0
+      contentLength: response?.message?.content?.length || 0,
+      contentPreview: response?.message?.content?.substring(0, 100) || ''
     }));
 
     // First try to extract from tool_calls if present
     if (response?.message?.tool_calls && response.message.tool_calls.length > 0) {
       console.log('🟤 [OLLAMA-FORMATTER] Found tool_calls in response');
       
-      // Find the response_formatter tool call
-      const toolCall = response.message.tool_calls.find((tc: any) => 
-        tc.function?.name === 'response_formatter'
-      );
+      // Find ANY tool call (Ollama might use different names)
+      const toolCall = response.message.tool_calls[0]; // Take the first tool call
       
       if (toolCall && toolCall.function?.arguments) {
-        console.log('🟤 [OLLAMA-FORMATTER] Found response_formatter tool call');
+        console.log('🟤 [OLLAMA-FORMATTER] Found tool call:', toolCall.function.name);
+        console.log('🟤 [OLLAMA-FORMATTER] Tool call arguments:', JSON.stringify(toolCall.function.arguments));
+        
         try {
           // Parse the arguments
           let formatterOutput;
@@ -122,10 +118,39 @@ export class OllamaResponseFormatterAdapter implements ResponseFormatterAdapter 
             formatterOutput = toolCall.function.arguments;
           }
           
-          console.log('🟤 [OLLAMA-FORMATTER] Parsed formatter output');
+          // Check if this looks like formatter output
+          if (formatterOutput.conversation || formatterOutput.thinking) {
+            console.log('🟤 [OLLAMA-FORMATTER] Tool call contains formatter-like structure');
+            return this.validateFormatterOutput(formatterOutput);
+          }
           
-          // Validate and return
-          return this.validateFormatterOutput(formatterOutput);
+          // If it's not formatter output, try to convert it to formatter output
+          console.log('🟤 [OLLAMA-FORMATTER] Converting non-formatter tool call to formatter output');
+          
+          // Handle common patterns from Ollama
+          let content = '';
+          if (formatterOutput.value) {
+            content = formatterOutput.value;
+          } else if (formatterOutput.text) {
+            content = formatterOutput.text;
+          } else if (formatterOutput.content) {
+            content = formatterOutput.content;
+          } else {
+            // Use the entire arguments as content
+            content = JSON.stringify(formatterOutput, null, 2);
+          }
+          
+          const convertedOutput = {
+            thinking: `Ollama used tool: ${toolCall.function.name}`,
+            conversation: [{
+              type: 'text',
+              content: content
+            }]
+          };
+          
+          console.log('🟤 [OLLAMA-FORMATTER] Successfully converted tool call to formatter output');
+          return this.validateFormatterOutput(convertedOutput);
+          
         } catch (error) {
           console.error('🟤 [OLLAMA-FORMATTER] Error parsing tool call arguments:', error);
           // Fall through to content extraction
@@ -133,32 +158,70 @@ export class OllamaResponseFormatterAdapter implements ResponseFormatterAdapter 
       }
     }
     
-    // If we don't have valid tool call output, try to extract from content
+    // CRITICAL FIX: If we don't have valid tool call output, try to extract from content
+    // This handles the case where Ollama returns text that looks like tool call JSON
     console.log('🟤 [OLLAMA-FORMATTER] Trying to extract from content');
     
     const content = response?.message?.content || response?.content || '';
-    if (typeof content === 'string' && content.length > 0) {
-      console.log('🟤 [OLLAMA-FORMATTER] Extracting from content string');
+    
+    if (content) {
+      console.log('🟤 [OLLAMA-FORMATTER] Content found, length:', content.length);
+      console.log('🟤 [OLLAMA-FORMATTER] Content preview:', content.substring(0, 200));
       
-      // Try to find JSON in the content
-      const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/) || 
-                        content.match(/{[\s\S]*"conversation"[\s\S]*?}/);
+      // NEW: Check if content looks like a tool call response
+      // Pattern: {"name": "response_formatter", "parameters": {...}}
+      try {
+        // Try to parse the entire content as JSON first
+        const parsedContent = JSON.parse(content);
+        
+        // Check if it has the tool call structure
+        if (parsedContent.name === 'response_formatter' && parsedContent.parameters) {
+          console.log('🟤 [OLLAMA-FORMATTER] Found tool call structure in content!');
+          return this.validateFormatterOutput(parsedContent.parameters);
+        }
+        
+        // Check if it's already in the expected format
+        if (parsedContent.conversation || parsedContent.thinking) {
+          console.log('🟤 [OLLAMA-FORMATTER] Found direct formatter output in content!');
+          return this.validateFormatterOutput(parsedContent);
+        }
+      } catch (parseError) {
+        console.log('🟤 [OLLAMA-FORMATTER] Content is not valid JSON, trying regex extraction');
+      }
       
-      if (jsonMatch) {
+      // NEW: Try to extract JSON from text using regex patterns
+      // Look for {"name": "response_formatter", "parameters": {...}}
+      const toolCallPattern = /\{"name":\s*"response_formatter",\s*"parameters":\s*(\{.*?\})\}/s;
+      const toolCallMatch = content.match(toolCallPattern);
+      
+      if (toolCallMatch) {
+        console.log('🟤 [OLLAMA-FORMATTER] Found tool call pattern in content!');
         try {
-          // Parse the JSON found in content
-          const formatterOutput = JSON.parse(jsonMatch[1]);
-          console.log('🟤 [OLLAMA-FORMATTER] Found and parsed JSON in content');
-          return this.validateFormatterOutput(formatterOutput);
+          const parameters = JSON.parse(toolCallMatch[1]);
+          return this.validateFormatterOutput(parameters);
         } catch (error) {
-          console.error('🟤 [OLLAMA-FORMATTER] Error parsing JSON in content:', error);
+          console.error('🟤 [OLLAMA-FORMATTER] Error parsing extracted tool call parameters:', error);
         }
       }
       
-      // If no JSON or parsing failed, create a text-only response
-      console.log('🟤 [OLLAMA-FORMATTER] Creating text-only formatter output');
+      // NEW: Look for direct JSON objects that might be formatter output
+      const jsonPattern = /\{[\s\S]*"conversation"[\s\S]*\}/;
+      const jsonMatch = content.match(jsonPattern);
+      
+      if (jsonMatch) {
+        console.log('🟤 [OLLAMA-FORMATTER] Found JSON pattern with conversation in content!');
+        try {
+          const formatterOutput = JSON.parse(jsonMatch[0]);
+          return this.validateFormatterOutput(formatterOutput);
+        } catch (error) {
+          console.error('🟤 [OLLAMA-FORMATTER] Error parsing extracted JSON:', error);
+        }
+      }
+      
+      // Fallback: Create a simple formatter output from the content
+      console.log('🟤 [OLLAMA-FORMATTER] Creating fallback formatter output from content');
       return {
-        thinking: "",
+        thinking: "Ollama returned text instead of tool call - converted to formatter output",
         conversation: [{
           type: 'text',
           content: content
@@ -166,15 +229,9 @@ export class OllamaResponseFormatterAdapter implements ResponseFormatterAdapter 
       };
     }
     
-    // Last resort fallback
-    console.warn('🟤 [OLLAMA-FORMATTER] No valid content found, returning fallback response');
-    return {
-      thinking: "",
-      conversation: [{
-        type: 'text',
-        content: "The model didn't provide a properly structured response."
-      }]
-    };
+    // If we get here, we have no usable content
+    console.error('🟤 [OLLAMA-FORMATTER] No tool calls or content found in response');
+    throw new Error('No formatter output found in Ollama response - no tool calls or content available');
   }
   
   /**
@@ -187,8 +244,17 @@ export class OllamaResponseFormatterAdapter implements ResponseFormatterAdapter 
       hasConversation: !!formatterOutput.conversation,
       isConversationArray: Array.isArray(formatterOutput.conversation),
       conversationLength: Array.isArray(formatterOutput.conversation) 
-        ? formatterOutput.conversation.length : 0
+        ? formatterOutput.conversation.length : 0,
+      conversationType: typeof formatterOutput.conversation
     }));
+    
+    // Log the raw conversation value for debugging
+    if (formatterOutput.conversation) {
+      console.log('🟤 [OLLAMA-FORMATTER] Raw conversation value:', 
+        typeof formatterOutput.conversation === 'string' 
+          ? formatterOutput.conversation.substring(0, 200) + '...'
+          : JSON.stringify(formatterOutput.conversation).substring(0, 200) + '...');
+    }
     
     // Ensure conversation is an array
     if (!formatterOutput.conversation) {
@@ -202,21 +268,48 @@ export class OllamaResponseFormatterAdapter implements ResponseFormatterAdapter 
     
     // If conversation is a string, try to parse it as JSON
     if (typeof formatterOutput.conversation === 'string') {
+      console.log('🟤 [OLLAMA-FORMATTER] Conversation is a string, attempting to parse as JSON');
+      
       try {
-        const parsedConversation = JSON.parse(formatterOutput.conversation);
+        // Clean up the string first - remove any surrounding quotes and handle escaped quotes
+        let cleanConversation = formatterOutput.conversation.trim();
+        
+        // Remove surrounding quotes if present
+        if (cleanConversation.startsWith('"') && cleanConversation.endsWith('"')) {
+          cleanConversation = cleanConversation.slice(1, -1);
+        }
+        
+        // Replace escaped quotes
+        cleanConversation = cleanConversation.replace(/\\"/g, '"');
+        
+        // Replace unicode escapes
+        cleanConversation = cleanConversation.replace(/\\u([0-9a-fA-F]{4})/g, (match: string, code: string) => {
+          return String.fromCharCode(parseInt(code, 16));
+        });
+        
+        // Replace weird quote characters with normal quotes
+        cleanConversation = cleanConversation.replace(/«/g, '"').replace(/»/g, '"');
+        
+        console.log('🟤 [OLLAMA-FORMATTER] Cleaned conversation string:', cleanConversation.substring(0, 200) + '...');
+        
+        const parsedConversation = JSON.parse(cleanConversation);
+        
         if (Array.isArray(parsedConversation)) {
+          console.log('🟤 [OLLAMA-FORMATTER] Successfully parsed string conversation into array');
           formatterOutput.conversation = parsedConversation;
-          console.log('🟤 [OLLAMA-FORMATTER] Parsed string conversation into array');
         } else {
+          console.warn('🟤 [OLLAMA-FORMATTER] Parsed conversation is not an array - converting to array');
           // Convert to array with single text item
           formatterOutput.conversation = [{
             type: 'text',
-            content: formatterOutput.conversation
+            content: cleanConversation
           }];
         }
       } catch (error) {
         // If parsing fails, treat as plain text
-        console.warn('🟤 [OLLAMA-FORMATTER] Failed to parse conversation string as JSON');
+        console.error('🟤 [OLLAMA-FORMATTER] Failed to parse conversation string as JSON:', error);
+        console.log('🟤 [OLLAMA-FORMATTER] Original string that failed to parse:', formatterOutput.conversation);
+        
         formatterOutput.conversation = [{
           type: 'text',
           content: formatterOutput.conversation
@@ -227,6 +320,14 @@ export class OllamaResponseFormatterAdapter implements ResponseFormatterAdapter 
       // Convert object to array
       console.warn('🟤 [OLLAMA-FORMATTER] Conversation is not an array - converting');
       formatterOutput.conversation = [formatterOutput.conversation];
+    }
+    
+    // Final validation of the conversation array
+    if (Array.isArray(formatterOutput.conversation)) {
+      console.log('🟤 [OLLAMA-FORMATTER] Final conversation array has', formatterOutput.conversation.length, 'items');
+      formatterOutput.conversation.forEach((item: any, index: number) => {
+        console.log(`🟤 [OLLAMA-FORMATTER] Item ${index + 1}: type=${item.type}, hasContent=${!!item.content}, hasArtifact=${!!item.artifact}`);
+      });
     }
     
     return formatterOutput;

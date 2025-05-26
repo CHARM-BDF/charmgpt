@@ -178,9 +178,12 @@ export class ChatService {
     console.log(`🔍 [LLM QUERY] Tool choice being sent:`, JSON.stringify(toolChoice, null, 2));
     console.log(`🔍 [LLM QUERY] === END TOOL FORMAT LOG ===`);
     
-    // Get the LLM response with formatter
-    statusHandler?.(`Getting formatted response from ${options.modelProvider}...`);
-    const llmResponse = await this.llmService.query({
+    // === COMPREHENSIVE FORMATTER REQUEST LOGGING ===
+    console.log(`🔍 [FORMATTER-REQUEST] === BEGIN COMPLETE REQUEST LOG ===`);
+    console.log(`🔍 [FORMATTER-REQUEST] Provider: ${options.modelProvider}`);
+    console.log(`🔍 [FORMATTER-REQUEST] Complete LLM Request Payload:`);
+    
+    const requestPayload = {
       prompt: structuredPrompt,
       options: {
         temperature: options.temperature || 0.2,
@@ -196,7 +199,33 @@ export class ChatService {
         } : {})
       } as any,
       systemPrompt: formatterSystemPrompt
-    });
+    };
+    
+    console.log(`🔍 [FORMATTER-REQUEST] Request payload:`, JSON.stringify(requestPayload, null, 2));
+    console.log(`🔍 [FORMATTER-REQUEST] === END COMPLETE REQUEST LOG ===`);
+    
+    // Get the LLM response with formatter
+    statusHandler?.(`Getting formatted response from ${options.modelProvider}...`);
+    const llmResponse = await this.llmService.query(requestPayload);
+    
+    // === COMPREHENSIVE RAW RESPONSE LOGGING ===
+    console.log(`🔍 [FORMATTER-RAW-RESPONSE] === BEGIN COMPLETE RAW RESPONSE LOG ===`);
+    console.log(`🔍 [FORMATTER-RAW-RESPONSE] Complete raw response from ${options.modelProvider}:`);
+    console.log(`🔍 [FORMATTER-RAW-RESPONSE] Response structure:`, JSON.stringify({
+      type: typeof llmResponse.rawResponse,
+      hasChoices: !!llmResponse.rawResponse?.choices,
+      choicesLength: llmResponse.rawResponse?.choices?.length || 0,
+      hasMessage: !!llmResponse.rawResponse?.message,
+      hasToolCalls: !!(llmResponse.rawResponse?.choices?.[0]?.message?.tool_calls || llmResponse.rawResponse?.message?.tool_calls),
+      toolCallsLength: (llmResponse.rawResponse?.choices?.[0]?.message?.tool_calls || llmResponse.rawResponse?.message?.tool_calls || []).length,
+      hasContent: !!(llmResponse.rawResponse?.choices?.[0]?.message?.content || llmResponse.rawResponse?.message?.content)
+    }));
+    
+    // Log the complete raw response (truncated for readability)
+    const rawResponseStr = JSON.stringify(llmResponse.rawResponse, null, 2);
+    console.log(`🔍 [FORMATTER-RAW-RESPONSE] Full raw response (${rawResponseStr.length} chars):`, 
+      rawResponseStr.length > 2000 ? rawResponseStr.substring(0, 2000) + '\n... [TRUNCATED]' : rawResponseStr);
+    console.log(`🔍 [FORMATTER-RAW-RESPONSE] === END COMPLETE RAW RESPONSE LOG ===`);
     
     // Log the response
     console.log(`🔍 DEBUG-CHAT-SERVICE: Received raw response from LLM service`);
@@ -205,7 +234,13 @@ export class ChatService {
     
     // Extract the formatter output using the adapter
     statusHandler?.('Processing formatter output...');
+    console.log(`🔍 [FORMATTER-EXTRACT] === BEGIN FORMATTER EXTRACTION LOG ===`);
+    console.log(`🔍 [FORMATTER-EXTRACT] Using ${options.modelProvider} formatter adapter to extract output`);
+    
     const formatterOutput = formatterAdapter.extractFormatterOutput(llmResponse.rawResponse);
+    
+    console.log(`🔍 [FORMATTER-EXTRACT] Extraction complete, validating output...`);
+    console.log(`🔍 [FORMATTER-EXTRACT] === END FORMATTER EXTRACTION LOG ===`);
     
     // Log the extracted formatter output
     console.log(`🔍 [FORMATTER OUTPUT] === BEGIN FORMATTER OUTPUT LOG ===`);
@@ -213,7 +248,23 @@ export class ChatService {
     console.log(`🔍 [FORMATTER-RESPONSE] Output: ${JSON.stringify(formatterOutput)}`);
     console.log(`🔍 [FORMATTER OUTPUT] === END FORMATTER OUTPUT LOG ===`);
     
+    // === PRE-CONVERSION LOGGING ===
+    console.log(`🔍 [FORMATTER-CONVERT] === BEGIN STORE FORMAT CONVERSION LOG ===`);
+    console.log(`🔍 [FORMATTER-CONVERT] Converting formatter output to store format using ${options.modelProvider} adapter`);
+    
     let storeFormat = formatterAdapter.convertToStoreFormat(formatterOutput);
+    
+    console.log(`🔍 [FORMATTER-CONVERT] Conversion complete`);
+    console.log(`🔍 [FORMATTER-CONVERT] Store format structure:`, JSON.stringify({
+      hasThinking: !!storeFormat.thinking,
+      thinkingLength: storeFormat.thinking?.length || 0,
+      hasConversation: !!storeFormat.conversation,
+      conversationType: typeof storeFormat.conversation,
+      conversationLength: typeof storeFormat.conversation === 'string' ? storeFormat.conversation.length : 0,
+      hasArtifacts: !!storeFormat.artifacts,
+      artifactsCount: storeFormat.artifacts?.length || 0
+    }));
+    console.log(`🔍 [FORMATTER-CONVERT] === END STORE FORMAT CONVERSION LOG ===`);
     
     // ===== ARTIFACT COLLECTION PHASE =====
     // This mirrors the artifact collection approach from chat.ts
@@ -315,6 +366,14 @@ export class ChatService {
       });
     }
     console.log(`🔍 [STORE FORMAT] === END STORE FORMAT LOG ===`);
+    
+    // === FINAL UI OUTPUT LOGGING ===
+    console.log(`🔍 [FINAL-OUTPUT] === BEGIN FINAL UI OUTPUT LOG ===`);
+    console.log(`🔍 [FINAL-OUTPUT] This is exactly what will be returned to the UI:`);
+    console.log(`🔍 [FINAL-OUTPUT] Complete StoreFormat object:`, JSON.stringify(storeFormat, null, 2));
+    console.log(`🔍 [FINAL-OUTPUT] Object type:`, typeof storeFormat);
+    console.log(`🔍 [FINAL-OUTPUT] Object keys:`, Object.keys(storeFormat));
+    console.log(`🔍 [FINAL-OUTPUT] === END FINAL UI OUTPUT LOG ===`);
     
     return storeFormat;
   }
