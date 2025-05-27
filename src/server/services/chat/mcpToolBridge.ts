@@ -74,7 +74,7 @@ export class MCPToolBridge extends Tool {
       const result = await this.mcpService.callTool(this.serverName, this.originalToolName, args);
       
       console.log(`🔧 MCPToolBridge: Tool execution completed. Result type:`, typeof result);
-      console.log(`🔧 MCPToolBridge: Tool result:`, result);
+      console.log(`🔧 MCPToolBridge: Tool result:`, JSON.stringify(result, null, 2));
       
       // Convert result to string
       let stringResult: string;

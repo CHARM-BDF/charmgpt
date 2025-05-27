@@ -143,12 +143,184 @@ export class LangGraphChatService {
       systemPrompt: this.buildSystemPrompt(options.pinnedGraph)
     });
     
-    // Format the response as StoreFormat
+    // Format the response as StoreFormat and extract artifacts
     statusHandler?.('Formatting response...');
+    
+    // Extract artifacts from tool execution results in the conversation
+    const artifacts: any[] = [];
+    let conversationContent = response.content;
+    
+    // Check if there are tool execution results that contain artifacts
+    if (response.rawResponse && response.rawResponse.messages) {
+      console.log('🎨 LangGraphChatService: Processing messages for artifacts...');
+      
+      response.rawResponse.messages.forEach((msg: any, index: number) => {
+        console.log(`🎨 LangGraphChatService: Message ${index} type: ${msg.constructor.name}`);
+        
+        // Look for ToolMessage responses that might contain artifacts
+        if (msg.constructor.name === 'ToolMessage' && msg.content) {
+          console.log(`🎨 LangGraphChatService: Found ToolMessage content:`, JSON.stringify(msg.content, null, 2));
+          
+          try {
+            // Parse the tool result if it's a string
+            let toolResult = msg.content;
+            if (typeof msg.content === 'string') {
+              try {
+                toolResult = JSON.parse(msg.content);
+              } catch {
+                // Not JSON, keep as string
+              }
+            }
+            
+                         // Check if the tool result has artifacts or binary outputs
+             if (toolResult && typeof toolResult === 'object') {
+               console.log('🎨 LangGraphChatService: Checking tool result for artifacts...');
+               console.log('🎨 LangGraphChatService: Tool result keys:', Object.keys(toolResult));
+               
+               // Look for binary outputs or file references
+               if (toolResult.binaryOutput) {
+                 console.log('🎨 LangGraphChatService: Found binary output in tool result');
+                 const artifactId = `artifact_${Date.now()}_${artifacts.length}`;
+                 artifacts.push({
+                   id: artifactId,
+                   artifactId: artifactId,
+                   type: toolResult.binaryOutput.type || 'image/png',
+                   title: toolResult.binaryOutput.title || 'Generated Output',
+                   content: toolResult.binaryOutput.data,
+                   position: artifacts.length
+                 });
+               }
+               
+               // Check for artifacts in the tool result
+               if (toolResult.artifacts && Array.isArray(toolResult.artifacts)) {
+                 console.log('🎨 LangGraphChatService: Found artifacts array in tool result:', toolResult.artifacts.length);
+                 
+                 toolResult.artifacts.forEach((artifact: any, artifactIndex: number) => {
+                   console.log(`🎨 LangGraphChatService: Processing artifact ${artifactIndex}:`);
+                   console.log(`🎨 LangGraphChatService: Artifact keys:`, Object.keys(artifact));
+                   console.log(`🎨 LangGraphChatService: Artifact type:`, artifact.type);
+                   console.log(`🎨 LangGraphChatService: Has data field:`, 'data' in artifact);
+                   console.log(`🎨 LangGraphChatService: Data field type:`, typeof artifact.data);
+                   console.log(`🎨 LangGraphChatService: Data field length:`, artifact.data?.length);
+                   console.log(`🎨 LangGraphChatService: Filename:`, artifact.metadata?.filename);
+                   
+                   // Check if data exists in any form
+                   const dataContent = artifact.data || artifact.content || artifact.base64 || artifact.binary;
+                   
+                   if (dataContent) {
+                     const artifactId = `artifact_${Date.now()}_${artifacts.length}`;
+                     artifacts.push({
+                       id: artifactId,
+                       artifactId: artifactId,
+                       type: artifact.type || 'image/png',
+                       title: artifact.metadata?.filename || `Generated Output ${artifactIndex + 1}`,
+                       content: dataContent,
+                       position: artifacts.length,
+                       metadata: artifact.metadata
+                     });
+                     console.log('🎨 LangGraphChatService: Added artifact:', artifactId);
+                   } else {
+                     console.log('🎨 LangGraphChatService: No data content found in artifact');
+                   }
+                 });
+               }
+               
+               // Check if metadata indicates binary output but it's stored elsewhere
+               if (toolResult.metadata && toolResult.metadata.hasBinaryOutput && !toolResult.binaryOutput && !toolResult.artifacts) {
+                 console.log('🎨 LangGraphChatService: Metadata indicates binary output, looking for data...');
+                 
+                 // Check if binary data is in a different field
+                 if (toolResult.data || toolResult.output || toolResult.result) {
+                   const binaryData = toolResult.data || toolResult.output || toolResult.result;
+                   console.log('🎨 LangGraphChatService: Found binary data in alternate field');
+                   
+                   const artifactId = `artifact_${Date.now()}_${artifacts.length}`;
+                   artifacts.push({
+                     id: artifactId,
+                     artifactId: artifactId,
+                     type: toolResult.metadata.binaryType || 'image/png',
+                     title: 'Generated Plot',
+                     content: binaryData,
+                     position: artifacts.length
+                   });
+                   console.log('🎨 LangGraphChatService: Added artifact from binary data:', artifactId);
+                 } else {
+                   console.log('🎨 LangGraphChatService: Binary output indicated but no data found in expected fields');
+                   console.log('🎨 LangGraphChatService: Available fields:', Object.keys(toolResult));
+                 }
+               }
+               
+               // Check metadata for file outputs
+               if (toolResult.metadata && typeof toolResult.metadata === 'object') {
+                 console.log('🎨 LangGraphChatService: Found metadata:', JSON.stringify(toolResult.metadata, null, 2));
+                 
+                 // Look for file outputs in metadata
+                 if (toolResult.metadata.files || toolResult.metadata.outputs) {
+                   const files = toolResult.metadata.files || toolResult.metadata.outputs;
+                   console.log('🎨 LangGraphChatService: Found files in metadata:', files);
+                   
+                   if (Array.isArray(files)) {
+                     files.forEach((file: any, fileIndex: number) => {
+                       if (file.path && file.data) {
+                         const artifactId = `artifact_${Date.now()}_${artifacts.length}`;
+                         artifacts.push({
+                           id: artifactId,
+                           artifactId: artifactId,
+                           type: file.type || 'image/png',
+                           title: file.name || `Generated File ${fileIndex + 1}`,
+                           content: file.data,
+                           position: artifacts.length
+                         });
+                         console.log('🎨 LangGraphChatService: Added artifact from metadata file:', artifactId);
+                       }
+                     });
+                   }
+                 }
+               }
+               
+               // Look for file outputs in the content
+               if (toolResult.content && Array.isArray(toolResult.content)) {
+                 toolResult.content.forEach((item: any) => {
+                   if (item.type === 'text' && item.text) {
+                     // Check if the text mentions file outputs
+                     const fileMatches = item.text.match(/Saved (\w+) to: (.+)/g);
+                     if (fileMatches) {
+                       console.log('🎨 LangGraphChatService: Found file output references:', fileMatches);
+                       // We would need to read the actual files here
+                       // For now, just log that we found file references
+                     }
+                   }
+                   
+                   // Check if the item itself is a file/artifact
+                   if (item.type === 'image' || item.type === 'file') {
+                     console.log('🎨 LangGraphChatService: Found file/image item in content:', item);
+                     const artifactId = `artifact_${Date.now()}_${artifacts.length}`;
+                     artifacts.push({
+                       id: artifactId,
+                       artifactId: artifactId,
+                       type: item.mimeType || item.type || 'image/png',
+                       title: item.name || item.title || 'Generated Output',
+                       content: item.data || item.content,
+                       position: artifacts.length
+                     });
+                     console.log('🎨 LangGraphChatService: Added artifact from content item:', artifactId);
+                   }
+                 });
+               }
+             }
+          } catch (error) {
+            console.error('🎨 LangGraphChatService: Error processing tool result for artifacts:', error);
+          }
+        }
+      });
+    }
+    
     const storeFormat: StoreFormat = {
-      conversation: response.content,
-      artifacts: [] // LangGraph responses don't have artifacts by default
+      conversation: conversationContent,
+      artifacts: artifacts.length > 0 ? artifacts : undefined
     };
+    
+    console.log(`🎨 LangGraphChatService: Final response - conversation length: ${conversationContent.length}, artifacts: ${artifacts.length}`);
     
     statusHandler?.('Chat processing complete');
     return storeFormat;
@@ -213,7 +385,14 @@ When you need to use tools:
 2. Use the appropriate tools to gather information
 3. Synthesize the results into a helpful response
 
-You can perform multiple tool calls in sequence to accomplish complex tasks.`;
+You can perform multiple tool calls in sequence to accomplish complex tasks.
+
+IMPORTANT: When using Python for plotting or generating visual content:
+- NEVER use plt.show() as it doesn't work in this environment
+- ALWAYS save plots to files using plt.savefig()
+- ALWAYS use os.environ['OUTPUT_DIR'] for file paths
+- Example: plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], 'plot.png'))
+- The system will automatically detect and display saved files as artifacts`;
 
     if (pinnedGraph) {
       systemPrompt += `\n\nYou have access to a pinned knowledge graph that contains relevant context for this conversation. Use this information to provide more informed responses.`;
