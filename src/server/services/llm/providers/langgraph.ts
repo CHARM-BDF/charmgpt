@@ -130,7 +130,7 @@ export class LangGraphProvider implements LLMProvider {
       }
         
       case 'gemini': {
-        const geminiApiKey = options.apiKey || process.env.GOOGLE_API_KEY;
+        const geminiApiKey = options.apiKey || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
         if (!geminiApiKey) {
           throw new Error('Google API key is required. Set it in options or GOOGLE_API_KEY environment variable.');
         }
