@@ -1,38 +1,48 @@
 /**
- * LLM Service Implementation
+ * LLM Service Implementation with LangGraph React Agent
  * 
  * This file implements the main LLM Service that provides centralized
- * access to LLM capabilities for all MCP servers.
+ * access to LLM capabilities using LangGraph React agents with MCP integration.
  */
 
-import { AnthropicProvider } from './providers/anthropic';
-import { OpenAIProvider } from './providers/openai';
-import { GeminiProvider } from './providers/gemini';
-import { OllamaProvider } from './providers/ollama';
+import { LangGraphProvider } from './providers/langgraph';
 import { LLMCache } from './cache';
-import { isValidJSON, extractJSONFromText } from './utils';
+import { extractJSONFromText } from './utils';
 import { 
   LLMService as LLMServiceInterface,
   LLMServiceOptions,
   LLMRequest,
-  LLMResponse,
-  LLMProvider,
-  LLMProviderOptions
+  LLMResponse
 } from './types';
 
+interface MCPServerConfig {
+  command?: string;
+  args?: string[];
+  transport?: string;
+  url?: string;
+  type?: string;
+  env?: Record<string, string>;
+  encoding?: string;
+  stderr?: string;
+  cwd?: string;
+  restart?: Record<string, unknown>;
+}
+
 /**
- * Main implementation of the LLM Service
+ * Main implementation of the LLM Service using LangGraph React Agent
  */
 export class LLMService implements LLMServiceInterface {
-  /** LLM provider instance */
-  private provider: LLMProvider | null = null;
+  /** LangGraph provider instance */
+  private provider: LangGraphProvider | null = null;
   /** Cache for LLM responses */
   private _cache: LLMCache;
   /** Service configuration */
   private options: LLMServiceOptions;
+  /** MCP servers configuration */
+  private mcpServers: Record<string, MCPServerConfig> = {};
   
   /**
-   * Create a new LLM Service
+   * Create a new LLM Service with LangGraph React Agent
    * @param options Service configuration options
    */
   constructor(options: LLMServiceOptions = {}) {
@@ -44,12 +54,12 @@ export class LLMService implements LLMServiceInterface {
       cacheResponses: options.cacheResponses ?? true
     };
     
-    console.log(`LLMService: Initialized with default settings - provider will be set on first use`);
+    console.log(`LLMService: Initialized with LangGraph React Agent - provider will be set on first use`);
     
     // Initialize cache
     this._cache = new LLMCache();
     
-    console.log('LLMService: Initialization complete');
+    console.log('LLMService: Initialization complete with LangGraph integration');
   }
   
   /**
@@ -57,27 +67,16 @@ export class LLMService implements LLMServiceInterface {
    */
   private initializeProvider(): void {
     const providerName = this.options.provider || 'anthropic';
-    console.log(`🔄 LLMService: Initializing provider ${providerName.toUpperCase()}`);
+    console.log(`🔄 LLMService: Initializing LangGraph provider with ${providerName.toUpperCase()} backend`);
     
-    if (this.options.provider === 'anthropic') {
-      this.provider = new AnthropicProvider({
-        model: this.options.model
-      });
-    } else if (this.options.provider === 'openai') {
-      this.provider = new OpenAIProvider({
-        model: this.options.model
-      });
-    } else if (this.options.provider === 'gemini') {
-      this.provider = new GeminiProvider({
-        model: this.options.model
-      });
-    } else if (this.options.provider === 'ollama') {
-      this.provider = new OllamaProvider({
-        model: this.options.model
-      }) as LLMProvider;
-    } else {
-      throw new Error(`Unsupported LLM provider: ${providerName}`);
-    }
+    // Create LangGraph provider with the specified backend
+    this.provider = new LangGraphProvider({
+      provider: providerName,
+      model: this.options.model,
+      temperature: this.options.temperature,
+      maxTokens: this.options.maxTokens,
+      mcpServers: this.mcpServers
+    });
   }
   
   /**
@@ -91,7 +90,7 @@ export class LLMService implements LLMServiceInterface {
     }
     
     const providerName = options.provider;
-    console.log(`🔀 LLMService: Switching to provider ${providerName.toUpperCase()}`);
+    console.log(`🔀 LLMService: Switching LangGraph to ${providerName.toUpperCase()} backend`);
     
     // Update options with the new provider settings
     this.options = {
@@ -119,7 +118,7 @@ export class LLMService implements LLMServiceInterface {
     
     try {
       this.initializeProvider();
-      console.log(`✅ LLMService: Provider ${providerName.toUpperCase()} initialized successfully`);
+      console.log(`✅ LLMService: LangGraph provider with ${providerName.toUpperCase()} backend initialized successfully`);
     } catch (error) {
       console.error(`❌ LLMService: Error in setProvider for ${providerName}:`, error);
     }
@@ -376,5 +375,24 @@ Ensure all properties are properly quoted and syntax is valid.
       model: this.options.model,
       cache: this._cache.getStats()
     };
+  }
+  
+  /**
+   * Update MCP servers configuration
+   * @param mcpServers MCP servers configuration
+   */
+  async updateMCPServers(mcpServers: Record<string, unknown>): Promise<void> {
+    // Type assertion for MCP servers configuration
+    this.mcpServers = mcpServers as Record<string, MCPServerConfig>;
+    
+    // Update the provider with new MCP servers if it exists
+    if (this.provider) {
+      try {
+        await this.provider.updateMCPServers(this.mcpServers);
+        console.log(`✅ LLMService: Updated MCP servers configuration`);
+      } catch (error) {
+        console.error(`❌ LLMService: Error updating MCP servers:`, error);
+      }
+    }
   }
 } 
