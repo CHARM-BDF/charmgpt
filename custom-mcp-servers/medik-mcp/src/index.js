@@ -113,7 +113,7 @@ function sendStructuredLog(server, level, message, metadata) {
 }
 // mediKanren API configuration
 // const MEDIKANREN_API_BASE = "https://medikanren.loca.lt/";
-var MEDIKANREN_API_BASE = "https://medikanren2.metareflective.app";
+var MEDIKANREN_API_BASE = "https://medikanren.metareflective.systems";
 // https://medikanren.loca.lt/
 var DEBUG = false; // Set to false to reduce logging
 // Initialize the LLM client
