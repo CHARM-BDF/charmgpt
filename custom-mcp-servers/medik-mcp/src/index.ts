@@ -116,6 +116,13 @@ const FindPathwayRequestSchema = z.object({
     maxNodesPerIteration: z.number().default(5).describe("Number of candidate nodes to explore in each iteration")
 });
 
+// Define validation schema for simplified run-query0 tool
+const Query0RequestSchema = z.object({
+    subject: z.string().optional().describe("Subject: CURIE (e.g., HGNC:1097) or for unknown, specify biolink category (e.g., biolink:Gene) or leave blank"),
+    predicate: z.string().optional().describe("Predicate: biolink predicate (e.g., biolink:treats), category, or leave blank for any relationship"),
+    object: z.string().optional().describe("Object: CURIE (e.g., MONDO:0011719) or for unknown, specify biolink caetgory (e.g., biolink:Disease) or leave blank")
+});
+
 // Add TypeScript declaration for global.writeDebugLog
 declare global {
     var writeDebugLog: (message: string) => void;
@@ -175,7 +182,7 @@ try {
 
 // Log server initialization
 console.log(`[medik-mcp] Starting server v1.0.1 with find-pathway tool enabled`);
-console.log(`[medik-mcp] Registering tools: run-query, get-everything, network-neighborhood, find-pathway`);
+console.log(`[medik-mcp] Registering tools: run-query0, run-query, get-everything, network-neighborhood, find-pathway`);
 
 // Debug helper for direct console output
 function debugLog(message: string, data?: any) {
@@ -228,6 +235,59 @@ async function makeMediKanrenRequest<T>(params: Record<string, any>, retryCount 
             return makeMediKanrenRequest<T>(params, retryCount + 1);
         }
         
+        return null;
+    }
+}
+
+// Function to run a simplified run-query0 query
+export async function runQuery0(params: {
+    subject?: string,
+    predicate?: string,
+    object?: string
+}): Promise<QueryResponse | null> {
+    const { subject, predicate, object } = params;
+    
+    if (DEBUG) console.error(`[medik-mcp] Query0: subject=${subject || 'empty'} predicate=${predicate || 'empty'} object=${object || 'empty'}`);
+    
+    try {
+        const queryParams: Record<string, string> = {};
+        if (subject) queryParams.subject = subject;
+        if (predicate) queryParams.predicate = predicate;
+        if (object) queryParams.object = object;
+        
+        const url = `${MEDIKANREN_API_BASE}/query0`;
+        const queryParamsStr = new URLSearchParams(queryParams);
+        const fullUrl = `${url}?${queryParamsStr.toString()}`;
+        
+        if (DEBUG) console.error(`[medik-mcp] Making query0 request to: ${fullUrl}`);
+        
+        const headers: Record<string, string> = {};
+        if (MEDIKANREN_API_BASE.includes('medikanren.loca.lt')) {
+            const username = '';
+            const password = '138.26.202.195';
+            const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+            headers['Authorization'] = `Basic ${credentials}`;
+        }
+        
+        const response = await fetch(fullUrl, {
+            method: 'GET',
+            headers
+        });
+        
+        if (!response.ok) {
+            console.error(`[medik-mcp] HTTP error! status: ${response.status} for query0: ${JSON.stringify(params)}`);
+            throw new Error(`HTTP error! status: ${response.status} for query0: ${JSON.stringify(params)}`);
+        }
+        
+        const data = await response.json();
+        
+        if (Array.isArray(data) && DEBUG) {
+            console.error(`[medik-mcp] Query0 returned ${data.length} results`);
+        }
+        
+        return data as QueryResponse;
+    } catch (error) {
+        console.error(`[medik-mcp] Query0 error:`, error);
         return null;
     }
 }
@@ -374,6 +434,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     console.error('[TOOLS-DEBUG] Creating tools array...');
     const allTools = [
         {
+            name: "run-query0",
+            description: "Simplified query interface where any field can be left unspecified. Much more intuitive than run-query. Use this for most queries.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    subject: {
+                        type: "string",
+                        description: "Subject: CURIE (e.g., HGNC:1097) or for unknown, specify biolink category (e.g., biolink:Gene) or leave blank",
+                    },
+                    predicate: {
+                        type: "string",
+                        description: "Predicate: biolink predicate (e.g., biolink:treats), category, or leave blank for any relationship",
+                    },
+                    object: {
+                        type: "string",
+                        description: "Object: CURIE (e.g., MONDO:0011719) or for unknown, specify biolink caetgory (e.g., biolink:Disease) or leave blank",
+                    }
+                },
+                required: [],
+            },
+        },
+        {
             name: "run-query",
             description: "Run a 1-hop query in mediKanren. Note: If you need comprehensive bidirectional relationships, use get-everything instead as it provides complete coverage.",
             inputSchema: {
@@ -498,7 +580,132 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
             console.error('MEDIK: Tool request:', { toolName, toolArgs });
         }
 
-        if (toolName === "run-query") {
+        if (toolName === "run-query0") {
+            const { subject, predicate, object } = Query0RequestSchema.parse(toolArgs);
+            
+            if (DEBUG) {
+                console.error("\n\n========================================");
+                console.error(`MEDIK: NEW QUERY0 STARTED AT ${new Date().toISOString()}`);
+                console.error(`MEDIK: Query0: subject=${subject || 'empty'} predicate=${predicate || 'empty'} object=${object || 'empty'}`);
+                console.error("========================================\n");
+                console.error('MEDIK: Parsed arguments:', { subject, predicate, object });
+            }
+        
+            const queryResult = await runQuery0({ subject, predicate, object });
+        
+            if (!queryResult) {
+                if (DEBUG) {
+                    console.error("========================================");
+                    console.error(`MEDIK: QUERY0 FAILED AT ${new Date().toISOString()}`);
+                    console.error("========================================\n");
+                }
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: "Failed to retrieve query0 results. Please check the server logs for details.",
+                        },
+                    ],
+                };
+            }
+            
+            if (Array.isArray(queryResult)) {
+                server.sendLoggingMessage({
+                    level: "info",
+                    data: {
+                        message: "MEDIK: Filtering out nodes with CAID: prefix from query0 results",
+                        originalResultCount: queryResult.length
+                    },
+                });
+                
+                if (DEBUG) console.error(`MEDIK: Starting CAID node filtering process on ${queryResult.length} results`);
+                
+                try {
+                    if (DEBUG) console.error(`MEDIK: Calling formatKnowledgeGraphArtifact with ${queryResult.length} results`);
+                    
+                    // Create query params for the formatter
+                    const queryParams = {
+                        e1: subject || "",
+                        e2: predicate || "", 
+                        e3: object || ""
+                    };
+                    
+                    const formattingPromise = formatKnowledgeGraphArtifact(queryResult, queryParams);
+                    if (DEBUG) console.error(`MEDIK: Got Promise from formatKnowledgeGraphArtifact, waiting for resolution...`);
+                    
+                    const formattedResult = await formattingPromise;
+                    if (DEBUG) console.error(`MEDIK: Promise resolved successfully, got formatted result`);
+                    
+                    if (formattedResult.filteredCount && formattedResult.filteredCount > 0) {
+                        if (DEBUG) console.error(`MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique CAID nodes`);
+                        server.sendLoggingMessage({
+                            level: "info",
+                            data: {
+                                message: `MEDIK: Filtered out ${formattedResult.filteredCount} relationships involving ${formattedResult.filteredNodeCount} unique nodes with CAID: prefix`,
+                                filteredCount: formattedResult.filteredCount,
+                                filteredNodeCount: formattedResult.filteredNodeCount,
+                                remainingCount: queryResult.length - formattedResult.filteredCount
+                            },
+                        });
+                    } else if (DEBUG) {
+                        console.error(`MEDIK: No CAID nodes found in the results`);
+                    }
+                    
+                    if (DEBUG) {
+                        console.error(`MEDIK: Formatted result has ${formattedResult.content.length} content items and ${formattedResult.artifacts?.length || 0} artifacts`);
+                        console.error("\n========================================");
+                        console.error(`MEDIK: QUERY0 COMPLETED SUCCESSFULLY AT ${new Date().toISOString()}`);
+                        console.error("========================================\n");
+                    }
+                    
+                    return {
+                        content: formattedResult.content,
+                        artifacts: formattedResult.artifacts
+                    };
+                } catch (error) {
+                    console.error(`MEDIK: Error formatting results: ${error instanceof Error ? error.message : String(error)}`);
+                    if (DEBUG) {
+                        console.error(`MEDIK: Error stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
+                        console.error("========================================");
+                        console.error(`MEDIK: QUERY0 ERROR AT ${new Date().toISOString()}: Error formatting results`);
+                        console.error("========================================\n");
+                    }
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error formatting results: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                            },
+                        ],
+                    };
+                }
+            } else if ('error' in queryResult) {
+                console.error("========================================");
+                console.error(`MEDIK: QUERY0 ERROR AT ${new Date().toISOString()}: ${queryResult.error}`);
+                console.error("========================================\n");
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Error: ${queryResult.error}`,
+                        },
+                    ],
+                };
+            } else {
+                console.error("========================================");
+                console.error(`MEDIK: QUERY0 COMPLETED WITH UNKNOWN RESULT TYPE AT ${new Date().toISOString()}`);
+                console.error("========================================\n");
+                const formattedResult = JSON.stringify(queryResult, null, 2);
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Query results:\n\n${formattedResult}`,
+                        },
+                    ],
+                };
+            }
+        } else if (toolName === "run-query") {
             const { e1, e2, e3 } = QueryRequestSchema.parse(toolArgs);
             
             if (DEBUG) {
