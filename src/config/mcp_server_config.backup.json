@@ -56,7 +56,7 @@
     "medik-mcp": {
       "command": "node",
       "args": [
-        "./custom-mcp-servers/medik-mcp/dist/index.js"
+        "./custom-mcp-servers/medik-mcp2/dist/index.js"
       ]
     },
     "mondo-api": {
