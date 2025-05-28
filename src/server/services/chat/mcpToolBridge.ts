@@ -37,10 +37,29 @@ function jsonSchemaToZod(schema: any): z.ZodSchema {
         zodType = z.boolean();
         break;
       case 'array':
-        zodType = z.array(z.any());
+        // Handle array with proper items schema
+        if (property.items) {
+          const itemsSchema = convertJsonSchemaPropertyToZod(property.items);
+          zodType = z.array(itemsSchema);
+          
+          // Add array constraints if specified
+          if (property.minItems !== undefined) {
+            zodType = zodType.min(property.minItems);
+          }
+          if (property.maxItems !== undefined) {
+            zodType = zodType.max(property.maxItems);
+          }
+        } else {
+          zodType = z.array(z.any());
+        }
         break;
       case 'object':
-        zodType = z.object({});
+        // Handle nested objects
+        if (property.properties) {
+          zodType = jsonSchemaToZod(property);
+        } else {
+          zodType = z.object({});
+        }
         break;
       default:
         zodType = z.any();
@@ -60,6 +79,49 @@ function jsonSchemaToZod(schema: any): z.ZodSchema {
   }
   
   return z.object(zodFields);
+}
+
+/**
+ * Convert a single JSON schema property to Zod schema (helper for recursive conversion)
+ */
+function convertJsonSchemaPropertyToZod(property: any): z.ZodSchema {
+  switch (property.type) {
+    case 'string': {
+      if (property.enum && Array.isArray(property.enum) && property.enum.length > 0) {
+        return z.enum(property.enum as [string, ...string[]]);
+      }
+      return z.string();
+    }
+    case 'number':
+      return z.number();
+    case 'integer':
+      return z.number().int();
+    case 'boolean':
+      return z.boolean();
+          case 'array': {
+        if (property.items) {
+          const itemsSchema = convertJsonSchemaPropertyToZod(property.items);
+          let arraySchema = z.array(itemsSchema);
+          if (typeof property.minItems === 'number') {
+            arraySchema = arraySchema.min(property.minItems);
+          }
+          if (typeof property.maxItems === 'number') {
+            arraySchema = arraySchema.max(property.maxItems);
+          }
+          return arraySchema;
+        } else {
+          return z.array(z.any());
+        }
+      }
+    case 'object':
+      if (property.properties) {
+        return jsonSchemaToZod(property);
+      } else {
+        return z.object({});
+      }
+    default:
+      return z.any();
+  }
 }
 
 /**
