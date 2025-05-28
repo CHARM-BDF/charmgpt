@@ -221,6 +221,8 @@ export class LangGraphProvider implements LLMProvider {
       // Invoke the agent
       console.log(`🤖 LangGraphProvider: Invoking agent with recursionLimit: ${recursionLimit}`);
       console.log(`🤖 LangGraphProvider: Messages count: ${messages.length}`);
+      console.log(`🤖 LangGraphProvider: Provider type: ${this.providerType}`);
+      console.log(`🤖 LangGraphProvider: Model: ${this.model.constructor.name}`);
       
       const response = await this.agent.invoke(
         { messages },
@@ -332,6 +334,12 @@ export class LangGraphProvider implements LLMProvider {
    */
   async updateAgentWithTools(tools: StructuredToolInterface[]): Promise<void> {
     try {
+      // Log detailed tool information
+      console.log(`🔧 LangGraphProvider: Updating agent with ${tools.length} tools:`);
+      tools.forEach((tool, index) => {
+        console.log(`🔧 LangGraphProvider: Tool ${index}: name="${tool.name}", description="${tool.description}"`);
+      });
+      
       // Reinitialize agent with new tools
       await this.initializeAgent(tools);
       console.log(`LangGraphProvider: Updated agent with ${tools.length} tools`);

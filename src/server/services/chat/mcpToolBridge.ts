@@ -5,95 +5,145 @@
  * allowing the React agent to use the existing MCP service.
  */
 
-import { Tool } from '@langchain/core/tools';
+import { tool } from '@langchain/core/tools';
+import { z } from 'zod';
 import { MCPService, AnthropicTool } from '../mcp';
 
 /**
- * Bridge tool that wraps an MCP tool for use with LangGraph
+ * Convert JSON schema to Zod schema for LangChain tools
  */
-export class MCPToolBridge extends Tool {
-  name: string;
-  description: string;
-  private mcpService: MCPService;
-  private serverName: string;
-  private originalToolName: string;
-
-  constructor(
-    mcpService: MCPService,
-    serverName: string,
-    tool: AnthropicTool
-  ) {
-    super();
-    this.name = `${serverName}_${tool.name}`.replace(/[^a-zA-Z0-9_]/g, '_');
-    this.description = tool.description;
-    this.mcpService = mcpService;
-    this.serverName = serverName;
-    
-    // The tool.name might be in format "serverName:toolName", we need just the toolName part
-    if (tool.name.includes(':')) {
-      this.originalToolName = tool.name.split(':')[1];
-    } else {
-      this.originalToolName = tool.name;
-    }
-    
-    console.log(`🔧 MCPToolBridge: Created bridge tool - LangGraph name: "${this.name}", MCP server: "${serverName}", MCP tool: "${this.originalToolName}"`);
+function jsonSchemaToZod(schema: any): z.ZodSchema {
+  if (!schema || !schema.properties) {
+    return z.object({});
   }
 
-  /**
-   * Execute the MCP tool
-   */
-  async _call(input: string): Promise<string> {
-    console.log(`🔧 MCPToolBridge: TOOL EXECUTION STARTED - ${this.serverName}.${this.originalToolName}`);
-    console.log(`🔧 MCPToolBridge: Input received:`, input);
+  const zodFields: Record<string, z.ZodSchema> = {};
+  
+  for (const [key, prop] of Object.entries(schema.properties)) {
+    const property = prop as any;
+    let zodType: z.ZodSchema;
     
-    try {
-      // Parse input if it's JSON, otherwise use as-is
-      let args: Record<string, unknown>;
-      try {
-        args = JSON.parse(input);
-        console.log(`🔧 MCPToolBridge: Parsed JSON args:`, args);
-      } catch {
-        // If not JSON, create a simple object
-        // For Python tools, use 'code' parameter instead of 'input'
-        if (this.originalToolName === 'execute_python') {
-          args = { code: input };
-          console.log(`🔧 MCPToolBridge: Using raw input as 'code' parameter for Python tool:`, args);
-        } else {
-          args = { input };
-          console.log(`🔧 MCPToolBridge: Using raw input as 'input' parameter:`, args);
-        }
-      }
-
-      console.log(`🔧 MCPToolBridge: Calling ${this.serverName}.${this.originalToolName} with args:`, args);
-
-      // Call the MCP tool through the existing service
-      // The tool name should be in format "serverName:toolName" not "serverName.toolName"
-      const mcpToolName = `${this.serverName}:${this.originalToolName}`;
-      console.log(`🔧 MCPToolBridge: Using MCP tool name: "${mcpToolName}"`);
-      
-      const result = await this.mcpService.callTool(this.serverName, this.originalToolName, args);
-      
-      console.log(`🔧 MCPToolBridge: Tool execution completed. Result type:`, typeof result);
-      console.log(`🔧 MCPToolBridge: Tool result:`, JSON.stringify(result, null, 2));
-      
-      // Convert result to string
-      let stringResult: string;
-      if (typeof result === 'string') {
-        stringResult = result;
-      } else {
-        stringResult = JSON.stringify(result, null, 2);
-      }
-      
-      console.log(`🔧 MCPToolBridge: Returning string result (length: ${stringResult.length})`);
-      return stringResult;
-    } catch (error) {
-      console.error(`❌ MCPToolBridge: Error calling ${this.serverName}.${this.originalToolName}:`, error);
-      const errorMessage = `Error executing tool: ${error instanceof Error ? error.message : String(error)}`;
-      console.log(`🔧 MCPToolBridge: Returning error message:`, errorMessage);
-      return errorMessage;
+    switch (property.type) {
+      case 'string':
+        zodType = z.string();
+        break;
+      case 'number':
+        zodType = z.number();
+        break;
+      case 'integer':
+        zodType = z.number().int();
+        break;
+      case 'boolean':
+        zodType = z.boolean();
+        break;
+      case 'array':
+        zodType = z.array(z.any());
+        break;
+      case 'object':
+        zodType = z.object({});
+        break;
+      default:
+        zodType = z.any();
     }
+    
+    // Add description if available
+    if (property.description) {
+      zodType = zodType.describe(property.description);
+    }
+    
+    // Make optional if not required
+    if (!schema.required?.includes(key)) {
+      zodType = zodType.optional();
+    }
+    
+    zodFields[key] = zodType;
   }
+  
+  return z.object(zodFields);
 }
+
+/**
+ * Create a bridge tool that wraps an MCP tool for use with LangGraph
+ */
+export function createMCPToolBridge(
+  mcpService: MCPService,
+  serverName: string,
+  mcpTool: AnthropicTool
+) {
+  // The tool.name might be in format "serverName:toolName" or already be just the toolName
+  let originalToolName: string;
+  if (mcpTool.name.includes(':')) {
+    originalToolName = mcpTool.name.split(':')[1];
+  } else {
+    originalToolName = mcpTool.name;
+  }
+  
+  // Create a shorter, sanitized name that fits within 64 character limit
+  let baseName = `${serverName}_${originalToolName}`.replace(/[^a-zA-Z0-9_]/g, '_');
+  
+  // Truncate if too long, keeping it under 64 characters
+  if (baseName.length > 63) {
+    // Try to keep the tool name part if possible
+    const maxServerNameLength = 20;
+    const truncatedServerName = serverName.length > maxServerNameLength 
+      ? serverName.substring(0, maxServerNameLength) 
+      : serverName;
+    
+    const remainingLength = 63 - truncatedServerName.length - 1; // -1 for underscore
+    const truncatedToolName = originalToolName.length > remainingLength
+      ? originalToolName.substring(0, remainingLength)
+      : originalToolName;
+    
+    baseName = `${truncatedServerName}_${truncatedToolName}`.replace(/[^a-zA-Z0-9_]/g, '_');
+  }
+
+  // Convert JSON schema to Zod schema
+  const zodSchema = jsonSchemaToZod(mcpTool.input_schema);
+  
+  console.log(`🔧 MCPToolBridge: Creating bridge tool - LangGraph name: "${baseName}" (${baseName.length} chars), MCP server: "${serverName}", MCP tool: "${originalToolName}"`);
+  console.log(`🔧 MCPToolBridge: Tool description: "${mcpTool.description}"`);
+  console.log(`🔧 MCPToolBridge: Tool input schema:`, JSON.stringify(mcpTool.input_schema, null, 2));
+  
+  return tool(
+    async (args: any) => {
+      console.log(`🔧 MCPToolBridge: TOOL EXECUTION STARTED - ${serverName}.${originalToolName}`);
+      console.log(`🔧 MCPToolBridge: Input received:`, args);
+      
+      try {
+        console.log(`🔧 MCPToolBridge: Calling ${serverName}.${originalToolName} with args:`, args);
+
+        // Call the MCP tool through the existing service
+        const result = await mcpService.callTool(serverName, originalToolName, args);
+        
+        console.log(`🔧 MCPToolBridge: Tool execution completed. Result type:`, typeof result);
+        console.log(`🔧 MCPToolBridge: Tool result:`, JSON.stringify(result, null, 2));
+        
+        // Convert result to string
+        let stringResult: string;
+        if (typeof result === 'string') {
+          stringResult = result;
+        } else {
+          stringResult = JSON.stringify(result, null, 2);
+        }
+        
+        console.log(`🔧 MCPToolBridge: Returning string result (length: ${stringResult.length})`);
+        return stringResult;
+      } catch (error) {
+        console.error(`❌ MCPToolBridge: Error calling ${serverName}.${originalToolName}:`, error);
+        const errorMessage = `Error executing tool: ${error instanceof Error ? error.message : String(error)}`;
+        console.log(`🔧 MCPToolBridge: Returning error message:`, errorMessage);
+        return errorMessage;
+      }
+    },
+    {
+      name: baseName,
+      description: mcpTool.description,
+      schema: zodSchema,
+    }
+  );
+}
+
+
 
 /**
  * Create LangGraph-compatible tools from existing MCP service
@@ -101,12 +151,12 @@ export class MCPToolBridge extends Tool {
 export async function createMCPToolsForLangGraph(
   mcpService: MCPService,
   blockedServers: string[] = []
-): Promise<MCPToolBridge[]> {
+) {
   try {
     // Get all available tools from MCP service
     const availableTools = await mcpService.getAllAvailableTools(blockedServers);
     
-    const tools: MCPToolBridge[] = [];
+    const tools: any[] = [];
     
     // Group tools by server to get server names
     const serverNames = Array.from(mcpService.getServerNames());
@@ -123,10 +173,9 @@ export async function createMCPToolsForLangGraph(
       
       // Get tools for this server
       const serverTools = availableTools.filter(tool => {
-        // The tool name might be prefixed with server name
-        const originalName = mcpService.getOriginalToolName(tool.name);
-        const belongsToServer = originalName !== undefined;
-        console.log(`🔧 MCPToolBridge: Tool "${tool.name}" -> original: "${originalName}", belongs to server: ${belongsToServer}`);
+        // Check if the tool name starts with this server name (handle both : and - formats)
+        const belongsToServer = tool.name.startsWith(`${serverName}:`) || tool.name.startsWith(`${serverName}-`);
+        console.log(`🔧 MCPToolBridge: Tool "${tool.name}" belongs to server "${serverName}": ${belongsToServer}`);
         return belongsToServer;
       });
       
@@ -134,19 +183,24 @@ export async function createMCPToolsForLangGraph(
       
       // Create bridge tools
       for (const tool of serverTools) {
-        const originalName = mcpService.getOriginalToolName(tool.name);
+        // Extract the tool name from "serverName:toolName" or "serverName-toolName" format
+        let originalName: string;
+        if (tool.name.includes(':')) {
+          originalName = tool.name.split(':')[1];
+        } else if (tool.name.startsWith(`${serverName}-`)) {
+          originalName = tool.name.substring(serverName.length + 1); // +1 for the hyphen
+        } else {
+          originalName = tool.name;
+        }
+        
         console.log(`🔧 MCPToolBridge: Processing tool - Anthropic name: "${tool.name}", Original name: "${originalName}", Server: "${serverName}"`);
         
-        if (originalName) {
-          const bridgeTool = new MCPToolBridge(mcpService, serverName, {
-            name: originalName,
-            description: tool.description,
-            input_schema: tool.input_schema
-          });
-          tools.push(bridgeTool);
-        } else {
-          console.warn(`🔧 MCPToolBridge: Could not get original name for tool: ${tool.name}`);
-        }
+        const bridgeTool = createMCPToolBridge(mcpService, serverName, {
+          name: originalName,
+          description: tool.description,
+          input_schema: tool.input_schema
+        });
+        tools.push(bridgeTool);
       }
     }
     
