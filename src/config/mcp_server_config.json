@@ -64,6 +64,13 @@
       ],
       "timeout": 120000
     },
+    "arax-pathfinder": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/arax-pathfinder/dist/index.js"
+      ],
+      "timeout": 60000
+    },
     "python": {
       "command": "node",
       "args": [
