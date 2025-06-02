@@ -127,6 +127,19 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
   const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
 
+  // Helper function to get color based on entity group
+  const getColorForGroup = (group: number): string => {
+    const colors = [
+      '#e74c3c', // Red - Group 1 (Gene)
+      '#3498db', // Blue - Group 2 (Drug) 
+      '#e67e22', // Orange - Group 3 (Disease)
+      '#9b59b6', // Purple - Group 4 (Protein)
+      '#2ecc71', // Green - Group 5 (Pathway)
+      '#95a5a6'  // Gray - Group 6 (Other)
+    ];
+    return colors[group - 1] || colors[5]; // Default to gray for unknown groups
+  };
+
   // Parse the data if it's a string
   useEffect(() => {
     try {
@@ -285,76 +298,44 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     }
   }, [edgeLabels]);
 
-  // Transform data for Reagraph format
+  // Transform the data to reagraph format
   const graphData = useMemo(() => {
     if (!parsedData) return { nodes: [], edges: [] };
-    
-    console.log('Processing graph data:', {
-      nodeCount: parsedData.nodes.length,
-      linkCount: parsedData.links.length
-    });
-    
-    // Map nodes to Reagraph format
-    const nodes = parsedData.nodes.map(node => {
-      // Get the color value from node or generate one
-      const colorValue = node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4');
-      
-      // Get entity type from node
-      const entityType = (node as any).entityType || 'Other';
-      
-      // Create stroke properties based on isStartingNode
-      const strokeProps = node.isStartingNode ? {
-        stroke: '#000000',
-        strokeWidth: 3
-      } : {};
-      
-      return {
-        id: node.id,
-        label: node.name,
-        color: colorValue,
-        fill: colorValue,
-        size: node.val || 1,
-        entityType,
-        startingId: node.startingId,
-        metadata: node.metadata,
-        ...strokeProps,
-        data: {
-          id: node.id,
-          color: colorValue,
-          entityType,
-          startingId: node.startingId,
-          metadata: node.metadata,
-          ...strokeProps
-        }
-      };
-    });
-    
-    // Map links to Reagraph edges format and ensure valid node references
-    const validNodeIds = new Set(nodes.map(node => node.id));
-    const edges = parsedData.links.map(link => ({
-      id: `${link.source}->${link.target}${link.label ? `-${link.label}` : ''}`,
+
+    // Convert nodes
+    const nodes = parsedData.nodes.map((node: any) => ({
+      id: node.id,
+      label: node.name || node.id,
+      color: getColorForGroup(node.group),
+      size: node.val || 10,
+      entityType: node.entityType,
+      startingId: node.startingId,
+      metadata: node.metadata,
+      isStartingNode: node.isStartingNode,
+      fx: undefined as number | undefined, // Fixed x position
+      fy: undefined as number | undefined  // Fixed y position
+    }));
+
+    // Check if we have exactly 2 starting nodes (connecting path scenario)
+    const startingNodes = nodes.filter(node => node.isStartingNode);
+    if (startingNodes.length === 2) {
+      // Position starting nodes on opposite sides
+      startingNodes[0].fx = -200; // Fixed x position (left side)
+      startingNodes[0].fy = 0;    // Center vertically
+      startingNodes[1].fx = 200;  // Fixed x position (right side)  
+      startingNodes[1].fy = 0;    // Center vertically
+    }
+
+    // Convert edges
+    const edges = parsedData.links.map((link: any, index: number) => ({
+      id: `${link.source}-${link.target}-${index}`,
       source: link.source,
       target: link.target,
-      label: link.label || '',
-      data: { ...link },
-      color: link.color || '#999',
-      size: link.value || 1
-    })).filter(edge => {
-      const isValid = validNodeIds.has(edge.source) && validNodeIds.has(edge.target);
-      if (!isValid) {
-        console.error('❌ INVALID EDGE DETECTED ❌');
-        console.error(`Edge from "${edge.source}" to "${edge.target}" with label "${edge.label}" is invalid because:`);
-        if (!validNodeIds.has(edge.source)) {
-          console.error(`- Source node "${edge.source}" does not exist in the graph`);
-        }
-        if (!validNodeIds.has(edge.target)) {
-          console.error(`- Target node "${edge.target}" does not exist in the graph`);
-        }
-        console.error('Full edge details:', edge);
-      }
-      return isValid;
-    });
-    
+      label: link.label?.replace('biolink:', '') || '',
+      color: '#888',
+      size: Math.max(1, link.value || 1)
+    }));
+
     return { nodes, edges };
   }, [parsedData]);
 

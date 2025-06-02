@@ -1,0 +1,80 @@
+================================================================================
+3-HOP CONNECTING PATHS TEST RESULTS (IMPROVED STRATEGY)
+================================================================================
+Test Date: 2025-05-28T20:34:48.090Z
+Test Entities: HGNC:2908, HGNC:2364, HGNC:3354
+Strategy: Two-phase (parallel + sequential retry) with final filtering
+HGNC:2908 = DDIT3 (DNA damage inducible transcript 3)
+HGNC:2364 = CEBPB (CCAAT enhancer binding protein beta)
+HGNC:3354 = EGR1 (early growth response 1)
+
+🔍 PHASE 1: Fetching direct neighbors of start entities...
+  Processing HGNC:2908...
+    ✅ Found 207 neighbors
+  Processing HGNC:2364...
+    ✅ Found 155 neighbors
+  Processing HGNC:3354...
+    ✅ Found 153 neighbors
+
+Level 1 complete: 36 nodes
+
+🔍 PHASE 2: Fetching level 2 neighbors with retry strategy...
+  Processing level 1 node: UMLS:C0598312
+    ✅ Added 5 level 2 neighbors
+  Processing level 1 node: UMLS:C0034865
+    ✅ Added 5 level 2 neighbors
+  Processing level 1 node: UMLS:C0031715
+    ✅ Added 5 level 2 neighbors
+  Processing level 1 node: UMLS:C0243192
+    ❌ No level 2 neighbors found
+  Processing level 1 node: UMLS:C0162638
+    ❌ No level 2 neighbors found
+  Processing level 1 node: UMLS:C0040649
+    ❌ No level 2 neighbors found
+  Processing level 1 node: UMLS:C0037083
+    ❌ No level 2 neighbors found
+  Processing level 1 node: UMLS:C0007634
+    ❌ No level 2 neighbors found
+Level 2 complete: 12 nodes added
+Success rate: 3/8 level 1 nodes processed
+
+🔗 ANALYZING CONNECTING PATHS...
+  Checking 2-hop paths (1 intermediate):
+    🔗 2 paths: HGNC:2908 ↔ [intermediate] ↔ HGNC:2364
+    🔗 1 paths: HGNC:2908 ↔ [intermediate] ↔ HGNC:3354
+  Checking 3-hop paths (2 intermediates):
+
+🎯 FINAL FILTERING: Keeping only nodes on connecting paths...
+  Total nodes discovered: 51
+  Nodes on connecting paths: 6
+  Nodes pruned: 45 (88%)
+
+🎯 FINAL RESULTS (MCP-STYLE OUTPUT)
+========================================
+Connecting paths found: 3
+  - 2-hop paths: 3
+  - 3-hop paths: 0
+
+📋 CONNECTING PATHS (FINAL OUTPUT):
+----------------------------------------
+2-HOP PATHS:
+  1. HGNC:2908 ↔ UMLS:C0037083 ↔ HGNC:2364
+  2. HGNC:2908 ↔ UMLS:C0007634 ↔ HGNC:2364
+  3. HGNC:2908 ↔ UMLS:C0017262 ↔ HGNC:3354
+
+
+📊 FINAL GRAPH STATISTICS:
+  - Nodes in final graph: 6
+  - Edges in final graph: 6
+  - Starting entities: 3
+  - Intermediate nodes: 3
+
+🎯 STRATEGY PERFORMANCE:
+✅ Two-phase fetching implemented
+✅ Sequential retry for failed requests
+✅ Final filtering to path-only nodes
+✅ MCP-style output (only relevant results)
+✅ Server-friendly request pattern
+
+🏁 Improved 3-hop test complete!
+================================================================================
