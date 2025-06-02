@@ -3,9 +3,24 @@
 ## Overview
 This document captures the **working configuration** for the ARAX MCP Server, for both connecting path queries and single entity queries between biomedical entities.
 
+## 🎯 Two ARAX MCP Servers Available
+
+### 1. `arax-mcp` - Full Featured Server
+- **Location**: `custom-mcp-servers/arax-mcp/`
+- **Tools**: 3 tools (query-entity-effects, find-connecting-path, custom-query)
+- **Status**: Has timeout issues with single entity queries
+- **Best For**: Custom complex queries when working
+
+### 2. `arax-pathfinder` - Optimized Connecting Path Server ⭐
+- **Location**: `custom-mcp-servers/arax-pathfinder/`
+- **Tools**: 1 tool (find-connecting-path only)
+- **Status**: Fast, reliable, enhanced with text summaries
+- **Best For**: Connecting two biomedical entities
+- **Features**: Rich text responses with node/edge counts, error handling
+
 ## ✅ What Works: Both Query Types
 
-### 1. Connecting Path Queries ✅
+### 1. Connecting Path Queries ✅ (BOTH SERVERS)
 The ARAX MCP server successfully handles **connecting path queries** between two specific entities using CURIE identifiers.
 
 **Input Format:**
@@ -21,29 +36,69 @@ The ARAX MCP server successfully handles **connecting path queries** between two
 - **Response Time**: Fast (< 5 seconds for direct API calls)
 - **Status**: Success
 
-### 2. Single Entity Queries ✅ 
+### 2. Single Entity Queries ✅ (arax-mcp only)
 The ARAX MCP server successfully handles **single entity queries** to find what a specific entity affects or connects to.
 
-**Input Format:**
+**Optimal Working Format (discovered through testing):**
 ```json
 {
-  "entity": "NCBIGene:283635"
+  "edges": {
+    "e0": {
+      "subject": "n0",
+      "object": "n1"
+    }
+  },
+  "nodes": {
+    "n0": {
+      "ids": ["NCBIGene:283635"],
+      "categories": ["biolink:Gene"],
+      "is_set": false,
+      "name": "FAM177A1"
+    },
+    "n1": {
+      "categories": [
+        "biolink:Disease",
+        "biolink:Drug",
+        "biolink:Gene", 
+        "biolink:Protein"
+      ],
+      "is_set": false
+    }
+  }
 }
 ```
 
-**Results:**
-- **Direct ARAX API**: 337 nodes, 904 edges returned
-- **Response Time**: 20.5 seconds (well under MCP timeout)
-- **Status**: Success
+**Performance Results:**
+- ⏱️ **Time**: 25.8 seconds (acceptable)
+- 🎯 **Nodes**: 141 nodes returned
+- 🔗 **Edges**: 694 connections found
+- ✅ **Status**: Success
 
-### CURIE Format Requirements
+## 🚀 Recommended Usage
+
+### For Connecting Two Entities → Use `arax-pathfinder` ⭐
+- **Faster**: < 5 seconds
+- **Reliable**: No timeout issues  
+- **Enhanced**: Rich text summaries
+- **Simple**: Single focused tool
+
+### For Single Entity Exploration → Use `arax-mcp`
+- **More comprehensive**: Multiple query types
+- **Complex queries**: Custom ARAX DSL support
+- **May timeout**: 60-second limit can be hit
+
+## CURIE Format Requirements
 ✅ **Use CURIE identifiers**, not gene symbols:
 - ✅ `NCBIGene:283635` (works)
-- ❌ `FAM177A1` (gene symbol - doesn't work reliably)
+- ❌ `FAM177A1` (gene symbol, doesn't work)
 
-### Working Query Structures
+**Example Test Entities:**
+- `NCBIGene:283635` (FAM177A1 gene)
+- `NCBIGene:28514` (IL1B gene)
 
-#### For Connecting Path Queries
+## Working Query Structures
+
+### ✅ Connecting Paths (Both Servers)
 ```json
 {
   "message": {
@@ -55,13 +110,13 @@ The ARAX MCP server successfully handles **single entity queries** to find what 
       "paths": {
         "p0": {
           "subject": "n0",
-          "object": "n1",
+          "object": "n1", 
           "predicates": ["biolink:related_to"]
         }
       }
     }
   },
-  "submitter": "ARAX MCP Server",
+  "submitter": "Connecting Path Test",
   "stream_progress": false,
   "query_options": {
     "kp_timeout": "30",
@@ -70,7 +125,7 @@ The ARAX MCP server successfully handles **single entity queries** to find what 
 }
 ```
 
-#### For Single Entity Queries (OPTIMAL FORMAT)
+### ✅ Single Entity (arax-mcp only)
 ```json
 {
   "message": {
@@ -91,7 +146,7 @@ The ARAX MCP server successfully handles **single entity queries** to find what 
         "n1": {
           "categories": [
             "biolink:Disease",
-            "biolink:Drug",
+            "biolink:Drug", 
             "biolink:Gene",
             "biolink:Protein"
           ],
@@ -100,7 +155,7 @@ The ARAX MCP server successfully handles **single entity queries** to find what 
       }
     }
   },
-  "submitter": "ARAX MCP Server",
+  "submitter": "Single Entity Test",
   "stream_progress": false,
   "query_options": {
     "kp_timeout": "30",
@@ -109,50 +164,52 @@ The ARAX MCP server successfully handles **single entity queries** to find what 
 }
 ```
 
-## 🔧 MCP Tool Configuration
+## ❌ What Doesn't Work
 
-### Available Tools
-1. **`find-connecting-path`** ✅ (WORKING)
-   - Connects two specific entities
-   - Uses `paths` structure
-   - Fast performance (~5 seconds direct API)
-   - Reliable results
+### Single Entity with Paths Structure
+- **Issue**: Using `paths` structure for single entity queries causes 400 errors
+- **Solution**: Use `edges` structure instead
 
-2. **`query-entity-effects`** ✅ (WORKING - Updated Format)
-   - Single entity with focused categories  
-   - Uses `edges` structure with no predicates
-   - Fast performance (20.5 seconds - under MCP timeout)
-   - Focused, relevant results
+### Gene Symbols Instead of CURIEs
+- **Issue**: `FAM177A1` fails, must use `NCBIGene:283635`
+- **Solution**: Always convert to proper CURIE format
 
-3. **`custom-query`** ⚠️ (UNTESTED)
-   - Custom predicates and categories
+### Empty Categories
+- **Issue**: No categories in target node can cause issues  
+- **Solution**: Specify relevant `biolink:` categories
 
-### Server Configuration
+## 🔧 Configuration
+
+Both servers are configured in `src/config/mcp_server_config.json`:
+
 ```json
 {
   "arax-mcp": {
     "command": "node",
-    "args": [
-      "./custom-mcp-servers/arax-mcp/dist/index.js"
-    ],
+    "args": ["./custom-mcp-servers/arax-mcp/dist/index.js"],
+    "timeout": 120000
+  },
+  "arax-pathfinder": {
+    "command": "node", 
+    "args": ["./custom-mcp-servers/arax-pathfinder/dist/index.js"],
     "timeout": 120000
   }
 }
 ```
 
-## ⚠️ Known Issues
+## 📊 Performance Summary
 
-### MCP SDK Timeout (Resolved for Optimized Queries)
-- **Problem**: Hardcoded 60-second timeout in `@modelcontextprotocol/sdk`
-- **Location**: `node_modules/@modelcontextprotocol/sdk/src/shared/protocol.ts:591`
-- **Status**: **RESOLVED** - Optimized queries complete in 20-45 seconds
-- **Solution**: Use the optimal formats documented above
+| Query Type | Server | Response Time | Reliability | Features |
+|------------|--------|---------------|-------------|----------|
+| **Connecting Path** | arax-pathfinder ⭐ | < 5 seconds | High | Text summaries |
+| **Connecting Path** | arax-mcp | < 5 seconds | High | JSON only |
+| **Single Entity** | arax-mcp | ~26 seconds | Medium | Multiple tools |
+| **Single Entity** | arax-pathfinder | ❌ N/A | N/A | Not supported |
 
-### Error Signature (Historical)
-```
-McpError: MCP error -32001: Request timed out
-  at Timeout.timeoutHandler (/path/to/protocol.ts:591:43)
-```
+## 🎯 Final Recommendation
+
+- **Primary**: Use `arax-pathfinder` for connecting path queries (fast, reliable, rich responses)
+- **Secondary**: Use `arax-mcp` for single entity exploration when needed (slower but comprehensive)
 
 ## 🧪 Testing Results
 

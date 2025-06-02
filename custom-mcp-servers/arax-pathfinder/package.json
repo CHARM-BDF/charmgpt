@@ -1,0 +1,32 @@
+{
+  "name": "arax-pathfinder-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for ARAX connecting path queries between biomedical entities",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "arax",
+    "pathfinder",
+    "biomedical",
+    "knowledge-graph",
+    "ncats"
+  ],
+  "author": "ARAX Pathfinder MCP",
+  "license": "MIT"
+} 
