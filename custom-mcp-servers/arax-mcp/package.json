@@ -1,0 +1,38 @@
+{
+  "name": "arax-mcp",
+  "version": "1.0.0",
+  "description": "ARAX MCP Server - Biomedical Knowledge Graph Explorer using NCATS ARAX API",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "arax-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "biomedical",
+    "knowledge-graph",
+    "arax",
+    "ncats",
+    "trapi"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "undici": "^7.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 

@@ -57,6 +57,13 @@
         "./custom-mcp-servers/medik-mcp/dist/medik-mcp/src/index.js"
       ]
     },
+    "arax-mcp": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/arax-mcp/dist/index.js"
+      ],
+      "timeout": 120000
+    },
     "python": {
       "command": "node",
       "args": [
