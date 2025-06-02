@@ -3,7 +3,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
 import { ConversationList } from './ConversationList';
 // @ts-ignore - Heroicons type definitions mismatch
-import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon, BeakerIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface ConversationDrawerProps {
   onShowProjects?: () => void;
@@ -20,8 +20,10 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(true); // Always show at least the collapsed view
   const [isExpanded, setIsExpanded] = useState(false); // Track expanded/collapsed state
+  const [isBulkEditMode, setIsBulkEditMode] = useState(false);
+  const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
   const drawerRef = useRef<HTMLDivElement>(null);
-  const { startNewConversation, switchConversation, conversations } = useChatStore();
+  const { startNewConversation, switchConversation, conversations, deleteConversation } = useChatStore();
   const { projects } = useProjectStore();
   
   // Get regular projects (not grant reviews)
@@ -83,6 +85,25 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       setShowProjectView(true);
     }
     setIsExpanded(false);
+  };
+
+  const handleBulkDelete = () => {
+    const count = selectedConversationIds.size;
+    if (window.confirm(`Are you sure you want to delete ${count} conversation${count > 1 ? 's' : ''}?`)) {
+      selectedConversationIds.forEach(id => deleteConversation(id));
+      setSelectedConversationIds(new Set());
+      setIsBulkEditMode(false);
+    }
+  };
+
+  const handleConversationSelect = (id: string, selected: boolean) => {
+    const newSelected = new Set(selectedConversationIds);
+    if (selected) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedConversationIds(newSelected);
   };
 
   // Calculate the width class based on current state
@@ -331,8 +352,38 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 Conversations
               </h2>
             </div>
+            
+            {/* Bulk Edit Toggle */}
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={() => {
+                  setIsBulkEditMode(!isBulkEditMode);
+                  setSelectedConversationIds(new Set());
+                }}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                {isBulkEditMode ? 'Cancel Bulk Edit' : 'Bulk Edit'}
+              </button>
+              
+              {isBulkEditMode && selectedConversationIds.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 dark:text-red-400 
+                           hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 
+                           rounded transition-colors"
+                >
+                  <TrashIcon className="w-3 h-3" />
+                  Delete ({selectedConversationIds.size})
+                </button>
+              )}
+            </div>
+            
             <div className="h-[calc(100vh-420px)] overflow-y-auto pr-1">
-              <ConversationList />
+              <ConversationList 
+                isBulkEditMode={isBulkEditMode}
+                selectedConversationIds={selectedConversationIds}
+                onConversationSelect={handleConversationSelect}
+              />
             </div>
           </div>
         </div>
