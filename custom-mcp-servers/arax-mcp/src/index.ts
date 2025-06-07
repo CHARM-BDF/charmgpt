@@ -431,6 +431,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         const title = `Knowledge Graph: All bidirectional relationships for ${entity}`;
         const summary = `Found ${knowledgeGraph.links.length} bidirectional relationships connecting ${knowledgeGraph.nodes.length} biomedical entities (what ${entity} affects AND what affects ${entity}).`;
 
+        // Ensure content is always a string (like medik-mcp format)
+        const stringifiedContent = JSON.stringify(knowledgeGraph);
+
         return {
           content: [
             {
@@ -442,7 +445,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             {
               type: 'application/vnd.knowledge-graph',
               title,
-              content: JSON.stringify(knowledgeGraph)
+              content: stringifiedContent
             }
           ]
         };
@@ -475,6 +478,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         const title = `Knowledge Graph: Connecting paths between ${entity_a} and ${entity_b}`;
         const summary = `Found ${knowledgeGraph.links.length} connecting paths through ${knowledgeGraph.nodes.length} biomedical entities.`;
 
+        // Ensure content is always a string (like medik-mcp format)
+        const stringifiedContent = JSON.stringify(knowledgeGraph);
+
         return {
           content: [
             {
@@ -486,7 +492,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             {
               type: 'application/vnd.knowledge-graph',
               title,
-              content: JSON.stringify(knowledgeGraph)
+              content: stringifiedContent
             }
           ]
         };
@@ -553,6 +559,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         const title = `Knowledge Graph: Custom query for ${source_entity}`;
         const summary = `Found ${knowledgeGraph.links.length} relationships using predicates [${predicates.join(', ')}] connecting ${knowledgeGraph.nodes.length} biomedical entities.`;
 
+        // Ensure content is always a string (like medik-mcp format)
+        const stringifiedContent = JSON.stringify(knowledgeGraph);
+
         return {
           content: [
             {
@@ -564,7 +573,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
             {
               type: 'application/vnd.knowledge-graph',
               title,
-              content: JSON.stringify(knowledgeGraph)
+              content: stringifiedContent
             }
           ]
         };

@@ -78,19 +78,51 @@ function log(message: string, data?: any): void {
   }
 }
 
+// Entity type classification based on CURIE prefix (matching medik-mcp2)
+function getEntityType(curie: string): { type: string; group: number } {
+  const prefix = curie.split(':')[0];
+  
+  switch (prefix) {
+    case 'DRUGBANK':
+    case 'CHEBI':
+      return { type: 'Drug', group: 2 }; // Blue
+    case 'NCBIGene':
+    case 'HGNC':
+      return { type: 'Gene', group: 1 }; // Red
+    case 'MONDO':
+    case 'HP':
+    case 'DOID':
+      return { type: 'Disease', group: 3 }; // Orange
+    case 'UniProtKB':
+      return { type: 'Protein', group: 4 }; // Purple
+    case 'REACT':
+    case 'GO':
+      return { type: 'Pathway', group: 5 }; // Green
+    case 'UMLS':
+      return { type: 'UMLS Concept', group: 6 }; // Gray
+    case 'NCIT':
+      return { type: 'Cancer Concept', group: 6 }; // Gray
+    case 'CL':
+      return { type: 'Cell Type', group: 6 }; // Gray
+    default:
+      return { type: 'Unknown', group: 6 }; // Gray
+  }
+}
+
+// Legacy function for backward compatibility with biolink categories
 function classifyEntity(categories: string[]): { type: string; group: number } {
   const categoryMap: Record<string, { type: string; group: number }> = {
-    'biolink:Disease': { type: 'Disease', group: 1 },
-    'biolink:Drug': { type: 'Drug', group: 2 },
-    'biolink:Gene': { type: 'Gene', group: 3 },
-    'biolink:Protein': { type: 'Protein', group: 4 },
-    'biolink:ChemicalEntity': { type: 'Chemical', group: 2 },
-    'biolink:BiologicalProcess': { type: 'Process', group: 5 },
-    'biolink:MolecularActivity': { type: 'Activity', group: 5 },
-    'biolink:CellularComponent': { type: 'Component', group: 5 },
-    'biolink:Pathway': { type: 'Pathway', group: 6 },
-    'biolink:AnatomicalEntity': { type: 'Anatomy', group: 7 },
-    'biolink:PhenotypicFeature': { type: 'Phenotype', group: 8 }
+    'biolink:Disease': { type: 'Disease', group: 3 }, // Orange
+    'biolink:Drug': { type: 'Drug', group: 2 }, // Blue
+    'biolink:Gene': { type: 'Gene', group: 1 }, // Red
+    'biolink:Protein': { type: 'Protein', group: 4 }, // Purple
+    'biolink:ChemicalEntity': { type: 'Chemical', group: 2 }, // Blue
+    'biolink:BiologicalProcess': { type: 'Process', group: 5 }, // Green
+    'biolink:MolecularActivity': { type: 'Activity', group: 5 }, // Green
+    'biolink:CellularComponent': { type: 'Component', group: 5 }, // Green
+    'biolink:Pathway': { type: 'Pathway', group: 5 }, // Green
+    'biolink:AnatomicalEntity': { type: 'Anatomy', group: 6 }, // Gray
+    'biolink:PhenotypicFeature': { type: 'Phenotype', group: 6 } // Gray
   };
 
   for (const category of categories) {
@@ -98,7 +130,7 @@ function classifyEntity(categories: string[]): { type: string; group: number } {
       return categoryMap[category];
     }
   }
-  return { type: 'Unknown', group: 0 };
+  return { type: 'Unknown', group: 6 }; // Gray
 }
 
 function parseEntityId(entity: string): { id: string; name?: string } {
@@ -155,8 +187,8 @@ function convertToKnowledgeGraph(araxResponse: any, queryType: string, sourceEnt
   // Process nodes
   if (kg.nodes) {
     Object.entries(kg.nodes).forEach(([nodeId, nodeData]: [string, any]) => {
-      const categories = nodeData.categories || [];
-      const { type, group } = classifyEntity(categories);
+      // Use CURIE-prefix based classification for consistency with medik-mcp2
+      const { type, group } = getEntityType(nodeId);
       
       const isStartingNode = nodeId === sourceEntity || nodeId === targetEntity;
       
@@ -223,8 +255,12 @@ function createConnectingPathQuery(entityA: string, entityB: string, nameA?: str
     message: {
       query_graph: {
         nodes: {
-          n0: { ids: [entityA] },
-          n1: { ids: [entityB] }
+          n0: { 
+            ids: [entityA] 
+          },
+          n1: { 
+            ids: [entityB] 
+          }
         },
         paths: {
           p0: {
@@ -311,6 +347,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const parsedB = parseEntityId(entity_b);
         
         try {
+          // Use the simple paths-based query format as specified
+          log('🔍 Finding connecting path using paths query');
           const query = createConnectingPathQuery(
             parsedA.id,
             parsedB.id,
@@ -352,9 +390,9 @@ The knowledge graph visualization shows all connecting paths and intermediate en
             ],
             artifacts: [
               {
-                name: 'connecting-path-results',
-                type: 'application/json',
-                content: JSON.stringify(knowledgeGraph, null, 2),
+                type: 'application/vnd.knowledge-graph',
+                title: `Connecting paths between ${entity_a} and ${entity_b}`,
+                content: JSON.stringify(knowledgeGraph),
               },
             ],
           };

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Translator Knowledge Graph Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #graph { border: 1px solid #ccc; }
+        .node { cursor: pointer; }
+        .link { fill: none; stroke: #999; stroke-opacity: 0.8; }
+        .node-label { font-size: 12px; pointer-events: none; }
+        .tooltip { 
+            position: absolute; 
+            background: #333; 
+            color: white; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            pointer-events: none; 
+            opacity: 0;
+        }
+        .legend { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            background: white; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px;
+        }
+        .legend-item { display: flex; align-items: center; margin: 4px 0; }
+        .legend-color { width: 16px; height: 16px; margin-right: 8px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <h1>Translator Knowledge Graph Test Results</h1>
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background: #ff6b6b;"></div>Drug/Chemical</div>
+        <div class="legend-item"><div class="legend-color" style="background: #4ecdc4;"></div>Gene</div>
+        <div class="legend-item"><div class="legend-color" style="background: #45b7d1;"></div>Disease/Phenotype</div>
+        <div class="legend-item"><div class="legend-color" style="background: #96ceb4;"></div>Other</div>
+    </div>
+    <div id="graph"></div>
+    <div class="tooltip"></div>
+
+    <script>
+        // Load the test data
+        const testData = {
+  "nodes": [
+    {
+      "id": "NCBIGene:7531",
+      "name": "YWHAE",
+      "entityType": "Gene",
+      "group": 2,
+      "isStartingNode": false,
+      "val": 25,
+      "connections": 65
+    },
+    {
+      "id": "CHEBI:31902",
+      "name": "Nicergoline",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 11,
+      "connections": 3
+    },
+    {
+      "id": "CHEBI:32090",
+      "name": "Rebamipide",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:27882",
+      "name": "Colchicine",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 11,
+      "connections": 3
+    },
+    {
+      "id": "CHEBI:64019",
+      "name": "Nebivolol",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 11,
+      "connections": 3
+    }
+  ],
+  "links": [
+    {
+      "source": "CHEBI:31902",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 10,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:32090",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 8.5,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:27882",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 9.2,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:64019",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.8,
+      "evidence": []
+    }
+  ],
+  "filteredCount": 0,
+  "filteredNodeCount": 0
+};
+
+        // Color mapping for entity types
+        const colors = {
+            'Drug/Chemical': '#ff6b6b',
+            'Gene': '#4ecdc4',
+            'Disease/Phenotype': '#45b7d1',
+            'Biological Process': '#ffd93d',
+            'Pathway': '#6bcf7f',
+            'Cancer Concept': '#a8e6cf',
+            'Protein': '#ff8b94',
+            'Other': '#96ceb4'
+        };
+
+        // Set up the SVG
+        const width = 1200;
+        const height = 800;
+        const svg = d3.select('#graph')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        const tooltip = d3.select('.tooltip');
+
+        // Create the simulation
+        const simulation = d3.forceSimulation(testData.nodes)
+            .force('link', d3.forceLink(testData.links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-400))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => d.val + 5));
+
+        // Create links
+        const link = svg.append('g')
+            .selectAll('line')
+            .data(testData.links)
+            .enter().append('line')
+            .attr('class', 'link')
+            .attr('stroke-width', d => Math.sqrt(d.value))
+            .on('mouseover', function(event, d) {
+                tooltip.transition().duration(200).style('opacity', .9);
+                tooltip.html(`<strong>${d.label}</strong><br/>Value: ${d.value.toFixed(2)}<br/>Evidence: ${d.evidence.length} sources`)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 28) + 'px');
+            })
+            .on('mouseout', function() {
+                tooltip.transition().duration(500).style('opacity', 0);
+            });
+
+        // Create nodes
+        const node = svg.append('g')
+            .selectAll('circle')
+            .data(testData.nodes)
+            .enter().append('circle')
+            .attr('class', 'node')
+            .attr('r', d => d.val)
+            .attr('fill', d => colors[d.entityType] || '#999')
+            .on('mouseover', function(event, d) {
+                tooltip.transition().duration(200).style('opacity', .9);
+                tooltip.html(`<strong>${d.name}</strong><br/>Type: ${d.entityType}<br/>Connections: ${d.connections}<br/>ID: ${d.id}`)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 28) + 'px');
+            })
+            .on('mouseout', function() {
+                tooltip.transition().duration(500).style('opacity', 0);
+            })
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+        // Add labels
+        const label = svg.append('g')
+            .selectAll('text')
+            .data(testData.nodes)
+            .enter().append('text')
+            .attr('class', 'node-label')
+            .text(d => d.name)
+            .attr('text-anchor', 'middle')
+            .attr('dy', -5);
+
+        // Update positions on tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            label
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+
+        // Drag functions
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        // Add statistics
+        const stats = d3.select('body').append('div')
+            .style('margin-top', '20px')
+            .html(`
+                <h3>Graph Statistics</h3>
+                <p><strong>Nodes:</strong> ${testData.nodes.length}</p>
+                <p><strong>Links:</strong> ${testData.links.length}</p>
+                <p><strong>Entity Types:</strong> ${[...new Set(testData.nodes.map(n => n.entityType))].join(', ')}</p>
+                <p><strong>Center Node:</strong> ${testData.nodes.find(n => n.connections === Math.max(...testData.nodes.map(n => n.connections)))?.name}</p>
+            `);
+    </script>
+</body>
+</html> 
