@@ -80,7 +80,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
     
     // Step 2: Get artifacts that reference this message
     const referencingArtifacts = artifacts.filter(a => 
-      a.content.includes(message.id) && !result.some(r => r.id === a.id)
+      typeof a.content === 'string' && a.content.includes(message.id) && !result.some(r => r.id === a.id)
     );
     if (referencingArtifacts.length > 0) {
       referencingArtifacts.forEach(artifact => {

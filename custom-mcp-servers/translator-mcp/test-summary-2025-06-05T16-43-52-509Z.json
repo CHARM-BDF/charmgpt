@@ -1,0 +1,33 @@
+{
+  "input_file": "/Users/dr.crouse/Downloads/YWHAE_80ea560d-1a2d-443f-a343-15f933f7ea90_2025_6_5_16_27.json",
+  "processing_timestamp": "2025-06-05T16-43-52-509Z",
+  "statistics": {
+    "total_relationships": 375,
+    "unique_nodes": 143,
+    "unique_links": 375,
+    "entity_types": [
+      "Gene",
+      "Drug/Chemical",
+      "Disease/Phenotype",
+      "Other",
+      "Biological Process",
+      "Protein"
+    ],
+    "predicates": [
+      "affects",
+      "interacts with",
+      "produces",
+      "has part",
+      "physically interacts with",
+      "has participant",
+      "colocalizes with",
+      "related to",
+      "directly physically interacts with",
+      "occurs together in literature with"
+    ]
+  },
+  "files_created": [
+    "test-processed-data-2025-06-05T16-43-52-509Z.json",
+    "test-knowledge-graph-artifact-2025-06-05T16-43-52-509Z.json"
+  ]
+}

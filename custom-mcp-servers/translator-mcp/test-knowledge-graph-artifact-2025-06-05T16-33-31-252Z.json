@@ -1,0 +1,922 @@
+{
+  "nodes": [
+    {
+      "id": "NCBIGene:7531",
+      "name": "YWHAE",
+      "entityType": "Gene",
+      "group": 2,
+      "isStartingNode": false,
+      "val": 25,
+      "connections": 65
+    },
+    {
+      "id": "CHEBI:31902",
+      "name": "Nicergoline",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 11,
+      "connections": 3
+    },
+    {
+      "id": "CHEBI:32090",
+      "name": "Rebamipide",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:27882",
+      "name": "Colchicine",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 11,
+      "connections": 3
+    },
+    {
+      "id": "CHEBI:64019",
+      "name": "Nebivolol",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 11,
+      "connections": 3
+    },
+    {
+      "id": "CHEBI:41774",
+      "name": "Tamoxifen",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "CHEBI:50122",
+      "name": "Rosiglitazone",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "CHEBI:16619",
+      "name": "Farnesol",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "CHEBI:59900",
+      "name": "caspofungin acetate",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "CHEBI:8207",
+      "name": "Pilocarpine",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "CHEBI:6801",
+      "name": "Metformin",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "CHEBI:46081",
+      "name": "Fluconazole",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "CHEBI:71271",
+      "name": "saxagliptin",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "UMLS:C4709333",
+      "name": "Adeno-associated Virus Vector [EPC]",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0085387",
+      "name": "Cyclooxygenase Inhibitors",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0043419",
+      "name": "Yogurt",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "MESH:D018899",
+      "name": "CpG Islands",
+      "entityType": "Other",
+      "group": 8,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UNII:1B56C968OA",
+      "name": "Becaplermin",
+      "entityType": "Other",
+      "group": 8,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C1517496",
+      "name": "Gene Therapy Agent",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C2930742",
+      "name": "ST-101",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "MESH:D034743",
+      "name": "RNA-Induced Silencing Complex",
+      "entityType": "Other",
+      "group": 8,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C4722296",
+      "name": "Small Interfering RNA [EPC]",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "MESH:D048049",
+      "name": "Extracellular Signal-Regulated MAP Kinases",
+      "entityType": "Other",
+      "group": 8,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:5931",
+      "name": "insulin human",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:15891",
+      "name": "Taurine",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0006938",
+      "name": "captopril",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:2038",
+      "name": "Azacitidine",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:33697",
+      "name": "RNA",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0733758",
+      "name": "follicle stimulating hormone",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0013162",
+      "name": "Drug Combinations",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "DRUGBANK:DB10580",
+      "name": "Tea leaf",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "MESH:D000077548",
+      "name": "Anaplastic Lymphoma Kinase",
+      "entityType": "Other",
+      "group": 8,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0038838",
+      "name": "superoxide dismutase",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:16467",
+      "name": "Arginine",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "MESH:D064112",
+      "name": "Clustered Regularly Interspaced Short Palindromic Repeats",
+      "entityType": "Other",
+      "group": 8,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:17489",
+      "name": "Cyclic AMP",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 9,
+      "connections": 2
+    },
+    {
+      "id": "UMLS:C0000702",
+      "name": "DNA, A-Form",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0012176",
+      "name": "Dietary Oils",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C1519595",
+      "name": "RNA Transcript",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C1515406",
+      "name": "Recombinant Transforming Growth Factor-Beta 1",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:27732",
+      "name": "Caffeine",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0035702",
+      "name": "RNA, Ribosomal, 16S",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C1520690",
+      "name": "16q",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0007412",
+      "name": "Catecholamines",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0009881",
+      "name": "Contraceptive Agents, Male",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "UMLS:C0006494",
+      "name": "Butter",
+      "entityType": "Disease/Phenotype",
+      "group": 3,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:25016",
+      "name": "lead atom",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "CHEBI:16480",
+      "name": "Nitric Oxide",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "PUBCHEM.COMPOUND:134588831",
+      "name": "2-[[2-[2-[4-Chloro-2-(2-hydroxyethyl)phenyl]-1,3-thiazol-4-yl]acetyl]amino]acetic acid",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "PUBCHEM.COMPOUND:44356648",
+      "name": "TNF-ALPHA",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    },
+    {
+      "id": "PUBCHEM.COMPOUND:136215432",
+      "name": "6-amino-4-[3,5-bis(trifluoromethyl)phenyl]-4-cyclobutyl-3-methyl-2,3,3a,7a-tetrahydro-1H-pyrano[2,3-c]pyrazole-5-carbonitrile",
+      "entityType": "Drug/Chemical",
+      "group": 1,
+      "isStartingNode": false,
+      "val": 7,
+      "connections": 1
+    }
+  ],
+  "links": [
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:31902",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:31902",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:31902",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:32090",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 10,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:27882",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:27882",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:27882",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:64019",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:64019",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:64019",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:41774",
+      "label": "affects",
+      "value": 10,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:41774",
+      "label": "affects",
+      "value": 10,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:50122",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:50122",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:16619",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:16619",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:59900",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:59900",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:8207",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:8207",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:6801",
+      "label": "affects",
+      "value": 1,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:6801",
+      "label": "affects",
+      "value": 1,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:46081",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:46081",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:71271",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "NCBIGene:7531",
+      "target": "CHEBI:71271",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C4709333",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 8.461538461538462,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0085387",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 8.333333333333332,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0043419",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 8.205128205128206,
+      "evidence": []
+    },
+    {
+      "source": "MESH:D018899",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 8.076923076923077,
+      "evidence": []
+    },
+    {
+      "source": "UNII:1B56C968OA",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.948717948717949,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C1517496",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.82051282051282,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C2930742",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.692307692307692,
+      "evidence": []
+    },
+    {
+      "source": "MESH:D034743",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.564102564102564,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C4722296",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.435897435897436,
+      "evidence": []
+    },
+    {
+      "source": "MESH:D048049",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.333333333333333,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:5931",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.307692307692308,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:15891",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.17948717948718,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0006938",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 7.051282051282051,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:2038",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 6.9230769230769225,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:33697",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 6.410256410256411,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0733758",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 6.282051282051282,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0013162",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 6.153846153846154,
+      "evidence": []
+    },
+    {
+      "source": "DRUGBANK:DB10580",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 6.0256410256410255,
+      "evidence": []
+    },
+    {
+      "source": "MESH:D000077548",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 6,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0038838",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.897435897435897,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:16467",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.769230769230769,
+      "evidence": []
+    },
+    {
+      "source": "MESH:D064112",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.6410256410256405,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:17489",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.666666666666666,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:17489",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.666666666666666,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0000702",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.512820512820513,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0012176",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.384615384615385,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C1519595",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.333333333333334,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C1515406",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.256410256410256,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:27732",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5.128205128205129,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0035702",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 5,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C1520690",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.871794871794871,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0007412",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.743589743589744,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0009881",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.615384615384615,
+      "evidence": []
+    },
+    {
+      "source": "UMLS:C0006494",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.487179487179487,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:25016",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.3589743589743595,
+      "evidence": []
+    },
+    {
+      "source": "CHEBI:16480",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.230769230769231,
+      "evidence": []
+    },
+    {
+      "source": "PUBCHEM.COMPOUND:134588831",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4.102564102564103,
+      "evidence": []
+    },
+    {
+      "source": "PUBCHEM.COMPOUND:44356648",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 4,
+      "evidence": []
+    },
+    {
+      "source": "PUBCHEM.COMPOUND:136215432",
+      "target": "NCBIGene:7531",
+      "label": "affects",
+      "value": 3.9743589743589745,
+      "evidence": []
+    }
+  ],
+  "filteredCount": 0,
+  "filteredNodeCount": 0
+}

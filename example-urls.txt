@@ -1,0 +1,6 @@
+# Example URLs file for url-to-markdown script
+# Lines starting with # are comments and will be ignored
+
+https://example.com
+https://httpbin.org/html
+https://jsonplaceholder.typicode.com/posts/1 

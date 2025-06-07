@@ -71,6 +71,13 @@
       ],
       "timeout": 60000
     },
+    "translator-mcp": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/translator-mcp/dist/index.js"
+      ],
+      "timeout": 120000
+    },
     "python": {
       "command": "node",
       "args": [
