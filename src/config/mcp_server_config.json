@@ -114,6 +114,12 @@
       "args": [
         "./custom-mcp-servers/aims-review-mcp/dist/index.js"
       ]
+    },
+    "pkded-mcp": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/pkded-mcp/dist/index.js"
+      ]
     }
   }
 }
