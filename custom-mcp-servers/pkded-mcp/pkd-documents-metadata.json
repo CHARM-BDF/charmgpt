@@ -1,0 +1,468 @@
+{
+  "exportTimestamp": "2025-06-08T04:33:41.295Z",
+  "totalDocuments": 12,
+  "docsPath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown",
+  "summary": {
+    "totalDocuments": 12,
+    "categoriesCount": {
+      "treatment": 1,
+      "diagnosis": 11
+    },
+    "difficultyCount": {
+      "basic": 3,
+      "intermediate": 1,
+      "advanced": 8
+    },
+    "topTopics": [
+      {
+        "topic": "ADPKD",
+        "count": 9
+      },
+      {
+        "topic": "autosomal-dominant",
+        "count": 9
+      },
+      {
+        "topic": "polycystic-kidney-disease",
+        "count": 9
+      },
+      {
+        "topic": "UTI",
+        "count": 9
+      },
+      {
+        "topic": "kidney-cysts",
+        "count": 7
+      },
+      {
+        "topic": "PKD1-gene",
+        "count": 5
+      },
+      {
+        "topic": "PKD2-gene",
+        "count": 5
+      },
+      {
+        "topic": "tolvaptan",
+        "count": 5
+      },
+      {
+        "topic": "genetics",
+        "count": 2
+      },
+      {
+        "topic": "kidney-related symptoms",
+        "count": 1
+      }
+    ]
+  },
+  "documents": [
+    {
+      "id": "~$tosomal_dominant_polycystic_kidney_disease_(ADPKD)_Evaluation_and_management_of_complicated_urinar.md",
+      "title": "~$tosomal_dominant_polycystic_kidney_disease_(ADPKD)_Evaluation_and_management_of_complicated_urinar",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/~$tosomal_dominant_polycystic_kidney_disease_(ADPKD)_Evaluation_and_management_of_complicated_urinar.md",
+      "category": "treatment",
+      "medicalTopic": [],
+      "difficulty": "basic",
+      "tags": [],
+      "citations": [],
+      "lastModified": "2025-06-08T03:29:46.907Z",
+      "contentLength": 162,
+      "contentPreview": "\nDr. Crouse\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\n\u0000D\u0000r\u0000.\u0000 \u0000C\u0000r\u0000o\u0000u\u0000s\u0000e\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000...",
+      "wordCount": 5,
+      "lineCount": 3,
+      "medicalTopicCount": 0,
+      "tagCount": 0,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": false,
+      "hasNumberedLists": false,
+      "mentionsADPKD": false,
+      "mentionsPKD1": false,
+      "mentionsPKD2": false,
+      "mentionsTolvaptan": false
+    },
+    {
+      "id": "adpkd_overview.md",
+      "title": "Autosomal Dominant Polycystic Kidney Disease (ADPKD) Overview",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/adpkd_overview.md",
+      "category": "diagnosis",
+      "medicalTopic": [
+        "genetics",
+        "kidney-related symptoms",
+        "diagnosis",
+        "treatment and management",
+        "tolvaptan therapy",
+        "pain management",
+        "lifestyle modifications",
+        "prognosis"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "** ADPKD",
+        "polycystic kidney disease",
+        "genetics",
+        "autosomal dominant",
+        "PKD1",
+        "PKD2",
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "PKD1-gene",
+        "PKD2-gene",
+        "tolvaptan",
+        "UTI"
+      ],
+      "citations": [
+        {
+          "pmid": "28284962",
+          "title": "Reference PMID:28284962",
+          "authors": []
+        },
+        {
+          "pmid": "31427176",
+          "title": "Reference PMID:31427176",
+          "authors": []
+        },
+        {
+          "pmid": "29971590",
+          "title": "Reference PMID:29971590",
+          "authors": []
+        }
+      ],
+      "lastModified": "2025-06-07T20:54:42.652Z",
+      "contentLength": 3097,
+      "contentPreview": "# Autosomal Dominant Polycystic Kidney Disease (ADPKD) Overview\n\n**Tags:** ADPKD, polycystic kidney disease, genetics, autosomal dominant, PKD1, PKD2\n\n## Introduction\n\nAutosomal dominant polycystic ki...",
+      "wordCount": 457,
+      "lineCount": 96,
+      "medicalTopicCount": 8,
+      "tagCount": 13,
+      "citationCount": 3,
+      "hasMarkdownHeaders": true,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": true,
+      "mentionsPKD2": true,
+      "mentionsTolvaptan": true
+    },
+    {
+      "id": "Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_in_children_-_UpToDate.md",
+      "title": "Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD) in children - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_in_children_-_UpToDate.md",
+      "category": "diagnosis",
+      "medicalTopic": [],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "kidney-cysts",
+        "PKD1-gene",
+        "PKD2-gene",
+        "tolvaptan",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.257Z",
+      "contentLength": 93150,
+      "contentPreview": "# Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD) in children - UpToDate.html\n\n**Source:** html_webpages/Autosomal dominant polycystic kidney disease (ADPKD) in childr...",
+      "wordCount": 8270,
+      "lineCount": 315,
+      "medicalTopicCount": 0,
+      "tagCount": 8,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": true,
+      "mentionsPKD2": true,
+      "mentionsTolvaptan": true
+    },
+    {
+      "id": "Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Evaluation_and_management_of_complicated_urinar.md",
+      "title": "Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Evaluation and management of complicated urinary tract infections - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Evaluation_and_management_of_complicated_urinar.md",
+      "category": "diagnosis",
+      "medicalTopic": [
+        "content from: html_webpages/autosomal dominant polycystic kidney disease (adpkd)_ evaluation and management of complicated urinary tract infections - uptodate.html"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "kidney-cysts",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.202Z",
+      "contentLength": 47696,
+      "contentPreview": "# Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Evaluation and management of complicated urinary tract infections - UpToDate.html\n\n**Source:** html_webpages/Autosom...",
+      "wordCount": 4138,
+      "lineCount": 192,
+      "medicalTopicCount": 1,
+      "tagCount": 5,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": false,
+      "mentionsPKD2": false,
+      "mentionsTolvaptan": false
+    },
+    {
+      "id": "Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Evaluation_and_management_of_hypertension_-_UpT.md",
+      "title": "Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Evaluation and management of hypertension - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Evaluation_and_management_of_hypertension_-_UpT.md",
+      "category": "diagnosis",
+      "medicalTopic": [
+        "content from: html_webpages/autosomal dominant polycystic kidney disease (adpkd)_ evaluation and management of hypertension - uptodate.html"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.225Z",
+      "contentLength": 52636,
+      "contentPreview": "# Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Evaluation and management of hypertension - UpToDate.html\n\n**Source:** html_webpages/Autosomal dominant polycystic k...",
+      "wordCount": 4997,
+      "lineCount": 181,
+      "medicalTopicCount": 1,
+      "tagCount": 4,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": false,
+      "mentionsPKD2": false,
+      "mentionsTolvaptan": false
+    },
+    {
+      "id": "Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Extrarenal_manifestations_-_UpToDate.md",
+      "title": "Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Extrarenal manifestations - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Extrarenal_manifestations_-_UpToDate.md",
+      "category": "diagnosis",
+      "medicalTopic": [],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "kidney-cysts",
+        "PKD1-gene",
+        "PKD2-gene",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.238Z",
+      "contentLength": 85759,
+      "contentPreview": "# Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Extrarenal manifestations - UpToDate.html\n\n**Source:** html_webpages/Autosomal dominant polycystic kidney disease (A...",
+      "wordCount": 7566,
+      "lineCount": 372,
+      "medicalTopicCount": 0,
+      "tagCount": 7,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": true,
+      "mentionsPKD2": true,
+      "mentionsTolvaptan": false
+    },
+    {
+      "id": "Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Genetics_of_the_disease_and_mechanisms_of_cyst_.md",
+      "title": "Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Genetics of the disease and mechanisms of cyst growth - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Genetics_of_the_disease_and_mechanisms_of_cyst_.md",
+      "category": "diagnosis",
+      "medicalTopic": [
+        "content from: html_webpages/autosomal dominant polycystic kidney disease (adpkd)_ genetics of the disease and mechanisms of cyst growth - uptodate.html"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "kidney-cysts",
+        "PKD1-gene",
+        "PKD2-gene",
+        "tolvaptan",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.246Z",
+      "contentLength": 121406,
+      "contentPreview": "# Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Genetics of the disease and mechanisms of cyst growth - UpToDate.html\n\n**Source:** html_webpages/Autosomal dominant ...",
+      "wordCount": 10381,
+      "lineCount": 384,
+      "medicalTopicCount": 1,
+      "tagCount": 8,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": true,
+      "mentionsPKD2": true,
+      "mentionsTolvaptan": true
+    },
+    {
+      "id": "Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Pain_syndromes_-_UpToDate.md",
+      "title": "Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Pain syndromes - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Autosomal_dominant_polycystic_kidney_disease_(ADPKD)_Pain_syndromes_-_UpToDate.md",
+      "category": "diagnosis",
+      "medicalTopic": [],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "kidney-cysts",
+        "tolvaptan",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.266Z",
+      "contentLength": 65688,
+      "contentPreview": "# Content from: html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Pain syndromes - UpToDate.html\n\n**Source:** html_webpages/Autosomal dominant polycystic kidney disease (ADPKD)_ Pain...",
+      "wordCount": 6194,
+      "lineCount": 269,
+      "medicalTopicCount": 0,
+      "tagCount": 6,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": false,
+      "mentionsPKD2": false,
+      "mentionsTolvaptan": true
+    },
+    {
+      "id": "Autosomal_recessive_polycystic_kidney_disease_in_children_-_UpToDate.md",
+      "title": "Content from: html_webpages/Autosomal recessive polycystic kidney disease in children - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Autosomal_recessive_polycystic_kidney_disease_in_children_-_UpToDate.md",
+      "category": "diagnosis",
+      "medicalTopic": [],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "kidney-cysts",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.280Z",
+      "contentLength": 96451,
+      "contentPreview": "# Content from: html_webpages/Autosomal recessive polycystic kidney disease in children - UpToDate.html\n\n**Source:** html_webpages/Autosomal recessive polycystic kidney disease in children - UpToDate....",
+      "wordCount": 8709,
+      "lineCount": 386,
+      "medicalTopicCount": 0,
+      "tagCount": 5,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": false,
+      "mentionsPKD2": false,
+      "mentionsTolvaptan": false
+    },
+    {
+      "id": "Caroli_disease_-_UpToDate.md",
+      "title": "Content from: html_webpages/Caroli disease - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Caroli_disease_-_UpToDate.md",
+      "category": "diagnosis",
+      "medicalTopic": [],
+      "difficulty": "basic",
+      "tags": [],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.289Z",
+      "contentLength": 3393,
+      "contentPreview": "# Content from: html_webpages/Caroli disease - UpToDate.html\n\n**Source:** html_webpages/Caroli disease - UpToDate.html\n\n---\n\nCaroli disease\n\nSelect Language ChineseEnglish\n\nAuthor:\n[Frederick J Suchy,...",
+      "wordCount": 399,
+      "lineCount": 46,
+      "medicalTopicCount": 0,
+      "tagCount": 0,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": false,
+      "mentionsPKD1": false,
+      "mentionsPKD2": false,
+      "mentionsTolvaptan": false
+    },
+    {
+      "id": "Patient_education_Polycystic_kidney_disease_(Beyond_the_Basics)_-_UpToDate.md",
+      "title": "Content from: html_webpages/Patient education_ Polycystic kidney disease (Beyond the Basics) - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Patient_education_Polycystic_kidney_disease_(Beyond_the_Basics)_-_UpToDate.md",
+      "category": "diagnosis",
+      "medicalTopic": [],
+      "difficulty": "advanced",
+      "tags": [
+        "ADPKD",
+        "autosomal-dominant",
+        "polycystic-kidney-disease",
+        "PKD1-gene",
+        "PKD2-gene",
+        "tolvaptan",
+        "UTI"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.300Z",
+      "contentLength": 39525,
+      "contentPreview": "# Content from: html_webpages/Patient education_ Polycystic kidney disease (Beyond the Basics) - UpToDate.html\n\n**Source:** html_webpages/Patient education_ Polycystic kidney disease (Beyond the Basic...",
+      "wordCount": 4864,
+      "lineCount": 252,
+      "medicalTopicCount": 0,
+      "tagCount": 7,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": true,
+      "mentionsPKD1": true,
+      "mentionsPKD2": true,
+      "mentionsTolvaptan": true
+    },
+    {
+      "id": "Prenatal_sonographic_diagnosis_of_cystic_kidney_disease_-_UpToDate.md",
+      "title": "Content from: html_webpages/Prenatal sonographic diagnosis of cystic kidney disease - UpToDate.html",
+      "filePath": "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/pkded-mcp/data/markdown/Prenatal_sonographic_diagnosis_of_cystic_kidney_disease_-_UpToDate.md",
+      "category": "diagnosis",
+      "medicalTopic": [
+        "content from: html_webpages/prenatal sonographic diagnosis of cystic kidney disease - uptodate.html"
+      ],
+      "difficulty": "basic",
+      "tags": [
+        "kidney-cysts"
+      ],
+      "citations": [],
+      "lastModified": "2025-06-07T20:52:25.317Z",
+      "contentLength": 4249,
+      "contentPreview": "# Content from: html_webpages/Prenatal sonographic diagnosis of cystic kidney disease - UpToDate.html\n\n**Source:** html_webpages/Prenatal sonographic diagnosis of cystic kidney disease - UpToDate.html...",
+      "wordCount": 500,
+      "lineCount": 41,
+      "medicalTopicCount": 1,
+      "tagCount": 1,
+      "citationCount": 0,
+      "hasMarkdownHeaders": false,
+      "hasBulletPoints": true,
+      "hasNumberedLists": false,
+      "mentionsADPKD": false,
+      "mentionsPKD1": false,
+      "mentionsPKD2": false,
+      "mentionsTolvaptan": false
+    }
+  ]
+}
