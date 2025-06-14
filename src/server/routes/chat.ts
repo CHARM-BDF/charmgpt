@@ -118,21 +118,16 @@ router.post('/', async (req: Request<{}, {}, {
 
     // Set MCP log message handler for this request
     if (mcpService) {
-      console.log('[CHAT-DEBUG] Setting request-specific MCP log handler');
+      console.log('[CHAT-DEBUG] Adding request-specific MCP log handler');
       
-      // Store the global handler to restore it later
-      const globalLogHandler = req.app.locals.globalLogHandler;
-      
-      // Set our chat-specific handler
-      mcpService.setLogMessageHandler(sendMCPLogMessage);
+      // Add our chat-specific handler (this won't remove the global handler)
+      mcpService.addLogHandler(sendMCPLogMessage);
       sendStatusUpdate('MCP log handler enabled - you will receive server logs in this session');
       
-      // Make sure to restore the global handler when the request is complete
+      // Remove our handler when the request is complete
       res.on('close', () => {
-        console.log('[CHAT-DEBUG] Request closed, restoring global MCP log handler');
-        if (globalLogHandler) {
-          mcpService.setLogMessageHandler(globalLogHandler);
-        }
+        console.log('[CHAT-DEBUG] Request closed, removing chat-specific MCP log handler');
+        mcpService.removeLogHandler(sendMCPLogMessage);
       });
     }
 
@@ -407,60 +402,58 @@ router.post('/', async (req: Request<{}, {}, {
       tools: [{
         name: "response_formatter",
         description: "Format all responses in a consistent JSON structure with direct array values, not string-encoded JSON",
-        custom: {
-          input_schema: {
-            type: "object",
-            properties: {
-              thinking: {
-                type: "string",
-                description: "Optional internal reasoning process, formatted in markdown"
-              },
-              conversation: {
-                type: "array",
-                description: "Array of conversation segments and artifacts in order of appearance. Return as a direct array, not as a string-encoded JSON.",
-                items: {
-                  type: "object",
-                  properties: {
-                    type: {
-                      type: "string",
-                      enum: ["text", "artifact"],
-                      description: "Type of conversation segment"
-                    },
-                    content: {
-                      type: "string",
-                      description: "Markdown formatted text content"
-                    },
-                    artifact: {
-                      type: "object",
-                      description: "Artifact details",
-                      properties: {
-                        type: {
-                          type: "string",
-                          enum: [
-                            "text/markdown",
-                            "application/vnd.ant.code",
-                            "image/svg+xml",
-                            "application/vnd.mermaid",
-                            "text/html",
-                            "application/vnd.react",
-                            "application/vnd.bibliography",
-                            "application/vnd.knowledge-graph"
-                          ]
-                        },
-                        id: { type: "string" },
-                        title: { type: "string" },
-                        content: { type: "string" },
-                        language: { type: "string" }
-                      },
-                      required: ["type", "id", "title", "content"]
-                    }
-                  },
-                  required: ["type"]
-                }
-              }
+        input_schema: {
+          type: "object",
+          properties: {
+            thinking: {
+              type: "string",
+              description: "Optional internal reasoning process, formatted in markdown"
             },
-            required: ["conversation"]
-          }
+            conversation: {
+              type: "array",
+              description: "Array of conversation segments and artifacts in order of appearance. Return as a direct array, not as a string-encoded JSON.",
+              items: {
+                type: "object",
+                properties: {
+                  type: {
+                    type: "string",
+                    enum: ["text", "artifact"],
+                    description: "Type of conversation segment"
+                  },
+                  content: {
+                    type: "string",
+                    description: "Markdown formatted text content"
+                  },
+                  artifact: {
+                    type: "object",
+                    description: "Artifact details",
+                    properties: {
+                      type: {
+                        type: "string",
+                        enum: [
+                          "text/markdown",
+                          "application/vnd.ant.code",
+                          "image/svg+xml",
+                          "application/vnd.mermaid",
+                          "text/html",
+                          "application/vnd.react",
+                          "application/vnd.bibliography",
+                          "application/vnd.knowledge-graph"
+                        ]
+                      },
+                      id: { type: "string" },
+                      title: { type: "string" },
+                      content: { type: "string" },
+                      language: { type: "string" }
+                    },
+                    required: ["type", "id", "title", "content"]
+                  }
+                },
+                required: ["type"]
+              }
+            }
+          },
+          required: ["conversation"]
         }
       }],
       tool_choice: { type: "tool", name: "response_formatter" }

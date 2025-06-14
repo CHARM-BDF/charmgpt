@@ -62,12 +62,10 @@ console.log('Chat Service initialized and registered via factory');
 console.log('\n=== MCP Service Initialization ===');
 
 // Set up MCP log message handler BEFORE initializing clients
-// console.log('[MCP-DEBUG] Setting up global log message handler');
+console.log('[MCP-DEBUG] Setting up global log message handler');
 const globalLogHandler = (message: MCPLogMessage) => {
   const traceId = message.data?.traceId || randomUUID().split('-')[0];
-  // console.log(`\n=== [GLOBAL-HANDLER:${traceId}] MCP LOG MESSAGE RECEIVED ===`);
   
-  // const timestamp = new Date().toISOString();
   const logger = message.logger || 'MCP';
   const level = message.level;
   const messageText = message.data?.message || JSON.stringify(message.data);
@@ -75,19 +73,12 @@ const globalLogHandler = (message: MCPLogMessage) => {
   // Format for easy identification
   const formattedMessage = `[${logger}:${traceId}] [${level.toUpperCase()}] ${messageText}`;
   
-  // console.log(`[GLOBAL-HANDLER:${traceId}] Timestamp: ${timestamp}`);
-  // console.log(`[GLOBAL-HANDLER:${traceId}] Logger: ${logger} -- ${messageText}`);
-  // console.log(`[GLOBAL-HANDLER:${traceId}] Level: ${level}`);
-  // console.log(`[GLOBAL-HANDLER:${traceId}] Message: ${messageText}`);
-  
   // Standard log output
   console.log(`[SERVER] ${formattedMessage}`);
-  
-  // console.log(`=== [GLOBAL-HANDLER:${traceId}] END LOG MESSAGE ===\n`);
 };
 
-// Set the global handler
-mcpService.setLogMessageHandler(globalLogHandler);
+// Add the global handler using the new pattern
+mcpService.addLogHandler(globalLogHandler);
 
 // Store the global handler for routes to access
 app.locals.globalLogHandler = globalLogHandler;
@@ -189,9 +180,11 @@ app.listen(port, () => {
   console.log(`Chat with Sequential Thinking running at http://localhost:${port}/api/chat-sequential`);
   console.log(`Chat with Artifacts running at http://localhost:${port}/api/chat-artifacts`);
   
-  // Send a test log message after a short delay
-  // setTimeout(() => {
-  //   console.log('\n[SERVER] Sending test log message to verify log handler...');
-  //   mcpService.sendTestLogMessage();
-  // }, 5000);
+  // Send a test log message after a short delay to verify logging works
+  setTimeout(() => {
+    console.log('\n[SERVER] Sending test log message to verify log handler...');
+    if (mcpService && typeof mcpService.sendTestLogMessage === 'function') {
+      mcpService.sendTestLogMessage();
+    }
+  }, 5000);
 }); 

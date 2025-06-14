@@ -51,10 +51,10 @@
       ]
     },
 
-    "medik-mcp": {
+    "medik-mcp2": {
       "command": "node",
       "args": [
-        "./custom-mcp-servers/medik-mcp/dist/medik-mcp/src/index.js"
+        "./custom-mcp-servers/medik-mcp2/dist/index.js"
       ]
     },
     "arax-mcp": {

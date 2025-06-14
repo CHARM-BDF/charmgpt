@@ -13,26 +13,57 @@ import logger from './logger.js';
 import fs from 'fs';
 import path from 'path';
 
-// Enable console interception to capture logs to file
-logger.interceptConsole();
-
 // Define log levels type
 type LogLevel = 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
 
+// Initialize logging before server creation
+const mcpLogDir = path.join(__dirname, '..', 'logs');
+if (!fs.existsSync(mcpLogDir)) {
+    fs.mkdirSync(mcpLogDir, { recursive: true });
+}
+
+const timestamp = new Date().toISOString()
+    .replace(/:/g, '-')
+    .replace(/\..+/, '')
+    .replace('T', '_');
+const mcpLogFile = path.join(mcpLogDir, `medik-mcp_mcp_${timestamp}.log`);
+
+// Write initial log
+fs.writeFileSync(mcpLogFile, `MediK MCP Server Log\nStarted at: ${new Date().toISOString()}\nVersion: 1.0.1\n\n`);
+
 // Helper function for structured logging
 function sendStructuredLog(server: Server, level: LogLevel, message: string, metadata?: Record<string, unknown>) {
-    if (DEBUG) console.error(`[medik-mcp] [MEDIK-STEP 0] PREPARING TO SEND LOG: ${message}`);
     const timestamp = new Date().toISOString();
     const traceId = randomUUID().split('-')[0];
     
-    const formattedMessage = `[medik-mcp] [${level.toUpperCase()}] [${traceId}] ${message}`;
+    // Format the log message
+    const formattedMessage = `[${timestamp}] [${level.toUpperCase()}] [${traceId}] ${message}`;
     
+    // Write to MCP log file
     try {
-        if (DEBUG) {
-            console.error(`[medik-mcp] [MEDIK-STEP 0] Server object type: ${typeof server}`);
-            console.error(`[medik-mcp] [MEDIK-STEP 0] Has sendLoggingMessage: ${typeof server.sendLoggingMessage === 'function'}`);
+        fs.appendFileSync(mcpLogFile, formattedMessage + '\n');
+        if (metadata && Object.keys(metadata).length > 0) {
+            fs.appendFileSync(mcpLogFile, `[${timestamp}] [${traceId}] Metadata: ${JSON.stringify(metadata, null, 2)}\n`);
         }
-        
+    } catch (error) {
+        // If we can't write to the log file, fall back to stderr
+        const originalConsoleError = logger.originalConsoleError;
+        originalConsoleError(`[medik-mcp] [ERROR] Failed to write to MCP log file:`, {
+            error: error instanceof Error ? error.message : String(error),
+            level,
+            message
+        });
+    }
+    
+    // Write to stderr (primary logging mechanism per MCP spec)
+    const originalConsoleError = logger.originalConsoleError;
+    originalConsoleError(`[medik-mcp] [${level.toUpperCase()}] [${traceId}] ${message}`);
+    if (metadata && Object.keys(metadata).length > 0) {
+        originalConsoleError(`[medik-mcp] [${traceId}] Metadata:`, metadata);
+    }
+    
+    // Try to send to MCP framework (secondary mechanism)
+    try {
         const logPayload = {
             level,
             logger: 'medik-mcp',
@@ -46,24 +77,14 @@ function sendStructuredLog(server: Server, level: LogLevel, message: string, met
             },
         };
         
-        if (DEBUG) console.error(`[medik-mcp] [MEDIK-STEP 0] About to call server.sendLoggingMessage with payload: ${JSON.stringify(logPayload)}`);
-        
         server.sendLoggingMessage(logPayload);
-        
-        if (DEBUG) console.error(`[medik-mcp] [MEDIK-STEP 0] ✅ server.sendLoggingMessage completed without errors`);
     } catch (error) {
-        console.error(`[medik-mcp] [MEDIK-STEP 0] ❌ ERROR SENDING LOG:`, {
+        // Log the error but don't throw
+        originalConsoleError(`[medik-mcp] [DEBUG] Not sending log to MCP framework:`, {
             error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
             level,
-            message,
-            metadata
+            message
         });
-
-        console.error(formattedMessage);
-        if (metadata && Object.keys(metadata).length > 0) {
-            console.error(`[medik-mcp] [${traceId}] Metadata:`, metadata);
-        }
     }
 }
 
@@ -135,6 +156,13 @@ const server = new Server(
     }
 );
 
+// Log server initialization
+sendStructuredLog(server, 'info', 'Starting server v1.0.1 with find-pathway tool enabled');
+sendStructuredLog(server, 'info', 'Registering tools: run-query, get-everything, network-neighborhood, find-pathway');
+
+// Enable console interception to capture logs to file AFTER server initialization
+logger.interceptConsole();
+
 // Direct file logging for debugging
 try {
     // Use the imported fs and path modules
@@ -172,10 +200,6 @@ try {
 } catch (error) {
     console.error('Failed to initialize debug logging:', error);
 }
-
-// Log server initialization
-console.log(`[medik-mcp] Starting server v1.0.1 with find-pathway tool enabled`);
-console.log(`[medik-mcp] Registering tools: run-query, get-everything, network-neighborhood, find-pathway`);
 
 // Debug helper for direct console output
 function debugLog(message: string, data?: any) {
@@ -1494,30 +1518,36 @@ async function main() {
     const transport = new StdioServerTransport();
     
     try {
+        // Connect to the server first
         await server.connect(transport);
         
+        // Wait for connection to be fully established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Now that we're connected, send the startup log
         sendStructuredLog(server, 'info', 'Server started', {
             transport: 'stdio',
             timestamp: new Date().toISOString(),
             logFile: logger.getLogFile()
         });
         
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        // Run diagnostic tests
         const diagnosticId = randomUUID().slice(0, 8);
         
-        try {
-            if (DEBUG) {
-                console.error(`[medik-mcp] [MEDIK-INIT] Starting server diagnostic - ${diagnosticId}`);
-                console.error(`[medik-mcp] [MEDIK-INIT] Server object available: ${!!server}`);
-                console.error(`[medik-mcp] [MEDIK-INIT] sendLoggingMessage method available: ${typeof server.sendLoggingMessage === 'function'}`);
-            }
-        } catch (error) {
-            console.error(`[medik-mcp] [MEDIK-INIT] Error during server diagnostic tests:`, {
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined
-            });
+        if (DEBUG) {
+            console.error(`[medik-mcp] [MEDIK-INIT] Starting server diagnostic - ${diagnosticId}`);
+            console.error(`[medik-mcp] [MEDIK-INIT] Server object available: ${!!server}`);
+            console.error(`[medik-mcp] [MEDIK-INIT] sendLoggingMessage method available: ${typeof server.sendLoggingMessage === 'function'}`);
         }
+        
+        // Send a test log message to verify logging is working
+        console.log('[DIAGNOSTIC] Sending explicit test log message...');
+        sendStructuredLog(server, 'info', 'Test log message', {
+            diagnosticId,
+            timestamp: new Date().toISOString()
+        });
+        console.log('[DIAGNOSTIC] Test log message sent!');
+        
     } catch (error) {
         console.error('[medik-mcp] [MEDIK-INIT] Fatal error during server initialization', {
             error: error instanceof Error ? error.message : String(error),

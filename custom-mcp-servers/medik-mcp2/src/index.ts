@@ -10,6 +10,12 @@ import {
   TextContent,
   LoggingLevel
 } from '@modelcontextprotocol/sdk/types.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Types for our data structures
 interface EntityInfo {
@@ -45,45 +51,161 @@ interface KnowledgeGraph {
 // API response tuple type
 type MediKanrenTuple = [string, string, string, string, string, string, string[]];
 
-// MCP logging utility - will be set after server creation
-let mcpServer: Server | null = null;
+// Logger class for handling both file and MCP logging
+class Logger {
+  private logDir: string = '';
+  private logFile: string = '';
+  private writeStream: fs.WriteStream | null = null;
+  // Track how many log messages are successfully forwarded to the MCP framework
+  private mcpSuccessCount = 0;
+  private mcpFailureCount = 0;
+  private mcpServer: Server | null = null;
 
-function log(message: string, data?: any): void {
-  const timestamp = new Date().toISOString();
-  const fullMessage = data ? `${message} | Data: ${JSON.stringify(data)}` : message;
-  
-  // STEP 1 DEBUG: Log function called
-  console.error(`[STEP-1-DEBUG] log() function called`);
-  console.error(`[STEP-1-DEBUG] Message: ${message}`);
-  console.error(`[STEP-1-DEBUG] Data: ${data ? JSON.stringify(data) : 'none'}`);
-  console.error(`[STEP-1-DEBUG] mcpServer exists: ${mcpServer !== null}`);
+  constructor() {
+    try {
+      // Use absolute path for logs directory
+      this.logDir = path.join(__dirname, '..', 'logs');
+      
+      // Create logs directory if it doesn't exist
+      if (!fs.existsSync(this.logDir)) {
+        try {
+          fs.mkdirSync(this.logDir, { recursive: true });
+          console.error(`Created logs directory at: ${this.logDir}`);
+        } catch (error) {
+          console.error(`Failed to create logs directory: ${error}`);
+          // Fallback to current directory if mkdir fails
+          this.logDir = path.join(process.cwd(), 'logs');
+          fs.mkdirSync(this.logDir, { recursive: true });
+          console.error(`Created fallback logs directory at: ${this.logDir}`);
+        }
+      }
+      
+      // Create timestamped log file
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const sessionId = Math.random().toString(36).substring(2, 8);
+      this.logFile = path.join(this.logDir, `medik-mcp_${timestamp}_${sessionId}.log`);
+      
+      // Create write stream
+      this.writeStream = fs.createWriteStream(this.logFile, { flags: 'a' });
+      
+      // Log initialization
+      this.writeStream.write(`=== Logger initialized at ${new Date().toISOString()} ===\n`);
+      this.writeStream.write(`Log file: ${this.logFile}\n`);
+      console.error(`Logger initialized. Writing to: ${this.logFile}`);
+    } catch (error) {
+      console.error(`Logger initialization failed: ${error}`);
+      // Ensure the process does not crash
+    }
+  }
 
-  // Use MCP logging if server is available, fallback to console
-  if (mcpServer) {
-    console.error(`[STEP-1-DEBUG] Attempting to send MCP logging message`);
-    const logPayload = {
+  setMcpServer(server: Server) {
+    this.mcpServer = server;
+  }
+
+  async log(level: LoggingLevel, message: string, data?: any): Promise<void> {
+    const timestamp = new Date().toISOString();
+    const traceId = Math.random().toString(36).substring(2, 8);
+
+    // Base log entry (mcpSent will be updated after we attempt the send)
+    const logEntry: any = {
+      timestamp,
+      level,
+      logger: 'medik-mcp',
+      message,
+      traceId,
+      mcpSent: false,
+      ...data
+    };
+
+    // Attempt to forward log to MCP consumers first so that the outcome can be recorded
+    if (this.mcpServer) {
+      try {
+        await this.mcpServer.sendLoggingMessage({
+          level,
+          logger: 'medik-mcp',
+          data: logEntry
+        });
+        logEntry.mcpSent = true;
+        this.mcpSuccessCount++;
+      } catch (error: any) {
+        this.mcpFailureCount++;
+        // Emit a secondary error entry describing the failure
+        const errorEntry = {
+          timestamp: new Date().toISOString(),
+          level: 'error' as LoggingLevel,
+          logger: 'medik-mcp',
+          message: `MCP sendLoggingMessage failed: ${error}`,
+          traceId
+        };
+        this.writeStream?.write(JSON.stringify(errorEntry) + '\n');
+        process.stderr.write(JSON.stringify(errorEntry) + '\n');
+      }
+    }
+
+    // Finally record the original log entry (now carrying the mcpSent status)
+    this.writeStream?.write(JSON.stringify(logEntry) + '\n');
+    process.stderr.write(JSON.stringify(logEntry) + '\n');
+  }
+
+  async info(message: string, data?: any): Promise<void> {
+    await this.log('info', message, data);
+  }
+
+  async error(message: string, data?: any): Promise<void> {
+    await this.log('error', message, data);
+  }
+
+  async warn(message: string, data?: any): Promise<void> {
+    await this.log('warning', message, data);
+  }
+
+  async debug(message: string, data?: any): Promise<void> {
+    await this.log('debug', message, data);
+  }
+
+  close(): void {
+    // Emit a summary of MCP forwarding statistics before closing
+    const summaryEntry = {
+      timestamp: new Date().toISOString(),
       level: 'info' as LoggingLevel,
       logger: 'medik-mcp',
-      data: {
-        message: fullMessage,
-        timestamp: timestamp,
-        traceId: Math.random().toString(36).substring(2, 8),
-        ...data
-      }
+      message: 'Logger shutting down',
+      mcpSuccessCount: this.mcpSuccessCount,
+      mcpFailureCount: this.mcpFailureCount
     };
-    
-    console.error(`[STEP-1-DEBUG] Log payload:`, JSON.stringify(logPayload, null, 2));
-    
-    mcpServer.sendLoggingMessage(logPayload).then(() => {
-      console.error(`[STEP-1-DEBUG] ✅ sendLoggingMessage() completed successfully`);
-    }).catch((error: any) => {
-      console.error(`[STEP-1-DEBUG] ❌ sendLoggingMessage() failed:`, error);
-      // Fallback to console if MCP logging fails
-      console.error(`[${timestamp}] MEDIK: ${fullMessage}`);
+    this.writeStream?.write(JSON.stringify(summaryEntry) + '\n');
+    process.stderr.write(JSON.stringify(summaryEntry) + '\n');
+
+    this.writeStream?.end();
+  }
+}
+
+// Create logger instance
+let logger: Logger | null = null;
+
+// Initialize logger after server is ready
+function initializeLogger() {
+  try {
+    logger = new Logger();
+  } catch (error) {
+    console.error(`Failed to initialize logger: ${error}`);
+  }
+}
+
+// Replace the old log function with the new logger
+function log(message: string, data?: any): void {
+  if (logger) {
+    logger.info(message, data).catch(error => {
+      process.stderr.write(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        logger: 'medik-mcp',
+        message: `Logger error: ${error}`,
+        traceId: Math.random().toString(36).substring(2, 8)
+      }) + '\n');
     });
   } else {
-    console.error(`[STEP-1-DEBUG] ❌ mcpServer is null, using console fallback`);
-    console.error(`[${timestamp}] MEDIK: ${fullMessage}`);
+    console.error(`Logger not initialized. Message: ${message}`);
   }
 }
 
@@ -786,8 +908,12 @@ const server = new Server({
   },
 });
 
-// ✅ FIX #1: Set the global server reference IMMEDIATELY after creation
+// Set the global server reference and logger's MCP server
+let mcpServer: Server | null = null;
 mcpServer = server;
+if (logger) {
+  (logger as Logger).setMcpServer(server);
+}
 log("✅ MCP server created and reference assigned");
 
 // List available tools
@@ -1162,32 +1288,26 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   
-  // ✅ FIX #2: Now that server is connected, we can safely use MCP logging
-  log('🚀 Starting MediK MCP Server v2.0.0 (Simplified)');
+  // Initialize the logger after server is connected
+  initializeLogger();
+  
+  // Set the global server reference and logger's MCP server
+  let mcpServer: Server | null = null;
+  mcpServer = server;
+  if (logger) {
+    (logger as Logger).setMcpServer(server);
+  }
+  log("✅ MCP server created and reference assigned");
+  
+  log('🚀 Starting MediK MCP Server v2.0.0');
   log('✅ MediK MCP Server connected and ready');
   
-  // ✅ FIX #3: Add a forced test log to confirm end-to-end MCP logging flow
-  mcpServer!.sendLoggingMessage({
-    level: 'info',
-    logger: 'startup',
-    data: {
-      message: 'Test MCP log message - server startup complete',
-      timestamp: new Date().toISOString(),
-      traceId: Math.random().toString(36).substring(2, 8)
-    }
-  });
+  // Send a test log message to verify MCP logging
+  await logger?.info('Test MCP log message - server startup complete');
   
-  // ✅ DIAGNOSTIC: Add explicit test log message
+  // Send a diagnostic test message
   console.error('[DIAGNOSTIC] Sending explicit test log message...');
-  await mcpServer!.sendLoggingMessage({
-    level: 'info',
-    logger: 'diagnostic',
-    data: {
-      message: '[TEST] Explicit diagnostic logging test - should appear in UI',
-      timestamp: new Date().toISOString(),
-      traceId: 'TEST-' + Math.random().toString(36).substring(2, 8)
-    }
-  });
+  await logger?.info('[TEST] Explicit diagnostic logging test - should appear in UI');
   console.error('[DIAGNOSTIC] Test log message sent!');
 }
 
