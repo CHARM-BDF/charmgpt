@@ -7,6 +7,8 @@
 
 import express, { Request, Response } from 'express';
 import { ChatService } from '../services/chat';
+import { MCPService, MCPLogMessage } from '../services/mcp';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -41,6 +43,31 @@ router.post('/', async (req: Request<{}, {}, {
       id: crypto.randomUUID(),
       timestamp: timestamp
     }) + '\n');
+  };
+
+  // Helper function to send MCP log messages as status updates
+  const sendMCPLogMessage = (message: MCPLogMessage) => {
+    const timestamp = new Date().toISOString();
+    const traceId = message.data?.traceId || crypto.randomUUID().split('-')[0];
+    
+    console.log(`\n🔍 [CHAT-DEBUG:${traceId}] ===== CHAT LOG FLOW START =====`);
+    console.log(`🔍 [CHAT-DEBUG:${traceId}] 1. Received MCP log message:`);
+    console.log(`🔍 [CHAT-DEBUG:${traceId}]`, JSON.stringify(message, null, 2));
+    
+    // Format message for both console and UI
+    const formattedMessage = `[${message.logger || 'MCP'}:${traceId}] ${message.data?.message || JSON.stringify(message.data)}`;
+    console.log(`🔍 [CHAT-DEBUG:${traceId}] 2. Formatted message: ${formattedMessage}`);
+    
+    try {
+      // Send to UI with trace ID
+      console.log(`🔍 [CHAT-DEBUG:${traceId}] 3. Attempting to send to UI via sendStatusUpdate`);
+      sendStatusUpdate(formattedMessage);
+      console.log(`🔍 [CHAT-DEBUG:${traceId}] ✅ Status update sent successfully`);
+    } catch (error) {
+      console.error(`🔍 [CHAT-DEBUG:${traceId}] ❌ Error sending status update:`, error);
+    }
+    
+    console.log(`🔍 [CHAT-DEBUG:${traceId}] ===== CHAT LOG FLOW END =====\n`);
   };
   
   try {
@@ -135,6 +162,26 @@ router.post('/', async (req: Request<{}, {}, {
     
     console.log('🔍 [CHAT-ARTIFACTS] === END BLOCKED SERVERS DEBUG ===\n');
     
+    // Set MCP log message handler for this request
+    const mcpService = req.app.locals.mcpService as MCPService;
+    if (mcpService) {
+      console.log('\n🔍 [CHAT-DEBUG] ===== LOG HANDLER REGISTRATION =====');
+      console.log('🔍 [CHAT-DEBUG] 1. Adding request-specific MCP log handler');
+      
+      // Add our chat-specific handler (this won't remove the global handler)
+      mcpService.addLogHandler(sendMCPLogMessage);
+      console.log('🔍 [CHAT-DEBUG] 2. Log handler added successfully');
+      sendStatusUpdate('MCP log handler enabled - you will receive server logs in this session');
+      
+      // Remove our handler when the request is complete
+      res.on('close', () => {
+        console.log('🔍 [CHAT-DEBUG] 3. Request closed, removing chat-specific MCP log handler');
+        mcpService.removeLogHandler(sendMCPLogMessage);
+        console.log('🔍 [CHAT-DEBUG] 4. Log handler removed successfully');
+      });
+      console.log('🔍 [CHAT-DEBUG] ===== LOG HANDLER REGISTRATION COMPLETE =====\n');
+    }
+
     // Initial status update
     sendStatusUpdate('Processing request...');
     sendStatusUpdate(`Using model provider: ${modelProvider}`);

@@ -12,10 +12,10 @@ export class Logger {
   private logFile: string;
   private startTime: Date;
   private logStream: fs.WriteStream | null = null;
-  private originalConsoleLog: typeof console.log;
-  private originalConsoleError: typeof console.error;
-  private originalConsoleWarn: typeof console.warn;
-  private originalConsoleInfo: typeof console.info;
+  public originalConsoleLog: typeof console.log;
+  public originalConsoleError: typeof console.error;
+  public originalConsoleWarn: typeof console.warn;
+  public originalConsoleInfo: typeof console.info;
   
   /**
    * Initialize the logger
@@ -172,7 +172,10 @@ export class Logger {
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
       this.log(`[ERROR] ${message}`);
-      this.originalConsoleError.apply(console, args);
+      // Only call original console.error if it's not a MCP framework log
+      if (!message.includes('[medik-mcp]')) {
+        this.originalConsoleError.apply(console, args);
+      }
     };
     
     // Intercept console.warn
