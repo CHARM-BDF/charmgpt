@@ -764,6 +764,14 @@ export class ChatService {
     
     // Sequential thinking loop
     while (!isSequentialThinkingComplete && thinkingSteps < MAX_THINKING_STEPS) {
+      console.log(`\n🌀 [CHAT-SVC TOOL-LOOP] Iteration #${thinkingSteps}`);
+      if (workingMessages.length > 0) {
+        const lastMsgSnapshot = workingMessages[workingMessages.length - 1];
+        console.log('[CHAT-SVC TOOL-LOOP] Last message snapshot >>>');
+        try {
+          console.dir(lastMsgSnapshot, { depth: null, colors: false });
+        } catch {}
+      }
       thinkingSteps++;
       statusHandler?.(`Running thinking step ${thinkingSteps}...`);
       
@@ -873,6 +881,13 @@ export class ChatService {
         console.log(`🔍 [GEMINI-RESPONSE] === LLM RESPONSE STRUCTURE ===`);
         console.log(`🔍 [GEMINI-RESPONSE] Response has tool calls: ${response.rawResponse?.choices?.[0]?.message?.tool_calls ? 'Yes' : 'No'}`);
         console.log(`🔍 [GEMINI-RESPONSE] Response type: ${typeof response.rawResponse}`);
+        
+        // Global log of raw response for all providers (truncated)
+        console.log('[CHAT-SVC TOOL-LOOP] Raw LLM response (provider-agnostic, first 800 chars):');
+        try {
+          const str = JSON.stringify(response.rawResponse || response, null, 2);
+          console.log(str.substring(0, 800) + (str.length > 800 ? '...' : ''));
+        } catch {}
         
         // For Gemini, log specialized response structure
         if (modelProvider === 'gemini') {

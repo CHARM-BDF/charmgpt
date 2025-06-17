@@ -115,6 +115,8 @@ router.post('/', async (req: Request<{}, {}, {
 
     let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
+    // Keep track of every unique tool call (name + args) to avoid accidental repeats
+    const executedToolCalls = new Set<string>();
 
     // Set MCP log message handler for this request
     if (mcpService) {
@@ -163,7 +165,14 @@ router.post('/', async (req: Request<{}, {}, {
     }
 
     // First phase: Sequential thinking and tool usage
+    let loopIndex = 0;
     while (!isSequentialThinkingComplete) {
+      console.log(`\n🌀 [TOOL-LOOP] Iteration #${loopIndex}`);
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        console.log('[TOOL-LOOP] Last conversation message >>>');
+        console.dir(lastMsg, { depth: null, colors: false });
+      }
       sendStatusUpdate('Analyzing request and planning response...');
       
       // Get MCP tools if available
@@ -183,6 +192,10 @@ router.post('/', async (req: Request<{}, {}, {
         tools: tools,
       });
 
+      // Log raw response for diagnostics
+      console.log('[TOOL-LOOP] Raw toolResponse.content from Claude:');
+      console.dir(toolResponse.content, { depth: null, colors: false });
+
       // Process tool usage
       for (const content of toolResponse.content) {
         if (content.type === 'tool_use') {
@@ -192,6 +205,14 @@ router.post('/', async (req: Request<{}, {}, {
 
           const [serverName, toolName] = originalToolName.split(':');
           
+          // Detect and skip duplicate consecutive calls with identical arguments
+          const toolCallSignature = `${content.name}:${JSON.stringify(content.input)}`;
+          if (executedToolCalls.has(toolCallSignature)) {
+            sendStatusUpdate(`Skipping duplicate tool call: ${content.name}`);
+            continue; // Go to the next content block without re-executing
+          }
+          executedToolCalls.add(toolCallSignature);
+
           sendStatusUpdate(`Executing tool: ${toolName} on server: ${serverName}...`);
           
           // Add debug logging for MCP tool execution
@@ -220,166 +241,144 @@ router.post('/', async (req: Request<{}, {}, {
           }
           console.log('================================\n');
 
-          // Add tool usage to conversation
-          messages.push({
-            role: 'assistant',
-            content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
-          });
+          // 👇 Do NOT add a separate status or fake user echo.  We will add a single
+          // assistant message containing the tool's JSON/text result further below.
 
-          // Process tool result
-          if (toolResult && typeof toolResult === 'object' && 'content' in toolResult) {
-            const textContent = (toolResult.content as any[]).find((item: any) => 
-              item.type === 'text' && typeof item.text === 'string'
-            );
-
-            // Log text content extraction
-            console.log('[MCP-OUTPUT] TEXT CONTENT EXTRACTION:');
-            console.log(`Tool: ${toolName}, Server: ${serverName}`);
-            console.log('Has content array:', Array.isArray(toolResult.content));
-            console.log('Content array length:', Array.isArray(toolResult.content) ? toolResult.content.length : 0);
-            console.log('Found text content:', !!textContent);
-            if (textContent) {
-              console.log('Text content preview (first 100 chars):', textContent.text.substring(0, 100));
+          // Handle bibliography if present
+          if ('bibliography' in toolResult && toolResult.bibliography) {
+            // Check if bibliography exists and merge if it does
+            if ((messages as any).bibliography) {
+              // Merge and deduplicate based on PMID
+              const currentBibliography = (messages as any).bibliography as any[];
+              const newBibliography = toolResult.bibliography as any[];
+              
+              // Create a map of existing PMIDs
+              const existingPmids = new Set(currentBibliography.map(entry => entry.pmid));
+              
+              // Only add entries with new PMIDs
+              const uniqueNewEntries = newBibliography.filter(entry => !existingPmids.has(entry.pmid));
+              
+              // Merge unique new entries with existing bibliography
+              (messages as any).bibliography = [...currentBibliography, ...uniqueNewEntries];
             } else {
-              console.log('Text content items in array:');
-              if (Array.isArray(toolResult.content)) {
-                toolResult.content.forEach((item, index) => {
-                  console.log(`Item ${index}: type=${item.type}, has text=${'text' in item}, text length=${item.text ? item.text.length : 0}`);
-                });
+              // First bibliography, just set it
+              (messages as any).bibliography = toolResult.bibliography;
+            }
+          }
+
+          // Handle grant markdown if present
+          if ('grantMarkdown' in toolResult && toolResult.grantMarkdown) {
+            // Store the grant markdown
+            (messages as any).grantMarkdown = toolResult.grantMarkdown;
+          }
+
+          // Handle knowledge graph artifacts if present
+          if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
+            // Find any knowledge graph artifacts in the response
+            const knowledgeGraphArtifact = toolResult.artifacts.find((a: any) => 
+              a.type === 'application/vnd.knowledge-graph' && typeof a.content === 'string'
+            );
+            
+            if (knowledgeGraphArtifact) {
+              console.log('\n=== KNOWLEDGE GRAPH DATA ===');
+              console.log(`Knowledge graph artifact found with title: ${knowledgeGraphArtifact.title || 'untitled'}`);
+              
+              try {
+                // Parse the knowledge graph content from string to object
+                const newGraph = JSON.parse(knowledgeGraphArtifact.content);
+                
+                // Validate the knowledge graph structure
+                if (isValidKnowledgeGraph(newGraph)) {
+                  console.log(`Knowledge graph contains ${newGraph.nodes.length} nodes and ${newGraph.links.length} links`);
+                  
+                  // Check if knowledge graph exists and merge if it does
+                  if ((messages as any).knowledgeGraph) {
+                    console.log('Merging with existing knowledge graph...');
+                    
+                    // Merge the knowledge graphs
+                    const currentGraph = (messages as any).knowledgeGraph as KnowledgeGraph;
+                    const mergedGraph = mergeKnowledgeGraphs(currentGraph, newGraph);
+                    
+                    // Update the merged graph
+                    (messages as any).knowledgeGraph = mergedGraph;
+                    
+                    console.log(`Merged graph now contains ${mergedGraph.nodes.length} nodes and ${mergedGraph.links.length} links`);
+                  } else {
+                    // First knowledge graph, just set it
+                    console.log('Setting initial knowledge graph');
+                    (messages as any).knowledgeGraph = newGraph;
+                  }
+                } else {
+                  console.error('Invalid knowledge graph structure in artifact');
+                }
+              } catch (error) {
+                console.error('Error processing knowledge graph:', error);
               }
             }
+          }
 
-            if (textContent) {
-              // If there's metadata, add it to the status updates
-              if ('metadata' in toolResult) {
-                const metadata = toolResult.metadata as any;
-                if (metadata.querySuccess) {
-                  sendStatusUpdate(`Query successful with ${metadata.nodeCount} nodes${metadata.bothDirectionsSuccessful ? ' (both directions complete)' : ''}`);
-                  if (metadata.message) {
-                    sendStatusUpdate(metadata.message);
-                  }
+          // Handle binary output if present
+          if ('binaryOutput' in toolResult && toolResult.binaryOutput) {
+            const binaryOutput = toolResult.binaryOutput as BinaryOutput;
+            
+            // Initialize binaryOutputs array if it doesn't exist
+            if (!(messages as any).binaryOutputs) {
+              (messages as any).binaryOutputs = [];
+            }
+            
+            // Add binary output to the collection
+            (messages as any).binaryOutputs.push(binaryOutput);
+          }
+
+          // Handle artifacts array from standardized MCP response format
+          if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts) && toolResult.artifacts.length > 0) {
+            console.log('[CHAT:TOOL-RESULT] Found artifacts array in MCP response:', toolResult.artifacts.length, 'items');
+            
+            // Process each artifact
+            for (const artifact of toolResult.artifacts) {
+              console.log(`[CHAT:TOOL-RESULT] Found artifact of type: ${artifact.type} titled "${artifact.title}"`);
+              
+              // Store for later processing in the unified artifact collection phase
+              if (!(messages as any).directArtifacts) {
+                (messages as any).directArtifacts = [];
+              }
+              (messages as any).directArtifacts.push(artifact);
+            }
+            
+            console.log('[CHAT:TOOL-RESULT] Stored MCP artifacts for later processing');
+          }
+
+          // ░░░ Handle the main textual result ░░░
+          if (toolResult && typeof toolResult === 'object' && 'content' in toolResult) {
+            const textContentItem = Array.isArray((toolResult as any).content)
+              ? (toolResult as any).content.find((item: any) => item.type === 'text' && typeof item.text === 'string')
+              : undefined;
+
+            if (textContentItem) {
+              // Forward any success metadata as a user-visible status
+              if ('metadata' in toolResult && (toolResult as any).metadata?.querySuccess) {
+                const md = (toolResult as any).metadata;
+                sendStatusUpdate(`Query successful with ${md.nodeCount ?? 0} nodes${md.bothDirectionsSuccessful ? ' (both directions complete)' : ''}`);
+                if (md.message) {
+                  sendStatusUpdate(md.message);
                 }
               }
 
+              // Add a SINGLE assistant message containing the tool's textual output
               messages.push({
-                role: 'user',
-                content: [{ type: 'text', text: textContent.text }]
+                role: 'assistant',
+                content: [{ type: 'text', text: textContentItem.text }]
               });
 
-              // Check if this was sequential thinking tool
+              // If this is the sequential-thinking planner, decide whether to exit the loop
               if (content.name.includes('sequential-thinking')) {
                 try {
-                  const result = JSON.parse(textContent.text);
-                  isSequentialThinkingComplete = !result.nextThoughtNeeded;
-                } catch (error) {
-                  console.error('Error parsing sequential thinking result:', error);
-                  isSequentialThinkingComplete = true;
+                  const parsed = JSON.parse(textContentItem.text);
+                  isSequentialThinkingComplete = !parsed.nextThoughtNeeded;
+                } catch {
+                  isSequentialThinkingComplete = true; // fall back to safe exit
                 }
               }
-            }
-
-            // Handle bibliography if present
-            if ('bibliography' in toolResult && toolResult.bibliography) {
-              // Check if bibliography exists and merge if it does
-              if ((messages as any).bibliography) {
-                // Merge and deduplicate based on PMID
-                const currentBibliography = (messages as any).bibliography as any[];
-                const newBibliography = toolResult.bibliography as any[];
-                
-                // Create a map of existing PMIDs
-                const existingPmids = new Set(currentBibliography.map(entry => entry.pmid));
-                
-                // Only add entries with new PMIDs
-                const uniqueNewEntries = newBibliography.filter(entry => !existingPmids.has(entry.pmid));
-                
-                // Merge unique new entries with existing bibliography
-                (messages as any).bibliography = [...currentBibliography, ...uniqueNewEntries];
-              } else {
-                // First bibliography, just set it
-                (messages as any).bibliography = toolResult.bibliography;
-              }
-            }
-
-            // Handle grant markdown if present
-            if ('grantMarkdown' in toolResult && toolResult.grantMarkdown) {
-              // Store the grant markdown
-              (messages as any).grantMarkdown = toolResult.grantMarkdown;
-            }
-
-            // Handle knowledge graph artifacts if present
-            if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
-              // Find any knowledge graph artifacts in the response
-              const knowledgeGraphArtifact = toolResult.artifacts.find((a: any) => 
-                a.type === 'application/vnd.knowledge-graph' && typeof a.content === 'string'
-              );
-              
-              if (knowledgeGraphArtifact) {
-                console.log('\n=== KNOWLEDGE GRAPH DATA ===');
-                console.log(`Knowledge graph artifact found with title: ${knowledgeGraphArtifact.title || 'untitled'}`);
-                
-                try {
-                  // Parse the knowledge graph content from string to object
-                  const newGraph = JSON.parse(knowledgeGraphArtifact.content);
-                  
-                  // Validate the knowledge graph structure
-                  if (isValidKnowledgeGraph(newGraph)) {
-                    console.log(`Knowledge graph contains ${newGraph.nodes.length} nodes and ${newGraph.links.length} links`);
-                    
-                    // Check if knowledge graph exists and merge if it does
-                    if ((messages as any).knowledgeGraph) {
-                      console.log('Merging with existing knowledge graph...');
-                      
-                      // Merge the knowledge graphs
-                      const currentGraph = (messages as any).knowledgeGraph as KnowledgeGraph;
-                      const mergedGraph = mergeKnowledgeGraphs(currentGraph, newGraph);
-                      
-                      // Update the merged graph
-                      (messages as any).knowledgeGraph = mergedGraph;
-                      
-                      console.log(`Merged graph now contains ${mergedGraph.nodes.length} nodes and ${mergedGraph.links.length} links`);
-                    } else {
-                      // First knowledge graph, just set it
-                      console.log('Setting initial knowledge graph');
-                      (messages as any).knowledgeGraph = newGraph;
-                    }
-                  } else {
-                    console.error('Invalid knowledge graph structure in artifact');
-                  }
-                } catch (error) {
-                  console.error('Error processing knowledge graph:', error);
-                }
-              }
-            }
-
-            // Handle binary output if present
-            if ('binaryOutput' in toolResult && toolResult.binaryOutput) {
-              const binaryOutput = toolResult.binaryOutput as BinaryOutput;
-              
-              // Initialize binaryOutputs array if it doesn't exist
-              if (!(messages as any).binaryOutputs) {
-                (messages as any).binaryOutputs = [];
-              }
-              
-              // Add binary output to the collection
-              (messages as any).binaryOutputs.push(binaryOutput);
-            }
-
-            // Handle artifacts array from standardized MCP response format
-            if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts) && toolResult.artifacts.length > 0) {
-              console.log('[CHAT:TOOL-RESULT] Found artifacts array in MCP response:', toolResult.artifacts.length, 'items');
-              
-              // Process each artifact
-              for (const artifact of toolResult.artifacts) {
-                console.log(`[CHAT:TOOL-RESULT] Found artifact of type: ${artifact.type} titled "${artifact.title}"`);
-                
-                // Store for later processing in the unified artifact collection phase
-                if (!(messages as any).directArtifacts) {
-                  (messages as any).directArtifacts = [];
-                }
-                (messages as any).directArtifacts.push(artifact);
-              }
-              
-              console.log('[CHAT:TOOL-RESULT] Stored MCP artifacts for later processing');
             }
           }
         }
@@ -389,6 +388,8 @@ router.post('/', async (req: Request<{}, {}, {
       if (!toolResponse.content.some(c => c.type === 'tool_use')) {
         isSequentialThinkingComplete = true;
       }
+
+      loopIndex += 1;
     }
 
     // Final phase: Response formatting
