@@ -109,7 +109,7 @@ export class LLMService implements LLMServiceInterface {
         this.options.model = 'gpt-4-turbo-preview';
         console.log(`LLMService: Using default OpenAI model: ${this.options.model}`);
       } else if (providerName === 'gemini') {
-        this.options.model = 'gemini-2.0-flash';
+        this.options.model = 'gemini-2.5-flash';
         console.log(`LLMService: Using default Gemini model: ${this.options.model}`);
       } else if (providerName === 'ollama') {
         this.options.model = 'llama3.2:latest';
