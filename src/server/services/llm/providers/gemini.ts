@@ -25,7 +25,7 @@ export class GeminiProvider implements LLMProvider {
     
     // If no model specified or it's not a Gemini model, use the default
     if (!modelToUse || modelToUse.includes('claude') || modelToUse.includes('gpt')) {
-      modelToUse = 'gemini-2.0-flash';
+      modelToUse = 'gemini-2.5-flash';
       console.log(`GeminiProvider: Overriding non-Gemini model with default: ${modelToUse}`);
     }
     
