@@ -52,12 +52,15 @@ async function testProviderSwitching(service: LLMService) {
   
   const providers = ['anthropic', 'openai', 'gemini'];
   const availableProviders = providers.filter(provider => {
-    const envVar = provider === 'anthropic' 
-      ? 'ANTHROPIC_API_KEY' 
-      : provider === 'openai' 
-        ? 'OPENAI_API_KEY' 
-        : 'GEMINI_API_KEY';
-    return !!process.env[envVar];
+    const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
+    if (provider === 'anthropic') {
+      return useVertexAI || !!process.env.ANTHROPIC_API_KEY;
+    } else if (provider === 'openai') {
+      return !!process.env.OPENAI_API_KEY;
+    } else if (provider === 'gemini') {
+      return useVertexAI || !!process.env.GEMINI_API_KEY;
+    }
+    return false;
   });
   
   if (availableProviders.length < 2) {
@@ -112,12 +115,13 @@ async function runTests() {
   // Initialize service with default provider (anthropic)
   let service = new LLMService();
   
-  // Test with Anthropic if API key is available
-  if (process.env.ANTHROPIC_API_KEY) {
+  // Test with Anthropic if API key or Vertex AI is available
+  const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
+  if (useVertexAI || process.env.ANTHROPIC_API_KEY) {
     service.setProvider({ provider: 'anthropic' });
     results.anthropic = await testServiceWithProvider(service, 'anthropic');
   } else {
-    console.log('⚠️ Skipping Anthropic test (ANTHROPIC_API_KEY not set)');
+    console.log('⚠️ Skipping Anthropic test (ANTHROPIC_API_KEY not set and GOOGLE_CLOUD_PROJECT not set)');
     results.anthropic = false;
   }
   
@@ -130,12 +134,12 @@ async function runTests() {
     results.openai = false;
   }
   
-  // Test with Gemini if API key is available
-  if (process.env.GEMINI_API_KEY) {
+  // Test with Gemini if API key or Vertex AI is available
+  if (useVertexAI || process.env.GEMINI_API_KEY) {
     service.setProvider({ provider: 'gemini' });
     results.gemini = await testServiceWithProvider(service, 'gemini');
   } else {
-    console.log('⚠️ Skipping Gemini test (GEMINI_API_KEY not set)');
+    console.log('⚠️ Skipping Gemini test (GEMINI_API_KEY not set and GOOGLE_CLOUD_PROJECT not set)');
     results.gemini = false;
   }
   
