@@ -6,8 +6,10 @@
  */
 
 import { AnthropicProvider } from './providers/anthropic';
+import { AnthropicVertexProvider } from './providers/anthropic-vertex';
 import { OpenAIProvider } from './providers/openai';
 import { GeminiProvider } from './providers/gemini';
+import { GeminiVertexProvider } from './providers/gemini-vertex';
 import { OllamaProvider } from './providers/ollama';
 import { LLMCache } from './cache';
 import { isValidJSON, extractJSONFromText } from './utils';
@@ -57,20 +59,34 @@ export class LLMService implements LLMServiceInterface {
    */
   private initializeProvider(): void {
     const providerName = this.options.provider || 'anthropic';
-    console.log(`🔄 LLMService: Initializing provider ${providerName.toUpperCase()}`);
+    const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
+    
+    console.log(`🔄 LLMService: Initializing provider ${providerName.toUpperCase()}${useVertexAI ? ' via Vertex AI' : ''}`);
     
     if (this.options.provider === 'anthropic') {
-      this.provider = new AnthropicProvider({
-        model: this.options.model
-      });
+      if (useVertexAI) {
+        this.provider = new AnthropicVertexProvider({
+          model: this.options.model
+        });
+      } else {
+        this.provider = new AnthropicProvider({
+          model: this.options.model
+        });
+      }
     } else if (this.options.provider === 'openai') {
       this.provider = new OpenAIProvider({
         model: this.options.model
       });
     } else if (this.options.provider === 'gemini') {
-      this.provider = new GeminiProvider({
-        model: this.options.model
-      });
+      if (useVertexAI) {
+        this.provider = new GeminiVertexProvider({
+          model: this.options.model
+        });
+      } else {
+        this.provider = new GeminiProvider({
+          model: this.options.model
+        });
+      }
     } else if (this.options.provider === 'ollama') {
       this.provider = new OllamaProvider({
         model: this.options.model
@@ -102,15 +118,17 @@ export class LLMService implements LLMServiceInterface {
     // Reset model to provider-specific defaults if not explicitly set in options
     // or if current model is incompatible with the new provider
     if (!options.model || this.isIncompatibleModel(providerName, this.options.model)) {
+      const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
+      
       if (providerName === 'anthropic') {
-        this.options.model = 'claude-3-5-sonnet-20241022';
-        console.log(`LLMService: Using default Anthropic model: ${this.options.model}`);
+        this.options.model = useVertexAI ? 'claude-sonnet-4@20250514' : 'claude-3-5-sonnet-20241022';
+        console.log(`LLMService: Using default Anthropic model: ${this.options.model}${useVertexAI ? ' (Vertex AI)' : ''}`);
       } else if (providerName === 'openai') {
         this.options.model = 'gpt-4-turbo-preview';
         console.log(`LLMService: Using default OpenAI model: ${this.options.model}`);
       } else if (providerName === 'gemini') {
-        this.options.model = 'gemini-2.5-flash';
-        console.log(`LLMService: Using default Gemini model: ${this.options.model}`);
+        this.options.model = useVertexAI ? 'gemini-2.0-flash-exp' : 'gemini-2.5-flash';
+        console.log(`LLMService: Using default Gemini model: ${this.options.model}${useVertexAI ? ' (Vertex AI)' : ''}`);
       } else if (providerName === 'ollama') {
         this.options.model = 'llama3.2:latest';
         console.log(`LLMService: Using default Ollama model: ${this.options.model}`);
@@ -134,8 +152,15 @@ export class LLMService implements LLMServiceInterface {
   private isIncompatibleModel(provider: string, model: string | undefined): boolean {
     if (!model) return true;
     
-    if (provider === 'anthropic' && !model.includes('claude')) {
-      return true;
+    const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
+    
+    if (provider === 'anthropic') {
+      // For Vertex AI, models use @ instead of - in the version
+      if (useVertexAI && !model.includes('claude')) {
+        return true;
+      } else if (!useVertexAI && !model.includes('claude')) {
+        return true;
+      }
     } else if (provider === 'openai' && model.includes('claude')) {
       return true;
     } else if (provider === 'gemini' && (model.includes('claude') || model.includes('gpt'))) {
