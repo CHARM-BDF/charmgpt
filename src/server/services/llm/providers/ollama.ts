@@ -58,10 +58,19 @@ export class OllamaProvider implements LLMProvider {
    */
   constructor(options: OllamaProviderOptions = {}) {
     this.model = options.model || 'llama3.2:latest';
-    this.apiUrl = options.apiUrl || 'http://localhost:11434/api';
+    
+    // Build API URL from environment variables or use provided apiUrl
+    if (options.apiUrl) {
+      this.apiUrl = options.apiUrl;
+    } else {
+      const ollamaBase = process.env.OLLAMA_BASE || 'http://localhost';
+      const ollamaPort = process.env.OLLAMA_PORT || '11434';
+      this.apiUrl = `${ollamaBase}:${ollamaPort}/api`;
+    }
+    
     this.toolAdapter = new OllamaToolAdapter();
     
-    console.log(`🟤 OllamaProvider: Initialized with model ${this.model}`);
+    console.log(`🟤 OllamaProvider: Initialized with model ${this.model} at ${this.apiUrl}`);
   }
   
   /**
