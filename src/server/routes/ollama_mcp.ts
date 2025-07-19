@@ -53,8 +53,10 @@ const noTimeoutFetch = (input: any, init?: any) => {
   });
 };
 
-const REMOTE_HOST = 'localhost:11434';
-const REMOTE_URL = `http://${REMOTE_HOST}`;
+// Build Ollama connection URL from environment variables
+const ollamaBase = process.env.OLLAMA_BASE || 'http://localhost';
+const ollamaPort = process.env.OLLAMA_PORT || '11434';
+const REMOTE_URL = `${ollamaBase}:${ollamaPort}`;
 const ollama = new Ollama({ 
   host: REMOTE_URL,
   fetch: noTimeoutFetch

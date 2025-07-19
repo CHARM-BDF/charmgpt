@@ -1,38 +1,90 @@
 /**
- * Google Gemini LLM Provider using the new @google/genai SDK
+ * Google Gemini LLM Provider using Google Vertex AI
  * 
- * This file implements the Google Gemini provider for the LLM Service.
+ * This file implements the Google Gemini provider for the LLM Service via Vertex AI.
+ * It will be used when GOOGLE_CLOUD_PROJECT environment variable is set.
  */
 
-import { GoogleGenAI, FunctionCallingConfigMode } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { LLMProvider, LLMProviderOptions, LLMProviderResponse } from '../types';
 
-export class GeminiProvider implements LLMProvider {
+// Retry configuration for rate limiting
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 1000, // 1 second
+  maxDelay: 10000,  // 10 seconds
+};
+
+/**
+ * Exponential backoff retry function
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = RETRY_CONFIG.maxRetries,
+  baseDelay: number = RETRY_CONFIG.baseDelay
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      // Only retry on 429 errors
+      if (error instanceof Error && error.message.includes('429')) {
+        if (attempt < maxRetries) {
+          const delay = Math.min(baseDelay * Math.pow(2, attempt), RETRY_CONFIG.maxDelay);
+          console.log(`🔄 GeminiVertexProvider: Rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      
+      // For non-429 errors or after max retries, throw the error
+      throw error;
+    }
+  }
+  
+  throw lastError!;
+}
+
+export class GeminiVertexProvider implements LLMProvider {
   private client: GoogleGenAI;
   private defaultModel: string;
+  private projectId: string;
+  private location: string;
   
   constructor(options: LLMProviderOptions = {}) {
-    // Initialize Gemini client
-    const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Gemini API key is required. Set it in options or GEMINI_API_KEY environment variable.');
+    // Get Google Cloud Project ID from environment
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+    if (!projectId) {
+      throw new Error('GOOGLE_CLOUD_PROJECT environment variable is required for Vertex AI.');
     }
+    this.projectId = projectId;
+    this.location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
     
-    this.client = new GoogleGenAI({ apiKey });
+    // For Vertex AI, we use the GoogleGenAI client with vertexai: true
+    // The SDK will automatically use Application Default Credentials (ADC)
+    this.client = new GoogleGenAI({
+      vertexai: true,
+      project: this.projectId,
+      location: this.location,
+    });
     
     // Override the incoming model parameter if it's a non-Gemini model
     let modelToUse = options.model;
     
     // If no model specified or it's not a Gemini model, use the default
     if (!modelToUse || modelToUse.includes('claude') || modelToUse.includes('gpt')) {
-      modelToUse = 'gemini-2.5-flash';
-      console.log(`GeminiProvider: Overriding non-Gemini model with default: ${modelToUse}`);
+      modelToUse = 'gemini-2.0-flash-exp';
+      console.log(`GeminiVertexProvider: Overriding non-Gemini model with default: ${modelToUse}`);
     }
     
     // Set default model
     this.defaultModel = modelToUse;
     
-    console.log(`GeminiProvider: Initialized with model ${this.defaultModel}`);
+    console.log(`GeminiVertexProvider: Initialized with model ${this.defaultModel} in project ${this.projectId}`);
   }
   
   async query(prompt: string, options: LLMProviderOptions = {}): Promise<LLMProviderResponse> {
@@ -43,7 +95,7 @@ export class GeminiProvider implements LLMProvider {
     const systemPrompt = options.systemPrompt || '';
     
     try {
-      console.log(`GeminiProvider: Sending query to ${modelName} (temp: ${temperature})`);
+      console.log(`GeminiVertexProvider: Sending query to ${modelName} (temp: ${temperature})`);
       
       // Prepare message content
       const contents = [];
@@ -110,33 +162,33 @@ export class GeminiProvider implements LLMProvider {
         // Add function calling configuration
         request.config.toolConfig = {
           functionCallingConfig: {
-            mode: FunctionCallingConfigMode.ANY,
+            mode: 'ANY',
             allowedFunctionNames: functionNames.length > 0 ? functionNames : undefined
           }
         };
         
-        console.log(`GeminiProvider: Added function calling config with ${functionNames.length} functions: ${functionNames.join(', ')}`);
+        console.log(`GeminiVertexProvider: Added function calling config with ${functionNames.length} functions: ${functionNames.join(', ')}`);
       }
       
       // Handle specific tool choice if provided
       if (options.toolChoice && typeof options.toolChoice === 'object' && 'name' in options.toolChoice) {
         request.config.toolConfig = request.config.toolConfig || {};
         request.config.toolConfig.functionCallingConfig = request.config.toolConfig.functionCallingConfig || 
-          { mode: FunctionCallingConfigMode.ANY };
+          { mode: 'ANY' };
           
         request.config.toolConfig.functionCallingConfig.allowedFunctionNames = [options.toolChoice.name];
-        console.log(`GeminiProvider: Set allowed function to: ${options.toolChoice.name}`);
+        console.log(`GeminiVertexProvider: Set allowed function to: ${options.toolChoice.name}`);
       }
       
       // Log the configuration
-      console.log(`GeminiProvider: Config: ${JSON.stringify({
+      console.log(`GeminiVertexProvider: Config: ${JSON.stringify({
         hasTools: !!request.config.tools,
         hasToolConfig: !!request.config.toolConfig,
         temperature
       })}`);
       
       // Make API request
-      const response = await this.client.models.generateContent(request);
+      const response = await retryWithBackoff(() => this.client.models.generateContent(request));
       
       // Extract text from response - text is a property getter, not a method
       const responseText = response?.text || '';
@@ -155,8 +207,8 @@ export class GeminiProvider implements LLMProvider {
         }
       };
     } catch (error) {
-      console.error('Gemini query error:', error);
-      throw new Error(`Gemini query failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Gemini Vertex AI query error:', error);
+      throw new Error(`Gemini Vertex AI query failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 } 
