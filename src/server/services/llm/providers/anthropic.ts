@@ -59,7 +59,7 @@ export class AnthropicProvider implements LLMProvider {
   async query(prompt: string, options: LLMProviderOptions = {}): Promise<LLMProviderResponse> {
     // Get options with defaults
     const model = options.model || this.defaultModel;
-    const temperature = options.temperature ?? 0.7;
+    const temperature = options.temperature ?? 0.2;
     const maxTokens = options.maxTokens || 4000;
     const systemPrompt = options.systemPrompt || '';
     

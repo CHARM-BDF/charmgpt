@@ -41,7 +41,7 @@ export class LLMService implements LLMServiceInterface {
     this.options = {
       provider: options.provider || 'anthropic',
       model: options.model || 'claude-3-5-sonnet-20241022',
-      temperature: options.temperature ?? 0.7,
+      temperature: options.temperature ?? 0.2,
       maxTokens: options.maxTokens || 4000,
       cacheResponses: options.cacheResponses ?? true
     };
@@ -341,7 +341,7 @@ Do not add or remove any items. Only reorder them based on the criteria.
       responseFormat: 'json',
       systemPrompt: options.systemPrompt || 'You are an expert at ranking and prioritizing items based on specific criteria.',
       options: {
-        temperature: 0.3, // Lower temperature for more consistent rankings
+        temperature: 0.2, // Lower temperature for more consistent rankings
         ...options.options
       }
     });

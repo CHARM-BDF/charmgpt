@@ -37,6 +37,9 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      logging: {
+        level: "debug"
+      }
     },
   }
 );
