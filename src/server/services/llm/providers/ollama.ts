@@ -120,7 +120,7 @@ export class OllamaProvider implements LLMProvider {
    * @returns Processed response from Ollama
    */
   async query(prompt: string, options: LLMProviderOptions = {}): Promise<LLMProviderResponse> {
-    console.log(`🟤 OllamaProvider: Sending query to ${this.model} (temp: ${options.temperature || 0.7})`);
+    console.log(`🟤 OllamaProvider: Sending query to ${this.model} (temp: ${options.temperature || 0.2})`);
     
     try {
       // Format messages with system prompt
@@ -213,7 +213,7 @@ export class OllamaProvider implements LLMProvider {
           stream: false,
           format: formatSchema, // Use structured outputs instead of tools
           options: {
-            temperature: options.temperature || 0.7,
+            temperature: options.temperature || 0.2,
             top_p: ollamaOptions.top_p || 0.9,
             top_k: ollamaOptions.top_k || 40,
             num_predict: options.maxTokens || 1024,
@@ -291,7 +291,7 @@ export class OllamaProvider implements LLMProvider {
         messages: messages,
         stream: false, // Set to false initially for simpler implementation
         options: {
-          temperature: options.temperature || 0.7,
+          temperature: options.temperature || 0.2,
           top_p: ollamaOptions.top_p || 0.9,
           top_k: ollamaOptions.top_k || 40,
           num_predict: options.maxTokens || 1024,

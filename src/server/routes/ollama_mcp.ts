@@ -328,7 +328,7 @@ async function handleResponse(
       tools: tools,
           stream: false,
           options: {
-            temperature: 0.7,
+            temperature: 0.2,
             num_predict: 1024,
             top_k: 40,
             top_p: 0.9,
@@ -503,7 +503,7 @@ router.post('/', async (req: Request, res: Response) => {
         tools: tools,
           stream: false,
           options: {
-            temperature: 0.7,
+            temperature: 0.2,
             num_predict: 1024,
             top_k: 40,
             top_p: 0.9,
@@ -613,7 +613,7 @@ For regular conversation, just write normally. Be concise and helpful.`;
           // Remove the tools parameter to not force a specific structure
           stream: true,
           options: {
-            temperature: 0.7,
+            temperature: 0.2,
             num_predict: 1024,
             top_k: 40,
             top_p: 0.9,
@@ -684,7 +684,7 @@ For regular conversation, just write normally. Be concise and helpful.`;
           // Remove the tools parameter to not force a specific structure
           stream: false,
           options: {
-            temperature: 0.7,
+            temperature: 0.2,
             num_predict: 1024,
             top_k: 40,
             top_p: 0.9,

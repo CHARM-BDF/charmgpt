@@ -64,7 +64,7 @@ const ollama = new Ollama({ host: REMOTE_HOST, fetch: noTimeoutFetch });
 
 // Make responses more deterministic
 const ollamaOptions = {
-  temperature: 0,
+  temperature: 0.2,
 };
 
 const verbose = true;
