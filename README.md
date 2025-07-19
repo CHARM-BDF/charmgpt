@@ -78,7 +78,9 @@ If you prefer to set up the servers step by step, follow these instructions:
    
    ```bash
    cd custom-mcp-servers/python-mcp
-   docker build -t my-python-mcp .
+   # docker build -t my-python-mcp .
+   docker pull namin/my-python-mcp
+   docker tag namin/my-python-mcp my-python-mcp
    ```
    This process may take several minutes as it installs all required dependencies.
 
@@ -95,7 +97,9 @@ If you prefer to set up the servers step by step, follow these instructions:
    
    ```bash
    cd custom-mcp-servers/r-mcp
-   docker build --platform linux/amd64 -t my-r-mcp .
+   # docker build --platform linux/amd64 -t my-r-mcp .
+   docker pull namin/my-r-mcp
+   docker tag namin/my-r-mcp my-r-mcp
    ```
    This process may take a long time (potentially 30+ minutes) as it installs R and all required packages. The `--platform linux/amd64` flag ensures compatibility.
 

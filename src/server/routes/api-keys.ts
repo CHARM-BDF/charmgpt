@@ -9,10 +9,11 @@ const router = Router();
  */
 router.get('/status', (req, res) => {
   try {
+    const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
     const keyStatus = {
-      anthropic: !!process.env.ANTHROPIC_API_KEY,
+      anthropic: useVertexAI || !!process.env.ANTHROPIC_API_KEY,
       openai: !!process.env.OPENAI_API_KEY,
-      gemini: !!process.env.GEMINI_API_KEY,
+      gemini: useVertexAI || !!process.env.GEMINI_API_KEY,
       ollama: true // Ollama runs locally, always available
     };
 

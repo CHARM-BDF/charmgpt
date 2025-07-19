@@ -73,13 +73,17 @@ build_docker_images() {
   # Build Python MCP Docker
   echo "Building Python MCP Docker image..."
   cd "$MCP_ROOT/python-mcp"
-  docker build -t my-python-mcp .
+  # docker build -t my-python-mcp .
+  docker pull namin/my-python-mcp
+  docker tag namin/my-python-mcp my-python-mcp
   echo "✅ Python MCP Docker image built successfully."
   
   # Build R MCP Docker
   echo "Building R MCP Docker image (this may take 30+ minutes)..."
   cd "$MCP_ROOT/r-mcp"
-  docker build --platform linux/amd64 -t my-r-mcp .
+  #docker build --platform linux/amd64 -t my-r-mcp .
+  docker pull namin/my-r-mcp
+  docker tag namin/my-r-mcp my-r-mcp
   echo "✅ R MCP Docker image built successfully."
 }
 
