@@ -26,6 +26,16 @@
         "NCBI_TOOL_EMAIL": "${NCBI_TOOL_EMAIL}"
       }
     },
+    "gene-fetcher": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/gene-fetcher/dist/index.js"
+      ],
+      "env": {
+        "NCBI_EMAIL": "${NCBI_EMAIL}",
+        "NCBI_API_KEY": "${NCBI_API_KEY}"
+      }
+    },
     "server-sequential-thinking": {
       "command": "node",
       "args": [

@@ -1,6 +1,6 @@
 # MCP API Integration Template
 
-This template provides a comprehensive foundation for rapidly creating Model Context Protocol (MCP) servers that integrate with external APIs. It's based on proven patterns from the PubMed MCP implementation and includes all the boilerplate code needed to get started quickly.
+This template provides a comprehensive foundation for rapidly creating Model Context Protocol (MCP) servers that integrate with external APIs. It's based on proven patterns from the PubMed and Gene Fetcher MCP implementations.
 
 ## Overview
 
@@ -13,7 +13,51 @@ This template handles:
 - ✅ TypeScript configuration
 - ✅ Development tooling
 
-You only need to customize the API-specific parts marked with `TODO` comments.
+## Artifact Types and Formatting
+
+The MCP client supports several artifact types that determine how the content is displayed. When creating artifacts, use these supported types:
+
+### Text and Documentation
+- `text/markdown` - Rendered markdown with full styling support
+  ```typescript
+  {
+    type: 'text/markdown',
+    title: 'Document Title', // Required for proper display
+    name: 'filename.md',
+    content: markdownContent
+  }
+  ```
+
+### Code and Data
+- `code` - Generic code with optional language specification
+- `application/python` - Python code
+- `application/javascript` - JavaScript code
+- `application/vnd.react` - React/JSX code
+- `application/json` - JSON data
+- `application/vnd.ant.json` - Specialized JSON data
+
+Example:
+```typescript
+{
+  type: 'application/python',
+  title: 'Python Script',
+  name: 'script.py',
+  language: 'python', // Optional but recommended
+  content: pythonCode
+}
+```
+
+### Knowledge Graphs and Visualizations
+- `application/vnd.knowledge-graph` - Knowledge graph data
+- `application/vnd.ant.knowledge-graph` - Alternative knowledge graph format
+- `application/vnd.ant.mermaid` - Mermaid diagrams
+- `image/png` - PNG images (base64 encoded)
+- `image/svg+xml` - SVG images
+
+### Specialized Types
+- `application/vnd.bibliography` - Bibliography entries
+- `html` - Raw HTML content
+- `text` - Plain text content
 
 ## Quick Start
 
@@ -34,6 +78,51 @@ You only need to customize the API-specific parts marked with `TODO` comments.
    ```bash
    npm run dev
    ```
+
+## Example Implementation
+
+Here's a basic example of an MCP tool that returns both text and a markdown artifact:
+
+```typescript
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+
+  if (name === "search-data") {
+    try {
+      // Get data from your API
+      const data = await fetchDataFromAPI(args);
+      
+      // Format for both text response and markdown artifact
+      const formattedContent = formatDataAsMarkdown(data);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `# Instructions for Response
+When using this data, please:
+1. Maintain the structured format
+2. Reference sections by their headings
+3. Use the provided links when applicable
+
+${formattedContent}`
+          }
+        ],
+        artifacts: [
+          {
+            type: 'text/markdown',
+            title: 'Search Results',  // Required for proper display
+            name: 'search_results.md',
+            content: formattedContent
+          }
+        ]
+      };
+    } catch (error) {
+      throw new Error(`Failed to retrieve data: ${error.message}`);
+    }
+  }
+});
+```
 
 ## Customization Checklist
 
@@ -444,3 +533,26 @@ If you encounter issues with this template:
 ---
 
 **Remember**: This template is designed for rapid development. Focus on getting the core functionality working first, then iterate and improve based on your specific API's requirements and user needs. 
+
+## Best Practices for Artifacts
+
+1. **Always Include Required Fields**
+   - `type` - Must match one of the supported types
+   - `title` - Required for proper display in the UI
+   - `name` - Should include appropriate file extension
+   - `content` - Properly formatted for the type
+
+2. **Choose Appropriate Types**
+   - Use `text/markdown` for formatted documentation
+   - Use specific code types for syntax highlighting
+   - Use specialized types for specific data formats
+
+3. **Format Content Properly**
+   - Markdown should be well-structured with headers
+   - Code should be properly indented
+   - JSON should be valid and well-formatted
+
+4. **Provide Clear Instructions**
+   - Add instructions in the text response
+   - Don't include instructions in artifacts
+   - Tell the LLM not to create additional artifacts 
