@@ -133,29 +133,14 @@ ${formattedContent}`
 - [ ] Update `description` with your API's purpose
 - [ ] Add any additional dependencies your API needs (see template notes)
 
-### 2. Update MCP Server Configuration
+**File: `src/index.ts`** - Configuration Section (lines 11-35)
+- [ ] Replace `API_BASE_URL` with your API's base URL
+- [ ] Replace `TOOL_NAME` with your MCP tool name
+- [ ] Replace `SERVICE_NAME` with your service name
+- [ ] Update environment variable names (e.g., `EXAMPLE_API_KEY` → `YOUR_API_KEY`)
+- [ ] Add any additional configuration constants
 
-**File: `src/config/mcp_server_config.json`**
-- [ ] Add your MCP configuration to the `mcpServers` object:
-  ```json
-  "your-mcp-name": {
-    "command": "node",
-    "args": [
-      "./custom-mcp-servers/your-mcp-name/dist/index.js"
-    ],
-    "env": {  // Optional: only if your MCP needs environment variables
-      "API_KEY": "${API_KEY}",
-      "OTHER_VAR": "${OTHER_VAR}"
-    },
-    "timeout": 60000  // Optional: specify if your API needs longer timeout
-  }
-  ```
-- [ ] Choose a descriptive name that matches your MCP's purpose
-- [ ] Ensure the path in `args` matches your MCP's location
-- [ ] Add any required environment variables
-- [ ] Set appropriate timeout if needed (default is 30 seconds)
-
-### 3. Define Input Schemas
+### 2. Define Input Schemas
 
 **File: `src/index.ts`** - Schema Definitions Section (lines 37-70)
 
@@ -184,7 +169,7 @@ sort_by: z.enum(['date', 'relevance', 'title']).optional().default('relevance'),
 sort_order: z.enum(['asc', 'desc']).optional().default('desc'),
 ```
 
-### 4. Customize API Request Function
+### 3. Customize API Request Function
 
 **File: `src/index.ts`** - API Request Helper Section (lines 87-130)
 
@@ -228,7 +213,7 @@ return cheerio.load(html);
 return await response.text();
 ```
 
-### 5. Implement Data Formatting
+### 4. Implement Data Formatting
 
 **File: `src/index.ts`** - Data Formatting Functions Section (lines 132-190)
 
@@ -319,7 +304,7 @@ type: "application/json"
 content: any
 ```
 
-### 6. Implement Query Building
+### 5. Implement Query Building
 
 **File: `src/index.ts`** - Query/Search Helper Functions Section (lines 209-230)
 
@@ -358,7 +343,7 @@ function buildSearchQuery(searchParams: any): string {
 }
 ```
 
-### 7. Define Your Tools
+### 6. Define Your Tools
 
 **File: `src/index.ts`** - Tool Definitions Section (lines 235-310)
 
@@ -376,7 +361,7 @@ For each tool in the `tools` array:
 - `update` - for updating existing records
 - `export` - for exporting data in specific formats
 
-### 8. Implement Tool Execution
+### 7. Implement Tool Execution
 
 **File: `src/index.ts`** - Tool Execution Section (lines 315-450)
 
@@ -407,7 +392,7 @@ const records = searchData;
 const records = searchData.response.docs;
 ```
 
-### 9. Update Environment Variables
+### 8. Update Environment Variables
 
 Create a `.env` file (don't commit it!) with your API credentials:
 ```bash
@@ -417,7 +402,7 @@ YOUR_USER_EMAIL=your.email@example.com
 
 Update your shell configuration or IDE to use these variables during development.
 
-### 10. Test Your Implementation
+### 9. Test Your Implementation
 
 1. **Test basic functionality:**
    ```bash

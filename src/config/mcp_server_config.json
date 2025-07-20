@@ -36,6 +36,12 @@
         "NCBI_API_KEY": "${NCBI_API_KEY}"
       }
     },
+    "gtex-fetcher": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/gtex-fetcher/dist/index.js"
+      ]
+    },
     "server-sequential-thinking": {
       "command": "node",
       "args": [
