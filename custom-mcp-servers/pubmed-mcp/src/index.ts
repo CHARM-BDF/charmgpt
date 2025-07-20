@@ -150,7 +150,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           '- Query: "find papers about BRCA1 and breast cancer" → terms: [{"term": "BRCA1"}, {"term": "breast cancer", "operator": "AND"}]\n' +
           '- Query: "papers with TP53 or apoptosis" → terms: [{"term": "TP53"}, {"term": "apoptosis", "operator": "OR"}]\n' +
           '- Query: "PTEN but not breast cancer" → terms: [{"term": "PTEN"}, {"term": "breast cancer", "operator": "NOT"}]\n' +
-          "Uppercase terms are treated as gene symbols. Multi-word terms are treated as phrases.",
+          'Uppercase terms are treated as gene symbols. Multi-word terms are treated as phrases.\n' +
+          "If this tool is used, the NO Bibliography is needed, because it will be generated in other code.",
         inputSchema: {
           type: "object",
           properties: {
