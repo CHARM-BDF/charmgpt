@@ -8,7 +8,35 @@ import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
 import { isValidKnowledgeGraph, KnowledgeGraph, mergeKnowledgeGraphs } from '../../utils/knowledgeGraphUtils';
 import { LLMService } from '../services/llm';
-// import path from 'path';
+import fs from 'fs';
+import path from 'path';
+
+// ▼▼▼  SIMPLE DEBUG TOGGLE  ▼▼▼
+// Set to true if you want to see all legacy console output from this route.
+// When false (default) only [TOOL-LOG] messages will reach the console; all
+// other console.log / console.dir output generated in this file is suppressed
+// to reduce noise during tool-calling investigations.
+const CHAT_ROUTE_VERBOSE = false;
+
+// Preserve original console methods (already wrapped by LoggingService once)
+const __chatOriginalConsoleLog = console.log.bind(console);
+const __chatOriginalConsoleDir = console.dir.bind(console);
+
+if (!CHAT_ROUTE_VERBOSE) {
+  console.log = (...args: any[]) => {
+    // Allow our tool-logging lines through
+    if (typeof args[0] === 'string' && args[0].startsWith('[TOOL-LOG]')) {
+      __chatOriginalConsoleLog(...args);
+    }
+  };
+  console.dir = (...args: any[]) => {
+    if (typeof args[0] === 'string' && args[0].startsWith('[TOOL-LOG]')) {
+      __chatOriginalConsoleDir(...args);
+    }
+  };
+}
+
+// ▲▲▲  END DEBUG TOGGLE  ▲▲▲
 
 const router = express.Router();
 
@@ -16,6 +44,49 @@ const router = express.Router();
 const messageService = new MessageService();
 const artifactService = new ArtifactService();
 const llmService = new LLMService();
+
+// Tool calling logger
+let toolCallSession = '';
+const logToolCall = (section: string, data: any) => {
+  try {
+    if (!toolCallSession) {
+      const now = new Date();
+      // Use same timestamp format as working LoggingService
+      toolCallSession = `toolcall-${now.toLocaleString('en-US', {
+        timeZone: 'America/Chicago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(/[\/:]/g, '-')}`;
+    }
+    
+    const timestamp = new Date().toISOString();
+    const logDir = path.join(process.cwd(), 'logs', 'toolcalling');
+    const logFile = path.join(logDir, `${toolCallSession}.log`);
+    
+    // Ensure directory exists (like working LoggingService)
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    
+    const message = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    const logLine = `\n=== ${timestamp} - ${section} ===\n${message}\n`;
+    
+    // Write to file with error handling (like working LoggingService)
+    fs.appendFileSync(logFile, logLine);
+    
+    // Also log to console for immediate debugging
+    console.log(`[TOOL-LOG] ${section}: File written to ${logFile}`);
+    
+  } catch (error) {
+    console.error('[TOOL-LOG] Error writing to tool calling log:', error);
+    console.log(`[TOOL-LOG] ${section}:`, data);
+  }
+};
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -88,10 +159,20 @@ router.post('/', async (req: Request<{}, {}, {
     // Initial status update
     sendStatusUpdate('Initializing request...');
     
+    // Reset tool call session for new request
+    toolCallSession = '';
+    
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
     const { message, history, blockedServers = [], modelProvider = 'claude', pinnedGraph } = req.body;
+    
+    // Test the logging system
+    logToolCall('SESSION_START', {
+      message: 'New chat request received',
+      userMessage: message,
+      historyLength: history.length
+    });
     
     // Set the LLM provider if one is specified and llmService is available
     if (llmService && modelProvider) {
@@ -115,8 +196,6 @@ router.post('/', async (req: Request<{}, {}, {
 
     let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
-    // Keep track of every unique tool call (name + args) to avoid accidental repeats
-    const executedToolCalls = new Set<string>();
 
     // Set MCP log message handler for this request
     if (mcpService) {
@@ -165,56 +244,87 @@ router.post('/', async (req: Request<{}, {}, {
     }
 
     // First phase: Sequential thinking and tool usage
-    let loopIndex = 0;
     while (!isSequentialThinkingComplete) {
-      console.log(`\n🌀 [TOOL-LOOP] Iteration #${loopIndex}`);
+      logToolCall('LOOP_START', {
+        iteration: 'Starting new tool calling iteration',
+        messagesLength: messages.length,
+        lastMessage: messages[messages.length - 1],
+        isSequentialThinkingComplete
+      });
+      
       if (messages.length > 0) {
         const lastMsg = messages[messages.length - 1];
         console.log('[TOOL-LOOP] Last conversation message >>>');
         console.dir(lastMsg, { depth: null, colors: false });
       }
-      sendStatusUpdate('Analyzing request and planning response...');
       
       // Get MCP tools if available
       let tools = [];
       if (req.app.locals.mcpService) {
-        sendStatusUpdate('Retrieving available MCP tools...');
         tools = await req.app.locals.mcpService.getAllAvailableTools(blockedServers);
+        logToolCall('TOOLS_AVAILABLE', {
+          toolCount: tools.length,
+          toolNames: tools.map((t: any) => t.name),
+          tools: tools
+        });
       }
-
+      
       // Make Anthropic call for next thought/tool use
-      sendStatusUpdate('Determining next steps...');
+      console.log('[TOOL-LOOP] Calling Claude - just before CALLING_CLAUDE');
+             logToolCall('CALLING_CLAUDE', {
+         messagesForClaude: messageService.convertChatMessages(messages),
+         toolsProvided: tools.map((t: any) => ({ name: t.name, description: t.description })),
+         temperature: 0.7
+       });
+      
       const toolResponse = await anthropic.messages.create({
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
         messages: messageService.convertChatMessages(messages) as any,
-        temperature: 0.2,
+        temperature: 0.7,
         tools: tools,
       });
 
       // Log raw response for diagnostics
       console.log('[TOOL-LOOP] Raw toolResponse.content from Claude:');
       console.dir(toolResponse.content, { depth: null, colors: false });
+      
+      logToolCall('CLAUDE_RESPONSE', {
+        contentBlocks: toolResponse.content.length,
+        contentTypes: toolResponse.content.map(c => c.type),
+        hasToolUse: toolResponse.content.some(c => c.type === 'tool_use'),
+        fullResponse: toolResponse.content
+      });
 
       // Process tool usage
       for (const content of toolResponse.content) {
         if (content.type === 'tool_use') {
+          logToolCall('TOOL_CALL_DETECTED', {
+            toolName: content.name,
+            toolInput: content.input,
+            contentType: content.type
+          });
+          
           const mcpService = req.app.locals.mcpService as MCPService;
           const originalToolName = mcpService.getOriginalToolName(content.name);
-          if (!originalToolName) continue;
+          if (!originalToolName) {
+            logToolCall('TOOL_MAPPING_FAILED', {
+              anthropicName: content.name,
+              error: 'No mapping found for tool name'
+            });
+            continue;
+          }
 
           const [serverName, toolName] = originalToolName.split(':');
           
-          // Detect and skip duplicate consecutive calls with identical arguments
-          const toolCallSignature = `${content.name}:${JSON.stringify(content.input)}`;
-          if (executedToolCalls.has(toolCallSignature)) {
-            sendStatusUpdate(`Skipping duplicate tool call: ${content.name}`);
-            continue; // Go to the next content block without re-executing
-          }
-          executedToolCalls.add(toolCallSignature);
+          logToolCall('TOOL_CALL_MAPPED', {
+            anthropicName: content.name,
+            originalName: originalToolName,
+            serverName,
+            toolName,
+            arguments: content.input
+          });
 
-          sendStatusUpdate(`Executing tool: ${toolName} on server: ${serverName}...`);
-          
           // Add debug logging for MCP tool execution
           console.log('\n=== MCP TOOL EXECUTION DEBUG ===');
           console.log('Server:', serverName);
@@ -223,6 +333,30 @@ router.post('/', async (req: Request<{}, {}, {
           
           // Execute tool
           const toolResult = await mcpService.callTool(serverName, toolName, content.input as Record<string, unknown>);
+
+          logToolCall('MCP_RESPONSE', {
+            serverName,
+            toolName,
+            resultType: typeof toolResult,
+            hasContent: 'content' in toolResult,
+            hasBibliography: 'bibliography' in toolResult,
+            hasArtifacts: 'artifacts' in toolResult,
+            fullResult: toolResult
+          });
+
+          // Add tool usage to conversation (like working version)
+          messages.push({
+            role: 'assistant',
+            content: [{ type: 'text', text: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}` }]
+          });
+          
+          logToolCall('CONVERSATION_UPDATE_TOOL_USAGE', {
+            addedMessage: {
+              role: 'assistant',
+              content: `Tool used: ${content.name}\nArguments: ${JSON.stringify(content.input)}`
+            },
+            newMessageCount: messages.length
+          });
 
           // Add detailed logging of MCP tool response
           console.log('\n===== [MCP-OUTPUT] TOOL RESPONSE START =====');
@@ -241,11 +375,13 @@ router.post('/', async (req: Request<{}, {}, {
           }
           console.log('================================\n');
 
-          // 👇 Do NOT add a separate status or fake user echo.  We will add a single
-          // assistant message containing the tool's JSON/text result further below.
-
           // Handle bibliography if present
           if ('bibliography' in toolResult && toolResult.bibliography) {
+            logToolCall('BIBLIOGRAPHY_FOUND', {
+              bibliographyCount: Array.isArray(toolResult.bibliography) ? toolResult.bibliography.length : 'not-array',
+              bibliography: toolResult.bibliography
+            });
+            
             // Check if bibliography exists and merge if it does
             if ((messages as any).bibliography) {
               // Merge and deduplicate based on PMID
@@ -268,12 +404,18 @@ router.post('/', async (req: Request<{}, {}, {
 
           // Handle grant markdown if present
           if ('grantMarkdown' in toolResult && toolResult.grantMarkdown) {
+            logToolCall('GRANT_MARKDOWN_FOUND', toolResult.grantMarkdown);
             // Store the grant markdown
             (messages as any).grantMarkdown = toolResult.grantMarkdown;
           }
 
           // Handle knowledge graph artifacts if present
           if ('artifacts' in toolResult && Array.isArray(toolResult.artifacts)) {
+            logToolCall('ARTIFACTS_FOUND', {
+              artifactCount: toolResult.artifacts.length,
+              artifacts: toolResult.artifacts
+            });
+            
             // Find any knowledge graph artifacts in the response
             const knowledgeGraphArtifact = toolResult.artifacts.find((a: any) => 
               a.type === 'application/vnd.knowledge-graph' && typeof a.content === 'string'
@@ -355,19 +497,30 @@ router.post('/', async (req: Request<{}, {}, {
               : undefined;
 
             if (textContentItem) {
-              // Forward any success metadata as a user-visible status
+              logToolCall('TEXT_CONTENT_FOUND', {
+                textContent: textContentItem.text,
+                contentLength: textContentItem.text.length
+              });
+              
+              // Log metadata for debugging but don't spam status updates
               if ('metadata' in toolResult && (toolResult as any).metadata?.querySuccess) {
                 const md = (toolResult as any).metadata;
-                sendStatusUpdate(`Query successful with ${md.nodeCount ?? 0} nodes${md.bothDirectionsSuccessful ? ' (both directions complete)' : ''}`);
-                if (md.message) {
-                  sendStatusUpdate(md.message);
-                }
+                console.log(`Query successful with ${md.nodeCount ?? 0} nodes${md.bothDirectionsSuccessful ? ' (both directions complete)' : ''}`);
               }
 
-              // Add a SINGLE assistant message containing the tool's textual output
+              // Add tool result as user message (like working version)
               messages.push({
-                role: 'assistant',
+                role: 'user',
                 content: [{ type: 'text', text: textContentItem.text }]
+              });
+              
+              logToolCall('CONVERSATION_UPDATE_TOOL_RESULT', {
+                addedMessage: {
+                  role: 'user',
+                  content: textContentItem.text.substring(0, 200) + (textContentItem.text.length > 200 ? '...' : '')
+                },
+                newMessageCount: messages.length,
+                fullText: textContentItem.text
               });
 
               // If this is the sequential-thinking planner, decide whether to exit the loop
@@ -375,22 +528,51 @@ router.post('/', async (req: Request<{}, {}, {
                 try {
                   const parsed = JSON.parse(textContentItem.text);
                   isSequentialThinkingComplete = !parsed.nextThoughtNeeded;
+                  logToolCall('SEQUENTIAL_THINKING_CHECK', {
+                    parsedResult: parsed,
+                    nextThoughtNeeded: parsed.nextThoughtNeeded,
+                    willExitLoop: !parsed.nextThoughtNeeded
+                  });
                 } catch {
                   isSequentialThinkingComplete = true; // fall back to safe exit
+                  logToolCall('SEQUENTIAL_THINKING_ERROR', 'Failed to parse sequential thinking result, exiting loop');
                 }
               }
+            } else {
+              logToolCall('NO_TEXT_CONTENT', {
+                hasContent: 'content' in toolResult,
+                contentStructure: (toolResult as any).content
+              });
             }
+          } else {
+            logToolCall('NO_CONTENT_PROPERTY', {
+              toolResultType: typeof toolResult,
+              toolResultKeys: Object.keys(toolResult || {})
+            });
           }
         }
       }
 
-      // If no tool was used, end the loop
-      if (!toolResponse.content.some(c => c.type === 'tool_use')) {
-        isSequentialThinkingComplete = true;
-      }
+      // Check exit condition
+      const hasToolUse = toolResponse.content.some(c => c.type === 'tool_use');
+      logToolCall('LOOP_EXIT_CHECK', {
+        hasToolUse,
+        willContinue: hasToolUse,
+        willExit: !hasToolUse,
+        isSequentialThinkingComplete
+      });
 
-      loopIndex += 1;
+      // If no tool was used, end the loop
+      if (!hasToolUse) {
+        isSequentialThinkingComplete = true;
+        logToolCall('LOOP_EXITING', 'No tool_use detected in Claude response, exiting loop');
+      }
     }
+
+    logToolCall('LOOP_COMPLETED', {
+      finalMessageCount: messages.length,
+      exitReason: 'isSequentialThinkingComplete = true'
+    });
 
     // Final phase: Response formatting
     sendStatusUpdate('Generating final response...');
@@ -593,6 +775,13 @@ router.post('/', async (req: Request<{}, {}, {
     loggingService.logResponse(res);
 
     sendStatusUpdate('Finalizing response...');
+    
+    // Final tool calling log
+    logToolCall('SESSION_COMPLETE', {
+      totalMessages: messages.length,
+      finalArtifactCount: storeResponse.artifacts?.length || 0,
+      sessionSummary: 'Tool calling session completed successfully'
+    });
 
     // Send the final complete response
     res.write(JSON.stringify({ 
@@ -606,6 +795,13 @@ router.post('/', async (req: Request<{}, {}, {
 
   } catch (error) {
     loggingService.logError(error as Error);
+    
+    // Log the error in our tool calling log
+    logToolCall('ERROR', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
     
     // Send error as a status update
     res.write(JSON.stringify({ 
