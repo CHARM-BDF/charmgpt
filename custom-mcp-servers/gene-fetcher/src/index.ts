@@ -119,6 +119,10 @@ function formatMarkdownContent(geneInfo: any): string {
 - **Chromosome:** ${summary.chromosome}
 - **Map Location:** ${summary.mapLocation}
 
+## Identifiers
+- **NCBI Gene ID:** ${summary.geneId}
+${geneInfo.ensemblId ? `- **Ensembl ID:** ${geneInfo.ensemblId}` : ''}
+
 ## Nomenclature
 - **Official Symbol:** ${summary.nomenclatureSymbol}
 - **Official Name:** ${summary.nomenclatureName}
@@ -131,7 +135,7 @@ ${summary.summary}
 🔗 [NCBI Gene](https://www.ncbi.nlm.nih.gov/gene/${summary.geneId})${ensemblLink}
 
 ## Quick Summary
-${summary.symbol} is a ${summary.description.toLowerCase()} located on chromosome ${summary.chromosome} at position ${summary.mapLocation}. ${summary.summary.split('.')[0]}.`;
+${summary.symbol} (NCBI:${summary.geneId}${geneInfo.ensemblId ? `, Ensembl:${geneInfo.ensemblId}` : ''}) is a ${summary.description.toLowerCase()} located on chromosome ${summary.chromosome} at position ${summary.mapLocation}. ${summary.summary.split('.')[0]}.`;
 }
 
 function formatGeneInfo(geneInfo: any): string {
@@ -140,8 +144,9 @@ When discussing this gene information:
 1. Always refer to the gene using its official symbol
 2. Include chromosome location when relevant
 3. Use the provided links when referencing external databases
-4. Maintain sections (Basic Information, Nomenclature, Summary) when presenting information
-5. DO NOT create additional artifacts - a markdown artifact has already been provided
+4. Maintain sections (Basic Information, Identifiers, Nomenclature, Summary) when presenting information
+5. When referencing this gene in text, include its primary identifiers (e.g., "${geneInfo.summary.symbol} (NCBI:${geneInfo.summary.geneId}${geneInfo.ensemblId ? `, Ensembl:${geneInfo.ensemblId}` : ''})")
+6. DO NOT create additional artifacts - a markdown artifact has already been provided
 
 Below is the gene information:
 
