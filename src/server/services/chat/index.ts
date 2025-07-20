@@ -16,6 +16,8 @@ import { ResponseFormatterAdapter } from './formatters/types';
 import { isValidKnowledgeGraph, mergeKnowledgeGraphs, KnowledgeGraph } from '../../../utils/knowledgeGraphUtils';
 import { systemPrompt } from './systemPrompt';
 import { toolCallingSystemPrompt } from './systemPrompt_tools';
+import fs from 'fs';
+import path from 'path';
 
 // Importing types
 type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
@@ -40,6 +42,49 @@ interface EnhancedChatMessage extends ChatMessage {
   binaryOutputs?: any[];
   grantMarkdown?: string;
 }
+
+// Tool calling logger for Chat Service
+let chatServiceToolCallSession = '';
+const logChatServiceToolCall = (section: string, data: any) => {
+  try {
+    if (!chatServiceToolCallSession) {
+      const now = new Date();
+      // Use same timestamp format as working LoggingService
+      chatServiceToolCallSession = `chatsvc-toolcall-${now.toLocaleString('en-US', {
+        timeZone: 'America/Chicago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(/[\/:]/g, '-')}`;
+    }
+    
+    const timestamp = new Date().toISOString();
+    const logDir = path.join(process.cwd(), 'logs', 'toolcalling');
+    const logFile = path.join(logDir, `${chatServiceToolCallSession}.log`);
+    
+    // Ensure directory exists
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    
+    const message = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    const logLine = `\n=== ${timestamp} - ${section} ===\n${message}\n`;
+    
+    // Write to file with error handling
+    fs.appendFileSync(logFile, logLine);
+    
+    // Also log to console for immediate debugging
+    console.log(`[CHAT-SVC-TOOL-LOG] ${section}: File written to ${logFile}`);
+    
+  } catch (error) {
+    console.error('[CHAT-SVC-TOOL-LOG] Error writing to tool calling log:', error);
+    console.log(`[CHAT-SVC-TOOL-LOG] ${section}:`, data);
+  }
+};
 
 /**
  * Main Chat Service implementation
@@ -762,9 +807,28 @@ export class ChatService {
     // Track LLM response text for termination logic
     let responseText = '';
     
+    // Reset tool call session for new request
+    chatServiceToolCallSession = '';
+    
+    // Start tool calling session logging
+    logChatServiceToolCall('SESSION_START', {
+      message: 'New chat service request started',
+      userMessage: message,
+      historyLength: history.length,
+      maxThinkingSteps: MAX_THINKING_STEPS
+    });
+
     // Sequential thinking loop
     while (!isSequentialThinkingComplete && thinkingSteps < MAX_THINKING_STEPS) {
       console.log(`\n🌀 [CHAT-SVC TOOL-LOOP] Iteration #${thinkingSteps}`);
+      
+      logChatServiceToolCall('LOOP_START', {
+        iteration: thinkingSteps,
+        messagesLength: workingMessages.length,
+        lastMessage: workingMessages[workingMessages.length - 1],
+        isSequentialThinkingComplete,
+        consecutiveNoProgressSteps
+      });
       if (workingMessages.length > 0) {
         const lastMsgSnapshot = workingMessages[workingMessages.length - 1];
         console.log('[CHAT-SVC TOOL-LOOP] Last message snapshot >>>');
@@ -957,8 +1021,29 @@ export class ChatService {
         throw error;
       }
       
+      // Log the LLM response structure
+      logChatServiceToolCall('LLM_RESPONSE', {
+        provider: modelProvider,
+        responseType: typeof response.rawResponse,
+        hasRawResponse: !!response.rawResponse,
+        responseStructure: Object.keys(response.rawResponse || {})
+      });
+
+      // Log the first 1200 characters of the raw response so we can inspect tool_use blocks
+      logChatServiceToolCall('LLM_RESPONSE_CONTENT',
+        (JSON.stringify(response.rawResponse || {}, null, 2).substring(0, 1200) +
+         (JSON.stringify(response.rawResponse || {}).length > 1200 ? '... [TRUNCATED]' : ''))
+      );
+
       // Extract tool calls using the adapter
       toolCalls = toolAdapter.extractToolCalls(response.rawResponse);
+      
+      // Log tool extraction results
+      logChatServiceToolCall('TOOL_EXTRACTION', {
+        toolCallsFound: toolCalls.length,
+        toolNames: toolCalls.map(tc => tc.name),
+        toolCalls: toolCalls
+      });
       
       // Check if the LLM response contains "DATA GATHERING COMPLETE"
       responseText = response.rawResponse?.choices?.[0]?.message?.content || 
@@ -1033,6 +1118,16 @@ export class ChatService {
         
         console.log(`🔍 TOOL-EXECUTION: Executing tool ${toolCall.name} (${serverName}:${toolName})`);
         
+        // Log tool execution start
+        logChatServiceToolCall('TOOL_EXECUTION_START', {
+          toolName: toolCall.name,
+          originalName: originalToolName,
+          serverName,
+          toolNameOnly: toolName,
+          input: toolCall.input,
+          toolCallId: (toolCall as any).id || (toolCall as any).toolUseId
+        });
+        
         // Enhanced debugging for tool call structure
         // Cast to any to access properties that may not be in the interface
         const anyToolCall = toolCall as any;
@@ -1071,6 +1166,18 @@ export class ChatService {
           toolName,
           toolCall.input
         );
+        
+        // Log tool execution result
+        logChatServiceToolCall('TOOL_EXECUTION_RESULT', {
+          toolName: toolCall.name,
+          serverName,
+          toolNameOnly: toolName,
+          resultType: typeof toolResult,
+          hasContent: 'content' in toolResult,
+          hasBibliography: 'bibliography' in toolResult,
+          hasArtifacts: 'artifacts' in toolResult,
+          fullResult: toolResult
+        });
         
         // Add status update for tool execution result
         const textContent = Array.isArray(toolResult.content) 
@@ -1276,6 +1383,17 @@ export class ChatService {
       console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - thinkingSteps: ${thinkingSteps}/${MAX_THINKING_STEPS}`);
       console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - consecutiveNoProgressSteps: ${consecutiveNoProgressSteps}`);
       
+      // Log loop iteration status
+      logChatServiceToolCall('LOOP_ITERATION_END', {
+        iteration: thinkingSteps,
+        isSequentialThinkingComplete,
+        maxStepsReached: thinkingSteps >= MAX_THINKING_STEPS,
+        consecutiveNoProgressSteps,
+        responseText: responseText?.substring(0, 200),
+        toolCallsInThisIteration: toolCalls.length,
+        willContinue: !isSequentialThinkingComplete && thinkingSteps < MAX_THINKING_STEPS
+      });
+      
       if (!isSequentialThinkingComplete && thinkingSteps < MAX_THINKING_STEPS) {
         console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] ➡️  CONTINUING to next step because:`);
         console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] - LLM did not say "DATA GATHERING COMPLETE"`);
@@ -1302,6 +1420,17 @@ export class ChatService {
       console.log(`🔍 [SEQUENTIAL-THINKING-STEP-${thinkingSteps}] === END OF STEP ANALYSIS ===`);
     }
     
+    // Log completion of the tool calling loop
+    logChatServiceToolCall('LOOP_COMPLETED', {
+      finalIteration: thinkingSteps,
+      completionReason: isSequentialThinkingComplete ? 'Sequential thinking complete' : 'Max steps reached',
+      totalToolCalls: toolExecutions.length,
+      finalMessageCount: workingMessages.length,
+      hasKnowledgeGraph: !!(workingMessages as any).knowledgeGraph,
+      hasBibliography: !!(workingMessages as any).bibliography,
+      hasArtifacts: !!(workingMessages as any).directArtifacts
+    });
+    
     // Add the original user message for the final response
     if (isSequentialThinkingComplete) {
       console.log(`🔍 SEQUENTIAL-THINKING: Adding original message to working messages for final response: "${message}"`);
@@ -1325,6 +1454,14 @@ export class ChatService {
     }));
     
     statusHandler?.(`Sequential thinking completed in ${thinkingSteps} steps.`);
+    
+    // Final session log
+    logChatServiceToolCall('SESSION_COMPLETE', {
+      totalSteps: thinkingSteps,
+      totalMessages: workingMessages.length,
+      sessionSummary: `Chat service sequential thinking completed in ${thinkingSteps} steps with ${toolExecutions.length} tool calls`
+    });
+    
     return workingMessages;
   }
   
@@ -1703,7 +1840,14 @@ ${toolExecutions.map((tool, index) => `${index + 1}. ${tool.name}: ${tool.descri
 
 <GATHERED_DATA>
 ${processedMessages.filter(msg => msg.role === 'user' && msg.content !== originalQuery)
-  .map(msg => msg.content)
+  .map(msg => {
+    if (typeof msg.content === 'string') return msg.content;
+    if (Array.isArray(msg.content)) {
+      const textPart = msg.content.find((p: any) => p && p.type === 'text');
+      return textPart?.text || JSON.stringify(msg.content);
+    }
+    return JSON.stringify(msg.content);
+  })
   .join('\n\n')}
 </GATHERED_DATA>`;
 

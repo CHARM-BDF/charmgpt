@@ -181,20 +181,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["terms"],
         },
       },
-      {
-        name: "get-details",
-        description: "Get detailed information about a specific PubMed article",
-        inputSchema: {
-          type: "object",
-          properties: {
-            pmid: {
-              type: "string",
-              description: "PubMed ID (PMID) of the article",
-            },
-          },
-          required: ["pmid"],
-        },
-      },
+      // {
+      //   name: "get-details",
+      //   description: "Get detailed information about a specific PubMed article",
+      //   inputSchema: {
+      //     type: "object",
+      //     properties: {
+      //       pmid: {
+      //         type: "string",
+      //         description: "PubMed ID (PMID) of the article",
+      //       },
+      //     },
+      //     required: ["pmid"],
+      //   },
+      // },
     ],
   };
 });
