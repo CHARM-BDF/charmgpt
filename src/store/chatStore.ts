@@ -73,7 +73,7 @@ export interface ChatState extends ConversationState {
   clearPinnedArtifacts: () => void;
   // Legacy function for backward compatibility with knowledge graph components
   setPinnedGraphId: (id: string | null) => void;
-  pinnedGraphId: string | null; // Computed property for backward compatibility
+  getPinnedGraphId: () => string | null; // Changed from computed property to function
   updateChatInput: (text: string, append: boolean) => void; // New function to update chat input
   setProjectConversationFlow: (enabled: boolean) => void; // Function to set project conversation flow state
   
@@ -1332,8 +1332,8 @@ export const useChatStore = create<ChatState>()(
             }
           }
         },
-        // Computed property getter for backward compatibility
-        get pinnedGraphId() {
+        // Helper function for backward compatibility (not a computed property)
+        getPinnedGraphId: () => {
           const currentState = get();
           const pinnedKnowledgeGraphs = currentState.artifacts.filter(a => 
             currentState.pinnedArtifactIds.includes(a.id) && 
