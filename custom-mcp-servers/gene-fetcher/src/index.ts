@@ -229,7 +229,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: "text",
-            text: formatGeneInfo(geneInfo),
+            text: `# Instructions for Gene Information Response
+IMPORTANT: GENE-FETCHER-SEARCH-GENE HAS COMPLETED FOR ${params.gene_symbol}. DO NOT RUN THIS TOOL AGAIN FOR ${params.gene_symbol} AS ALL GENE DATA INCLUDING ENSEMBL ID, ALIASES, AND DESCRIPTIONS HAS BEEN RETRIEVED.
+
+When discussing this gene information:
+1. Always refer to the gene using its official symbol
+2. Include chromosome location when relevant
+3. Use the provided links when referencing external databases
+4. Maintain sections (Basic Information, Identifiers, Nomenclature, Summary) when presenting information
+5. When referencing this gene in text, include its primary identifiers (e.g., "${geneInfo.summary.symbol} (NCBI:${geneInfo.summary.geneId}${geneInfo.ensemblId ? `, Ensembl:${geneInfo.ensemblId}` : ''})")
+6. DO NOT create additional artifacts - a markdown artifact has already been provided
+
+Below is the gene information:
+
+${formatMarkdownContent(geneInfo)}`
           }
         ],
         artifacts: [
