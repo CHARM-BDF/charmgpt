@@ -18,7 +18,12 @@ router.post('/', async (req: Request<{}, {}, {
   history: Array<{ role: 'user' | 'assistant' | 'system'; content: string | any[] }>;
   modelProvider?: 'anthropic' | 'ollama' | 'openai' | 'gemini';
   blockedServers?: string[];
-  pinnedGraph?: any;
+  pinnedArtifacts?: Array<{
+    id: string;
+    type: string;
+    title: string;
+    content: string;
+  }>;
   temperature?: number;
   maxTokens?: number;
 }>, res: Response) => {
@@ -84,7 +89,7 @@ router.post('/', async (req: Request<{}, {}, {
       history, 
       modelProvider = 'anthropic',
       blockedServers = [],
-      pinnedGraph,
+      pinnedArtifacts,
       temperature = 0.2,
       maxTokens = 4000
     } = req.body;
@@ -94,6 +99,19 @@ router.post('/', async (req: Request<{}, {}, {
     console.log('🔍 [CHAT-ARTIFACTS] Raw blockedServers from request:', JSON.stringify(blockedServers));
     console.log('🔍 [CHAT-ARTIFACTS] Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
     console.log('🔍 [CHAT-ARTIFACTS] BlockedServers length:', Array.isArray(blockedServers) ? blockedServers.length : 0);
+    
+    // Add debugging for pinned artifacts
+    console.log('\n🔍 [CHAT-ARTIFACTS] === PINNED ARTIFACTS DEBUG ===');
+    console.log('🔍 [CHAT-ARTIFACTS] Raw pinnedArtifacts from request:', JSON.stringify(pinnedArtifacts));
+    console.log('🔍 [CHAT-ARTIFACTS] Type of pinnedArtifacts:', Array.isArray(pinnedArtifacts) ? 'Array' : typeof pinnedArtifacts);
+    console.log('🔍 [CHAT-ARTIFACTS] PinnedArtifacts length:', Array.isArray(pinnedArtifacts) ? pinnedArtifacts.length : 0);
+    if (Array.isArray(pinnedArtifacts) && pinnedArtifacts.length > 0) {
+      console.log('🔍 [CHAT-ARTIFACTS] Individual pinned artifacts:');
+      pinnedArtifacts.forEach((artifact, index) => {
+        console.log(`  [${index}] "${artifact.title}" (type: ${artifact.type}, id: ${artifact.id})`);
+      });
+    }
+    console.log('🔍 [CHAT-ARTIFACTS] === END PINNED ARTIFACTS DEBUG ===\n');
     
     if (Array.isArray(blockedServers) && blockedServers.length > 0) {
       console.log('🔍 [CHAT-ARTIFACTS] Individual blocked servers:');
@@ -165,7 +183,7 @@ router.post('/', async (req: Request<{}, {}, {
     // Set MCP log message handler for this request
     const mcpService = req.app.locals.mcpService as MCPService;
     if (mcpService) {
-      console.log('\n🔍 [CHAT-DEBUG] ===== LOG HANDLER REGISTRATION =====');
+      console.log('\n�� [CHAT-DEBUG] ===== LOG HANDLER REGISTRATION =====');
       console.log('🔍 [CHAT-DEBUG] 1. Adding request-specific MCP log handler');
       
       // Add our chat-specific handler (this won't remove the global handler)
@@ -199,7 +217,7 @@ router.post('/', async (req: Request<{}, {}, {
       {
         modelProvider,
         blockedServers,
-        pinnedGraph,
+        pinnedArtifacts,
         temperature,
         maxTokens
       },

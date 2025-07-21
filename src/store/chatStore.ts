@@ -41,7 +41,7 @@ export interface ChatState extends ConversationState {
   streamingContent: string;
   streamingComplete: boolean;
   streamingEnabled: boolean;
-  pinnedGraphId: string | null;
+  pinnedArtifactIds: string[]; // Changed from pinnedGraphId to support multiple artifacts
   chatInput: string; // New state for chat input
   inProjectConversationFlow: boolean; // Flag to track if we're continuing a project conversation
   activeCompletionId?: string | null; // Optional ID of the active completion
@@ -64,7 +64,16 @@ export interface ChatState extends ConversationState {
   updateStreamingContent: (content: string) => void;
   completeStreaming: () => void;
   toggleStreaming: () => void;
+  // Updated pinning functions
+  pinArtifact: (id: string) => void;
+  unpinArtifact: (id: string) => void;
+  toggleArtifactPin: (id: string) => void;
+  isPinnedArtifact: (id: string) => boolean;
+  getPinnedArtifacts: () => Artifact[];
+  clearPinnedArtifacts: () => void;
+  // Legacy function for backward compatibility with knowledge graph components
   setPinnedGraphId: (id: string | null) => void;
+  pinnedGraphId: string | null; // Computed property for backward compatibility
   updateChatInput: (text: string, append: boolean) => void; // New function to update chat input
   setProjectConversationFlow: (enabled: boolean) => void; // Function to set project conversation flow state
   
@@ -123,7 +132,7 @@ export const useChatStore = create<ChatState>()(
         streamingContent: '',
         streamingComplete: true,
         streamingEnabled: false,
-        pinnedGraphId: null,
+        pinnedArtifactIds: [], // Initialize pinned artifacts
         chatInput: '', // Initialize chat input
         inProjectConversationFlow: false, // Initialize the project conversation flow flag
         activeCompletionId: null, // Initialize the active completion ID
@@ -533,13 +542,13 @@ export const useChatStore = create<ChatState>()(
           // console.log('=== END BLOCKED SERVERS DEBUG ===\n');
           
           // Get pinned graph if available
-          const pinnedGraphId = get().pinnedGraphId;
-          let pinnedGraph = null;
+          const pinnedArtifactIds = get().pinnedArtifactIds;
+          let pinnedArtifacts: Artifact[] = [];
           
-          if (pinnedGraphId) {
-            pinnedGraph = get().artifacts.find(a => a.id === pinnedGraphId);
-            if (pinnedGraph) {
-              console.log('ChatStore: Including pinned graph in message:', pinnedGraphId);
+          if (pinnedArtifactIds.length > 0) {
+            pinnedArtifacts = get().artifacts.filter(a => pinnedArtifactIds.includes(a.id));
+            if (pinnedArtifacts.length > 0) {
+              console.log('ChatStore: Including pinned artifacts in message:', pinnedArtifactIds);
             }
           }
 
@@ -561,7 +570,7 @@ export const useChatStore = create<ChatState>()(
             message: content,
             history: messageHistory,
             blockedServers: sanitizedBlockedServers,
-            pinnedGraph: pinnedGraph,
+            pinnedArtifacts: pinnedArtifacts,
             modelProvider: selectedModel
           });
 
@@ -1261,9 +1270,76 @@ export const useChatStore = create<ChatState>()(
           
           return latestArtifact;
         },
+        // Updated pinning functions
+        pinArtifact: (id: string) => {
+          // console.log('ChatStore: Pinning artifact:', id);
+          set(state => {
+            if (!state.pinnedArtifactIds.includes(id)) {
+              return { pinnedArtifactIds: [...state.pinnedArtifactIds, id] };
+            }
+            return state;
+          });
+        },
+        unpinArtifact: (id: string) => {
+          // console.log('ChatStore: Unpinning artifact:', id);
+          set(state => ({
+            pinnedArtifactIds: state.pinnedArtifactIds.filter(pinnedId => pinnedId !== id)
+          }));
+        },
+        toggleArtifactPin: (id: string) => {
+          // console.log('ChatStore: Toggling artifact pin:', id);
+          set(state => ({
+            pinnedArtifactIds: state.pinnedArtifactIds.includes(id) 
+              ? state.pinnedArtifactIds.filter(pinnedId => pinnedId !== id)
+              : [...state.pinnedArtifactIds, id]
+          }));
+        },
+        isPinnedArtifact: (id: string) => {
+          return get().pinnedArtifactIds.includes(id);
+        },
+        getPinnedArtifacts: () => {
+          return get().artifacts.filter(a => get().pinnedArtifactIds.includes(a.id));
+        },
+        clearPinnedArtifacts: () => {
+          // console.log('ChatStore: Clearing all pinned artifacts');
+          set({ pinnedArtifactIds: [] });
+        },
+        // Legacy function for backward compatibility with knowledge graph components
         setPinnedGraphId: (id: string | null) => {
           // console.log('ChatStore: Setting pinned graph ID to', id);
-          set({ pinnedGraphId: id });
+          const currentState = get();
+          if (id === null) {
+            // Unpin all knowledge graph artifacts
+            const knowledgeGraphIds = currentState.artifacts
+              .filter(a => a.type === 'application/vnd.knowledge-graph' || a.type === 'application/vnd.ant.knowledge-graph')
+              .map(a => a.id);
+            set(state => ({
+              pinnedArtifactIds: state.pinnedArtifactIds.filter(pinnedId => !knowledgeGraphIds.includes(pinnedId))
+            }));
+          } else {
+            // Pin the specific knowledge graph (replace any existing knowledge graph pins)
+            const artifact = currentState.artifacts.find(a => a.id === id);
+            if (artifact && (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph')) {
+              const knowledgeGraphIds = currentState.artifacts
+                .filter(a => a.type === 'application/vnd.knowledge-graph' || a.type === 'application/vnd.ant.knowledge-graph')
+                .map(a => a.id);
+              set(state => ({
+                pinnedArtifactIds: [
+                  ...state.pinnedArtifactIds.filter(pinnedId => !knowledgeGraphIds.includes(pinnedId)),
+                  id
+                ]
+              }));
+            }
+          }
+        },
+        // Computed property getter for backward compatibility
+        get pinnedGraphId() {
+          const currentState = get();
+          const pinnedKnowledgeGraphs = currentState.artifacts.filter(a => 
+            currentState.pinnedArtifactIds.includes(a.id) && 
+            (a.type === 'application/vnd.knowledge-graph' || a.type === 'application/vnd.ant.knowledge-graph')
+          );
+          return pinnedKnowledgeGraphs.length > 0 ? pinnedKnowledgeGraphs[0].id : null;
         },
         toggleStatusUpdatesCollapsed: (messageId: string) => {
           set(state => {
@@ -1298,7 +1374,8 @@ export const useChatStore = create<ChatState>()(
         conversations: state.conversations,
         currentConversationId: state.currentConversationId,
         messages: state.messages,
-        artifacts: state.artifacts
+        artifacts: state.artifacts,
+        pinnedArtifactIds: state.pinnedArtifactIds // Add pinned artifacts to persisted state
       })
     }
   )
