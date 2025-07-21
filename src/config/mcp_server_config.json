@@ -136,6 +136,18 @@
       "args": [
         "./custom-mcp-servers/pkded-mcp/dist/index.js"
       ]
+    },
+    "medik-litsearch": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/medik-litsearch-mcp/dist/index.js"
+      ]
+    },
+    "variant-litsearch": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/variant-litsearch-mcp/dist/index.js"
+      ]
     }
   }
 }

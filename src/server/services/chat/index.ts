@@ -136,7 +136,12 @@ export class ChatService {
     options: {
       modelProvider: ModelType;
       blockedServers?: string[];
-      pinnedGraph?: any;
+      pinnedArtifacts?: Array<{
+        id: string;
+        type: string;
+        title: string;
+        content: string;
+      }>;
       temperature?: number;
       maxTokens?: number;
     },
@@ -171,7 +176,8 @@ export class ChatService {
       options.modelProvider,
       {
         temperature: options.temperature,
-        maxTokens: options.maxTokens
+        maxTokens: options.maxTokens,
+        pinnedArtifacts: options.pinnedArtifacts
       },
       statusHandler,
       toolExecutions // Pass toolExecutions array to track usage
@@ -320,9 +326,14 @@ export class ChatService {
     let artifactsToAdd = [];
     
     // Add any pinned graph if provided in options
-    if (options.pinnedGraph) {
-      console.log(`🔍 ARTIFACT-COLLECTION: Adding pinned graph from options`);
-      artifactsToAdd.push(options.pinnedGraph);
+    if (options.pinnedArtifacts) {
+      console.log(`🔍 ARTIFACT-COLLECTION: Adding ${options.pinnedArtifacts.length} pinned artifacts from options`);
+      options.pinnedArtifacts.forEach((artifact, index) => {
+        console.log(`🔍 ARTIFACT-COLLECTION: [${index}] ${artifact.title} (${artifact.type})`);
+      });
+      artifactsToAdd.push(...options.pinnedArtifacts);
+    } else {
+      console.log(`🔍 ARTIFACT-COLLECTION: No pinned artifacts in options`);
     }
     
     // Handle bibliography if present in processed history
@@ -692,7 +703,8 @@ export class ChatService {
       options.modelProvider,
       {
         temperature: options.temperature,
-        maxTokens: options.maxTokens
+        maxTokens: options.maxTokens,
+        pinnedArtifacts: options.pinnedArtifacts
       },
       statusHandler
     );
@@ -724,15 +736,65 @@ export class ChatService {
     options: {
       temperature?: number;
       maxTokens?: number;
+      pinnedArtifacts?: Array<{
+        id: string;
+        type: string;
+        title: string;
+        content: string;
+      }>;
     } = {},
     statusHandler?: (status: string) => void,
     toolExecutions: Array<{name: string; description: string}> = []
   ): Promise<any[]> {
     // Start with a safe cast to any for type compatibility
     const workingMessages: any[] = [
-      ...this.formatMessageHistory(history, modelProvider),
-      { role: 'user', content: message }
+      ...this.formatMessageHistory(history, modelProvider)
     ];
+
+    // Add pinned artifacts to the conversation context BEFORE the user message
+    if (options.pinnedArtifacts && options.pinnedArtifacts.length > 0) {
+      console.log(`🔍 SEQUENTIAL-THINKING: Including ${options.pinnedArtifacts.length} pinned artifacts in conversation context`);
+      
+      // Add an assistant message about the pinned artifacts
+      const artifactTitles = options.pinnedArtifacts.map(a => `"${a.title}"`).join(', ');
+      workingMessages.push({
+        role: 'assistant',
+        content: `I notice you've pinned ${options.pinnedArtifacts.length} artifact${options.pinnedArtifacts.length > 1 ? 's' : ''}: ${artifactTitles}. I'll reference ${options.pinnedArtifacts.length > 1 ? 'these' : 'this'} in my responses.`
+      });
+      
+      // Add each pinned artifact as context
+      for (const artifact of options.pinnedArtifacts) {
+        console.log(`🔍 SEQUENTIAL-THINKING: Adding pinned artifact to context: ${artifact.title} (${artifact.type})`);
+        
+        // Handle knowledge graphs specially for merging
+        if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
+          try {
+            const graphContent = typeof artifact.content === 'string' 
+              ? JSON.parse(artifact.content) 
+              : artifact.content;
+            
+            // Store for potential merging with new graphs
+            (workingMessages as any).knowledgeGraph = graphContent;
+            console.log(`🔍 SEQUENTIAL-THINKING: Stored pinned knowledge graph for merging`);
+          } catch (error) {
+            console.error('Error processing pinned knowledge graph:', error);
+          }
+        } else {
+          // Add other artifact types as user messages for AI context
+          workingMessages.push({
+            role: 'user',
+            content: `Here is the pinned ${artifact.type} titled "${artifact.title}" that you should reference:\n\`\`\`\n${
+              typeof artifact.content === 'string' 
+                ? artifact.content 
+                : JSON.stringify(artifact.content, null, 2)
+            }\n\`\`\``
+          });
+        }
+      }
+    }
+
+    // Add the actual user message last
+    workingMessages.push({ role: 'user', content: message });
     
     // Get the tool adapter for this provider
     const toolAdapter = getToolCallAdapter(modelProvider);
@@ -1658,15 +1720,14 @@ export class ChatService {
     options: {
       modelProvider: ModelType;
       blockedServers?: string[];
-      pinnedGraph?: any;
-      temperature?: number;
-      maxTokens?: number;
       pinnedArtifacts?: Array<{
         id: string;
         type: string;
         title: string;
         content: string;
       }>;
+      temperature?: number;
+      maxTokens?: number;
     },
     statusHandler?: (status: string) => void
   ): Promise<ReadableStream> {
@@ -1722,13 +1783,9 @@ export class ChatService {
     const collectedArtifacts = [];
     
     // Add pinned graph if provided
-    if (options.pinnedGraph) {
+    if (options.pinnedArtifacts) {
       statusHandler?.('Adding pinned knowledge graph...');
-      collectedArtifacts.push({
-        type: 'application/vnd.knowledge-graph',
-        title: options.pinnedGraph.title || 'Knowledge Graph',
-        content: options.pinnedGraph.content
-      });
+      collectedArtifacts.push(...options.pinnedArtifacts);
     }
     
     // Add any other pinned artifacts
