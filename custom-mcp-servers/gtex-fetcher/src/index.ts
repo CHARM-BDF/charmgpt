@@ -15,8 +15,6 @@ const SERVICE_NAME = 'GTEx Portal';
 // Input Schema Definitions
 const GTExSearchSchema = z.object({
   gene_identifier: z.string().min(1).describe('Gene identifier (symbol or Ensembl ID)'),
-  include_brain: z.boolean().optional().default(true).describe('Include detailed brain expression data'),
-  include_skin: z.boolean().optional().default(true).describe('Include detailed skin expression data'),
 });
 
 // Helper Functions
@@ -104,7 +102,7 @@ function summarizeExpressionData(expressionData: any[]) {
   };
 }
 
-function formatGTExInfo(data: any, includeBrain: boolean, includeSkin: boolean): string {
+function formatGTExInfo(data: any): string {
   const { geneInfo, expressionSummary } = data;
   const stats = expressionSummary.statistics;
 
@@ -128,7 +126,7 @@ ${expressionSummary.topExpressingTissues.map((t: any, i: number) =>
   `${i + 1}. ${t.tissueSiteDetailId.replace(/_/g, ' ')}: ${t.median} ${t.unit}`
 ).join('\n')}`;
 
-  if (includeBrain && expressionSummary.brainExpression) {
+  if (expressionSummary.brainExpression) {
     content += `\n\n## Brain Expression
 - **Brain Regions:** ${expressionSummary.brainExpression.tissueCount}
 - **Mean Brain Expression:** ${expressionSummary.brainExpression.meanExpression} ${stats.unit}
@@ -138,7 +136,7 @@ ${expressionSummary.brainExpression.tissues.map((t: any) =>
 ).join('\n')}`;
   }
 
-  if (includeSkin && expressionSummary.skinExpression) {
+  if (expressionSummary.skinExpression) {
     content += `\n\n## Skin Expression
 - **Mean Skin Expression:** ${expressionSummary.skinExpression.meanExpression} ${stats.unit}
 
@@ -182,15 +180,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             gene_identifier: {
               type: "string",
               description: "Gene identifier (symbol or Ensembl ID)",
-            },
-            include_brain: {
-              type: "boolean",
-              description: "Include detailed brain expression data",
-            },
-            include_skin: {
-              type: "boolean",
-              description: "Include detailed skin expression data",
-            },
+            }
           },
           required: ["gene_identifier"],
         },
@@ -218,18 +208,57 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         expressionSummary: expressionResult.summary
       };
 
-      const formattedContent = formatGTExInfo(gtexData, params.include_brain, params.include_skin);
+      // Get all tissues sorted by expression level
+      interface TissueData {
+        tissueSiteDetailId: string;
+        median: number;
+        unit: string;
+      }
+
+      interface FormattedTissue {
+        tissue: string;
+        median: number;
+        unit: string;
+      }
+
+      const allTissues = expressionResult.data
+        .sort((a: TissueData, b: TissueData) => b.median - a.median)
+        .map((t: TissueData) => ({
+          tissue: t.tissueSiteDetailId.replace(/_/g, ' '),
+          median: t.median,
+          unit: t.unit
+        }));
+
+      const formattedContent = formatGTExInfo(gtexData);
 
       return {
         content: [
           {
             type: "text",
             text: `# Instructions for GTEx Expression Data
+IMPORTANT: THIS RESPONSE ALREADY CONTAINS COMPLETE EXPRESSION DATA FOR ${geneResult.geneInfo.geneSymbol}, INCLUDING ALL TISSUES. NO NEED TO CALL THIS TOOL AGAIN FOR THIS GENE.
+
 When discussing this expression data:
 1. Always include the gene symbol and Gencode ID when referencing the gene
 2. Use TPM (Transcripts Per Million) units when discussing expression values
 3. Reference specific tissue names as provided
-4. DO NOT create additional artifacts - a markdown artifact has already been provided
+4. DO NOT CREATE ADDITIONAL ARTIFACTS - AN ARTIFACT IS ALREADY PROVIDED THROUGH ANOTHER TOOL
+
+## Complete Tissue Expression Data
+Use this comprehensive list to create context-specific summaries based on the conversation.
+For example:
+- If specific tissues are mentioned by the user
+- If a disease is discussed, focus on relevant affected tissues
+- If discussing a body system, highlight related tissues
+- If no disease is mentioned and you know of diseases with strong clear connections to this gene, then mention that and include measures from relevant tissues related to those diseases.
+
+## Highest Expression Summary
+The top 5 tissues with highest expression are:
+${allTissues.slice(0, 5).map((t: FormattedTissue) => `- ${t.tissue}: ${t.median} ${t.unit}`).join('\n')}
+This information should always be included in your response as a key summary point.
+
+### All Tissues (Sorted by Expression Level):
+${allTissues.map((t: FormattedTissue) => `- ${t.tissue}: ${t.median} ${t.unit}`).join('\n')}
 
 ${formattedContent}`
           }
