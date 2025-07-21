@@ -29,7 +29,7 @@ export const ArtifactContent: React.FC<{
   const toggleArtifactPin = useChatStore(state => state.toggleArtifactPin);
   // Keep legacy support for knowledge graph components
   const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
-  const pinnedGraphId = useChatStore(state => state.pinnedGraphId);
+  const getPinnedGraphId = useChatStore(state => state.getPinnedGraphId);
   const { selectedProjectId } = useProjectStore();
   
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
