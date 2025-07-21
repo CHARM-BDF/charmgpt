@@ -90,11 +90,11 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const getLatestGraphVersion = useChatStore(state => state.getLatestGraphVersion);
   const selectArtifact = useChatStore(state => state.selectArtifact);
   const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
-  const pinnedGraphId = useChatStore(state => state.pinnedGraphId);
+  const getPinnedGraphId = useChatStore(state => state.getPinnedGraphId);
   const updateGraphArtifact = useChatStore(state => state.updateGraphArtifact);
   const updateChatInput = useChatStore(state => state.updateChatInput);
   
-  const isPinned = artifactId ? pinnedGraphId === artifactId : false;
+  const isPinned = artifactId ? getPinnedGraphId() === artifactId : false;
   
   // New state for notification popup
   const [notification, setNotification] = useState<{ show: boolean; message: string }>({ 

@@ -23,8 +23,8 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
   const [graphData, setGraphData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width, height });
-  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, pinnedGraphId } = useChatStore();
-  const isPinned = artifactId ? pinnedGraphId === artifactId : false;
+  const { getGraphVersionHistory, getLatestGraphVersion, selectArtifact, setPinnedGraphId, getPinnedGraphId } = useChatStore();
+  const isPinned = artifactId ? getPinnedGraphId() === artifactId : false;
 
   // Parse the data if it's a string
   useEffect(() => {
