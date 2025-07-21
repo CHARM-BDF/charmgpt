@@ -105,6 +105,12 @@ router.post('/', async (req: Request<{}, {}, {
     title: string;
     content: string;
   };
+  pinnedArtifacts?: Array<{
+    id: string;
+    type: string;
+    title: string;
+    content: string;
+  }>;
 }>, res: Response) => {
   const loggingService = req.app.locals.loggingService as LoggingService;
   const mcpService = req.app.locals.mcpService as MCPService;
@@ -165,7 +171,7 @@ router.post('/', async (req: Request<{}, {}, {
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
-    const { message, history, blockedServers = [], modelProvider = 'claude', pinnedGraph } = req.body;
+    const { message, history, blockedServers = [], modelProvider = 'claude', pinnedGraph, pinnedArtifacts } = req.body;
     
     // Test the logging system
     logToolCall('SESSION_START', {
@@ -240,6 +246,52 @@ router.post('/', async (req: Request<{}, {}, {
         }
       } catch (error) {
         console.error('Error processing pinned knowledge graph:', error);
+      }
+    }
+
+    // Process pinned artifacts (new system)
+    if (pinnedArtifacts && pinnedArtifacts.length > 0) {
+      sendStatusUpdate(`Processing ${pinnedArtifacts.length} pinned artifacts...`);
+      console.log('\n=== PINNED ARTIFACTS DETECTED ===');
+      console.log(`Found ${pinnedArtifacts.length} pinned artifacts`);
+      
+      // Add an assistant message about the pinned artifacts
+      const artifactTitles = pinnedArtifacts.map(a => `"${a.title}"`).join(', ');
+      messages.push({
+        role: 'assistant',
+        content: `I notice you've pinned ${pinnedArtifacts.length} artifact${pinnedArtifacts.length > 1 ? 's' : ''}: ${artifactTitles}. I'll reference ${pinnedArtifacts.length > 1 ? 'these' : 'this'} in my responses.`
+      });
+      
+      // Add each artifact to the context
+      for (const artifact of pinnedArtifacts) {
+        console.log(`Processing pinned artifact: ${artifact.title} (${artifact.type})`);
+        
+        // Handle knowledge graphs specially for merging
+        if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
+          try {
+            const graphContent = typeof artifact.content === 'string' 
+              ? JSON.parse(artifact.content) 
+              : artifact.content;
+            
+            if (isValidKnowledgeGraph(graphContent)) {
+              console.log(`Pinned knowledge graph contains ${graphContent.nodes.length} nodes and ${graphContent.links.length} links`);
+              (messages as any).knowledgeGraph = graphContent;
+              console.log('Stored pinned knowledge graph for merging with future graphs');
+            }
+          } catch (error) {
+            console.error('Error processing pinned knowledge graph:', error);
+          }
+        } else {
+          // Add other artifact types to the context as messages
+          messages.push({
+            role: 'user',
+            content: `Here is the pinned ${artifact.type} titled "${artifact.title}":\n\`\`\`\n${
+              typeof artifact.content === 'string' 
+                ? artifact.content 
+                : JSON.stringify(artifact.content, null, 2)
+            }\n\`\`\``
+          });
+        }
       }
     }
 
