@@ -18,7 +18,7 @@ import { Message, MessageWithThinking, ConversationMetadata, Conversation, Conve
 import { Artifact, ArtifactType } from '../types/artifacts';
 import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';
-import { useMCPStore } from './mcpStore';
+// Remove mcpStore import to break circular dependency - will import lazily when needed
 import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../types/knowledgeGraph';
 import { useProjectStore } from './projectStore';
 
@@ -513,30 +513,38 @@ export const useChatStore = create<ChatState>()(
           });
           
           // Block the graph name list from being sent to the MCP server
-          const mcpStore = useMCPStore.getState();
-          const blockedServers = mcpStore.getBlockedServers();
-          
-          // console.log('\n=== BLOCKED SERVERS DEBUG ===');
-          // console.log('Blocked servers from MCPStore:', blockedServers);
-          
-          // Always fetch the exact server names directly from the API before making the request
-          let exactServerNames: string[] = [];
+          // Lazy import to avoid circular dependency
+          let sanitizedBlockedServers: string[] = [];
           try {
-            const serverNamesResponse = await fetch('/api/server-names');
-            if (serverNamesResponse.ok) {
-              const { serverNames } = await serverNamesResponse.json();
-              exactServerNames = serverNames || [];
-              // console.log('Exact server names from API:', exactServerNames);
+            const { useMCPStore } = await import('./mcpStore');
+            const mcpStore = useMCPStore.getState();
+            const blockedServers = mcpStore.getBlockedServers();
+            
+            // console.log('\n=== BLOCKED SERVERS DEBUG ===');
+            // console.log('Blocked servers from MCPStore:', blockedServers);
+            
+            // Always fetch the exact server names directly from the API before making the request
+            let exactServerNames: string[] = [];
+            try {
+              const serverNamesResponse = await fetch('/api/server-names');
+              if (serverNamesResponse.ok) {
+                const { serverNames } = await serverNamesResponse.json();
+                exactServerNames = serverNames || [];
+                // console.log('Exact server names from API:', exactServerNames);
+              }
+            } catch (error) {
+              console.error('Error fetching exact server names:', error);
             }
+            
+            // Match the blocked server names against the exact server names
+            // ONLY send blocked servers that exactly match a server name
+            sanitizedBlockedServers = blockedServers.filter(
+              blockedName => exactServerNames.includes(blockedName)
+            );
           } catch (error) {
-            console.error('Error fetching exact server names:', error);
+            console.error('Error loading MCP store:', error);
+            sanitizedBlockedServers = [];
           }
-          
-          // Match the blocked server names against the exact server names
-          // ONLY send blocked servers that exactly match a server name
-          const sanitizedBlockedServers = blockedServers.filter(
-            blockedName => exactServerNames.includes(blockedName)
-          );
           
           // console.log('Final sanitized blocked servers sent to API:', sanitizedBlockedServers);
           // console.log('=== END BLOCKED SERVERS DEBUG ===\n');
