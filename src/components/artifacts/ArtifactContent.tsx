@@ -25,12 +25,15 @@ export const ArtifactContent: React.FC<{
   const [savingToProject, setSavingToProject] = useState(false);
   
   // Use selector functions to only subscribe to the specific state we need
+  const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
+  const toggleArtifactPin = useChatStore(state => state.toggleArtifactPin);
+  // Keep legacy support for knowledge graph components
   const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
   const pinnedGraphId = useChatStore(state => state.pinnedGraphId);
   const { selectedProjectId } = useProjectStore();
   
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
-  const isPinned = isKnowledgeGraph ? pinnedGraphId === artifact.id : false;
+  const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
 
   const handleSaveToProject = async () => {
@@ -582,6 +585,19 @@ export const ArtifactContent: React.FC<{
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Pin button for all artifact types */}
+          <button
+            onClick={() => toggleArtifactPin(artifact.id)}
+            className={`p-2 rounded-full ${
+              isPinned 
+                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+            title={isPinned ? "Unpin artifact (stop sending with messages)" : "Pin artifact (send with messages)"}
+          >
+            {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+          </button>
+          
           {isMarkdown && selectedProjectId && (
             <button
               onClick={handleSaveToProject}
