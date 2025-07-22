@@ -60,46 +60,46 @@ const server = new Server(
   }
 );
 
-// Add interfaces for the data types
+// Update the interfaces to match the actual XML structure
 interface GOTerm {
   id: string;
   name: string;
   evidence: string;
+  category: string;
 }
 
 interface GOData {
-  molecular_function: GOTerm[];
-  biological_process: GOTerm[];
-  cellular_component: GOTerm[];
+  terms: GOTerm[];
 }
 
-interface Phenotype {
-  name: string;
-  significance: string;
-  conditions: string[];
-  id: string;  // ClinVar ID
-}
-
-interface Pathway {
-  name: string;
-  source: string;
+interface InteractionData {
+  database: string;
   id: string;
+  partner?: string;
+  description?: string;
+  methods?: string[];
+  url?: string;
 }
 
-interface Interaction {
-  partner: string;
-  type: string;
+interface GWASStudy {
+  url: string;
   description: string;
-  id: string;  // STRING interaction ID
+  pmid?: string;
 }
 
-interface GWASAssociation {
-  trait: string;
-  pvalue: string;
-  population: string;
-  reference: string;
-  studyId: string;  // dbGaP study ID
+interface ExpressionData {
+  summary: string;
+  tissues: string[];
+  category: string;
 }
+
+interface GeneRIF {
+  text: string;
+  pmid: string;
+  category?: string;
+}
+
+// Old interfaces removed - using new interfaces defined above
 
 // Helper Functions
 async function makeRequest(endpoint: string, params: Record<string, string>) {
@@ -200,22 +200,27 @@ ${geneInfo.ensemblId ? `- **Ensembl ID:** ${geneInfo.ensemblId}` : ''}
 ## Nomenclature
 - **Official Symbol:** ${summary.nomenclatureSymbol}
 - **Official Name:** ${summary.nomenclatureName}
-${summary.aliases.length > 0 ? `- **Aliases:** ${summary.aliases.join(', ')}` : ''}
+${summary.aliases && summary.aliases.length > 0 ? `- **Aliases:** ${summary.aliases.join(', ')}` : ''}
 
 ## Gene Ontology Annotations
+### Source: NCBI Gene Database
 ${formatGOAnnotations(geneInfo.goAnnotations)}
 
-## Phenotype Associations
-${formatPhenotypeInfo(geneInfo.phenotypeInfo)}
-
-## Pathway Information
-${formatPathwayData(geneInfo.pathwayData)}
+## Expression Data
+### Source: NCBI Representative Expression
+${formatExpressionData(geneInfo.expressionData)}
 
 ## Protein Interactions
+### Source: Multiple Interaction Databases
 ${formatInteractionData(geneInfo.interactionData)}
 
 ## GWAS Associations
+### Source: EBI GWAS Catalog & Literature
 ${formatGWASData(geneInfo.gwasData)}
+
+## Functional Annotations (Gene RIFs)
+### Source: NCBI Gene References Into Functions
+${formatGeneRIFs(geneInfo.geneRIFs)}
 
 ## Summary
 ${summary.summary}
@@ -223,8 +228,8 @@ ${summary.summary}
 ## External Links
 🔗 [NCBI Gene](https://www.ncbi.nlm.nih.gov/gene/${summary.geneId})${ensemblLink}
 
-## Quick Summary
-${summary.symbol} (NCBI:${summary.geneId}${geneInfo.ensemblId ? `, Ensembl:${geneInfo.ensemblId}` : ''}) is a ${summary.description.toLowerCase()} located on chromosome ${summary.chromosome} at position ${summary.mapLocation}. ${summary.summary.split('.')[0]}.`;
+---
+*Data retrieved from NCBI E-utilities on ${new Date().toISOString().split('T')[0]}*`;
 }
 
 function formatGeneInfo(geneInfo: any): string {
@@ -253,204 +258,298 @@ async function getGOAnnotations(geneId: string, taxonId: string): Promise<GOData
   }
 }
 
-async function getPhenotypeInfo(geneSymbol: string): Promise<Phenotype[]> {
+// Old functions removed - replaced with getFullGeneData function
+
+// Update the XML parsing functions
+function extractGOTerms(xmlData: any): GOData {
+  const goTerms: GOTerm[] = [];
+  
   try {
-    // First search ClinVar
-    const searchParams = {
-      db: 'clinvar',
-      term: `${geneSymbol}[gene]`,
-      retmax: '100'
-    };
-    const searchData = await makeRequest('esearch.fcgi', searchParams);
-    const searchResult = await parser.parseStringPromise(searchData);
+    const entrezgene = xmlData?.['Entrezgene-Set']?.['Entrezgene']?.[0];
+    const comments = entrezgene?.['Entrezgene_comments']?.[0]?.['Gene-commentary'] || [];
     
-    // Get IDs from search result
-    const ids = searchResult?.eSearchResult?.IdList?.[0]?.Id || [];
-    if (ids.length === 0) return [];
-
-    // Then fetch full records
-    const fetchParams = {
-      db: 'clinvar',
-      id: ids.join(','),
-      rettype: 'variation'
-    };
-    const fetchData = await makeRequest('efetch.fcgi', fetchParams);
-    const result = await parser.parseStringPromise(fetchData);
-    return extractPhenotypeInfo(result);
-  } catch (error) {
-    console.error('Error fetching phenotype information:', error);
-    return [];
-  }
-}
-
-async function getPathwayData(geneId: string): Promise<Pathway[]> {
-  try {
-    const response = await axios.get(`${API_ENDPOINTS.KEGG_API}/get/${geneId}/pathway`);
-    return extractPathwayData(response.data);
-  } catch (error) {
-    console.error('Error fetching pathway data:', error);
-    return [];
-  }
-}
-
-async function getInteractionData(geneSymbol: string): Promise<Interaction[]> {
-  try {
-    const response = await axios.get(`${API_ENDPOINTS.STRING_API}`, {
-      params: {
-        identifiers: geneSymbol,
-        required_score: 700, // High confidence interactions only
-        species: 9606 // Human
+    comments.forEach((comment: any) => {
+      const heading = comment['Gene-commentary_heading']?.[0];
+      if (heading === 'GeneOntology') {
+        const subComments = comment['Gene-commentary_comment']?.[0]?.['Gene-commentary'] || [];
+        
+        subComments.forEach((categoryComment: any) => {
+          const category = categoryComment['Gene-commentary_label']?.[0]; // Function, Process, Component
+          const goItems = categoryComment['Gene-commentary_comment']?.[0]?.['Gene-commentary'] || [];
+          
+          goItems.forEach((goItem: any) => {
+            const sources = goItem['Gene-commentary_source'] || [];
+            let goId = '';
+            let goName = '';
+            
+            // Extract GO ID from source
+            sources.forEach((source: any) => {
+              const otherSources = source['Other-source'] || [];
+              otherSources.forEach((otherSource: any) => {
+                const dbtags = otherSource['Other-source_src'] || [];
+                dbtags.forEach((dbtagWrapper: any) => {
+                  const dbtag = dbtagWrapper['Dbtag']?.[0];
+                  if (dbtag && dbtag['Dbtag_db']?.[0] === 'GO') {
+                    const idObj = dbtag['Dbtag_tag']?.[0]?.['Object-id']?.[0];
+                    if (idObj?.['Object-id_id']?.[0]) {
+                      goId = `GO:${idObj['Object-id_id'][0].padStart(7, '0')}`;
+                    }
+                  }
+                });
+              });
+            });
+            
+            // Get GO term name from text or label
+            goName = goItem['Gene-commentary_text']?.[0] || goItem['Gene-commentary_label']?.[0] || 'Unknown';
+            
+            if (goId && goName) {
+              goTerms.push({
+                id: goId,
+                name: goName,
+                evidence: 'IEA', // Default evidence code
+                category: category || 'Unknown'
+              });
+            }
+          });
+        });
       }
     });
-    return extractInteractionData(response.data);
-  } catch (error) {
-    console.error('Error fetching interaction data:', error);
-    return [];
-  }
-}
-
-async function getGWASData(geneSymbol: string): Promise<GWASAssociation[]> {
-  try {
-    // First search dbGaP
-    const searchParams = {
-      db: 'gap',
-      term: `${geneSymbol}[gene]`,
-      retmax: '100'
-    };
-    const searchData = await makeRequest('esearch.fcgi', searchParams);
-    const searchResult = await parser.parseStringPromise(searchData);
-    
-    // Get IDs from search result
-    const ids = searchResult?.eSearchResult?.IdList?.[0]?.Id || [];
-    if (ids.length === 0) return [];
-
-    // Then fetch full records
-    const fetchParams = {
-      db: 'gap',
-      id: ids.join(','),
-      rettype: 'full'
-    };
-    const fetchData = await makeRequest('efetch.fcgi', fetchParams);
-    const result = await parser.parseStringPromise(fetchData);
-    return extractGWASData(result);
-  } catch (error) {
-    console.error('Error fetching GWAS data:', error);
-    return [];
-  }
-}
-
-// Helper functions to extract data from XML responses
-function extractGOTerms(xmlData: any): GOData {
-  const goTerms: GOData = {
-    molecular_function: [],
-    biological_process: [],
-    cellular_component: []
-  };
-  try {
-    if (xmlData?.Entrezgene?.Entrezgene_properties?.[0]?.Gene_properties?.[0]?.Gene_properties_go) {
-      const goNodes = xmlData.Entrezgene.Entrezgene_properties[0].Gene_properties[0].Gene_properties_go;
-      goNodes.forEach((node: any) => {
-        const category = node.Go_terms_category?.[0]?.toLowerCase().replace(' ', '_');
-        const term: GOTerm = {
-          id: node.Go_terms_id?.[0] || '',
-          name: node.Go_terms_name?.[0] || '',
-          evidence: node.Go_terms_evidence?.[0] || ''
-        };
-        if (category && category in goTerms) {
-          goTerms[category as keyof GOData].push(term);
-        }
-      });
-    }
   } catch (error) {
     console.error('Error parsing GO terms:', error);
   }
-  return goTerms;
+  
+  return { terms: goTerms };
 }
 
-function extractPhenotypeInfo(xmlData: any): Phenotype[] {
-  const phenotypes: Phenotype[] = [];
+function extractInteractionData(xmlData: any): InteractionData[] {
+  const interactions: InteractionData[] = [];
+  const interactionMap = new Map<string, InteractionData>(); // Use map to avoid duplicates
+  
   try {
-    if (xmlData?.ClinVarResult?.VariationReport) {
-      xmlData.ClinVarResult.VariationReport.forEach((report: any) => {
-        const phenotype: Phenotype = {
-          name: report.TraitSet?.[0]?.Trait?.[0]?.Name?.[0] || '',
-          significance: report.ClinicalSignificance?.[0]?.Description?.[0] || '',
-          conditions: report.TraitSet?.[0]?.Trait?.[0]?.AttributeSet?.map((attr: any) => attr.Attribute?.[0]) || [],
-          id: report.$.uid // Assuming uid is the ClinVar ID
-        };
-        phenotypes.push(phenotype);
-      });
-    }
-  } catch (error) {
-    console.error('Error parsing phenotype information:', error);
-  }
-  return phenotypes;
-}
-
-function extractPathwayData(xmlData: any): Pathway[] {
-  const pathways: Pathway[] = [];
-  try {
-    if (xmlData?.Entrezgene?.Entrezgene_pathway) {
-      xmlData.Entrezgene.Entrezgene_pathway.forEach((pathway: any) => {
-        const pathwayInfo: Pathway = {
-          name: pathway.Pathway_name?.[0] || '',
-          source: pathway.Pathway_source?.[0] || '',
-          id: pathway.Pathway_id?.[0] || ''
-        };
-        pathways.push(pathwayInfo);
-      });
-    }
-  } catch (error) {
-    console.error('Error parsing pathway data:', error);
-  }
-  return pathways;
-}
-
-function extractInteractionData(xmlData: any): Interaction[] {
-  const interactions: Interaction[] = [];
-  try {
-    if (xmlData?.Entrezgene?.Entrezgene_comments) {
-      const interactionNodes = xmlData.Entrezgene.Entrezgene_comments.filter(
-        (comment: any) => comment.Gene_comment_type?.[0] === 'Interactions'
-      );
-      interactionNodes.forEach((node: any) => {
-        const interaction: Interaction = {
-          partner: node.Gene_comment_source?.[0] || '',
-          type: node.Gene_comment_heading?.[0] || '',
-          description: node.Gene_comment_text?.[0] || '',
-          id: node.$.uid // Assuming uid is the STRING interaction ID
-        };
-        interactions.push(interaction);
-      });
-    }
+    const entrezgene = xmlData?.['Entrezgene-Set']?.['Entrezgene']?.[0];
+    const comments = entrezgene?.['Entrezgene_comments']?.[0]?.['Gene-commentary'] || [];
+    
+    comments.forEach((comment: any) => {
+      const heading = comment['Gene-commentary_heading']?.[0];
+      
+      // Look for interaction sections
+      if (heading && heading.toLowerCase().includes('interaction')) {
+        const subComments = comment['Gene-commentary_comment']?.[0]?.['Gene-commentary'] || [];
+        
+        subComments.forEach((subComment: any) => {
+          const text = subComment['Gene-commentary_text']?.[0] || '';
+          const sources = subComment['Gene-commentary_source'] || [];
+          
+          // Extract interaction partner and methods from text
+          const methods = text.split(';').map((m: string) => m.trim()).filter(Boolean);
+          
+          sources.forEach((source: any) => {
+            const otherSources = source['Other-source'] || [];
+            otherSources.forEach((otherSource: any) => {
+              const dbtags = otherSource['Other-source_src'] || [];
+              const anchor = otherSource['Other-source_anchor']?.[0];
+              
+              dbtags.forEach((dbtagWrapper: any) => {
+                const dbtag = dbtagWrapper['Dbtag']?.[0];
+                const db = dbtag?.['Dbtag_db']?.[0];
+                
+                if (db && (db === 'BioGRID' || db === 'HPRD' || db === 'BIND')) {
+                  const idObj = dbtag['Dbtag_tag']?.[0]?.['Object-id']?.[0];
+                  const id = idObj?.['Object-id_id']?.[0] || '';
+                  
+                  // Extract partner from anchor text or comment
+                  let partner = anchor || '';
+                  if (partner.includes(':')) {
+                    partner = partner.split(':')[1]?.trim() || partner;
+                  }
+                  
+                  if (id && partner) {
+                    const key = `${db}_${id}_${partner}`;
+                    if (!interactionMap.has(key)) {
+                      interactionMap.set(key, {
+                        database: db,
+                        id: id,
+                        partner: partner,
+                        methods: methods.length > 0 ? methods : ['Physical interaction'],
+                        url: db === 'BioGRID' ? `https://thebiogrid.org/interaction/${id}` :
+                             db === 'HPRD' ? `http://www.hprd.org/interactions?hprd_id=${id}` :
+                             ''
+                      });
+                    }
+                  }
+                }
+              });
+            });
+          });
+        });
+      }
+    });
+    
+    // Convert map to array
+    interactions.push(...interactionMap.values());
+    
   } catch (error) {
     console.error('Error parsing interaction data:', error);
   }
+  
   return interactions;
 }
 
-function extractGWASData(xmlData: any): GWASAssociation[] {
-  const gwasAssociations: GWASAssociation[] = [];
+function extractGWASData(xmlData: any): GWASStudy[] {
+  const gwasStudies: GWASStudy[] = [];
+  
   try {
-    if (xmlData?.DbGaPResult?.Study) {
-      xmlData.DbGaPResult.Study.forEach((study: any) => {
-        const association: GWASAssociation = {
-          trait: study.TraitName?.[0] || '',
-          pvalue: study.PValue?.[0] || '',
-          population: study.Population?.[0] || '',
-          reference: study.Reference?.[0] || '',
-          studyId: study.$.uid // Assuming uid is the dbGaP study ID
-        };
-        gwasAssociations.push(association);
+    const entrezgene = xmlData?.['Entrezgene-Set']?.['Entrezgene']?.[0];
+    const comments = entrezgene?.['Entrezgene_comments']?.[0]?.['Gene-commentary'] || [];
+    
+    comments.forEach((comment: any) => {
+      const subComments = comment['Gene-commentary_comment']?.[0]?.['Gene-commentary'] || [];
+      
+      subComments.forEach((subComment: any) => {
+        const sources = subComment['Gene-commentary_source'] || [];
+        sources.forEach((source: any) => {
+          const otherSources = source['Other-source'] || [];
+          otherSources.forEach((otherSource: any) => {
+            const anchor = otherSource['Other-source_anchor']?.[0];
+            const url = otherSource['Other-source_url']?.[0];
+            
+            if (anchor === 'EBI GWAS Catalog' && url) {
+              const pmidMatch = url.match(/publications\/(\d+)/);
+              gwasStudies.push({
+                url: url,
+                description: 'EBI GWAS Catalog study',
+                pmid: pmidMatch ? pmidMatch[1] : ''
+              });
+            }
+          });
+        });
       });
-    }
+      
+      // Also check for GWAS mentions in comment text
+      const text = comment['Gene-commentary_text']?.[0];
+      if (text && (text.toLowerCase().includes('genome-wide') || text.toLowerCase().includes('gwas'))) {
+        gwasStudies.push({
+          url: '',
+          description: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
+          pmid: ''
+        });
+      }
+    });
   } catch (error) {
     console.error('Error parsing GWAS data:', error);
   }
-  return gwasAssociations;
+  
+  return gwasStudies;
 }
 
-// Update the main handler to include the new data
+function extractExpressionData(xmlData: any): ExpressionData | null {
+  try {
+    const entrezgene = xmlData?.['Entrezgene-Set']?.['Entrezgene']?.[0];
+    const comments = entrezgene?.['Entrezgene_comments']?.[0]?.['Gene-commentary'] || [];
+    
+    for (const comment of comments) {
+      const heading = comment['Gene-commentary_heading']?.[0];
+      if (heading === 'Representative Expression') {
+        const subComments = comment['Gene-commentary_comment']?.[0]?.['Gene-commentary'] || [];
+        let summary = '';
+        let tissues: string[] = [];
+        let category = '';
+        
+        subComments.forEach((subComment: any) => {
+          const label = subComment['Gene-commentary_label']?.[0];
+          const text = subComment['Gene-commentary_text']?.[0];
+          
+          if (label === 'Text Summary') summary = text || '';
+          if (label === 'Tissue List') tissues = text ? text.split('; ').filter(Boolean) : [];
+          if (label === 'Category') category = text || '';
+        });
+        
+        return { summary, tissues, category };
+      }
+    }
+  } catch (error) {
+    console.error('Error parsing expression data:', error);
+  }
+  
+  return null;
+}
+
+function extractGeneRIFs(xmlData: any): GeneRIF[] {
+  const generifs: GeneRIF[] = [];
+  
+  try {
+    const entrezgene = xmlData?.['Entrezgene-Set']?.['Entrezgene']?.[0];
+    const comments = entrezgene?.['Entrezgene_comments']?.[0]?.['Gene-commentary'] || [];
+    
+    comments.forEach((comment: any) => {
+      const heading = comment['Gene-commentary_heading']?.[0];
+      const text = comment['Gene-commentary_text']?.[0];
+      
+      // Look for Gene RIFs and functional annotations
+      if (text && (heading?.includes('interactions') || text.length > 50)) {
+        let pmid = '';
+        
+        // Extract PMID from refs
+        const refs = comment['Gene-commentary_refs'] || [];
+        refs.forEach((ref: any) => {
+          const pubmed = ref['Pub']?.[0]?.['Pub_pmid']?.[0]?.['PubMedId']?.[0];
+          if (pubmed) pmid = pubmed;
+        });
+        
+        generifs.push({
+          text: text,
+          pmid: pmid,
+          category: heading || 'Functional Annotation'
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error parsing Gene RIFs:', error);
+  }
+  
+  return generifs;
+}
+
+// Update the main handler to fetch and parse XML data
+async function getFullGeneData(geneId: string) {
+  const params = {
+    db: 'gene',
+    id: geneId,
+    retmode: 'xml',
+  };
+
+  const data = await makeRequest('efetch.fcgi', params);
+  const result = await parser.parseStringPromise(data);
+  
+  return {
+    goAnnotations: extractGOTerms(result),
+    interactionData: extractInteractionData(result),
+    gwasData: extractGWASData(result),
+    expressionData: extractExpressionData(result),
+    geneRIFs: extractGeneRIFs(result)
+  };
+}
+
+// Add the missing formatExpressionData function
+function formatExpressionData(expressionData: ExpressionData | null): string {
+  if (!expressionData) {
+    return 'No expression data available.';
+  }
+  
+  let content = `**${expressionData.category}**\n`;
+  content += `- **Summary**: ${expressionData.summary}\n`;
+  
+  if (expressionData.tissues && expressionData.tissues.length > 0) {
+    content += `- **Tissues**: ${expressionData.tissues.slice(0, 10).join(', ')}`;
+    if (expressionData.tissues.length > 10) {
+      content += ` and ${expressionData.tissues.length - 10} more`;
+    }
+  }
+  
+  return content;
+}
+
+// Update the main handler to use the new functions
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
@@ -467,30 +566,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // Get Ensembl ID
       const ensemblId = await getEnsemblId(geneId);
 
-      // Get additional data
-      const [
-        goAnnotations,
-        phenotypeInfo,
-        pathwayData,
-        interactionData,
-        gwasData
-      ] = await Promise.all([
-        getGOAnnotations(geneId, '9606'), // Taxon ID for human
-        getPhenotypeInfo(params.gene_symbol),
-        getPathwayData(geneId),
-        getInteractionData(params.gene_symbol),
-        getGWASData(params.gene_symbol)
-      ]);
+      // Get additional data from XML
+      const additionalData = await getFullGeneData(geneId);
 
       const geneInfo = {
         geneId,
         summary,
         ensemblId,
-        goAnnotations,
-        phenotypeInfo,
-        pathwayData,
-        interactionData,
-        gwasData
+        goAnnotations: additionalData.goAnnotations,
+        interactionData: additionalData.interactionData,
+        gwasData: additionalData.gwasData,
+        expressionData: additionalData.expressionData,
+        geneRIFs: additionalData.geneRIFs
       };
 
       return {
@@ -498,7 +585,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: `# Instructions for Gene Information Response
-IMPORTANT: GENE-FETCHER-SEARCH-GENE HAS COMPLETED FOR ${params.gene_symbol}. DO NOT RUN THIS TOOL AGAIN FOR ${params.gene_symbol} AS ALL GENE DATA INCLUDING ENSEMBL ID, GO TERMS, PHENOTYPES, PATHWAYS, INTERACTIONS, AND GWAS ASSOCIATIONS HAS BEEN RETRIEVED.
+IMPORTANT: GENE-FETCHER-SEARCH-GENE HAS COMPLETED FOR ${params.gene_symbol}. DO NOT RUN THIS TOOL AGAIN FOR ${params.gene_symbol} AS ALL GENE DATA INCLUDING ENSEMBL ID, GO TERMS, EXPRESSION DATA, INTERACTIONS, AND GWAS ASSOCIATIONS HAS BEEN RETRIEVED.
 
 When discussing this gene information:
 1. Always refer to the gene using its official symbol
@@ -508,22 +595,7 @@ When discussing this gene information:
 5. When referencing this gene in text, include its primary identifiers (e.g., "${summary.symbol} (NCBI:${summary.geneId}${ensemblId ? `, Ensembl:${ensemblId}` : ''})")
 6. DO NOT create additional artifacts - a markdown artifact has already been provided
 
-## Gene Ontology Annotations
-${formatGOAnnotations(goAnnotations)}
-
-## Phenotype Associations
-${formatPhenotypeInfo(phenotypeInfo)}
-
-## Pathway Information
-${formatPathwayData(pathwayData)}
-
-## Protein Interactions
-${formatInteractionData(interactionData)}
-
-## GWAS Associations
-${formatGWASData(gwasData)}
-
-Below is the basic gene information:
+Below is the comprehensive gene information:
 
 ${formatMarkdownContent(geneInfo)}`
           }
@@ -556,85 +628,94 @@ ${formatMarkdownContent(geneInfo)}`
 
 // Helper functions to format the additional data
 function formatGOAnnotations(goData: GOData | null): string {
-  if (!goData) return 'No GO annotations available';
-  
-  let content = '\n_Data source: [Gene Ontology Consortium](http://geneontology.org/)_\n';
-  
-  if (goData.molecular_function.length > 0) {
-    content += '\n### Molecular Function\n';
-    content += goData.molecular_function.map(term => 
-      `- ${term.name} ([${term.id}](${SOURCE_URLS.GO}/${term.id})) - Evidence: ${term.evidence}`
-    ).join('\n');
+  if (!goData || !goData.terms || goData.terms.length === 0) {
+    return 'No Gene Ontology annotations found in NCBI data.';
   }
   
-  if (goData.biological_process.length > 0) {
-    content += '\n### Biological Process\n';
-    content += goData.biological_process.map(term => 
-      `- ${term.name} ([${term.id}](${SOURCE_URLS.GO}/${term.id})) - Evidence: ${term.evidence}`
-    ).join('\n');
-  }
-  
-  if (goData.cellular_component.length > 0) {
-    content += '\n### Cellular Component\n';
-    content += goData.cellular_component.map(term => 
-      `- ${term.name} ([${term.id}](${SOURCE_URLS.GO}/${term.id})) - Evidence: ${term.evidence}`
-    ).join('\n');
-  }
-  
-  return content || 'No GO annotations available';
+  return goData.terms.map(term => 
+    `- **${term.category}**: ${term.name}\n  - Evidence: ${term.evidence}`
+  ).join('\n');
 }
 
-function formatPhenotypeInfo(phenotypes: Phenotype[] | null): string {
-  if (!phenotypes || phenotypes.length === 0) return 'No phenotype associations available';
+// Old formatting functions removed
+
+function formatInteractionData(interactions: InteractionData[] | null): string {
+  if (!interactions || interactions.length === 0) {
+    return 'No protein interaction data found.';
+  }
   
-  let content = '\n_Data source: [ClinVar](https://www.ncbi.nlm.nih.gov/clinvar/)_\n\n';
+  const grouped = interactions.reduce((acc, interaction) => {
+    if (!acc[interaction.database]) acc[interaction.database] = [];
+    acc[interaction.database].push(interaction);
+    return acc;
+  }, {} as Record<string, InteractionData[]>);
   
-  content += phenotypes.map(p => 
-    `- ${p.name} ([ClinVar ${p.id}](${SOURCE_URLS.CLINVAR}/${p.id}))\n` +
-    `  - Clinical Significance: ${p.significance}\n` +
-    `  - Associated Conditions: ${p.conditions.join(', ')}`
-  ).join('\n');
+  let content = '';
+  Object.entries(grouped).forEach(([db, interactions]) => {
+    content += `\n#### ${db} Database\n`;
+    const uniqueInteractions = interactions.slice(0, 10); // Limit to first 10
+    content += uniqueInteractions.map(int => {
+      let line = `- `;
+      if (int.partner) {
+        line += `**${int.partner}**`;
+      }
+      if (int.id) {
+        line += ` (ID: ${int.id})`;
+      }
+      if (int.methods && int.methods.length > 0) {
+        line += `\n  - Methods: ${int.methods.join('; ')}`;
+      }
+      if (int.url) {
+        line += `\n  - [View in ${db}](${int.url})`;
+      }
+      return line;
+    }).join('\n');
+    if (interactions.length > 10) {
+      content += `\n- *... and ${interactions.length - 10} more interactions*`;
+    }
+    content += '\n';
+  });
   
   return content;
 }
 
-function formatPathwayData(pathways: Pathway[] | null): string {
-  if (!pathways || pathways.length === 0) return 'No pathway information available';
+function formatGWASData(gwasStudies: GWASStudy[] | null): string {
+  if (!gwasStudies || gwasStudies.length === 0) {
+    return 'No GWAS associations found.';
+  }
   
-  let content = '\n_Data source: [KEGG Pathway Database](https://www.genome.jp/kegg/pathway.html)_\n\n';
-  
-  content += pathways.map(p => 
-    `- ${p.name} ([${p.source} ${p.id}](${SOURCE_URLS.KEGG}/${p.id}))`
-  ).join('\n');
-  
-  return content;
+  return gwasStudies.slice(0, 5).map((study, index) => {
+    let item = `${index + 1}. ${study.description}`;
+    if (study.url) item += `\n   - URL: ${study.url}`;
+    if (study.pmid) item += `\n   - PMID: ${study.pmid}`;
+    return item;
+  }).join('\n\n');
 }
 
-function formatInteractionData(interactions: Interaction[] | null): string {
-  if (!interactions || interactions.length === 0) return 'No interaction data available';
+function formatGeneRIFs(geneRIFs: GeneRIF[] | null): string {
+  if (!geneRIFs || geneRIFs.length === 0) {
+    return 'No functional annotations found.';
+  }
   
-  let content = '\n_Data source: [STRING Database](https://string-db.org/)_\n\n';
+  const grouped = geneRIFs.reduce((acc, rif) => {
+    const category = rif.category || 'General';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(rif);
+    return acc;
+  }, {} as Record<string, GeneRIF[]>);
   
-  content += interactions.map(i => 
-    `- ${i.partner} ([View in STRING](${SOURCE_URLS.STRING}/${i.id}))\n` +
-    `  - Interaction Type: ${i.type}\n` +
-    `  - Description: ${i.description}`
-  ).join('\n');
-  
-  return content;
-}
-
-function formatGWASData(associations: GWASAssociation[] | null): string {
-  if (!associations || associations.length === 0) return 'No GWAS associations available';
-  
-  let content = '\n_Data source: [NHGRI-EBI GWAS Catalog](https://www.ebi.ac.uk/gwas/)_\n\n';
-  
-  content += associations.map(a => 
-    `- ${a.trait} ([Study ${a.studyId}](${SOURCE_URLS.GWAS}${a.studyId}))\n` +
-    `  - P-value: ${a.pvalue}\n` +
-    `  - Population: ${a.population}\n` +
-    `  - Reference: ${a.reference}`
-  ).join('\n');
+  let content = '';
+  Object.entries(grouped).forEach(([category, rifs]) => {
+    content += `\n#### ${category}\n`;
+    rifs.slice(0, 3).forEach((rif, index) => {
+      content += `${index + 1}. ${rif.text}`;
+      if (rif.pmid) content += ` (PMID: ${rif.pmid})`;
+      content += '\n';
+    });
+    if (rifs.length > 3) {
+      content += `*... and ${rifs.length - 3} more annotations*\n`;
+    }
+  });
   
   return content;
 }

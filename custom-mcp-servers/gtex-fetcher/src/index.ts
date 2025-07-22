@@ -102,7 +102,7 @@ function summarizeExpressionData(expressionData: any[]) {
   };
 }
 
-function formatGTExInfo(data: any): string {
+function formatGTExInfo(data: any, allTissuesData?: any[]): string {
   const { geneInfo, expressionSummary } = data;
   const stats = expressionSummary.statistics;
 
@@ -142,6 +142,16 @@ ${expressionSummary.brainExpression.tissues.map((t: any) =>
 
 ${expressionSummary.skinExpression.tissues.map((t: any) =>
   `- ${t.tissueSiteDetailId.replace(/_/g, ' ')}: ${t.median} ${t.unit}`
+).join('\n')}`;
+  }
+
+  // Add complete tissue/region list if provided
+  if (allTissuesData && allTissuesData.length > 0) {
+    content += `\n\n## Complete Tissue Expression Data
+All ${allTissuesData.length} tissues/regions analyzed, sorted by expression level:
+
+${allTissuesData.sort((a: any, b: any) => b.median - a.median).map((t: any, i: number) =>
+  `${i + 1}. ${t.tissueSiteDetailId.replace(/_/g, ' ')}: ${t.median} ${t.unit}`
 ).join('\n')}`;
   }
 
@@ -205,7 +215,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       const gtexData = {
         geneInfo: geneResult.geneInfo,
-        expressionSummary: expressionResult.summary
+        expressionSummary: expressionResult.summary,
+        allTissueExpression: expressionResult.data
       };
 
       // Get all tissues sorted by expression level
@@ -229,7 +240,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           unit: t.unit
         }));
 
-      const formattedContent = formatGTExInfo(gtexData);
+      const formattedContent = formatGTExInfo(gtexData, expressionResult.data);
 
       return {
         content: [

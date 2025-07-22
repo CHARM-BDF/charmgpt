@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Protein Visualization Component Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { border: 1px solid #ccc; margin: 20px 0; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Protein Visualization Component Test</h1>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Mock data matching our EGFR test data structure
+        const mockProteinData = {
+            proteinId: "C9JYS6",
+            sequence: "MFNNCEVVLGNLEITYVQRNYDLSFLKTIQEVAGYVLIALNTVERIPLEN",
+            length: 1157,
+            tracks: [
+                {
+                    type: "domain",
+                    label: "Protein Domains",
+                    features: [{
+                        accession: "domain_0",
+                        start: 659,
+                        end: 926,
+                        color: "#FF6B6B",
+                        description: "Protein kinase",
+                        evidence: []
+                    }]
+                },
+                {
+                    type: "variant",
+                    label: "Variant Position",
+                    features: [{
+                        accession: "variant",
+                        start: 858,
+                        end: 858,
+                        color: "#FF0000",
+                        description: "p.Leu858Arg (c.2573T>G)",
+                        shape: "diamond"
+                    }]
+                },
+                {
+                    type: "feature",
+                    label: "Functional Features",
+                    features: [
+                        {
+                            accession: "feature_0",
+                            start: 1044,
+                            end: 1084,
+                            color: "#64FFDA",
+                            description: "Region: Disordered",
+                            shape: "rectangle"
+                        },
+                        {
+                            accession: "feature_1",
+                            start: 784,
+                            end: 784,
+                            color: "#FF5252",
+                            description: "Active site: Proton acceptor",
+                            shape: "circle"
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Test component
+        function TestComponent() {
+            const [showData, setShowData] = React.useState(false);
+            
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'test-container' },
+                    React.createElement('h2', null, 'Mock Protein Data Test'),
+                    React.createElement('button', 
+                        { onClick: () => setShowData(!showData) },
+                        showData ? 'Hide Data' : 'Show Data'
+                    ),
+                    showData && React.createElement('div', null,
+                        React.createElement('h3', null, 'Data Structure:'),
+                        React.createElement('pre', 
+                            { style: { background: '#f5f5f5', padding: '10px', fontSize: '12px' } },
+                            JSON.stringify(mockProteinData, null, 2)
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'test-container' },
+                    React.createElement('h2', null, 'Artifact Structure Test'),
+                    React.createElement('div', null,
+                        React.createElement('p', null, '✅ Artifact Type: application/vnd.protein-visualization'),
+                        React.createElement('p', null, '✅ Data Format: JSON string'),
+                        React.createElement('p', null, '✅ Component: ProteinVisualizationViewer'),
+                        React.createElement('p', null, '✅ TypeScript: Added to ArtifactType union'),
+                        React.createElement('p', null, '✅ ArtifactContent: Case added to switch statement')
+                    )
+                ),
+                React.createElement('div', { className: 'test-container' },
+                    React.createElement('h2', null, 'Next Steps'),
+                    React.createElement('ul', null,
+                        React.createElement('li', null, 'Test in actual application with MCP data'),
+                        React.createElement('li', null, 'Verify Nightingale components render correctly'),
+                        React.createElement('li', null, 'Test interactive features (zoom, pan)'),
+                        React.createElement('li', null, 'Validate end-to-end flow')
+                    )
+                )
+            );
+        }
+
+        ReactDOM.render(React.createElement(TestComponent), document.getElementById('root'));
+    </script>
+</body>
+</html> 

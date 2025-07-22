@@ -14,7 +14,8 @@ export type ArtifactType =
   | 'application/vnd.knowledge-graph'
   | 'application/vnd.ant.knowledge-graph'
   | 'application/json'
-  | 'application/vnd.ant.json';
+  | 'application/vnd.ant.json'
+  | 'application/vnd.protein-visualization';
 
 export interface Artifact {
   id: string;           // Unique UUID for internal use

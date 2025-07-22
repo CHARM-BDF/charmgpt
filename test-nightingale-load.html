@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nightingale Load Test</title>
+</head>
+<body>
+    <h1>Testing Nightingale Components Load</h1>
+    <div id="status">Loading...</div>
+    <div id="components"></div>
+
+    <script type="module">
+        try {
+            console.log('Testing Nightingale imports...');
+            
+            await import('./node_modules/@nightingale-elements/nightingale-sequence/dist/nightingale-sequence.js');
+            console.log('✅ nightingale-sequence loaded');
+            
+            await import('./node_modules/@nightingale-elements/nightingale-track/dist/nightingale-track.js');
+            console.log('✅ nightingale-track loaded');
+            
+            await import('./node_modules/@nightingale-elements/nightingale-navigation/dist/nightingale-navigation.js');
+            console.log('✅ nightingale-navigation loaded');
+            
+            await import('./node_modules/@nightingale-elements/nightingale-manager/dist/nightingale-manager.js');
+            console.log('✅ nightingale-manager loaded');
+            
+            await import('./node_modules/@nightingale-elements/nightingale-colored-sequence/dist/nightingale-colored-sequence.js');
+            console.log('✅ nightingale-colored-sequence loaded');
+            
+            // Test that we can create elements
+            const sequence = document.createElement('nightingale-sequence');
+            const track = document.createElement('nightingale-track');
+            const navigation = document.createElement('nightingale-navigation');
+            const manager = document.createElement('nightingale-manager');
+            
+            console.log('✅ All web components can be created');
+            
+            document.getElementById('status').innerHTML = '✅ SUCCESS: All Nightingale components loaded successfully!';
+            document.getElementById('components').innerHTML = `
+                <p>✅ nightingale-sequence: ${typeof sequence}</p>
+                <p>✅ nightingale-track: ${typeof track}</p>
+                <p>✅ nightingale-navigation: ${typeof navigation}</p>
+                <p>✅ nightingale-manager: ${typeof manager}</p>
+                <p>✅ nightingale-colored-sequence: Available</p>
+            `;
+            
+        } catch (error) {
+            console.error('❌ Error loading Nightingale components:', error);
+            document.getElementById('status').innerHTML = `❌ ERROR: ${error.message}`;
+        }
+    </script>
+</body>
+</html> 
