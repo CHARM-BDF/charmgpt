@@ -160,11 +160,15 @@ export class ChatService {
     // Track tool executions
     const toolExecutions: Array<{name: string; description: string}> = [];
     
-    // Get available MCP tools
+    // Get available MCP tools (block sequential-thinking server to prevent loops)
     let mcpTools: AnthropicTool[] = [];
     if (this.mcpService) {
       statusHandler?.('Retrieving available tools...');
-      mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
+      const blockedServers = [
+        ...(options.blockedServers || []),
+        'server-sequential-thinking' // Prevent LLM from calling this directly
+      ];
+      mcpTools = await this.mcpService.getAllAvailableTools(blockedServers);
     }
     
     // Run sequential thinking with tools if needed
@@ -796,17 +800,24 @@ export class ChatService {
     // Add the actual user message last
     workingMessages.push({ role: 'user', content: message });
     
+    // Filter out sequential-thinking from MCP tools to prevent loops
+    const filteredMcpTools = mcpTools.filter(tool => 
+      !tool.name.includes('sequential-thinking')
+    );
+    
+    console.log(`🔍 [TOOL-FILTER] Filtered ${mcpTools.length - filteredMcpTools.length} sequential-thinking tools to prevent loops`);
+    
     // Get the tool adapter for this provider
     const toolAdapter = getToolCallAdapter(modelProvider);
     console.log(`🔍 [TOOL-CONVERSION-START] === BEGIN TOOL CONVERSION PROCESS ===`);
     console.log(`🔍 [TOOL-CONVERSION-START] Model provider: ${modelProvider}`);
-    console.log(`🔍 [TOOL-CONVERSION-START] Number of MCP tools: ${mcpTools.length}`);
-    console.log(`🔍 [TOOL-CONVERSION-START] Sample MCP tool names: ${mcpTools.slice(0, 3).map(t => t.name).join(', ')}${mcpTools.length > 3 ? '...' : ''}`);
+    console.log(`🔍 [TOOL-CONVERSION-START] Number of MCP tools: ${filteredMcpTools.length}`);
+    console.log(`🔍 [TOOL-CONVERSION-START] Sample MCP tool names: ${filteredMcpTools.slice(0, 3).map(t => t.name).join(', ')}${filteredMcpTools.length > 3 ? '...' : ''}`);
     console.log(`🔍 [TOOL-CONVERSION-START] Adapter type: ${toolAdapter.constructor.name}`);
     
     // Convert MCP tools to provider-specific format
-    console.log(`🔍 [TOOL-CONVERSION-INPUT] Raw MCP tools input (first tool sample): ${JSON.stringify(mcpTools[0] || {}, null, 2).substring(0, 500)}...`);
-    const providerTools = toolAdapter.convertToolDefinitions(mcpTools);
+    console.log(`🔍 [TOOL-CONVERSION-INPUT] Raw MCP tools input (first tool sample): ${JSON.stringify(filteredMcpTools[0] || {}, null, 2).substring(0, 500)}...`);
+    const providerTools = toolAdapter.convertToolDefinitions(filteredMcpTools);
     console.log(`🔍 [TOOL-CONVERSION-OUTPUT] Provider tools output type: ${typeof providerTools}`);
     console.log(`🔍 [TOOL-CONVERSION-OUTPUT] Provider tools is array? ${Array.isArray(providerTools)}`);
     console.log(`🔍 [TOOL-CONVERSION-OUTPUT] Provider tools structure: ${JSON.stringify(providerTools, null, 2).substring(0, 500)}...`);
@@ -862,9 +873,41 @@ export class ChatService {
     let thinkingSteps = 0;
     const MAX_THINKING_STEPS = 5; // Safety limit
     
-    // Track previous tool calls to detect loops
-    const previousToolCalls = new Set<string>();
+    // Extract tool calls from conversation history for session-level caching
+    const extractToolCallsFromHistory = (messages: any[]): Set<string> => {
+      const historicalCalls = new Set<string>();
+      
+      for (const msg of messages) {
+        if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+          for (const content of msg.content) {
+            if (content.type === 'text' && content.text) {
+              // Look for tool execution patterns in the text
+              const toolPattern = /Tool used: ([^\\n]+)\\nArguments: (.+)/g;
+              let match;
+              while ((match = toolPattern.exec(content.text)) !== null) {
+                const toolName = match[1];
+                const args = match[2];
+                const signature = `${toolName}:${args}`;
+                historicalCalls.add(signature);
+              }
+            }
+          }
+        }
+      }
+      
+      return historicalCalls;
+    };
+    
+    // Track previous tool calls: both from current session AND conversation history
+    const sessionToolCalls = extractToolCallsFromHistory(workingMessages);
+    const previousToolCalls = new Set([...sessionToolCalls]);
     let consecutiveNoProgressSteps = 0;
+    let hasSynthesisStep = false;
+    
+    console.log(`🔍 SESSION-CACHE: Found ${sessionToolCalls.size} historical tool calls from conversation`);
+    if (sessionToolCalls.size > 0) {
+      console.log(`🔍 SESSION-CACHE: Historical calls: ${Array.from(sessionToolCalls).join(', ')}`);
+    }
     
     // Track LLM response text for termination logic
     let responseText = '';
@@ -922,8 +965,24 @@ export class ChatService {
       const toolChoiceValue = modelProvider === 'openai' ? 'auto' : undefined;
       console.log(`🔎 TOOLS-DEBUG: Using toolChoice: ${JSON.stringify(toolChoiceValue)}`);
       
-      // Generate system prompt
-      const systemPrompt = this.buildSystemPromptWithContext(formattedHistory, providerTools);
+      // Generate system prompt with session context
+      let systemPrompt = this.buildSystemPromptWithContext(formattedHistory, providerTools);
+      
+      // Add session-level tool call awareness
+      if (sessionToolCalls.size > 0) {
+        const historicalCallsList = Array.from(sessionToolCalls).map(call => {
+          const [toolName, args] = call.split(':');
+          return `- ${toolName} with ${args}`;
+        }).join('\n');
+        
+        systemPrompt += `\n\n# Previously Called Tools in This Conversation
+The following tools have already been called in this conversation:
+${historicalCallsList}
+
+Avoid calling the same tools with identical or very similar parameters. Focus on using NEW tools or different approaches that haven't been tried yet.`;
+        
+        console.log(`🔍 SESSION-CACHE: Added historical context to system prompt`);
+      }
       
       // Log first 500 chars of system prompt
       console.log(`🔎 TOOLS-DEBUG: System prompt start: ${systemPrompt.substring(0, 500)}...`);
@@ -1133,20 +1192,20 @@ export class ChatService {
         const needsMoreData = responseText && responseText.includes('NEED MORE DATA:');
         if (!needsMoreData) {
           // Check if we already gave a synthesis step
-          if (consecutiveNoProgressSteps > 0) {
+          if (hasSynthesisStep) {
             isSequentialThinkingComplete = true;
             statusHandler?.('Synthesis step complete, stopping.');
             console.log(`🔍 SEQUENTIAL-THINKING: Synthesis step completed, stopping after step ${thinkingSteps}`);
             break;
           } else {
             // Give one synthesis step
-            consecutiveNoProgressSteps = 1;
+            hasSynthesisStep = true;
             statusHandler?.('Allowing one synthesis step...');
             console.log(`🔍 SEQUENTIAL-THINKING: No more data requested, allowing one synthesis step`);
           }
         } else {
-          // Reset synthesis counter if more data was requested
-          consecutiveNoProgressSteps = 0;
+          // Reset synthesis flag if more data was requested
+          hasSynthesisStep = false;
           const justification = responseText.split('NEED MORE DATA:')[1]?.trim() || 'No reason provided';
           console.log(`🔍 SEQUENTIAL-THINKING: Continuation requested: ${justification}`);
           statusHandler?.(`Continuing: ${justification.substring(0, 80)}...`);
