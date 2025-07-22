@@ -1128,11 +1128,29 @@ export class ChatService {
         statusHandler?.(`Step ${thinkingSteps}: Executing ${toolCalls.length} tool(s) - ${toolCalls.map(tc => tc.name).join(', ')}`);
       }
       
-      if (typeof responseText === 'string' && responseText.includes('DATA GATHERING COMPLETE')) {
-        isSequentialThinkingComplete = true;
-        statusHandler?.('LLM indicated data gathering is complete.');
-        console.log(`🔍 SEQUENTIAL-THINKING: LLM responded with DATA GATHERING COMPLETE`);
-        break; // Exit the loop immediately
+      // INVERTED LOGIC: If LLM doesn't request more data, give it one synthesis step then stop
+      if (thinkingSteps > 1) {
+        const needsMoreData = responseText && responseText.includes('NEED MORE DATA:');
+        if (!needsMoreData) {
+          // Check if we already gave a synthesis step
+          if (consecutiveNoProgressSteps > 0) {
+            isSequentialThinkingComplete = true;
+            statusHandler?.('Synthesis step complete, stopping.');
+            console.log(`🔍 SEQUENTIAL-THINKING: Synthesis step completed, stopping after step ${thinkingSteps}`);
+            break;
+          } else {
+            // Give one synthesis step
+            consecutiveNoProgressSteps = 1;
+            statusHandler?.('Allowing one synthesis step...');
+            console.log(`🔍 SEQUENTIAL-THINKING: No more data requested, allowing one synthesis step`);
+          }
+        } else {
+          // Reset synthesis counter if more data was requested
+          consecutiveNoProgressSteps = 0;
+          const justification = responseText.split('NEED MORE DATA:')[1]?.trim() || 'No reason provided';
+          console.log(`🔍 SEQUENTIAL-THINKING: Continuation requested: ${justification}`);
+          statusHandler?.(`Continuing: ${justification.substring(0, 80)}...`);
+        }
       }
       
       if (toolCalls.length === 0) {
