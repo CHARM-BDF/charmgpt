@@ -148,6 +148,24 @@
       "args": [
         "./custom-mcp-servers/variant-litsearch-mcp/dist/index.js"
       ]
+    },
+    "wiki-disease": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/wiki-disease-mcp/dist/index.js"
+      ]
+    },
+    "hpa": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/hpa-mcp/dist/index.js"
+      ]
+    },
+    "variant-domain": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/variant-domain-mcp/dist/index.js"
+      ]
     }
   }
 }

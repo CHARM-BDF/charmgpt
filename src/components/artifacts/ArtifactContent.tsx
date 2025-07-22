@@ -8,6 +8,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
+import { ProteinVisualizationViewer } from './ProteinVisualizationViewer';
 import { useChatStore } from '../../store/chatStore';
 import { useMCPStore } from '../../store/mcpStore';
 import { Pin, PinOff } from 'lucide-react';
@@ -195,6 +196,15 @@ export const ArtifactContent: React.FC<{
                 showVersionControls={true}
               />
             )}
+          </div>
+        );
+      
+      case 'application/vnd.protein-visualization':
+        return (
+          <div className="w-full h-full min-h-[500px] flex flex-col">
+            <ProteinVisualizationViewer 
+              data={artifact.content}
+            />
           </div>
         );
       
