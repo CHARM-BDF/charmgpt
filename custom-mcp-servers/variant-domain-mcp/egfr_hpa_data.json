@@ -1,0 +1,510 @@
+	<!DOCTYPE HTML>
+	<html>
+	<head>
+				<title>The Human Protein Atlas</title>
+		<meta charset="utf-8">
+				<meta name="description" content="The atlas for all human proteins in cells and tissues using various omics: antibody-based imaging, transcriptomics, MS-based proteomics, and systems biology. Sections include the Tissue, Brain, Single Cell Type, Tissue Cell Type, Pathology, Disease Blood Atlas, Immune Cell, Blood Protein, Subcellular, Cell Line, Structure, and Interaction.">
+				<link rel="apple-touch-icon" sizes="180x180" href="/images_static/apple-touch-icon.png?v=JyAbEzO2Nc">
+		<link rel="icon" type="image/png" sizes="32x32" href="/images_static/favicon-32x32.png?v=JyAbEzO2Nb">
+		<link rel="icon" type="image/png" sizes="16x16" href="/images_static/favicon-16x16.png?v=JyAbEzO2Nb">
+		<link rel="manifest" href="/site.webmanifest?v=JyAbEzO2Nb" crossorigin="use-credentials">
+		<link rel="mask-icon" href="/images_static/safari-pinned-tab.svg?v=JyAbEzO2Nb" color="#0080c7">
+		<link rel="shortcut icon" href="/favicon.ico?v=JyAbEzO2Nb">
+		<meta name="msapplication-TileColor" content="#24416b">
+		<meta name="theme-color" content="#ffffff">
+		<script type="text/javascript" src="/utils/es6-shim.min.js?v=1557317074"></script><script type="text/javascript" src="/utils/core/lib/jquery/jquery.min.js?v=1557400976"></script><script>jQuery.migrateMute = true;</script><script type="text/javascript" src="/utils/core/lib/jquery/jquery-migrate-3.0.1.js?v=1567517622"></script><script type="text/javascript" src="/utils/core/lib/jquery_ui/jquery-ui.min.js?v=1557400976"></script><link rel="stylesheet" type="text/css" href="/utils/core/lib/jquery_ui/jquery-ui.min.css?v=1557400976"><script type="text/javascript" src="/utils/core/lib/cookie/js.cookie.min.js?v=1557400976"></script><script type="text/javascript" src="/utils/core/lib/d3/d3.min.js?v=1557400976"></script><script type="text/javascript" src="/utils/core/lib/colorbrewer/colorbrewer.js?v=1493114141"></script><script type="text/javascript" src="/utils/core/lib/colorbox/jquery.colorbox-min.js?v=1557400976"></script><link rel="stylesheet" type="text/css" href="/utils/core/lib/colorbox/colorbox.css?v=1557758195"><script type="text/javascript" src="/utils/core/lib/tablesorter/jquery.tablesorter.min.js?v=1557400976"></script><script type="text/javascript" src="/utils/core/lib/tablesorter/jquery.tablesorter.widgets.min.js?v=1557400976"></script><script type="text/javascript" src="/utils/core/js/d3.js?v=1747317741"></script><script type="text/javascript" src="/utils/core/js/box.js?v=1569227389"></script><script type="text/javascript" src="/utils/openseadragon/openseadragon.min.js?v=1716371890"></script><script type="text/javascript" src="/utils/openseadragonscalebar/openseadragon-scalebar.js?v=1666872215"></script><script type="text/javascript" src="/utils/openseadragonsvgoverlay/openseadragon-svg-overlay.js?v=1542295287"></script><script type="text/javascript" src="/utils/multiselect/jquery.multiselect.min.js?v=1708960453"></script><link rel="stylesheet" type="text/css" href="/utils/multiselect/jquery.multiselect.css?v=1557834028"><script type="text/javascript" src="/utils/multiselect/jquery.multiselect.filter.min.js?v=1708960453"></script><link rel="stylesheet" type="text/css" href="/utils/multiselect/jquery.multiselect.filter.css?v=1581005184"><script type="text/javascript" src="/common.js?v=1747318374"></script><link rel="stylesheet" type="text/css" href="/common.css?v=1729605447"><script type="text/javascript" src="/search.js?v=1729589489"></script><link rel="stylesheet" type="text/css" href="/search.css?v=1715784004"><script type="text/javascript" src="/image_stack.js?v=1687264663"></script><link rel="stylesheet" type="text/css" href="/image_stack.css?v=1728415144"><script type="text/javascript" src="/image.js?v=1729078900"></script><link rel="stylesheet" type="text/css" href="/image.css?v=1726054033">		<script async src="https://www.googletagmanager.com/gtag/js?id=G-KJ1V75CJ9V"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+		</script>
+		<link rel="stylesheet" type="text/css" href="/index.css?v=1721310259"><script type="text/javascript" src="/header_menu.js?v=1669735649"></script><link rel="stylesheet" type="text/css" href="/header_menu.css?v=1726054346"><script type="text/javascript" src="/utils/carousel/carousel.js?v=1552663612"></script><link rel="stylesheet" type="text/css" href="/utils/carousel/carousel.css?v=1669306129">	</head>
+	<body>
+		<div id="cookie_statement">
+		We use cookies to enhance the usability of our website. If you continue, we'll assume that you are happy to receive all cookies. <a href="/about/privacy">More information</a>. <a class="cookie_statement" href="#cookie_statement">Don't show this again.</a>
+	</div>
+	<div class="index_wrap">
+	<a href="/"><img style="width:1078px; margin-left: 80px;" src="/images_static/logo.svg"></a>
+	<div class="menu_dropdown">
+	<div class="dropdown">
+		<a href="/">RESOURCES</a>
+		<ul class="nav">
+			<li class="nav-cat"></li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/tissue">		TISSUE		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/brain">		BRAIN		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/single+cell">		SINGLE CELL		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/subcellular">		SUBCELLULAR		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/cancer">		CANCER		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/blood">		BLOOD		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/cell+line">		CELL LINE		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/structure+interaction">		STRUCTURE & INTERACTION		</a>	</span>
+	</li>
+		</ul>
+	</div>
+	<div class="dropdown">
+		<a href="/about">ABOUT</a>
+		<ul class="nav">
+			<li class="nav-cat" style=""></li>
+			<li class="nav-link">	<span >
+		<a href="/about">		INTRODUCTION		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/history">		HISTORY		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/organization">		ORGANIZATION		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/publications">		PUBLICATIONS		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/submission">		ANTIBODY SUBMISSION		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/antibodies">		ANTIBODY AVAILABILITY		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/acknowledgments">		ACKNOWLEDGMENTS		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/contact">		CONTACT		</a>	</span>
+	</li>					
+		</ul>
+	</div>
+	<div class="dropdown">
+		<a href="/news">NEWS</a>
+		<ul class="nav">
+			<li class="nav-cat"></li>
+			<li class="nav-link">	<span >
+		<a href="/news">		NEWS ARTICLES		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/news/press+room">		PRESS ROOM		</a>	</span>
+	</li>
+		</ul>
+	</div>
+	<div class="dropdown">
+		<a href="/learn">LEARN</a>
+		<ul class="nav">
+			<li class="nav-cat"></li>
+			<li class="nav-link">	<span >
+		<a href="/learn/dictionary">		DICTIONARY		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/proteinclasses">		PROTEIN CLASSES		</a>	</span>
+	</li>				
+			<li class="nav-link">	<span >
+		<a href="/humanproteome/proteinevidence">		PROTEIN EVIDENCE		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/learn/method">		METHODS		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/learn/videos">		EDUCATIONAL VIDEOS		</a>	</span>
+	</li>
+		</ul>
+	</div>
+	<div class="dropdown">
+		<a href="/about/download">DATA</a>
+		<ul class="nav">
+			<li class="nav-cat"></li>
+			<li class="nav-link">	<span >
+		<a href="/about/download">		DOWNLOADABLE DATA		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/publicationdata">		PUBLICATION DATA		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/releases">		RELEASE HISTORY		</a>	</span>
+	</li>
+		</ul>
+	</div>
+	<div class="dropdown">
+		<a href="/about/help">HELP</a>
+		<ul class="nav">
+			<li class="nav-cat"></li>
+			<li class="nav-link">	<span >
+		<a href="/about/antibody+validation">		ANTIBODY VALIDATION		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/assays+annotation">		ASSAYS & ANNOTATION		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/disclaimer">		DISCLAIMER		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/help">		HELP & FAQ		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/privacy">		PRIVACY STATEMENT		</a>	</span>
+	</li>
+			<li class="nav-link">	<span >
+		<a href="/about/licence">		LICENCE & CITATION		</a>	</span>
+	</li>
+		</ul>
+	</div>
+</div>
+	<div class="index_light index_header">
+		<div class="index_slogan">
+			<span>The open access resource for human proteins</span>
+			<br>Search for specific genes/proteins or explore the eight different resources
+		</div>
+			<div id="search" class="searchDisplay">
+		<form class="searchForm" action="/search_result.php" method="get">
+		<div style="display: flex; align-items: center">
+			<input type="text" name="query" class="searchQuery" tabindex="1" value="">
+						<button type="submit" class="searchButton" tabindex="2">Search</button>
+						<a href="#fields" id="fieldsLink" tabindex="3">Fields &raquo;</a>
+		</div>
+		</form>
+					<div id="searchHelp">
+				e.g.
+				<a href="/search/ACE2">ACE2</a>,
+				<a href="/search/GFAP">GFAP</a>,
+				<a href="/search/EGFR">EGFR</a>
+				<div style="float:right;"><span data-helpid='1000' class='hastip '>Search help<sup class='help_i '>i</sup></span>	<div id="help_1000" style="display: none;">
+		<div class=" helpText">
+			<p>The search function can be used for free text search (type anything in the search field), or for more complex queries using "Fields" (see <a href="/about/help/search">examples</a>). <br><br>The free text search will scan for complete and partial matches to gene names, gene synonyms, gene descriptions, external (<a href="http://www.uniprot.org" target="_blank" rel="noopener">UniProt</a>, <a href="http://dec2014.archive.ensembl.org" target="_blank" rel="noopener">Ensembl</a>, <a href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=gene" target="_blank" rel="noopener">NCBI Entrez</a> Gene) gene and protein identifiers, <a href="/humanproteome/proteinclasses">protein classes</a>, <a href="http://www.geneontology.org" target="_blank" rel="noopener">Gene Ontology</a> identifiers and descriptions, antibody identifiers and image annotations. The free text query word needs to be at least three characters long. <br><br>Specific fields can be searched by using the "Fields"-function. Available fields are: Gene name (<a href="http://www.genenames.org" target="_blank" rel="noopener">HGNC</a> name or synonyms), <a href="/humanproteome/proteinclasses">Protein class</a>, Chromosome, External identifier (<a href="http://dec2014.archive.ensembl.org" target="_blank" rel="noopener">Ensembl</a> gene, transcript or protein identifier, <a href="http://www.uniprot.org" target="_blank" rel="noopener">UniProt</a> accession number, <a href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=gene" target="_blank" rel="noopener">NCBI Entrez</a> gene identifier), Subcellular location based on <a href="/about/assays+annotation#if">immunofluorescent staining</a> in three different cell lines, <a href="/about/assays+annotation#ih">Organ-, Tissue-, Cancer-</a> and <a href="/about/assays+annotation#ihc">Cell line</a> expression, Antibody validation results in four different assays (<a href="/about/antibody+validation#standard_antibody_validation___ihc">IH=immunohistochemistry</a>, <a href="/about/antibody+validation#standard_antibody_validation___icc">IF=immunoflourescence</a>, <a href="/about/antibody+validation#standard_antibody_validation___wb">WB=Western blot</a>, <a href="/about/antibody+validation#standard_antibody_validation___pa">PA=Protein array</a>), evidence scores and a filtration on Genes with antibodies only and Genes with knowledge-based annotated protein expression (<a href="/about/assays+annotation#ihk">IH</a>, <a href="/about/assays+annotation#ifk">IF</a>).</p>		</div>
+					</div>
+	</div>
+							</div>
+					<div class="fieldsForm">
+			<form autocomplete="off">
+				<div class="inline">
+					<br>
+					<select class="searchAnd dropselect" tabindex="4">
+						<option></option>
+						<option>AND</option>
+						<option>NOT</option>
+					</select>
+				</div>
+				<div class="inline">
+					Field<br>
+					<select tabindex="5" class="mainSearchField dropselect">
+						<option value="all">All</option><optgroup label="GENE INFO"><option value="gene_name">Gene name</option><option value="protein_class">Protein class</option><option value="uniprot_keyword">Uniprot keyword</option><option value="chromosome">Chromosome</option><option value="external_id">External id</option></optgroup><optgroup label="TISSUE"><option value="normal_expression">Tissue expression (IHC)</option><option value="multiplex_tissue">Multiplex tissue (IHC)</option><option value="ihc_patient_id">Patient ID (IHC)</option><option value="sa_location">Secretome annotation</option><option value="tissue_category_rna">Tissue category (RNA)</option><option value="tissue_tau_score">Tissue Tau score (RNA)</option><option value="expressionclustertissue">Tissue expression cluster (RNA)</option><option value="ih_tissue_reliability">Reliability score tissue (IHC)</option></optgroup><optgroup label="BRAIN"><option value="brain_category_rna">Brain region category (RNA)</option><option value="brain_tau_score">Brain Tau score (RNA)</option><option value="mouse_brain_category_rna">Mouse brain category (RNA)</option><option value="mouse_brain_tau_score">Mouse brain Tau score (RNA)</option><option value="pig_brain_category_rna">Pig brain category (RNA)</option><option value="pig_brain_tau_score">Pig brain Tau score (RNA)</option><option value="expressionclusterbrain">Brain expression cluster (RNA)</option><option value="mb_tissue_reliability">Reliability score mouse brain</option></optgroup><optgroup label="SINGLE CELL"><option value="ce_enriched">Cell type enrichment (RNA)</option><option value="cell_type_category_rna">Cell type category (scRNA)</option><option value="cell_type_tau_score">Cell type Tau score (RNA)</option><option value="sc_brain_region_category_rna">Brain region cell type (scRNA)</option><option value="sc_brain_region_tau_score">Brain region Tau score (scRNA)</option><option value="immune_cell_category_rna">Immune cell category (RNA)</option><option value="immune_cell_tau_score">Immune cell Tau score (RNA)</option><option value="immune_cell_lineage_category_rna">Immune cell lineage category (RNA)</option><option value="immune_cell_lineage_tau_score">Immune cell lineage Tau score (RNA)</option><option value="expressionclusterblood">Immune cell expression cluster (RNA)</option><option value="expressionclustersinglecell">Single cell type expression cluster (RNA)</option></optgroup><optgroup label="SUBCELLULAR"><option value="subcell_location">Subcellular location (ICC)</option><option value="subcell_location_celline">Subcellular location - cell line (ICC)</option><option value="predicted_location">Predicted location</option><option value="subcell_ccd_peak">Subcellular Cell Cycle Peak Phase</option><option value="if_reliability">Reliability score cells (ICC)</option></optgroup><optgroup label="CANCER"><option value="prognostic">Prognostic cancer</option><option value="cancer_category_rna">Cancer category (RNA)</option></optgroup><optgroup label="BLOOD"></optgroup><optgroup label="CELL LINE"><option value="celline_category_rna">Cell line category (RNA)</option><option value="celline_tau_score">Celline Tau score (RNA)</option><option value="expressionclustercellline">Cell line expression cluster (RNA)</option></optgroup><optgroup label="STRUCTURE & INTERACTION"><option value="sequence_variants">Protein sequence variants</option><option value="interaction">Protein interaction</option><option value="num_interactions">Protein interaction count</option><option value="pathway">Metabolic pathway</option></optgroup><optgroup label="PRIMARY DATA"></optgroup><optgroup label="PROTEIN EVIDENCE"><option value="evidence_summary">Evidence summary</option><option value="uniprot_evidence">UniProt evidence</option><option value="nextprot_evidence">NeXtProt evidence</option><option value="hpa_evidence">HPA evidence</option></optgroup><optgroup label="ANTIBODY VALIDATION"><option value="pa_ab_validation">Protein array (PA)</option><option value="wb_ab_validation">Western blot (WB)</option><option value="ihc_ab_validation">Immunohistochemistry (IHC)</option><option value="icc_ab_validation">Immunocytochemistry (ICC)</option></optgroup><optgroup label="EXTRA"><option value="with_antibodies">With antibodies</option><option value="has_data">Has data</option><option value="sort_by">Sort by</option></optgroup>					</select>
+				</div>
+				<div data-id="all" class="field_all subSearchField hidden">										<div class="freetext inline ">
+											Term<br>
+											<input type="text" tabindex="6" data-id="freetext" class="search_freetext text">										</div>
+										</div><div data-id="gene_name" class="field_gene_name subSearchField hidden">										<div class="gene inline ">
+											Gene name<br>
+											<input type="text" tabindex="7" data-id="gene" class="search_gene autocomplete">										</div>
+										</div><div data-id="protein_class" class="field_protein_class subSearchField hidden">										<div class="main_class inline ">
+											Class<br>
+											<select tabindex="8" data-id="main_class" class="search_main_class dropselect"  subselect="sub_class"><option>Blood group antigen proteins</option><option>Cancer-related genes</option><option>Candidate cardiovascular disease genes</option><option>CD markers</option><option>Citric acid cycle related proteins</option><option>Disease related genes</option><option>Enzymes</option><option>FDA approved drug targets</option><option>G-protein coupled receptors</option><option>Human disease related genes</option><option>Immunoglobulin genes</option><option>Mapped to neXtProt</option><option>Mapped to UniProt SWISS-PROT</option><option>Metabolic proteins</option><option>Nuclear receptors</option><option>Plasma proteins</option><option>Potential drug targets</option><option>Predicted intracellular proteins</option><option>Predicted membrane proteins</option><option>Predicted secreted proteins</option><option>Protein evidence (Ezkurdia et al 2014)</option><option>Protein evidence (Kim et al 2014)</option><option>RAS pathway related proteins</option><option>Ribosomal proteins</option><option>RNA polymerase related proteins</option><option>T-cell receptor genes</option><option>Transcription factors</option><option>Transporters</option><option>Voltage-gated ion channels</option></select>										</div>
+																				<div class="sub_class inline hidden">
+											Subclass<br>
+											<select tabindex="9" data-id="sub_class" class="search_sub_class dropselect"  ></select>										</div>
+										</div><div data-id="uniprot_keyword" class="field_uniprot_keyword subSearchField hidden">										<div class="kw_cat inline ">
+											Class<br>
+											<select tabindex="10" data-id="kw_cat" class="search_kw_cat dropselect"  subselect="keyword"><option></option><option>Biological process</option><option>Molecular function</option><option>Disease</option></select>										</div>
+																				<div class="keyword inline hidden">
+											Keyword<br>
+											<select tabindex="11" data-id="keyword" class="search_keyword dropfilter" multiple ></select>										</div>
+										</div><div data-id="chromosome" class="field_chromosome subSearchField hidden">										<div class="chr inline ">
+											Chromosome<br>
+											<select tabindex="12" data-id="chr" class="search_chr dropcheck" multiple ><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>MT</option><option>Unmapped</option><option>X</option><option>Y</option></select>										</div>
+										</div><div data-id="external_id" class="field_external_id subSearchField hidden">										<div class="external inline ">
+											External id<br>
+											<input type="text" tabindex="13" data-id="external" class="search_external autocomplete">										</div>
+										</div><div data-id="normal_expression" class="field_normal_expression subSearchField hidden">										<div class="normal_tissue inline ">
+											Tissue<br>
+											<select tabindex="14" data-id="normal_tissue" class="search_normal_tissue dropselect"  subselect="normal_cell"><option></option><option>Any</option><option>Adipose tissue</option><option>Adrenal gland</option><option>Appendix</option><option>Bone marrow</option><option>Breast</option><option>Bronchus</option><option>Cartilage</option><option>Caudate</option><option>Cerebellum</option><option>Cerebral cortex</option><option>Cervix</option><option>Choroid plexus</option><option>Colon</option><option>Dorsal raphe</option><option>Duodenum</option><option>Endometrium</option><option>Epididymis</option><option>Esophagus</option><option>Eye</option><option>Fallopian tube</option><option>Gallbladder</option><option>Hair</option><option>Heart muscle</option><option>Hippocampus</option><option>Hypothalamus</option><option>Kidney</option><option>Lactating breast</option><option>Liver</option><option>Lung</option><option>Lymph node</option><option>Nasopharynx</option><option>Oral mucosa</option><option>Ovary</option><option>Pancreas</option><option>Parathyroid gland</option><option>Pituitary gland</option><option>Placenta</option><option>Prostate</option><option>Rectum</option><option>Retina</option><option>Salivary gland</option><option>Seminal vesicle</option><option>Skeletal muscle</option><option>Skin</option><option>Small intestine</option><option>Smooth muscle</option><option>Soft tissue</option><option>Sole of foot</option><option>Spleen</option><option>Stomach</option><option>Substantia nigra</option><option>Testis</option><option>Thymus</option><option>Thyroid gland</option><option>Tonsil</option><option>Urinary bladder</option><option>Vagina</option></select>										</div>
+																				<div class="normal_cell inline hidden">
+											Cell type<br>
+											<select tabindex="15" data-id="normal_cell" class="search_normal_cell dropselect"  subselect="expression_normal"></select>										</div>
+																				<div class="expression_normal inline hidden">
+											Expression<br>
+											<select tabindex="16" data-id="expression_normal" class="search_expression_normal dropcheck" multiple ></select>										</div>
+										</div><div data-id="multiplex_tissue" class="field_multiplex_tissue subSearchField hidden">										<div class="multiplex_panel inline ">
+											Antibody panel<br>
+											<select tabindex="17" data-id="multiplex_panel" class="search_multiplex_panel dropselect"  subselect="multiplex_tissue_select"><option></option><option>Any</option><option>Ciliated cells</option><option>Kidney</option><option>Salivary gland</option><option>Sertoli cells</option><option>Spermatids</option><option>Spermatocytes</option><option>Spermatogonia</option></select>										</div>
+																				<div class="multiplex_tissue_select inline hidden">
+											Tissue<br>
+											<select tabindex="18" data-id="multiplex_tissue_select" class="search_multiplex_tissue_select dropselect"  subselect="multiplex_main_location"></select>										</div>
+																				<div class="multiplex_main_location inline hidden">
+											Main location<br>
+											<select tabindex="19" data-id="multiplex_main_location" class="search_multiplex_main_location dropcheck" multiple ></select>										</div>
+										</div><div data-id="ihc_patient_id" class="field_ihc_patient_id subSearchField hidden">										<div class="ihc_patient_id inline ">
+											Patient ID<br>
+											<input type="text" tabindex="20" data-id="ihc_patient_id" class="search_ihc_patient_id text">										</div>
+										</div><div data-id="sa_location" class="field_sa_location subSearchField hidden">										<div class="sa_location inline ">
+											Annotation<br>
+											<select tabindex="21" data-id="sa_location" class="search_sa_location dropcheck" multiple ><option>Immunoglobulin genes</option><option>Intracellular and membrane</option><option>Secreted - unknown location</option><option>Secreted in brain</option><option>Secreted in female reproductive system</option><option>Secreted in male reproductive system</option><option>Secreted in other tissues</option><option>Secreted to blood</option><option>Secreted to digestive system</option><option>Secreted to extracellular matrix</option></select>										</div>
+										</div><div data-id="tissue_category_rna" class="field_tissue_category_rna subSearchField hidden">										<div class="tissue_category_rnatissue inline ">
+											Tissue<br>
+											<select tabindex="22" data-id="tissue_category_rnatissue" class="search_tissue_category_rnatissue dropcheck" multiple ><option>Any</option><option>Adipose tissue</option><option>Adrenal gland</option><option>Bone marrow</option><option>Brain</option><option>Breast</option><option>Cervix</option><option>Choroid plexus</option><option>Endometrium</option><option>Epididymis</option><option>Esophagus</option><option>Fallopian tube</option><option>Gallbladder</option><option>Heart muscle</option><option>Intestine</option><option>Kidney</option><option>Liver</option><option>Lung</option><option>Lymphoid tissue</option><option>Ovary</option><option>Pancreas</option><option>Parathyroid gland</option><option>Pituitary gland</option><option>Placenta</option><option>Prostate</option><option>Retina</option><option>Salivary gland</option><option>Seminal vesicle</option><option>Skeletal muscle</option><option>Skin</option><option>Smooth muscle</option><option>Stomach</option><option>Testis</option><option>Thyroid gland</option><option>Tongue</option><option>Urinary bladder</option><option>Vagina</option></select>										</div>
+																				<div class="tissue_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="23" data-id="tissue_category_rnacategory" class="search_tissue_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Tissue enriched</option><option>Group enriched</option><option>Tissue enhanced</option><option>Low tissue specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="tissue_tau_score" class="field_tissue_tau_score subSearchField hidden">										<div class="tissue_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="24" data-id="tissue_tau_scoretau" class="search_tissue_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="expressionclustertissue" class="field_expressionclustertissue subSearchField hidden">										<div class="cluster inline ">
+											Cluster<br>
+											<select tabindex="25" data-id="cluster" class="search_cluster dropcheck" multiple ><option>7:Adipose tissue - Mixed function</option><option>26:Adrenal gland - Steroid metabolism</option><option>77:Bone marrow - Cell proliferation</option><option>6:Bone marrow - Innate immune response</option><option>33:Brain - Neuronal signaling</option><option>61:Brain - Neuronal signaling</option><option>22:Brain - Synaptic signal transduction</option><option>5:Brain & Testis - Signal transduction</option><option>73:Breast - Lactation</option><option>65:Cerebellum - Nervous system development</option><option>60:Choroid plexus - Transmembrane transport</option><option>8:Ciliated cells - Cilium organization</option><option>62:Connective tissue - ECM organization</option><option>32:Endocrine & Neural - Unknown function</option><option>50:Epididymis - Male reproductive secretion</option><option>75:Epithelium - Extracellular exosomes</option><option>59:Fallopian tube - Tissue development</option><option>12:Heart muscle - Cardiac muscle contraction</option><option>30:Heart muscle - Heart development</option><option>45:Intestine - Digestion</option><option>52:Kidney - Transmembrane transport</option><option>55:Kidney & Intestine - Metabolism</option><option>83:Liver - Metabolism</option><option>69:Liver - Oxidoreductase activity</option><option>11:Liver - Plasma proteins</option><option>31:Liver - Plasma proteins</option><option>37:Liver & Intestine - Lipid metabolism</option><option>1:Liver & Kidney - Metabolism</option><option>57:Lung - Lung function</option><option>36:Lymphoid tissue - Cytokine signaling</option><option>70:Lymphoid tissue - Immune response</option><option>67:Lymphoid tissue & Bone marrow - Cell proliferation</option><option>81:Lymphoid tissue & Bone marrow - Innate immune response</option><option>17:Neuronal - Synaptic function</option><option>28:Neuronal - Transcription</option><option>64:Neuronal - Transcription</option><option>19:Non-specific - Basic cellular processes</option><option>54:Non-specific - Basic cellular processes</option><option>23:Non-specific - Cellular respiration</option><option>80:Non-specific - Endocytosis</option><option>53:Non-specific - Glycosylation</option><option>35:Non-specific - Mitochondria</option><option>43:Non-specific - Mitochondrial translation</option><option>34:Non-specific - Mixed function</option><option>68:Non-specific - Protein processing</option><option>18:Non-specific - Ribosome</option><option>16:Non-specific - Transcription</option><option>40:Non-specific - Transcription</option><option>66:Non-specific - Transcription</option><option>79:Non-specific - Transcription</option><option>3:Non-specific - Unknown function</option><option>56:Non-specific - Unknown function</option><option>9:Oligodendrocytes - Myelination</option><option>15:Pancreas - Proteolysis</option><option>24:Parathyroid gland - Vesicular transport</option><option>49:Pituitary gland - Hormone signaling</option><option>58:Placenta - Pregnancy</option><option>76:Retina - Visual perception</option><option>39:Retina & Testis - Cilium</option><option>38:Salivary gland - Salivary secretion</option><option>14:Skeletal muscle - Muscle contraction</option><option>2:Skeletal muscle - Striated muscle contraction</option><option>13:Skin - Cornification</option><option>82:Skin - Keratinization</option><option>25:Small intestine - Absorption</option><option>41:Smooth muscle tissue - ECM organization</option><option>74:Spermatids - Flagellum assembly</option><option>47:Spleen - Immune response</option><option>29:Squamous epithelium - Innate immune response</option><option>27:Squamous epithelium - Keratinization</option><option>48:Stomach - Proteolysis</option><option>4:Testis - Basic cellular processes</option><option>10:Testis - Spermatid development</option><option>63:Testis - Spermatid development</option><option>20:Testis - Spermatogenesis</option><option>42:Testis - Spermatogenesis</option><option>44:Testis - Spermatogenesis</option><option>46:Testis - Spermatogenesis</option><option>78:Testis - Transcription</option><option>21:Testis - Unknown function</option><option>72:Testis & Skeletal muscle - Protein ubiquitination</option><option>71:Thymus - Adaptive immune response</option><option>51:Thyroid gland - Unknown function</option></select>										</div>
+										</div><div data-id="ih_tissue_reliability" class="field_ih_tissue_reliability subSearchField hidden">										<div class="search_reliability_ih inline ">
+											Reliability<br>
+											<select tabindex="26" data-id="search_reliability_ih" class="search_search_reliability_ih dropcheck" multiple ><option>Approved</option><option>Enhanced</option><option>Supported</option><option>Uncertain</option></select>										</div>
+										</div><div data-id="brain_category_rna" class="field_brain_category_rna subSearchField hidden">										<div class="brain_category_rnatissue inline ">
+											Brain region<br>
+											<select tabindex="27" data-id="brain_category_rnatissue" class="search_brain_category_rnatissue dropcheck" multiple ><option>Any</option><option>Amygdala</option><option>Basal ganglia</option><option>Cerebellum</option><option>Cerebral cortex</option><option>Choroid plexus</option><option>Hippocampal formation</option><option>Hypothalamus</option><option>Medulla oblongata</option><option>Midbrain</option><option>Pons</option><option>Spinal cord</option><option>Thalamus</option><option>White matter</option></select>										</div>
+																				<div class="brain_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="28" data-id="brain_category_rnacategory" class="search_brain_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Region enriched</option><option>Group enriched</option><option>Region enhanced</option><option>Low region specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="brain_tau_score" class="field_brain_tau_score subSearchField hidden">										<div class="brain_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="29" data-id="brain_tau_scoretau" class="search_brain_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="mouse_brain_category_rna" class="field_mouse_brain_category_rna subSearchField hidden">										<div class="mouse_brain_category_rnatissue inline ">
+											Brain region<br>
+											<select tabindex="30" data-id="mouse_brain_category_rnatissue" class="search_mouse_brain_category_rnatissue dropcheck" multiple ><option>Any</option><option>Amygdala</option><option>Basal ganglia</option><option>Cerebellum</option><option>Cerebral cortex</option><option>Hippocampal formation</option><option>Hypothalamus</option><option>Midbrain</option><option>Olfactory bulb</option><option>Pons and medulla</option><option>Thalamus</option><option>White matter</option></select>										</div>
+																				<div class="mouse_brain_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="31" data-id="mouse_brain_category_rnacategory" class="search_mouse_brain_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Region enriched</option><option>Group enriched</option><option>Region enhanced</option><option>Low region specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="mouse_brain_tau_score" class="field_mouse_brain_tau_score subSearchField hidden">										<div class="mouse_brain_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="32" data-id="mouse_brain_tau_scoretau" class="search_mouse_brain_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="pig_brain_category_rna" class="field_pig_brain_category_rna subSearchField hidden">										<div class="pig_brain_category_rnatissue inline ">
+											Brain region<br>
+											<select tabindex="33" data-id="pig_brain_category_rnatissue" class="search_pig_brain_category_rnatissue dropcheck" multiple ><option>Any</option><option>Amygdala</option><option>Basal ganglia</option><option>Cerebellum</option><option>Cerebral cortex</option><option>Hippocampal formation</option><option>Hypothalamus</option><option>Medulla oblongata</option><option>Midbrain</option><option>Olfactory bulb</option><option>Pons</option><option>Spinal cord</option><option>Thalamus</option><option>White matter</option></select>										</div>
+																				<div class="pig_brain_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="34" data-id="pig_brain_category_rnacategory" class="search_pig_brain_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Region enriched</option><option>Group enriched</option><option>Region enhanced</option><option>Low region specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="pig_brain_tau_score" class="field_pig_brain_tau_score subSearchField hidden">										<div class="pig_brain_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="35" data-id="pig_brain_tau_scoretau" class="search_pig_brain_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="expressionclusterbrain" class="field_expressionclusterbrain subSearchField hidden">										<div class="cluster inline ">
+											Cluster<br>
+											<select tabindex="36" data-id="cluster" class="search_cluster dropcheck" multiple ><option>40:Astrocytes - Astrocyte-neuron interactions</option><option>19:Astrocytes - Mixed function</option><option>39:Astrocytes - Mixed function</option><option>46:Brainstem - Mixed function</option><option>10:Cerebellum - Nucleic acid binding</option><option>32:Cerebral cortex - Mixed function</option><option>3:Choroid plexus - Cilium</option><option>17:Choroid plexus - Cilium</option><option>42:Choroid plexus - Mitochondria</option><option>23:Choroid plexus - Mixed function</option><option>36:Choroid plexus - Mixed function</option><option>47:Endothelial cells - Vasculature</option><option>29:Forebrain - Mixed function</option><option>43:Hindbrain - Mixed function</option><option>49:Hindbrain - Mixed function</option><option>56:Hypothalamus - Neuropeptide signaling</option><option>8:Immune cells - Immune response</option><option>54:Immune cells - T cell receptor</option><option>20:Macrophages & Microglia - Immune response</option><option>41:Monoamines - Neurotransmitter signalling</option><option>1:Neurons - Mixed function</option><option>24:Neurons - Mixed function</option><option>33:Neurons - Mixed function</option><option>37:Neurons - Mixed function</option><option>51:Neurons - Mixed function</option><option>53:Neurons - Mixed function</option><option>2:Neurons - Nucleosome</option><option>14:Neurons - Synaptic function</option><option>52:Neurons & Synapses - Synaptic function</option><option>35:Non-specific - DNA binding</option><option>6:Non-specific - Immune response</option><option>21:Non-specific - Metabolism</option><option>5:Non-specific - Mixed function</option><option>18:Non-specific - Mixed function</option><option>22:Non-specific - Mixed function</option><option>27:Non-specific - Mixed function</option><option>34:Non-specific - Mixed function</option><option>44:Non-specific - Mixed function</option><option>45:Non-specific - Mixed function</option><option>48:Non-specific - Mixed function</option><option>4:Non-specific - mRNA splicing & Cell cycle</option><option>50:Non-specific - Nucleic acid binding</option><option>9:Non-specific - Receptor signaling</option><option>7:Non-specific - Ribosome</option><option>15:Non-specific - Transcription</option><option>16:Non-specific - Transcription</option><option>25:Non-specific - Transcription</option><option>31:Non-specific - Transcription</option><option>55:Non-specific - Transcription</option><option>12:Non-specific - Vasculature</option><option>13:Oligodendrocytes - Mixed function</option><option>26:Oligodendrocytes - Mixed function</option><option>28:Oligodendrocytes - Mixed function</option><option>38:Sub-cortical - Mixed function</option><option>30:White matter - Myelination</option><option>11:White matter - Signal transduction</option></select>										</div>
+										</div><div data-id="mb_tissue_reliability" class="field_mb_tissue_reliability subSearchField hidden">										<div class="search_reliability_mb inline ">
+											Reliability<br>
+											<select tabindex="37" data-id="search_reliability_mb" class="search_search_reliability_mb dropcheck" multiple ><option>Approved</option><option>Supported</option></select>										</div>
+										</div><div data-id="ce_enriched" class="field_ce_enriched subSearchField hidden">										<div class="ce_tissue inline ">
+											Tissue<br>
+											<select tabindex="38" data-id="ce_tissue" class="search_ce_tissue dropselect"  subselect="ce_cell"><option></option><option>Adipose subcutaneous</option><option>Adipose visceral</option><option>Adrenal gland</option><option>Breast</option><option>Colon</option><option>Heart muscle</option><option>Kidney</option><option>Liver</option><option>Lung</option><option>Minor Salivary Gland</option><option>Pancreas</option><option>Pituitary gland</option><option>Prostate</option><option>Skeletal muscle</option><option>Skin</option><option>Spleen</option><option>Stomach</option><option>Testis</option><option>Thyroid gland</option></select>										</div>
+																				<div class="ce_cell inline ">
+											Cell type<br>
+											<select tabindex="39" data-id="ce_cell" class="search_ce_cell dropcheck" multiple ></select>										</div>
+																				<div class="ce_score inline ">
+											Enrichment<br>
+											<select tabindex="40" data-id="ce_score" class="search_ce_score dropcheck" multiple ><option>Very high</option><option>High</option><option>Moderate</option></select>										</div>
+										</div><div data-id="cell_type_category_rna" class="field_cell_type_category_rna subSearchField hidden">										<div class="cell_type_category_rnatissue inline ">
+											Cell type<br>
+											<select tabindex="41" data-id="cell_type_category_rnatissue" class="search_cell_type_category_rnatissue dropcheck" multiple ><option>Any</option><option>Adipocytes</option><option>Alveolar cells type 1</option><option>Alveolar cells type 2</option><option>Astrocytes</option><option>B-cells</option><option>Basal keratinocytes</option><option>Basal prostatic cells</option><option>Basal respiratory cells</option><option>Basal squamous epithelial cells</option><option>Bipolar cells</option><option>Breast glandular cells</option><option>Breast myoepithelial cells</option><option>Cardiomyocytes</option><option>Cholangiocytes</option><option>Ciliated cells</option><option>Club cells</option><option>Collecting duct cells</option><option>Cone photoreceptor cells</option><option>Cytotrophoblasts</option><option>Dendritic cells</option><option>Distal enterocytes</option><option>Distal tubular cells</option><option>Ductal cells</option><option>Early spermatids</option><option>Endometrial stromal cells</option><option>Endothelial cells</option><option>Enteroendocrine cells</option><option>Erythroid cells</option><option>Excitatory neurons</option><option>Exocrine glandular cells</option><option>Extravillous trophoblasts</option><option>Fibroblasts</option><option>Gastric mucus-secreting cells</option><option>Glandular and luminal cells</option><option>Granulocytes</option><option>Granulosa cells</option><option>Hepatocytes</option><option>Hofbauer cells</option><option>Horizontal cells</option><option>Inhibitory neurons</option><option>Intestinal goblet cells</option><option>Ionocytes</option><option>Kupffer cells</option><option>Langerhans cells</option><option>Late spermatids</option><option>Leydig cells</option><option>Lymphatic endothelial cells</option><option>Macrophages</option><option>Melanocytes</option><option>Mesothelial cells</option><option>Microglial cells</option><option>Monocytes</option><option>Mucus glandular cells</option><option>Muller glia cells</option><option>NK-cells</option><option>Oligodendrocyte precursor cells</option><option>Oligodendrocytes</option><option>Oocytes</option><option>Ovarian stromal cells</option><option>Pancreatic endocrine cells</option><option>Paneth cells</option><option>Peritubular cells</option><option>Plasma cells</option><option>Prostatic glandular cells</option><option>Proximal enterocytes</option><option>Proximal tubular cells</option><option>Rod photoreceptor cells</option><option>Salivary duct cells</option><option>Schwann cells</option><option>Secretory cells</option><option>Serous glandular cells</option><option>Sertoli cells</option><option>Skeletal myocytes</option><option>Smooth muscle cells</option><option>Spermatocytes</option><option>Spermatogonia</option><option>Squamous epithelial cells</option><option>Suprabasal keratinocytes</option><option>Syncytiotrophoblasts</option><option>T-cells</option><option>Undifferentiated cells</option></select>										</div>
+																				<div class="cell_type_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="42" data-id="cell_type_category_rnacategory" class="search_cell_type_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Cell type enriched</option><option>Group enriched</option><option>Cell type enhanced</option><option>Low cell type specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="cell_type_tau_score" class="field_cell_type_tau_score subSearchField hidden">										<div class="cell_type_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="43" data-id="cell_type_tau_scoretau" class="search_cell_type_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="sc_brain_region_category_rna" class="field_sc_brain_region_category_rna subSearchField hidden">										<div class="sc_brain_region_category_rnatissue inline ">
+											Cell type<br>
+											<select tabindex="44" data-id="sc_brain_region_category_rnatissue" class="search_sc_brain_region_category_rnatissue dropcheck" multiple ><option>Any</option><option>Amygdala excitatory</option><option>Astrocyte</option><option>Bergmann glia</option><option>Central nervous system macrophage</option><option>Cerebellar inhibitory</option><option>CGE interneuron</option><option>Choroid plexus epithelial cell</option><option>Committed oligodendrocyte precursor</option><option>Deep-layer corticothalamic and 6b</option><option>Deep-layer intratelencephalic</option><option>Deep-layer near-projecting</option><option>Eccentric medium spiny neuron</option><option>Endothelial cell</option><option>Ependymal cell</option><option>Fibroblast</option><option>Hippocampal CA1-3</option><option>Hippocampal CA4</option><option>Hippocampal dentate gyrus</option><option>LAMP5-LHX6 and Chandelier</option><option>Leukocyte</option><option>Lower rhombic lip</option><option>Mammillary body</option><option>Medium spiny neuron</option><option>MGE interneuron</option><option>Midbrain-derived inhibitory</option><option>Miscellaneous</option><option>Oligodendrocyte</option><option>Oligodendrocyte precursor cell</option><option>Pericyte</option><option>Splatter</option><option>Thalamic excitatory</option><option>Upper rhombic lip</option><option>Upper-layer intratelencephalic</option><option>Vascular associated smooth muscle cell</option></select>										</div>
+																				<div class="sc_brain_region_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="45" data-id="sc_brain_region_category_rnacategory" class="search_sc_brain_region_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Cell type enriched</option><option>Group enriched</option><option>Cell type enhanced</option><option>Low cell type specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="sc_brain_region_tau_score" class="field_sc_brain_region_tau_score subSearchField hidden">										<div class="sc_brain_region_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="46" data-id="sc_brain_region_tau_scoretau" class="search_sc_brain_region_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="immune_cell_category_rna" class="field_immune_cell_category_rna subSearchField hidden">										<div class="immune_cell_category_rnatissue inline ">
+											Cell type<br>
+											<select tabindex="47" data-id="immune_cell_category_rnatissue" class="search_immune_cell_category_rnatissue dropcheck" multiple ><option>Any</option><option>Basophil</option><option>Classical monocyte</option><option>Eosinophil</option><option>GdT-cell</option><option>Intermediate monocyte</option><option>MAIT T-cell</option><option>Memory B-cell</option><option>Memory CD4 T-cell</option><option>Memory CD8 T-cell</option><option>Myeloid DC</option><option>Naive B-cell</option><option>Naive CD4 T-cell</option><option>Naive CD8 T-cell</option><option>Neutrophil</option><option>NK-cell</option><option>Non-classical monocyte</option><option>Plasmacytoid DC</option><option>T-reg</option><option>Total PBMC</option></select>										</div>
+																				<div class="immune_cell_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="48" data-id="immune_cell_category_rnacategory" class="search_immune_cell_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Immune cell enriched</option><option>Group enriched</option><option>Immune cell enhanced</option><option>Low immune cell specificity</option><option>Not detected in immune cells</option></optgroup><optgroup label="DISTRIBUTION"><option>Not detected</option><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="immune_cell_tau_score" class="field_immune_cell_tau_score subSearchField hidden">										<div class="immune_cell_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="49" data-id="immune_cell_tau_scoretau" class="search_immune_cell_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="immune_cell_lineage_category_rna" class="field_immune_cell_lineage_category_rna subSearchField hidden">										<div class="immune_cell_lineage_category_rnatissue inline ">
+											Cell lineage<br>
+											<select tabindex="50" data-id="immune_cell_lineage_category_rnatissue" class="search_immune_cell_lineage_category_rnatissue dropcheck" multiple ><option>Any</option><option>B-cells</option><option>Dendritic cells</option><option>Granulocytes</option><option>Monocytes</option><option>NK-cells</option><option>T-cells</option></select>										</div>
+																				<div class="immune_cell_lineage_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="51" data-id="immune_cell_lineage_category_rnacategory" class="search_immune_cell_lineage_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Lineage enriched</option><option>Group enriched</option><option>Lineage enhanced</option><option>Low lineage specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="immune_cell_lineage_tau_score" class="field_immune_cell_lineage_tau_score subSearchField hidden">										<div class="immune_cell_lineage_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="52" data-id="immune_cell_lineage_tau_scoretau" class="search_immune_cell_lineage_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="expressionclusterblood" class="field_expressionclusterblood subSearchField hidden">										<div class="cluster inline ">
+											Cluster<br>
+											<select tabindex="53" data-id="cluster" class="search_cluster dropcheck" multiple ><option>17:B-cells - Immunoglobulins</option><option>23:B-cells - Immunoglobulins</option><option>34:B-cells - Unknown function</option><option>46:Basophils - Proteolysis</option><option>32:Basophils - Transcription</option><option>41:Basophils - Unknown function</option><option>2:Dendritic cells - Unknown function</option><option>36:Eosinophils - Protein ubiquitination</option><option>22:Eosinophils - Transcription</option><option>19:Eosinophils - Unknown function</option><option>45:Eosinophils - Unknown function</option><option>40:Monocytes - Innate immune response</option><option>26:Monocytes - Plasma membrane proteins</option><option>38:Monocytes & Neutrophils - Degranulation</option><option>37:Monocytes & Neutrophils - Innate immune response</option><option>4:Neutrophils - Degranulation</option><option>35:Neutrophils - Protein binding</option><option>21:Neutrophils - Unknown function</option><option>28:Neutrophils - Unknown function</option><option>15:NK-cells - Unknown function</option><option>33:Non-specific - ATP binding</option><option>5:Non-specific - Cell proliferation</option><option>16:Non-specific - Cell proliferation</option><option>20:Non-specific - DNA binding</option><option>30:Non-specific - DNA binding</option><option>7:Non-specific - Innate immune response</option><option>10:Non-specific - Membrane trafficking</option><option>13:Non-specific - Mitochondria</option><option>12:Non-specific - Mitochondrial translation</option><option>3:Non-specific - Nuclear processes</option><option>24:Non-specific - Transcription</option><option>43:Non-specific - Transcription & Translation</option><option>18:Non-specific - Translation</option><option>14:Non-specific - Unknown function</option><option>25:Non-specific - Unknown function</option><option>29:Non-specific - Unknown function</option><option>42:Non-specific - Vesicular transport</option><option>44:Plasmacytoid DCs - Plasma membrane proteins</option><option>8:Plasmacytoid DCs - Unknown function</option><option>6:T-cells - T-cell receptor</option><option>31:T-cells - T-cell receptor</option><option>39:T-cells - T-cell receptor</option><option>1:T-cells - Unknown function</option><option>11:T-cells - Unknown function</option><option>27:T-cells - Unknown function</option><option>9:T-regs - Cell cycle regulation</option></select>										</div>
+										</div><div data-id="expressionclustersinglecell" class="field_expressionclustersinglecell subSearchField hidden">										<div class="cluster inline ">
+											Cluster<br>
+											<select tabindex="54" data-id="cluster" class="search_cluster dropcheck" multiple ><option>41:Adipocytes & Endothelial cells - Mixed function</option><option>72:Alveolar cells - Lung function</option><option>47:Astrocytes - Unknown function</option><option>73:B-cells - B-cell function</option><option>3:Basal prostatic cells - Lipid metabolism</option><option>25:Bipolar cells - Visual perception</option><option>17:Breast glandular cells - Lactation</option><option>68:Cardiomyocytes - Muscle contraction</option><option>42:Ciliated cells - Cilium assembly</option><option>50:Connective tissue cells - ECM organization</option><option>24:Cytotrophoblasts - Mitochondria</option><option>28:Dendritic cells - Antigen presentation</option><option>21:Early spermatids - Spermatogenesis</option><option>18:Early spermatids - Unknown function</option><option>9:Endometrial stromal cells - Transcription</option><option>5:Enterocytes - Absorption</option><option>20:Enteroendocrine cells - Hormone signaling</option><option>1:Erythroid cells - Oxygen transport</option><option>4:Extravillous trophoblasts - Unknown function</option><option>53:Fibroblasts - ECM organization</option><option>46:Gastric mucus-secreting cells - Digestion</option><option>37:Glandular & Luminal cells - Unknown function</option><option>30:Granulocytes - Unknown function</option><option>43:Hepatocytes - Metabolism</option><option>62:Hepatocytes - Metabolism</option><option>71:Horizontal & Bipolar cells - Neuronal signaling</option><option>16:Intestinal goblet cells - Mucin production</option><option>14:Langerhans cells - Innate immune response</option><option>63:Late spermatids - Spermatogenesis</option><option>11:Late spermatids - Unknown function</option><option>36:Late spermatids - Unknown function</option><option>54:Lymphatic endothelial cells - Lymph vessel development</option><option>58:Macrophages - Innate immune response</option><option>29:Monocytes - Innate immune response</option><option>10:Muller glia cells - Visual perception</option><option>8:Neurons - Neuronal signaling</option><option>34:Neurons - Neuronal signaling</option><option>69:Neurons - Neuronal signaling</option><option>65:Neurons - Synaptic function</option><option>74:Neutrophils - Degranulation</option><option>19:NK-cells - Adaptive immune response</option><option>78:NK-cells & T-cells - Immune system & Transcription</option><option>39:Non-specific - Basic cellular processes</option><option>52:Non-specific - Cell proliferation</option><option>33:Non-specific - DNA binding</option><option>15:Non-specific - Mixed function</option><option>45:Non-specific - Mixed function</option><option>64:Non-specific - Ribosome</option><option>49:Non-specific - Transcription</option><option>55:Non-specific - Transcription</option><option>80:Non-specific - Transcription</option><option>76:Oligodendrocyte precursor - Unknown function</option><option>51:Oligodendrocytes - Unknown function</option><option>44:Oocytes - Unknown function</option><option>6:Ovarian stromal cells - Transcription</option><option>60:Pancreatic exocrine cells - Proteolysis</option><option>66:Photoreceptor cells - Visual perception</option><option>23:Plasma cells - Humoral immune response</option><option>61:Plasma cells - Immunoglobulins & histones</option><option>77:Plasma cells - Protein processing</option><option>57:Platelets - Hemostasis</option><option>40:Prostatic glandular cells - Transcription</option><option>22:Proximal enterocytes - Digestion</option><option>56:Proximal tubular cells - Amino acid metabolism</option><option>38:Proximal tubular cells - Transmembrane transport</option><option>35:Respiratory epithelial cells - Unknown function</option><option>26:Schwann cells & Melanocytes - Mixed function</option><option>75:Serous glandular cells - Salivary secretion</option><option>2:Skeletal myocytes - Muscle contraction</option><option>32:Smooth muscle cells - Muscle contraction</option><option>48:Smooth muscle cells - Signal transduction</option><option>13:Spermatids - Transcription</option><option>31:Spermatocytes - Spermatogenesis</option><option>70:Spermatocytes & Spermatids - Spermatid development</option><option>79:Spermatocytes & Spermatogonia - Spermatogenesis</option><option>67:Spermatogonia - Spermatogenesis</option><option>12:Squamous epithelial cells - Keratinization</option><option>59:Suprabasal keratinocytes - Cornification</option><option>27:Syncytiotrophoblasts - Pregnancy</option><option>7:T-cells - T-cell receptor</option></select>										</div>
+										</div><div data-id="subcell_location" class="field_subcell_location subSearchField hidden">										<div class="location inline ">
+											Location<br>
+											<select tabindex="55" data-id="location" class="search_location dropcheck" multiple ><option>Acrosome</option><option>Actin filaments</option><option>Aggresome</option><option>Annulus</option><option>Basal body</option><option>Calyx</option><option>Cell Junctions</option><option>Centriolar satellite</option><option>Centrosome</option><option>Cleavage furrow</option><option>Connecting piece</option><option>Cytokinetic bridge</option><option>Cytoplasmic bodies</option><option>Cytosol</option><option>End piece</option><option>Endoplasmic reticulum</option><option>Endosomes</option><option>Equatorial segment</option><option>Flagellar centriole</option><option>Focal adhesion sites</option><option>Golgi apparatus</option><option>Intermediate filaments</option><option>Kinetochore</option><option>Lipid droplets</option><option>Lysosomes</option><option>Microtubule ends</option><option>Microtubules</option><option>Mid piece</option><option>Midbody</option><option>Midbody ring</option><option>Mitochondria</option><option>Mitotic chromosome</option><option>Mitotic spindle</option><option>Nuclear bodies</option><option>Nuclear membrane</option><option>Nuclear speckles</option><option>Nucleoli</option><option>Nucleoli fibrillar center</option><option>Nucleoli rim</option><option>Nucleoplasm</option><option>Perinuclear theca</option><option>Peroxisomes</option><option>Plasma membrane</option><option>Primary cilium</option><option>Primary cilium tip</option><option>Primary cilium transition zone</option><option>Principal piece</option><option>Rods & Rings</option><option>Vesicles</option></select>										</div>
+																				<div class="reliability_if_location inline ">
+											Searches<br>
+											<select tabindex="56" data-id="reliability_if_location" class="search_reliability_if_location dropcheck" multiple ><optgroup label="RELIABILITY"><option>Enhanced</option><option>Supported</option><option>Approved</option><option>Uncertain</option></optgroup><optgroup label="SUBCELLULAR VARIATION"><option>Single cell variation</option><option>CCD protein mitotic structure</option><option>CCD protein interphase</option><option>Cell cycle dependent protein</option><option>Cell cycle independent protein</option><option>Cell cycle dependent transcript</option><option>Cell cycle independent transcript</option></optgroup><optgroup label="MULTILOCALIZATION"><option>Multilocalizing</option><option>Localizing 1</option><option>Localizing 2</option><option>Localizing 3</option><option>Localizing 4</option><option>Localizing 5</option><option>Localizing 6</option></optgroup><optgroup label="OTHER"><option>Main location</option><option>Additional location</option></optgroup></select>										</div>
+										</div><div data-id="subcell_location_celline" class="field_subcell_location_celline subSearchField hidden">										<div class="location_celline inline ">
+											Location<br>
+											<select tabindex="57" data-id="location_celline" class="search_location_celline dropcheck" multiple ><option>Any</option><option>Acrosome</option><option>Actin filaments</option><option>Aggresome</option><option>Annulus</option><option>Basal body</option><option>Calyx</option><option>Cell Junctions</option><option>Centriolar satellite</option><option>Centrosome</option><option>Cleavage furrow</option><option>Connecting piece</option><option>Cytokinetic bridge</option><option>Cytoplasmic bodies</option><option>Cytosol</option><option>End piece</option><option>Endoplasmic reticulum</option><option>Endosomes</option><option>Equatorial segment</option><option>Flagellar centriole</option><option>Focal adhesion sites</option><option>Golgi apparatus</option><option>Intermediate filaments</option><option>Kinetochore</option><option>Lipid droplets</option><option>Lysosomes</option><option>Microtubule ends</option><option>Microtubules</option><option>Mid piece</option><option>Midbody</option><option>Midbody ring</option><option>Mitochondria</option><option>Mitotic chromosome</option><option>Mitotic spindle</option><option>Nuclear bodies</option><option>Nuclear membrane</option><option>Nuclear speckles</option><option>Nucleoli</option><option>Nucleoli fibrillar center</option><option>Nucleoli rim</option><option>Nucleoplasm</option><option>Perinuclear theca</option><option>Peroxisomes</option><option>Plasma membrane</option><option>Primary cilium</option><option>Primary cilium tip</option><option>Primary cilium transition zone</option><option>Principal piece</option><option>Rods & Rings</option><option>Vesicles</option></select>										</div>
+																				<div class="cellline inline ">
+											Cell line<br>
+											<select tabindex="58" data-id="cellline" class="search_cellline dropcheck" multiple ><option>Any</option><option>A-431</option><option>A-549</option><option>AF22</option><option>ASC52telo</option><option>BJ [Human fibroblast]</option><option>CACO-2</option><option>EFO-21</option><option>FHDF/TERT166</option><option>GAMG</option><option>HaCaT</option><option>HAP1</option><option>HBEC3-KT</option><option>HBF/TERT88</option><option>HDLM-2</option><option>HEK293</option><option>HEL</option><option>HeLa</option><option>Hep-G2</option><option>HTCEpi</option><option>HTEC/SVTERT24-B</option><option>HTERT-HME1</option><option>HTERT-RPE1</option><option>HTERT-RPE1 (serum starved)</option><option>HUVEC/TERT2</option><option>JURKAT</option><option>K-562</option><option>LHCN-M2</option><option>MCF-7</option><option>NB4</option><option>OE19</option><option>PC-3</option><option>PODO/SVTERT152</option><option>PODO/TERT256</option><option>REH</option><option>Rh30</option><option>RPTEC/TERT1</option><option>RT-4</option><option>SH-SY5Y</option><option>SiHa</option><option>SK-MEL-30</option><option>Sperm</option><option>SuSa</option><option>THP-1</option><option>U-251MG</option><option>U2OS</option></select>										</div>
+										</div><div data-id="predicted_location" class="field_predicted_location subSearchField hidden">										<div class="predicted_class inline ">
+											Class<br>
+											<select tabindex="59" data-id="predicted_class" class="search_predicted_class dropcheck" multiple subselect="sub_class"><option>Predicted intracellular proteins</option><option>Predicted membrane proteins</option><option>Predicted secreted proteins</option></select>										</div>
+										</div><div data-id="subcell_ccd_peak" class="field_subcell_ccd_peak subSearchField hidden">										<div class="type inline ">
+											Type<br>
+											<select tabindex="60" data-id="type" class="search_type dropcheck" multiple ><option>Protein</option><option>Rna</option></select>										</div>
+																				<div class="phase inline ">
+											Phase<br>
+											<select tabindex="61" data-id="phase" class="search_phase dropcheck" multiple ><option>G1</option><option>S</option><option>G2</option></select>										</div>
+										</div><div data-id="if_reliability" class="field_if_reliability subSearchField hidden">										<div class="search_reliability_if inline ">
+											Reliability<br>
+											<select tabindex="62" data-id="search_reliability_if" class="search_search_reliability_if dropcheck" multiple ><option>Approved</option><option>Enhanced</option><option>Supported</option><option>Uncertain</option></select>										</div>
+										</div><div data-id="prognostic" class="field_prognostic subSearchField hidden">										<div class="cancer inline ">
+											Cancer<br>
+											<select tabindex="63" data-id="cancer" class="search_cancer dropcheck" multiple ><option>Bladder Urothelial Carcinoma</option><option>Breast Invasive Carcinoma</option><option>Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma</option><option>Colon Adenocarcinoma</option><option>Glioblastoma Multiforme</option><option>Head and Neck Squamous Cell Carcinoma</option><option>Kidney Chromophobe</option><option>Kidney Renal Clear Cell Carcinoma</option><option>Kidney Renal Papillary Cell Carcinoma</option><option>Liver Hepatocellular Carcinoma</option><option>Lung Adenocarcinoma</option><option>Lung Squamous Cell Carcinoma</option><option>Ovary Serous Cystadenocarcinoma</option><option>Pancreatic Adenocarcinoma</option><option>Prostate Adenocarcinoma</option><option>Rectum Adenocarcinoma</option><option>Skin Cuteneous Melanoma</option><option>Stomach Adenocarcinoma</option><option>Testicular Germ Cell Tumor</option><option>Thyroid Carcinoma</option><option>Uterine Corpus Endometrial Carcinoma</option></select>										</div>
+																				<div class="prognosis inline ">
+											Prognosis<br>
+											<select tabindex="64" data-id="prognosis" class="search_prognosis dropcheck" multiple ><option>Favorable - potential prognostic</option><option>Favorable - validated prognostic</option><option>Unfavorable - potential prognostic</option><option>Unfavorable - validated prognostic</option></select>										</div>
+										</div><div data-id="cancer_category_rna" class="field_cancer_category_rna subSearchField hidden">										<div class="cancer_category_rnatissue inline ">
+											Cancer<br>
+											<select tabindex="65" data-id="cancer_category_rnatissue" class="search_cancer_category_rnatissue dropcheck" multiple ><option>Any</option><option>Bladder Urothelial Carcinoma</option><option>Breast Invasive Carcinoma</option><option>Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma</option><option>Colon Adenocarcinoma</option><option>Glioblastoma Multiforme</option><option>Head and Neck Squamous Cell Carcinoma</option><option>Kidney Chromophobe</option><option>Kidney Renal Clear Cell Carcinoma</option><option>Kidney Renal Papillary Cell Carcinoma</option><option>Liver Hepatocellular Carcinoma</option><option>Lung Adenocarcinoma</option><option>Lung Squamous Cell Carcinoma</option><option>Ovary Serous Cystadenocarcinoma</option><option>Pancreatic Adenocarcinoma</option><option>Prostate Adenocarcinoma</option><option>Rectum Adenocarcinoma</option><option>Skin Cuteneous Melanoma</option><option>Stomach Adenocarcinoma</option><option>Testicular Germ Cell Tumor</option><option>Thyroid Carcinoma</option><option>Uterine Corpus Endometrial Carcinoma</option></select>										</div>
+																				<div class="cancer_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="66" data-id="cancer_category_rnacategory" class="search_cancer_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Cancer enriched</option><option>Group enriched</option><option>Cancer enhanced</option><option>Low cancer specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="celline_category_rna" class="field_celline_category_rna subSearchField hidden">										<div class="celline_category_rnatissue inline ">
+											Cancer<br>
+											<select tabindex="67" data-id="celline_category_rnatissue" class="search_celline_category_rnatissue dropcheck" multiple ><option>Any</option><option>Adrenocortical cancer</option><option>Bile duct cancer</option><option>Bladder cancer</option><option>Bone cancer</option><option>Brain cancer</option><option>Breast cancer</option><option>Cervical cancer</option><option>Colorectal cancer</option><option>Esophageal cancer</option><option>Gallbladder cancer</option><option>Gastric cancer</option><option>Head and neck cancer</option><option>Kidney cancer</option><option>Leukemia</option><option>Liver cancer</option><option>Lung cancer</option><option>Lymphoma</option><option>Myeloma</option><option>Neuroblastoma</option><option>Non-cancerous</option><option>Ovarian cancer</option><option>Pancreatic cancer</option><option>Prostate cancer</option><option>Rhabdoid</option><option>Sarcoma</option><option>Skin cancer</option><option>Testis cancer</option><option>Thyroid cancer</option><option>Uncategorized</option><option>Uterine cancer</option></select>										</div>
+																				<div class="celline_category_rnacategory inline ">
+											Category<br>
+											<select tabindex="68" data-id="celline_category_rnacategory" class="search_celline_category_rnacategory dropcheck" multiple ><optgroup label="SPECIFICITY"><option>Cancer enriched</option><option>Group enriched</option><option>Cancer enhanced</option><option>Low cancer specificity</option><option>Not detected</option></optgroup><optgroup label="DISTRIBUTION"><option>Detected in all</option><option>Detected in many</option><option>Detected in some</option><option>Detected in single</option></optgroup><optgroup label="EXPRESSION"><option>Is highest expressed</option></optgroup></select>										</div>
+										</div><div data-id="celline_tau_score" class="field_celline_tau_score subSearchField hidden">										<div class="celline_tau_scoretau inline ">
+											Tau score<br>
+											<select tabindex="69" data-id="celline_tau_scoretau" class="search_celline_tau_scoretau dropcheck" multiple ><option>0-0.1</option><option>0.1-0.2</option><option>0.2-0.3</option><option>0.3-0.4</option><option>0.4-0.5</option><option>0.5-0.6</option><option>0.6-0.7</option><option>0.7-0.8</option><option>0.8-0.9</option><option>0.9-1</option></select>										</div>
+										</div><div data-id="expressionclustercellline" class="field_expressionclustercellline subSearchField hidden">										<div class="cluster inline ">
+											Cluster<br>
+											<select tabindex="70" data-id="cluster" class="search_cluster dropcheck" multiple ><option>48:Adipocytes & Endothelial cells - Angiogenesis</option><option>61:BICR 18 - Protein kinases</option><option>12:Bone cancer - Neuronal signaling</option><option>27:Breast cancer - Unknown function</option><option>10:Ciliated cells - Ion channel activity</option><option>44:Connective tissue cells - ECM organization</option><option>64:Connective tissue cells - ECM organization</option><option>70:DU4475 - Unknown function</option><option>49:HMC-1 - Innate immune response</option><option>15:Kidney cancer - Membrane components</option><option>47:Leukemia - Hemostasis</option><option>6:Leukemia - Signal transduction</option><option>59:Leukemia - T-cell receptor</option><option>7:Liver cancer - Metabolism</option><option>18:Liver cancer - Metabolism</option><option>21:Lymphoma - Adaptive immune response</option><option>46:Lymphoma - Humoral immune response</option><option>55:Lymphoma - Immune response</option><option>71:Lymphoma - Inflammatory response</option><option>50:Lymphoma - Unknown function</option><option>2:Mucus-secreting cells - Unknown function</option><option>14:Myeloid leukemia - Innate immune response</option><option>20:Myeloma - Immune response</option><option>51:Myeloma - Immunoglobulins</option><option>17:Neuroblastoma - Neuronal signaling</option><option>11:Neuronal - Sensory perception</option><option>72:Neuronal - Signal transduction</option><option>1:Neuronal - Visual perception</option><option>31:Non-specific - Antiviral immune response</option><option>8:Non-specific - Basic cellular processes</option><option>43:Non-specific - Basic cellular processes</option><option>68:Non-specific - Cell cycle regulation</option><option>32:Non-specific - Cell proliferation</option><option>30:Non-specific - Gene expression regulation</option><option>52:Non-specific - Mitochondria</option><option>66:Non-specific - Mitochondria</option><option>26:Non-specific - Mitochondria & RNA binding</option><option>13:Non-specific - Mixed function</option><option>36:Non-specific - mRNA processing</option><option>37:Non-specific - mRNA processing</option><option>22:Non-specific - mRNA splicing & Cell cycle</option><option>28:Non-specific - Nuclear processes</option><option>45:Non-specific - Nuclear processes</option><option>58:Non-specific - Nuclear processes</option><option>41:Non-specific - Nucleosome assembly</option><option>62:Non-specific - Plasma proteins</option><option>63:Non-specific - Protein processing</option><option>25:Non-specific - Ribosome</option><option>56:Non-specific - Sensory perception</option><option>4:Non-specific - Transcription</option><option>23:Non-specific - Transcription</option><option>38:Non-specific - Transcription</option><option>39:Non-specific - Transcription</option><option>54:Non-specific - Transcription</option><option>19:Non-specific - Unknown function</option><option>24:Non-specific - Unknown function</option><option>29:Non-specific - Unknown function</option><option>40:Non-specific - Unknown function</option><option>42:Non-specific - Unknown function</option><option>65:Non-specific - Unknown function</option><option>67:Non-specific - Unknown function</option><option>60:Prostate cancer - Unknown function</option><option>3:Rhabdoid - Membrane components</option><option>5:Rhabdoid - Unknown function</option><option>35:RS4;11 - Unknown function</option><option>33:Sarcoma - Muscle contraction</option><option>69:Skin cancer - ECM organization</option><option>9:Skin cancer - Melanin biosynthesis</option><option>53:Squamous epithelial cells - Keratinization</option><option>57:Stomach & Colon cancer - Digestion</option><option>34:Testis cancer - Unknown function</option><option>16:Thyroid cancer - Neuronal signaling</option></select>										</div>
+										</div><div data-id="sequence_variants" class="field_sequence_variants subSearchField hidden">										<div class="variants inline ">
+											Variants<br>
+											<select tabindex="71" data-id="variants" class="search_variants dropcheck" multiple ><option>Alphamissense population</option><option>Alphamissense clinical</option><option>Experimental Population</option><option>Experimental clinical</option></select>										</div>
+										</div><div data-id="interaction" class="field_interaction subSearchField hidden">										<div class="gene inline ">
+											Interacting gene (ensg_id)<br>
+											<input type="text" tabindex="72" data-id="gene" class="search_gene autocomplete">										</div>
+										</div><div data-id="num_interactions" class="field_num_interactions subSearchField hidden">										<div class="Type inline ">
+											Type<br>
+											<select tabindex="73" data-id="Type" class="search_Type dropcheck" multiple ><option>Consensus</option><option>IntAct</option><option>BioGrid</option><option>OpenCell</option><option>BioPlex</option></select>										</div>
+																				<div class="num inline ">
+											Number of interactions<br>
+											<select tabindex="74" data-id="num" class="search_num dropcheck" multiple ><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6-10</option><option>11-20</option><option>21-30</option><option>31-40</option><option>41-50</option><option>51-75</option><option>76-100</option><option>101-200</option><option>>200</option></select>										</div>
+										</div><div data-id="pathway" class="field_pathway subSearchField hidden">										<div class="pathway inline ">
+											Pathway<br>
+											<select tabindex="75" data-id="pathway" class="search_pathway dropcheck" multiple ><option>Acyl-CoA hydrolysis</option><option>Acylglycerides metabolism</option><option>Alanine; aspartate and glutamate metabolism</option><option>Amino sugar and nucleotide sugar metabolism</option><option>Aminoacyl-tRNA biosynthesis</option><option>Androgen metabolism</option><option>Arachidonic acid metabolism</option><option>Arginine and proline metabolism</option><option>Ascorbate and aldarate metabolism</option><option>Beta oxidation of branched-chain fatty acids (mitochondrial)</option><option>Beta oxidation of di-unsaturated fatty acids (n-6) (mitochondrial)</option><option>Beta oxidation of di-unsaturated fatty acids (n-6) (peroxisomal)</option><option>Beta oxidation of even-chain fatty acids (mitochondrial)</option><option>Beta oxidation of even-chain fatty acids (peroxisomal)</option><option>Beta oxidation of odd-chain fatty acids (mitochondrial)</option><option>Beta oxidation of phytanic acid (peroxisomal)</option><option>Beta oxidation of poly-unsaturated fatty acids (mitochondrial)</option><option>Beta oxidation of unsaturated fatty acids (n-7) (mitochondrial)</option><option>Beta oxidation of unsaturated fatty acids (n-7) (peroxisomal)</option><option>Beta oxidation of unsaturated fatty acids (n-9) (mitochondrial)</option><option>Beta oxidation of unsaturated fatty acids (n-9) (peroxisomal)</option><option>Beta-alanine metabolism</option><option>Bile acid biosynthesis</option><option>Bile acid recycling</option><option>Biopterin metabolism</option><option>Biotin metabolism</option><option>Blood group biosynthesis</option><option>Butanoate metabolism</option><option>C5-branched dibasic acid metabolism</option><option>Carnitine shuttle (cytosolic)</option><option>Carnitine shuttle (endoplasmic reticular)</option><option>Carnitine shuttle (mitochondrial)</option><option>Carnitine shuttle (peroxisomal)</option><option>Cholesterol biosynthesis 1 (Bloch pathway)</option><option>Cholesterol biosynthesis 2</option><option>Cholesterol biosynthesis 3 (Kandustch-Russell pathway)</option><option>Cholesterol metabolism</option><option>Chondroitin / heparan sulfate biosynthesis</option><option>Chondroitin sulfate degradation</option><option>CoA synthesis</option><option>Cysteine and methionine metabolism</option><option>Drug metabolism</option><option>Eicosanoid metabolism</option><option>Estrogen metabolism</option><option>Ether lipid metabolism</option><option>Fatty acid activation (cytosolic)</option><option>Fatty acid activation (endoplasmic reticular)</option><option>Fatty acid biosynthesis</option><option>Fatty acid biosynthesis (even-chain)</option><option>Fatty acid biosynthesis (odd-chain)</option><option>Fatty acid biosynthesis (unsaturated)</option><option>Fatty acid desaturation (even-chain)</option><option>Fatty acid desaturation (odd-chain)</option><option>Fatty acid elongation (even-chain)</option><option>Fatty acid elongation (odd-chain)</option><option>Fatty acid oxidation</option><option>Folate metabolism</option><option>Formation and hydrolysis of cholesterol esters</option><option>Fructose and mannose metabolism</option><option>Galactose metabolism</option><option>Glucocorticoid biosynthesis</option><option>Glutathione metabolism</option><option>Glycerolipid metabolism</option><option>Glycerophospholipid metabolism</option><option>Glycine; serine and threonine metabolism</option><option>Glycolysis / Gluconeogenesis</option><option>Glycosphingolipid biosynthesis-ganglio series</option><option>Glycosphingolipid biosynthesis-globo series</option><option>Glycosphingolipid biosynthesis-lacto and neolacto series</option><option>Glycosphingolipid metabolism</option><option>Glycosylphosphatidylinositol (GPI)-anchor biosynthesis</option><option>Heme degradation</option><option>Heme synthesis</option><option>Heparan sulfate degradation</option><option>Histidine metabolism</option><option>Inositol phosphate metabolism</option><option>Isolated</option><option>Keratan sulfate biosynthesis</option><option>Keratan sulfate degradation</option><option>Leukotriene metabolism</option><option>Linoleate metabolism</option><option>Lipoic acid metabolism</option><option>Lysine metabolism</option><option>Metabolism of other amino acids</option><option>Miscellaneous</option><option>N-glycan metabolism</option><option>Nicotinate and nicotinamide metabolism</option><option>Nucleotide metabolism</option><option>O-glycan metabolism</option><option>Omega-3 fatty acid metabolism</option><option>Omega-6 fatty acid metabolism</option><option>Oxidative phosphorylation</option><option>Pantothenate and CoA biosynthesis</option><option>Pentose and glucuronate interconversions</option><option>Pentose phosphate pathway</option><option>Phenylalanine metabolism</option><option>Phenylalanine; tyrosine and tryptophan biosynthesis</option><option>Phosphatidylinositol phosphate metabolism</option><option>Pool reactions</option><option>Porphyrin metabolism</option><option>Propanoate metabolism</option><option>Prostaglandin biosynthesis</option><option>Protein assembly</option><option>Protein degradation</option><option>Protein modification</option><option>Purine metabolism</option><option>Pyrimidine metabolism</option><option>Pyruvate metabolism</option><option>Retinol metabolism</option><option>Riboflavin metabolism</option><option>ROS detoxification</option><option>Serotonin and melatonin biosynthesis</option><option>Sphingolipid metabolism</option><option>Starch and sucrose metabolism</option><option>Steroid metabolism</option><option>Sulfur metabolism</option><option>Terpenoid backbone biosynthesis</option><option>Thiamine metabolism</option><option>Transport reactions</option><option>Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism</option><option>Tryptophan metabolism</option><option>Tyrosine metabolism</option><option>Ubiquinone synthesis</option><option>Urea cycle</option><option>Valine; leucine; and isoleucine metabolism</option><option>Vitamin A metabolism</option><option>Vitamin B12 metabolism</option><option>Vitamin B2 metabolism</option><option>Vitamin B6 metabolism</option><option>Vitamin C metabolism</option><option>Vitamin D metabolism</option><option>Vitamin E metabolism</option><option>Xenobiotics metabolism</option></select>										</div>
+										</div><div data-id="evidence_summary" class="field_evidence_summary subSearchField hidden">										<div class="evidence_protein inline ">
+											Category<br>
+											<select tabindex="76" data-id="evidence_protein" class="search_evidence_protein dropcheck" multiple ><option>Evidence at protein level</option><option>Evidence at transcript level</option><option>No human protein/transcript evidence</option></select>										</div>
+										</div><div data-id="uniprot_evidence" class="field_uniprot_evidence subSearchField hidden">										<div class="evidence_uniprot inline ">
+											Score<br>
+											<select tabindex="77" data-id="evidence_uniprot" class="search_evidence_uniprot dropcheck" multiple ><option>Evidence at protein level</option><option>Evidence at transcript level</option><option>No human protein/transcript evidence</option></select>										</div>
+										</div><div data-id="nextprot_evidence" class="field_nextprot_evidence subSearchField hidden">										<div class="evidence_nextprot inline ">
+											Score<br>
+											<select tabindex="78" data-id="evidence_nextprot" class="search_evidence_nextprot dropcheck" multiple ><option>Evidence at protein level</option><option>Evidence at transcript level</option><option>No human protein/transcript evidence</option></select>										</div>
+										</div><div data-id="hpa_evidence" class="field_hpa_evidence subSearchField hidden">										<div class="evidence_antibody inline ">
+											Score<br>
+											<select tabindex="79" data-id="evidence_antibody" class="search_evidence_antibody dropcheck" multiple ><option>Evidence at protein level</option><option>Evidence at transcript level</option><option>No human protein/transcript evidence</option></select>										</div>
+										</div><div data-id="pa_ab_validation" class="field_pa_ab_validation subSearchField hidden">										<div class="pa_validation inline ">
+											Validation<br>
+											<select tabindex="80" data-id="pa_validation" class="search_pa_validation dropcheck" multiple ><option>Supported</option><option>Approved</option><option>Uncertain</option></select>										</div>
+										</div><div data-id="wb_ab_validation" class="field_wb_ab_validation subSearchField hidden">										<div class="wb_validation inline ">
+											Validation<br>
+											<select tabindex="81" data-id="wb_validation" class="search_wb_validation dropcheck" multiple ><option>Enhanced - Capture</option><option>Enhanced - Genetic</option><option>Enhanced - Independent</option><option>Enhanced - Orthogonal</option><option>Enhanced - Recombinant</option><option>Supported</option><option>Approved</option><option>Uncertain</option></select>										</div>
+										</div><div data-id="ihc_ab_validation" class="field_ihc_ab_validation subSearchField hidden">										<div class="ih_validation inline ">
+											Validation<br>
+											<select tabindex="82" data-id="ih_validation" class="search_ih_validation dropcheck" multiple ><option>Enhanced - Independent</option><option>Enhanced - Orthogonal</option><option>Supported</option><option>Approved</option><option>Uncertain</option></select>										</div>
+										</div><div data-id="icc_ab_validation" class="field_icc_ab_validation subSearchField hidden">										<div class="if_validation inline ">
+											Validation<br>
+											<select tabindex="83" data-id="if_validation" class="search_if_validation dropcheck" multiple ><option>Enhanced - Genetic</option><option>Enhanced - Independent</option><option>Enhanced - Recombinant</option><option>Supported</option><option>Approved</option><option>Uncertain</option></select>										</div>
+										</div><div data-id="with_antibodies" class="field_with_antibodies subSearchField hidden">										<div class="antibodies_with inline ">
+											Antibodies<br>
+											<select tabindex="84" data-id="antibodies_with" class="search_antibodies_with dropselect"  ><option>Yes</option><option>No</option></select>										</div>
+										</div><div data-id="has_data" class="field_has_data subSearchField hidden">										<div class="has_data_type inline ">
+											Data type<br>
+											<select tabindex="85" data-id="has_data_type" class="search_has_data_type dropcheck" multiple ><option>Tissue - Immunohistochemistry</option><option>Tissue - GTEx transcriptomics</option><option>Tissue - FANTOM transcriptomics</option><option>Tissue - Expression clustering</option><option>Brain</option><option>Brain - Expression clustering</option><option>Single cell - Expression clustering</option><option>Subcellular</option><option>Cancer - Immunohistochemistry</option><option>Cancer - Mass spectrometry</option><option>Blood - conc. immunoassay</option><option>Blood - conc. mass spectrometry</option><option>Blood - Detected pea</option><option>Blood - Expression clustering</option><option>Disease - PEA</option><option>Disease - Mass spectrometry</option><option>Cell line - Mass spectrometry</option><option>Cell line - Expression clustering</option><option>Structure</option><option>Interaction</option><option>Metabolic</option></select>										</div>
+										</div><div data-id="sort_by" class="field_sort_by subSearchField hidden">										<div class="sort inline ">
+											Column<br>
+											<select tabindex="86" data-id="sort" class="search_sort dropselect"  ><option>Gene</option><option>Position</option><option>Tissue specific score</option><option>Prognostic</option><option>Reliability (IF)</option><option>Reliability (IH)</option></select>										</div>
+										</div>				<div class="fieldButtons inline">
+					<div class="inline">
+						<br>
+						<button class="fieldsAdd" tabindex="87">Add</button>
+					</div>
+					<div class="inline">
+						<br>
+						<button class="fieldsCancel" tabindex="88">Cancel</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+		</div>
+</div>
+	<div class="index_light index_header">
+		<div>
+			<h2>Something went wrong</h2>
+			Missing or empty 'columns' parameter		</div>
+	</div>
+	<div class="index_light index_footer">
+	<div>
+		<!--<span><a href="/news/press+room">PRESS ROOM</a></span>-->
+		<a target="_blank" rel="noopener" href="https://www.facebook.com/HumanProteinAtlas/"><img class="social_link" src="/images_static/facebook_32.png"></a>
+		<a target="_blank" rel="noopener" href="https://twitter.com/ProteinAtlas/"><img class="social_link" src="/images_static/twitter_32.png"></a>
+		<a target="_blank" rel="noopener" href="https://www.instagram.com/humanproteinatlas/"><img class="social_link" src="/images_static/instagram_32.png"></a>
+		<a target="_blank" rel="noopener" href="https://www.linkedin.com/company/human-protein-atlas/"><img class="social_link" src="/images_static/linkedin_32.png"></a>
+		<a target="_blank" rel="noopener" href="/news/rss"><img class="social_link" src="/images_static/rss-feed_32.png"></a>
+		<span><a href="mailto:contact@proteinatlas.org" style="padding-top: 2px; letter-spacing: 1.28px;">contact@proteinatlas.org</a></span>
+	</div>
+	<!--
+	<div style="padding-left:150px;">
+		<span><a href="/about">INTRODUCTION</a></span>
+		<span><a href="/about/publications">PUBLICATIONS</a></span>
+		<span><a href="/about/licence">LICENCE &amp; CITATION</a></span>
+		<span><a href="/about/download">DOWNLOADABLE DATA</a></span>
+	</div>
+	-->
+	<div class="atlasversion">
+				Version: <b>24.0</b><br>
+		Atlas updated: 2024-10-22<br>
+		<a href="/about/releases">release history</a><br><br>
+		Proteome analysis based on <br><b>27810</b> antibodies targeting <br><b>17378</b> unique proteins
+	</div>
+</div>
+<div class="index_body">
+	<table style="width: 100%; margin-top: 30px;">
+		<tr>
+			<td><a href="https://kaw.wallenberg.org/en" target="_blank" rel="noopener"><img style="width:89px; height:44px;" src="/images_static/kawlogo.svg"></a></td>
+			<td style="font-size: 9px; width: 100%; text-align: left; padding-left: 15px;">The Human Protein Atlas project is funded<br>by the Knut &amp; Alice Wallenberg foundation.</td>
+			<td style="padding-right: 10px;"><a href="https://globalbiodata.org/what-we-do/global-core-biodata-resources/" target="_blank" rel="noopener"><img style="width:95px; height:40px;" src="/images_static/gcbr_logo.svg"></a></td>
+			<td style="padding-right: 10px;"><a href="https://www.elixir-europe.org/platforms/data/core-data-resources/" target="_blank" rel="noopener"><img style="width:69px; height:50px;" src="/images_static/elixir_core_resource.svg"></a></td>
+			<td style="padding-right: 5px;"><a href="https://www.scilifelab.se/" target="_blank" rel="noopener"><img style="width:125px; height:42px;" src="/images_static/scilifelablogo.svg"></a></td>
+			<td style="padding-right: 5px;"><a href="https://www.uu.se/en/" target="_blank" rel="noopener"><img style="width:55px; height:55px;" src="/images_static/uulogo.svg"></a></td>
+			<td style="padding-right: 8px;"><a href="https://ki.se/en/startpage" target="_blank" rel="noopener"><img style="width:60px; height:60px;" src="/images_static/kilogo.svg"></a></td>
+			<td style="padding-right: 0px;"><a href="https://www.kth.se/en/" target="_blank" rel="noopener"><img style="width:50px; height:50px;" src="/images_static/kthlogo.svg"></a></td>
+		</tr>
+	</table>
+</div>
+
+
+<script>
+	var url;
+		gtag('config', 'G-KJ1V75CJ9V', []);
+</script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+{
+  "gene": "EGFR",
+  "uniprot_id": "P00533",
+  "ensembl_id": "ENSG00000146648",
+  "protein_length": 1210,
+  "summary": "Complete EGFR protein domains and PTM data from multiple sources",
+  
+  "domain_sources": {
+    "pfam": {
+      "description": "Protein families and domain database",
+      "entries_available": 5,
+      "url": "https://pfam.xfam.org/protein/P00533",
+      "note": "Best accessed through InterPro API"
+    },
+    "smart": {
+      "description": "Simple Modular Architecture Research Tool", 
+      "entries_available": 2,
+      "url": "http://smart.embl-heidelberg.de/",
+      "note": "Manual web interface required"
+    },
+    "interpro": {
+      "description": "Integrated protein signature database",
+      "total_entries": 39,
+      "includes_databases": ["Pfam", "SMART", "CDD", "PROSITE", "PRINTS", "PANTHER", "PIRSF", "CATHGENE3D", "SSF"],
+      "url": "https://www.ebi.ac.uk/interpro/protein/uniprot/P00533/",
+      "api_url": "https://www.ebi.ac.uk/interpro/api/protein/uniprot/P00533"
+    },
+    "uniprot": {
+      "description": "UniProt protein features (most reliable)",
+      "domains_found": 3,
+      "other_features": 10,
+      "url": "https://rest.uniprot.org/uniprotkb/P00533?format=json"
+    }
+  },
+
+  "domains_uniprot": [
+    {
+      "type": "Topological domain",
+      "start": 25,
+      "end": 645,
+      "description": "Extracellular",
+      "function": "Ligand binding region"
+    },
+    {
+      "type": "Topological domain", 
+      "start": 669,
+      "end": 1210,
+      "description": "Cytoplasmic",
+      "function": "Intracellular signaling region"
+    },
+    {
+      "type": "Domain",
+      "start": 712,
+      "end": 979,
+      "description": "Protein kinase",
+      "function": "Catalytic domain for phosphorylation"
+    }
+  ],
+
+  "functional_features_uniprot": [
+    {
+      "type": "Repeat",
+      "start": 75,
+      "end": 300,
+      "description": "EGF-like repeats (approximate)"
+    },
+    {
+      "type": "Repeat", 
+      "start": 390,
+      "end": 600,
+      "description": "EGF-like repeats (approximate)"
+    },
+    {
+      "type": "Region",
+      "start": 688,
+      "end": 704,
+      "description": "Important for dimerization, phosphorylation and activation"
+    },
+    {
+      "type": "Active site",
+      "start": 837,
+      "end": 837,
+      "description": "Proton acceptor (catalytic)"
+    }
+  ],
+
+  "ptm_summary": {
+    "total_ptms": 48,
+    "types": {
+      "Modified residue": 25,
+      "Glycosylation": 13,
+      "Cross-link": 8,
+      "Lipidation": 2
+    },
+    "key_phosphorylation_sites": [
+      {"position": 678, "type": "Phosphothreonine", "kinase": "PKC and PKD/PRKD1"},
+      {"position": 693, "type": "Phosphothreonine", "kinase": "PKD/PRKD1"},
+      {"position": 869, "type": "Phosphotyrosine", "kinase": "Unknown"},
+      {"position": 998, "type": "Phosphotyrosine", "kinase": "Autocatalysis"},
+      {"position": 1016, "type": "Phosphotyrosine", "kinase": "Autocatalysis"},
+      {"position": 1068, "type": "Phosphotyrosine", "kinase": "Autocatalysis"},
+      {"position": 1086, "type": "Phosphotyrosine", "kinase": "Autocatalysis"},
+      {"position": 1173, "type": "Phosphotyrosine", "kinase": "Autocatalysis"}
+    ]
+  },
+
+  "ptm_databases": {
+    "phosphositeplus": {
+      "url": "https://www.phosphosite.org/proteinAction?id=1433&showAllSites=true",
+      "description": "Comprehensive PTM database",
+      "search_term": "EGFR_HUMAN"
+    },
+    "dbptm": {
+      "url": "http://dbptm.mbc.nctu.edu.tw/",
+      "description": "Database of protein post-translational modifications"
+    },
+    "ptmcode": {
+      "url": "http://ptmcode.embl.de/",
+      "description": "Post-translational modification codes in protein interactions"
+    }
+  },
+
+  "how_to_access": {
+    "programmatic": {
+      "our_mcp_tools": {
+        "variant_domain_mcp": {
+          "tool": "get-protein-domains",
+          "parameters": {"gene_symbol": "EGFR"},
+          "returns": "UniProt domains + functional features"
+        },
+        "hpa_mcp": {
+          "tool": "get-protein-by-ensembl", 
+          "parameters": {"ensembl_id": "ENSG00000146648"},
+          "returns": "Expression data (not domains)"
+        }
+      },
+      "direct_apis": {
+        "uniprot": "https://rest.uniprot.org/uniprotkb/P00533?format=json",
+        "interpro": "https://www.ebi.ac.uk/interpro/api/protein/uniprot/P00533"
+      }
+    },
+    "manual_web_access": {
+      "uniprot": "https://www.uniprot.org/uniprotkb/P00533",
+      "pfam": "https://pfam.xfam.org/protein/P00533",
+      "smart": "http://smart.embl-heidelberg.de/",
+      "interpro": "https://www.ebi.ac.uk/interpro/protein/uniprot/P00533/",
+      "phosphositeplus": "https://www.phosphosite.org/ (search EGFR_HUMAN)"
+    }
+  },
+
+  "key_insights": {
+    "domain_architecture": "EGFR has a classic receptor tyrosine kinase structure with extracellular ligand-binding domain and intracellular kinase domain",
+    "ptm_significance": "48 PTMs including critical autophosphorylation sites for signaling activation",
+    "druggability": "The kinase domain (712-979) is targeted by FDA-approved drugs",
+    "data_completeness": "UniProt provides the most comprehensive and reliable domain/PTM annotation"
+  },
+
+  "retrieved_at": "2025-07-22T03:45:00.000Z"
+} 

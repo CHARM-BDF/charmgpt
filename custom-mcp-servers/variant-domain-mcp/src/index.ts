@@ -65,11 +65,14 @@ interface ParsedVariant {
 interface DomainData {
   domains: Domain[];
   features: Feature[];
+  ptms: PTMData[];
   uniprotIds: string[];
   gene: {
     geneId: string;
     geneName: string;
   };
+  proteinLength: number;
+  domainCoverage: number; // Percentage of protein covered by domains
 }
 
 interface Domain {
@@ -77,6 +80,14 @@ interface Domain {
   end: number;
   description: string;
   evidence: string[];
+  confidence?: 'high' | 'medium' | 'low';
+  length?: number;
+  lengthCategory?: 'small' | 'medium' | 'large';
+  clinicalRelevance?: {
+    isDrugTarget: boolean;
+    isCancerAssociated: boolean;
+    hasKnownMutations: boolean;
+  };
 }
 
 interface Feature {
@@ -84,6 +95,18 @@ interface Feature {
   begin: number;
   end: number;
   description: string;
+  category?: 'functional_site' | 'structural_feature' | 'modification_site' | 'regulatory_element';
+  importance?: 'critical' | 'important' | 'moderate';
+  conservation?: 'highly_conserved' | 'moderately_conserved' | 'variable';
+}
+
+interface PTMData {
+  type: string;
+  position: number;
+  description: string;
+  category: 'phosphorylation' | 'glycosylation' | 'ubiquitination' | 'methylation' | 'acetylation' | 'lipidation' | 'other';
+  clinicalRelevance?: 'drug_target' | 'disease_associated' | 'regulatory' | 'unknown';
+  conservation?: 'highly_conserved' | 'moderately_conserved' | 'variable';
 }
 
 interface Alignment {
@@ -314,8 +337,8 @@ async function getProteinSequence(proteinAccession: string): Promise<string> {
 
 async function getUniprotData(geneSymbol: string): Promise<DomainData | null> {
   try {
-    // Search UniProt by gene name using the REST API
-    const searchUrl = `${UNIPROT_BASE_URL}/search?query=gene:${geneSymbol}+AND+organism_id:9606&format=json&size=1`;
+    // Search UniProt by gene name, preferring reviewed Swiss-Prot entries
+    const searchUrl = `${UNIPROT_BASE_URL}/search?query=gene:${geneSymbol}+AND+organism_id:9606+AND+reviewed:true&format=json&size=1`;
     const searchResponse = await fetch(searchUrl);
     
     if (!searchResponse.ok) {
@@ -326,7 +349,20 @@ async function getUniprotData(geneSymbol: string): Promise<DomainData | null> {
     const searchData = await searchResponse.json() as any;
     
     if (!searchData.results || searchData.results.length === 0) {
-      return null;
+      // Fallback to unreviewed entries if no reviewed entry found
+      console.log(`No reviewed UniProt entry found for ${geneSymbol}, trying unreviewed...`);
+      const fallbackUrl = `${UNIPROT_BASE_URL}/search?query=gene:${geneSymbol}+AND+organism_id:9606&format=json&size=1`;
+      const fallbackResponse = await fetch(fallbackUrl);
+      
+      if (!fallbackResponse.ok) {
+        return null;
+      }
+      
+      const fallbackData = await fallbackResponse.json() as any;
+      if (!fallbackData.results || fallbackData.results.length === 0) {
+        return null;
+      }
+      searchData.results = fallbackData.results;
     }
 
     const entry = searchData.results[0];
@@ -335,33 +371,58 @@ async function getUniprotData(geneSymbol: string): Promise<DomainData | null> {
     // The search response already contains the full entry data
     const detailData = entry;
 
-    // Extract domains and features
+    // Extract domains, features, and PTMs with enhancements
     const domains: Domain[] = [];
     const features: Feature[] = [];
+    const ptms: PTMData[] = [];
+    const proteinLength = detailData.sequence?.length || 0;
 
     if (detailData.features) {
       detailData.features.forEach((feature: any) => {
-        if (feature.type === 'Domain') {
-          domains.push({
+        if (feature.type === 'Domain' || feature.type === 'Topological domain') {
+          const domainLength = feature.location.end.value - feature.location.start.value + 1;
+          const domain: Domain = {
             begin: feature.location.start.value,
             end: feature.location.end.value,
-            description: feature.description || 'Domain',
-            evidence: feature.evidences?.map((e: any) => e.code) || []
-          });
-        } else if (['Region', 'Motif', 'Site', 'Active site', 'Binding site'].includes(feature.type)) {
-          features.push({
+            description: feature.description || feature.type,
+            evidence: feature.evidences?.map((e: any) => e.code) || [],
+            length: domainLength,
+            lengthCategory: categorizeDomainLength(domainLength),
+            clinicalRelevance: analyzeClinicalRelevance(feature.description || feature.type)
+          };
+          domain.confidence = analyzeDomainConfidence(domain);
+          domains.push(domain);
+        } else if (['Repeat', 'Region', 'Motif', 'Site', 'Active site', 'Binding site'].includes(feature.type)) {
+          const enhancedFeature: Feature = {
             type: feature.type,
             begin: feature.location.start.value,
             end: feature.location.end.value,
-            description: feature.description || feature.type
-          });
+            description: feature.description || feature.type,
+            category: categorizeFeature(feature.type, feature.description || feature.type),
+            importance: analyzeFeatureImportance(feature.type, feature.description || feature.type)
+          };
+          features.push(enhancedFeature);
+        } else if (['Modified residue', 'Glycosylation', 'Cross-link', 'Lipidation'].includes(feature.type)) {
+          const ptm: PTMData = {
+            type: feature.type,
+            position: feature.location.start.value,
+            description: feature.description || feature.type,
+            category: categorizePTM(feature.type, feature.description || feature.type),
+            clinicalRelevance: analyzePTMClinicalRelevance(feature.description || feature.type)
+          };
+          ptms.push(ptm);
         }
       });
     }
 
+    const domainCoverage = calculateDomainCoverage(domains, proteinLength);
+
     return {
       domains,
       features,
+      ptms,
+      proteinLength,
+      domainCoverage,
       uniprotIds: [uniprotId],
       gene: {
         geneId: entry.genes?.[0]?.geneName || geneSymbol,
@@ -408,6 +469,116 @@ function getColorForFeatureType(type: string): string {
     "Default": "#9E9E9E"
   };
   return colorMap[type] || colorMap.Default;
+}
+
+// =============================================================================
+// ENHANCEMENT FUNCTIONS - Low-hanging fruit implementations
+// =============================================================================
+
+function categorizePTM(type: string, description: string): PTMData['category'] {
+  const lowerType = type.toLowerCase();
+  const lowerDesc = description.toLowerCase();
+  
+  if (lowerType.includes('phospho') || lowerDesc.includes('phospho')) return 'phosphorylation';
+  if (lowerType.includes('glycosyl') || lowerDesc.includes('glycosyl') || lowerDesc.includes('n-linked') || lowerDesc.includes('o-linked')) return 'glycosylation';
+  if (lowerType.includes('ubiquit') || lowerDesc.includes('ubiquit')) return 'ubiquitination';
+  if (lowerType.includes('methyl') || lowerDesc.includes('methyl')) return 'methylation';
+  if (lowerType.includes('acetyl') || lowerDesc.includes('acetyl')) return 'acetylation';
+  if (lowerType.includes('lipid') || lowerDesc.includes('lipid') || lowerDesc.includes('myristoyl') || lowerDesc.includes('palmitoyl')) return 'lipidation';
+  return 'other';
+}
+
+function analyzeDomainConfidence(domain: Domain): 'high' | 'medium' | 'low' {
+  // Simple heuristic based on evidence and description quality
+  if (domain.evidence.length > 0 && !domain.description.toLowerCase().includes('predicted')) return 'high';
+  if (domain.description.toLowerCase().includes('predicted') || domain.description.toLowerCase().includes('probable')) return 'low';
+  return 'medium';
+}
+
+function categorizeDomainLength(length: number): 'small' | 'medium' | 'large' {
+  if (length < 50) return 'small';
+  if (length < 200) return 'medium';
+  return 'large';
+}
+
+function analyzeClinicalRelevance(description: string): Domain['clinicalRelevance'] {
+  const lowerDesc = description.toLowerCase();
+  
+  const isDrugTarget = 
+    lowerDesc.includes('kinase') || 
+    lowerDesc.includes('receptor') || 
+    lowerDesc.includes('enzyme') ||
+    lowerDesc.includes('protease') ||
+    lowerDesc.includes('transporter');
+    
+  const isCancerAssociated = 
+    lowerDesc.includes('oncogene') || 
+    lowerDesc.includes('tumor') || 
+    lowerDesc.includes('cancer') ||
+    lowerDesc.includes('proliferation') ||
+    lowerDesc.includes('apoptosis');
+    
+  const hasKnownMutations = 
+    lowerDesc.includes('mutation') || 
+    lowerDesc.includes('variant') || 
+    lowerDesc.includes('polymorphism');
+  
+  return {
+    isDrugTarget,
+    isCancerAssociated,
+    hasKnownMutations
+  };
+}
+
+function categorizeFeature(type: string, description: string): Feature['category'] {
+  const lowerType = type.toLowerCase();
+  
+  if (['active site', 'binding site', 'catalytic'].some(term => lowerType.includes(term))) {
+    return 'functional_site';
+  }
+  if (['modified residue', 'glycosylation', 'cross-link', 'lipidation'].some(term => lowerType.includes(term))) {
+    return 'modification_site';
+  }
+  if (['region', 'domain', 'repeat'].some(term => lowerType.includes(term))) {
+    return 'structural_feature';
+  }
+  return 'regulatory_element';
+}
+
+function analyzeFeatureImportance(type: string, description: string): Feature['importance'] {
+  const lowerType = type.toLowerCase();
+  const lowerDesc = description.toLowerCase();
+  
+  if (lowerType.includes('active site') || lowerDesc.includes('catalytic')) return 'critical';
+  if (['binding site', 'regulatory', 'essential'].some(term => lowerDesc.includes(term))) return 'important';
+  return 'moderate';
+}
+
+function analyzePTMClinicalRelevance(description: string): PTMData['clinicalRelevance'] {
+  const lowerDesc = description.toLowerCase();
+  
+  if (lowerDesc.includes('drug') || lowerDesc.includes('inhibitor') || lowerDesc.includes('therapeutic')) return 'drug_target';
+  if (lowerDesc.includes('disease') || lowerDesc.includes('cancer') || lowerDesc.includes('pathogenic')) return 'disease_associated';
+  if (lowerDesc.includes('regulat') || lowerDesc.includes('control') || lowerDesc.includes('signal')) return 'regulatory';
+  return 'unknown';
+}
+
+function calculateDomainCoverage(domains: Domain[], proteinLength: number): number {
+  if (proteinLength === 0) return 0;
+  
+  // Create array to track covered positions
+  const covered = new Array(proteinLength).fill(false);
+  
+  // Mark positions covered by domains
+  domains.forEach(domain => {
+    for (let i = domain.begin - 1; i < domain.end && i < proteinLength; i++) {
+      covered[i] = true;
+    }
+  });
+  
+  // Calculate percentage
+  const coveredPositions = covered.filter(pos => pos).length;
+  return Math.round((coveredPositions / proteinLength) * 100);
 }
 
 // =============================================================================
@@ -617,46 +788,134 @@ function formatDomainMap(result: any): string {
 }
 
 function formatDomainsAsMarkdown(domainData: DomainData, geneSymbol: string): string {
-  let markdown = `# Protein Domain Information for ${geneSymbol}\n\n`;
+  let markdown = `# 🧬 Enhanced Protein Domain Analysis for ${geneSymbol}\n\n`;
   
-  // UniProt Information
-  markdown += `## UniProt Information\n\n`;
+  // Protein Overview with enhancements
+  markdown += `## 📊 Protein Overview\n\n`;
   markdown += `- **UniProt ID**: ${domainData.uniprotIds[0]}\n`;
-  markdown += `- **Gene Name**: ${domainData.gene.geneName}\n\n`;
+  markdown += `- **Gene Name**: ${domainData.gene.geneName}\n`;
+  markdown += `- **Protein Length**: ${domainData.proteinLength} amino acids\n`;
+  markdown += `- **Domain Coverage**: ${domainData.domainCoverage}% of protein sequence\n`;
+  markdown += `- **Total Domains**: ${domainData.domains.length}\n`;
+  markdown += `- **Functional Sites**: ${domainData.features.length}\n`;
+  markdown += `- **PTM Sites**: ${domainData.ptms.length}\n\n`;
 
-  // Domains
+  // Enhanced Domains Section
   if (domainData.domains.length > 0) {
-    markdown += `## Protein Domains (${domainData.domains.length})\n\n`;
+    markdown += `## 🎯 Protein Domains (${domainData.domains.length})\n\n`;
+    
+    // Summary by confidence
+    const highConf = domainData.domains.filter(d => d.confidence === 'high').length;
+    const medConf = domainData.domains.filter(d => d.confidence === 'medium').length;
+    const lowConf = domainData.domains.filter(d => d.confidence === 'low').length;
+    
+    markdown += `**Confidence Summary**: 🟢 High: ${highConf} | 🟡 Medium: ${medConf} | 🔴 Low: ${lowConf}\n\n`;
+    
     domainData.domains.forEach((domain, index) => {
-      markdown += `### ${index + 1}. ${domain.description}\n`;
+      const confIcon = domain.confidence === 'high' ? '🟢' : domain.confidence === 'medium' ? '🟡' : '🔴';
+      const sizeIcon = domain.lengthCategory === 'large' ? '📏' : domain.lengthCategory === 'medium' ? '📐' : '📌';
+      
+      markdown += `### ${index + 1}. ${confIcon} ${domain.description}\n`;
       markdown += `- **Position**: ${domain.begin} - ${domain.end}\n`;
-      markdown += `- **Length**: ${domain.end - domain.begin + 1} amino acids\n`;
-      markdown += `- **Evidence**: ${domain.evidence.join(', ') || 'Not specified'}\n\n`;
+      markdown += `- **Length**: ${domain.length} AA (${domain.lengthCategory} ${sizeIcon})\n`;
+      markdown += `- **Confidence**: ${domain.confidence}\n`;
+      markdown += `- **Evidence**: ${domain.evidence.join(', ') || 'Not specified'}\n`;
+      
+      // Clinical relevance
+      if (domain.clinicalRelevance) {
+        const clinical = [];
+        if (domain.clinicalRelevance.isDrugTarget) clinical.push('🎯 Drug Target');
+        if (domain.clinicalRelevance.isCancerAssociated) clinical.push('🔬 Cancer Associated');
+        if (domain.clinicalRelevance.hasKnownMutations) clinical.push('🧬 Known Mutations');
+        if (clinical.length > 0) {
+          markdown += `- **Clinical Relevance**: ${clinical.join(', ')}\n`;
+        }
+      }
+      markdown += `\n`;
     });
   } else {
     markdown += `## No Protein Domains Found\n\n`;
   }
 
-  // Features
+  // Enhanced Features Section
   if (domainData.features.length > 0) {
-    markdown += `## Structural Features (${domainData.features.length})\n\n`;
-    const featureTypes = [...new Set(domainData.features.map(f => f.type))];
+    markdown += `## ⚙️ Functional Sites & Features (${domainData.features.length})\n\n`;
     
-    featureTypes.forEach(type => {
-      const typeFeatures = domainData.features.filter(f => f.type === type);
-      markdown += `### ${type} (${typeFeatures.length})\n\n`;
-      typeFeatures.forEach(feature => {
-        markdown += `- **${feature.description}**: ${feature.begin} - ${feature.end}\n`;
+    const featuresByCategory = {
+      'functional_site': domainData.features.filter(f => f.category === 'functional_site'),
+      'modification_site': domainData.features.filter(f => f.category === 'modification_site'),
+      'structural_feature': domainData.features.filter(f => f.category === 'structural_feature'),
+      'regulatory_element': domainData.features.filter(f => f.category === 'regulatory_element')
+    };
+    
+    Object.entries(featuresByCategory).forEach(([category, features]) => {
+      if (features.length > 0) {
+        const categoryIcon = {
+          'functional_site': '🎯',
+          'modification_site': '🔄',
+          'structural_feature': '🏗️',
+          'regulatory_element': '⚡'
+        }[category] || '📍';
+        
+        markdown += `### ${categoryIcon} ${category.replace('_', ' ').toUpperCase()} (${features.length})\n\n`;
+        
+        features.forEach(feature => {
+          const impIcon = feature.importance === 'critical' ? '🔴' : feature.importance === 'important' ? '🟡' : '🟢';
+          markdown += `- ${impIcon} **${feature.description}** (${feature.type}): ${feature.begin}`;
+          if (feature.end !== feature.begin) markdown += `-${feature.end}`;
+          if (feature.importance) markdown += ` | ${feature.importance}`;
+          markdown += `\n`;
+        });
+        markdown += `\n`;
+      }
+    });
+  }
+
+     // Enhanced PTM Section
+   if (domainData.ptms.length > 0) {
+     markdown += `## 🔄 Post-Translational Modifications (${domainData.ptms.length})\n\n`;
+     
+     const ptmsByCategory: Record<string, PTMData[]> = {};
+     domainData.ptms.forEach(ptm => {
+       if (!ptmsByCategory[ptm.category]) ptmsByCategory[ptm.category] = [];
+       ptmsByCategory[ptm.category].push(ptm);
+     });
+     
+     Object.entries(ptmsByCategory).forEach(([category, ptms]) => {
+      const categoryIcon = {
+        'phosphorylation': '⚡',
+        'glycosylation': '🍯',
+        'ubiquitination': '🏷️',
+        'methylation': '🎨',
+        'acetylation': '✏️',
+        'lipidation': '🧈',
+        'other': '🔄'
+      }[category] || '🔄';
+      
+      markdown += `### ${categoryIcon} ${category.toUpperCase()} (${ptms.length})\n\n`;
+      
+      ptms.forEach(ptm => {
+        const clinIcon = ptm.clinicalRelevance === 'drug_target' ? '🎯' : 
+                        ptm.clinicalRelevance === 'disease_associated' ? '🔬' :
+                        ptm.clinicalRelevance === 'regulatory' ? '⚡' : '📍';
+        
+        markdown += `- ${clinIcon} **Position ${ptm.position}**: ${ptm.description}`;
+        if (ptm.clinicalRelevance && ptm.clinicalRelevance !== 'unknown') {
+          markdown += ` (${ptm.clinicalRelevance.replace('_', ' ')})`;
+        }
+        markdown += `\n`;
       });
       markdown += `\n`;
     });
   }
 
   // External Links
-  markdown += `## External Resources\n\n`;
+  markdown += `## 🔗 External Resources\n\n`;
   markdown += `- [UniProt Entry](https://www.uniprot.org/uniprot/${domainData.uniprotIds[0]})\n`;
-  markdown += `- [InterPro](https://www.ebi.ac.uk/interpro/search/text/${geneSymbol})\n`;
-  markdown += `- [Pfam](https://www.ebi.ac.uk/interpro/search/text/${geneSymbol}/?filter=pfam)\n`;
+  markdown += `- [InterPro Analysis](https://www.ebi.ac.uk/interpro/search/text/${geneSymbol})\n`;
+  markdown += `- [Pfam Domains](https://www.ebi.ac.uk/interpro/search/text/${geneSymbol}/?filter=pfam)\n`;
+  markdown += `- [AlphaFold Structure](https://alphafold.ebi.ac.uk/search/text/${geneSymbol})\n`;
+  markdown += `- [PDB Structures](https://www.rcsb.org/search?request={"query":{"type":"group","logical_operator":"and","nodes":[{"type":"terminal","service":"text","parameters":{"attribute":"entity.rcsb_entity_source_organism.taxonomy_lineage.name","operator":"exact_match","value":"${geneSymbol}"}}]},"return_type":"entry","request_options":{"pager":{"start":0,"rows":25}},"request_info":{"src":"ui","query_id":""}}\n`;
 
   return markdown;
 }
@@ -839,23 +1098,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // Get UniProt sequence for visualization
         const uniprotSequence = await getUniprotSequence(result.uniprotData.uniprotIds[0]);
         
-        // Create visualization data
+        // Create enhanced visualization data
         const visualizationData = {
           proteinId: result.uniprotData.uniprotIds[0],
           sequence: uniprotSequence,
           length: uniprotSequence.length,
+          proteinOverview: {
+            domainCoverage: result.uniprotData.domainCoverage,
+            totalDomains: result.uniprotData.domains.length,
+            totalFeatures: result.uniprotData.features.length,
+            totalPTMs: result.uniprotData.ptms.length
+          },
           tracks: [
             {
               type: "domain",
               label: "Protein Domains",
-              features: result.domainImpact.domains.map((domain: any, idx: number) => ({
-                accession: `domain_${idx}`,
-                start: domain.begin,
-                end: domain.end,
-                color: getColorForDomain(idx),
-                description: domain.description,
-                evidence: domain.evidence
-              }))
+              expandable: true,
+              features: result.uniprotData.domains.map((domain: any, idx: number) => {
+                const confidenceColor = domain.confidence === 'high' ? '#4CAF50' : 
+                                       domain.confidence === 'medium' ? '#FF9800' : '#F44336';
+                const strokeWidth = domain.clinicalRelevance?.isDrugTarget ? 3 : 1;
+                return {
+                  accession: `domain_${idx}`,
+                  start: domain.begin,
+                  end: domain.end,
+                  color: getColorForDomain(idx),
+                  borderColor: confidenceColor,
+                  strokeWidth: strokeWidth,
+                  description: domain.description,
+                  evidence: domain.evidence,
+                  metadata: {
+                    confidence: domain.confidence,
+                    length: domain.length,
+                    lengthCategory: domain.lengthCategory,
+                    clinicalRelevance: domain.clinicalRelevance
+                  },
+                  contributors: [
+                    { database: "UniProt", accession: "Domain", name: domain.description },
+                    { database: "InterPro", accession: "IPR000000", name: "Predicted from sequence" }
+                  ]
+                };
+              })
             },
             {
               type: "variant",
@@ -866,20 +1149,74 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 end: result.mapping.uniprotPosition,
                 color: "#FF0000",
                 description: `${params.protein_change} (${params.coding_change || 'N/A'})`,
-                shape: "diamond"
+                shape: "circle",
+                size: 8
               }]
             },
             {
-              type: "feature",
-              label: "Functional Features",
-              features: result.domainImpact.features.map((feature: any, idx: number) => ({
-                accession: `feature_${idx}`,
-                start: feature.begin,
-                end: feature.end,
-                color: getColorForFeatureType(feature.type),
-                description: `${feature.type}: ${feature.description}`,
-                shape: feature.begin === feature.end ? "circle" : "rectangle"
-              }))
+              type: "functional_sites",
+              label: "Functional Sites",
+              features: result.uniprotData.features
+                .filter((f: any) => f.category === 'functional_site')
+                .map((feature: any, idx: number) => ({
+                  accession: `functional_${idx}`,
+                  start: feature.begin,
+                  end: feature.end,
+                  color: feature.importance === 'critical' ? '#D32F2F' : 
+                         feature.importance === 'important' ? '#F57C00' : '#388E3C',
+                  description: `${feature.type}: ${feature.description}`,
+                  shape: feature.begin === feature.end ? "circle" : "rounded-rectangle",
+                  metadata: {
+                    category: feature.category,
+                    importance: feature.importance
+                  }
+                }))
+            },
+            {
+              type: "ptm_sites",
+              label: "PTM Sites",
+              features: result.uniprotData.ptms.map((ptm: any, idx: number) => {
+                const categoryColors = {
+                  'phosphorylation': '#9C27B0',
+                  'glycosylation': '#FF9800',
+                  'ubiquitination': '#795548',
+                  'methylation': '#3F51B5',
+                  'acetylation': '#009688',
+                  'lipidation': '#FFC107',
+                  'other': '#607D8B'
+                };
+                return {
+                  accession: `ptm_${idx}`,
+                  start: ptm.position,
+                  end: ptm.position,
+                  color: categoryColors[ptm.category as keyof typeof categoryColors] || categoryColors.other,
+                  description: `${ptm.type}: ${ptm.description}`,
+                  shape: "circle",
+                  size: ptm.clinicalRelevance === 'drug_target' ? 6 : 4,
+                  metadata: {
+                    category: ptm.category,
+                    clinicalRelevance: ptm.clinicalRelevance
+                  }
+                };
+              })
+            },
+            {
+              type: "other_features",
+              label: "Structural Features",
+              features: result.uniprotData.features
+                .filter((f: any) => f.category !== 'functional_site')
+                .map((feature: any, idx: number) => ({
+                  accession: `struct_${idx}`,
+                  start: feature.begin,
+                  end: feature.end,
+                  color: getColorForFeatureType(feature.type),
+                  description: `${feature.type}: ${feature.description}`,
+                  shape: feature.begin === feature.end ? "circle" : "rounded-rectangle",
+                  metadata: {
+                    category: feature.category,
+                    importance: feature.importance
+                  }
+                }))
             }
           ]
         };
