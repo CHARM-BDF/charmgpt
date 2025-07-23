@@ -119,6 +119,143 @@ async function getEnsemblIdFromGeneSymbol(geneSymbol: string): Promise<string | 
 // DATA FORMATTING FUNCTIONS
 // =============================================================================
 
+function extractTissueExpressionData(hpaData: any): any {
+  const tissueExpression: {
+    tissueSpecificNTPM: Record<string, string>;
+    singleCellTypeNTPM?: Record<string, string>;
+    cancerSpecificFPKM?: Record<string, string>;
+    generalExpression: Record<string, any>;
+    expressionSummary: {
+      tissueSpecificity: string;
+      tissueDistribution: string;
+      cellTypeSpecificity: string;
+      cancerSpecificity: string;
+    };
+  } = {
+    tissueSpecificNTPM: {},
+    generalExpression: {},
+    expressionSummary: {
+      tissueSpecificity: hpaData['RNA tissue specificity'] || 'N/A',
+      tissueDistribution: hpaData['RNA tissue distribution'] || 'N/A',
+      cellTypeSpecificity: hpaData['RNA single cell type specificity'] || 'N/A',
+      cancerSpecificity: hpaData['RNA cancer specificity'] || 'N/A'
+    }
+  };
+
+  // Extract tissue-specific nTPM data (enhanced expression tissues)
+  if (hpaData['RNA tissue specific nTPM'] && typeof hpaData['RNA tissue specific nTPM'] === 'object') {
+    tissueExpression.tissueSpecificNTPM = hpaData['RNA tissue specific nTPM'];
+  }
+
+  // Extract single cell type specific nTPM data
+  if (hpaData['RNA single cell type specific nTPM'] && typeof hpaData['RNA single cell type specific nTPM'] === 'object') {
+    tissueExpression.singleCellTypeNTPM = hpaData['RNA single cell type specific nTPM'];
+  }
+
+  // Extract cancer specific FPKM data
+  if (hpaData['RNA cancer specific FPKM'] && typeof hpaData['RNA cancer specific FPKM'] === 'object') {
+    tissueExpression.cancerSpecificFPKM = hpaData['RNA cancer specific FPKM'];
+  }
+
+  // Look for any other expression-related fields that might contain tissue data
+  Object.keys(hpaData).forEach(key => {
+    // Look for fields that might contain general tissue expression data
+    if (key.toLowerCase().includes('expression') && 
+        key.toLowerCase().includes('tissue') && 
+        !key.includes('specific') &&
+        typeof hpaData[key] === 'object' &&
+        hpaData[key] !== null) {
+      tissueExpression.generalExpression[key] = hpaData[key];
+    }
+  });
+
+  return tissueExpression;
+}
+
+function formatTissueExpressionSection(tissueData: any): string {
+  let markdown = '';
+
+  // Summary section
+  markdown += `## Expression Summary\n\n`;
+  markdown += `- **Tissue Specificity**: ${tissueData.expressionSummary.tissueSpecificity}\n`;
+  markdown += `- **Tissue Distribution**: ${tissueData.expressionSummary.tissueDistribution}\n`;
+  markdown += `- **Cell Type Specificity**: ${tissueData.expressionSummary.cellTypeSpecificity}\n`;
+  markdown += `- **Cancer Specificity**: ${tissueData.expressionSummary.cancerSpecificity}\n\n`;
+
+  // Tissue-specific enhanced expression
+  if (tissueData.tissueSpecificNTPM && Object.keys(tissueData.tissueSpecificNTPM).length > 0) {
+    markdown += `## Tissue-Specific Enhanced Expression (nTPM)\n\n`;
+    markdown += `The following tissues show enhanced expression compared to other tissues:\n\n`;
+    
+    // Sort tissues by expression value (highest first)
+    const sortedTissues = Object.entries(tissueData.tissueSpecificNTPM)
+      .sort(([,a], [,b]) => parseFloat(b as string) - parseFloat(a as string));
+    
+    markdown += `| Tissue | Expression (nTPM) |\n`;
+    markdown += `|--------|------------------|\n`;
+    
+    for (const [tissue, value] of sortedTissues) {
+      markdown += `| ${tissue.charAt(0).toUpperCase() + tissue.slice(1)} | ${value} |\n`;
+    }
+    markdown += '\n';
+  }
+
+  // Single cell type specific expression
+  if (tissueData.singleCellTypeNTPM && Object.keys(tissueData.singleCellTypeNTPM).length > 0) {
+    markdown += `## Cell Type-Specific Expression (nTPM)\n\n`;
+    markdown += `The following cell types show specific expression:\n\n`;
+    
+    // Sort cell types by expression value (highest first)
+    const sortedCellTypes = Object.entries(tissueData.singleCellTypeNTPM)
+      .sort(([,a], [,b]) => parseFloat(b as string) - parseFloat(a as string));
+    
+    markdown += `| Cell Type | Expression (nTPM) |\n`;
+    markdown += `|-----------|------------------|\n`;
+    
+    for (const [cellType, value] of sortedCellTypes) {
+      markdown += `| ${cellType} | ${value} |\n`;
+    }
+    markdown += '\n';
+  }
+
+  // Cancer-specific expression
+  if (tissueData.cancerSpecificFPKM && Object.keys(tissueData.cancerSpecificFPKM).length > 0) {
+    markdown += `## Cancer-Specific Expression (FPKM)\n\n`;
+    markdown += `The following cancer types show specific expression:\n\n`;
+    
+    // Sort cancer types by expression value (highest first)
+    const sortedCancers = Object.entries(tissueData.cancerSpecificFPKM)
+      .sort(([,a], [,b]) => parseFloat(b as string) - parseFloat(a as string));
+    
+    markdown += `| Cancer Type | Expression (FPKM) |\n`;
+    markdown += `|-------------|------------------|\n`;
+    
+    for (const [cancer, value] of sortedCancers) {
+      markdown += `| ${cancer} | ${value} |\n`;
+    }
+    markdown += '\n';
+  }
+
+  // Additional expression data
+  if (tissueData.generalExpression && Object.keys(tissueData.generalExpression).length > 0) {
+    markdown += `## Additional Expression Data\n\n`;
+    for (const [dataType, values] of Object.entries(tissueData.generalExpression)) {
+      if (typeof values === 'object' && values !== null) {
+        markdown += `### ${dataType.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}\n\n`;
+        markdown += `| Sample/Tissue | Value |\n`;
+        markdown += `|---------------|-------|\n`;
+        
+        for (const [key, value] of Object.entries(values as Record<string, any>)) {
+          markdown += `| ${key} | ${value} |\n`;
+        }
+        markdown += '\n';
+      }
+    }
+  }
+
+  return markdown;
+}
+
 function summarizeCancerPrognostics(hpaData: any): any {
   const prognostics = {
     totalCancerTypes: 0,
@@ -192,13 +329,11 @@ function formatProteinDataAsMarkdown(hpaData: any, includeCancer: boolean = true
     markdown += '\n';
   }
   
-  // Expression data
+  // Enhanced Expression data section
   if (includeExpression) {
-    markdown += `## Expression Summary\n\n`;
-    markdown += `- **Tissue Specificity**: ${hpaData['RNA tissue specificity'] || 'N/A'}\n`;
-    markdown += `- **Tissue Distribution**: ${hpaData['RNA tissue distribution'] || 'N/A'}\n`;
-    markdown += `- **Cell Type Specificity**: ${hpaData['RNA single cell type specificity'] || 'N/A'}\n`;
-    markdown += `- **Cancer Specificity**: ${hpaData['RNA cancer specificity'] || 'N/A'}\n\n`;
+    const tissueData = extractTissueExpressionData(hpaData);
+    const expressionSection = formatTissueExpressionSection(tissueData);
+    markdown += expressionSection;
   }
   
   // Disease involvement
