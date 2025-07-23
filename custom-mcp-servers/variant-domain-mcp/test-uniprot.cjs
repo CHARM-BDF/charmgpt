@@ -11,7 +11,7 @@ async function testUniprotData() {
     console.log(`Searching UniProt for gene: ${geneSymbol}`);
     
     // Search UniProt by gene name using the REST API
-    const searchUrl = `${UNIPROT_BASE_URL}/search?query=gene:${geneSymbol}+AND+organism_id:9606&format=json&size=1`;
+    const searchUrl = `${UNIPROT_BASE_URL}/search?query=gene:${geneSymbol}+AND+organism_id:9606+AND+reviewed:true&format=json&size=1`;
     console.log(`URL: ${searchUrl}\n`);
     
     const searchResponse = await fetch(searchUrl);
@@ -46,14 +46,14 @@ async function testUniprotData() {
     const features = [];
 
     entry.features.forEach((feature) => {
-      if (feature.type === 'Domain') {
+      if (feature.type === 'Domain' || feature.type === 'Topological domain') {
         domains.push({
           begin: feature.location.start.value,
           end: feature.location.end.value,
-          description: feature.description || 'Domain',
+          description: feature.description || feature.type,
           evidence: feature.evidences?.map((e) => e.code) || []
         });
-      } else if (['Region', 'Motif', 'Site', 'Active site', 'Binding site'].includes(feature.type)) {
+      } else if (['Repeat', 'Region', 'Motif', 'Site', 'Active site', 'Binding site'].includes(feature.type)) {
         features.push({
           type: feature.type,
           begin: feature.location.start.value,

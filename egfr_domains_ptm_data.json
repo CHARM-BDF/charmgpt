@@ -1,0 +1,800 @@
+{
+  "gene": "EGFR",
+  "uniprot_id": "P00533",
+  "ensembl_id": "ENSG00000146648",
+  "sources": {
+    "uniprot": {
+      "url": "https://rest.uniprot.org/uniprotkb/P00533?format=json",
+      "description": "Comprehensive protein annotation including domains and PTMs"
+    },
+    "pfam": {
+      "error": "request to https://pfam.xfam.org/protein/P00533?output=xml failed, reason: Hostname/IP does not match certificate's altnames: Host: pfam.xfam.org. is not in the cert's altnames: DNS:www6.ebi.ac.uk, DNS:www4.ebi.ac.uk"
+    },
+    "smart": {
+      "url": "http://smart.embl-heidelberg.de/",
+      "description": "Simple Modular Architecture Research Tool for domain annotation",
+      "note": "SMART requires interactive web interface - automated access limited"
+    },
+    "interpro": {
+      "url": "https://www.ebi.ac.uk/interpro/api/protein/uniprot/P00533?annotation=interpro",
+      "description": "Integrated protein signature database (includes Pfam, SMART, etc.)"
+    },
+    "ptm_databases": {
+      "PhosphoSitePlus": {
+        "url": "https://www.phosphosite.org/proteinAction?id=1433&showAllSites=true",
+        "description": "Comprehensive PTM database",
+        "note": "Search for EGFR_HUMAN"
+      },
+      "dbPTM": {
+        "url": "http://dbptm.mbc.nctu.edu.tw/",
+        "description": "Database of protein post-translational modifications"
+      },
+      "PTMcode": {
+        "url": "http://ptmcode.embl.de/",
+        "description": "Post-translational modification codes in protein interactions"
+      }
+    }
+  },
+  "domains": {
+    "uniprot": {
+      "count": 3,
+      "domains": [
+        {
+          "type": "Topological domain",
+          "start": 25,
+          "end": 645,
+          "description": "Extracellular",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Topological domain",
+          "start": 669,
+          "end": 1210,
+          "description": "Cytoplasmic",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Domain",
+          "start": 712,
+          "end": 979,
+          "description": "Protein kinase",
+          "evidence": [
+            null
+          ]
+        }
+      ],
+      "other_features": [
+        {
+          "type": "Repeat",
+          "start": 75,
+          "end": 300,
+          "description": "Approximate",
+          "evidence": []
+        },
+        {
+          "type": "Repeat",
+          "start": 390,
+          "end": 600,
+          "description": "Approximate",
+          "evidence": []
+        },
+        {
+          "type": "Region",
+          "start": 688,
+          "end": 704,
+          "description": "Important for dimerization, phosphorylation and activation",
+          "evidence": []
+        },
+        {
+          "type": "Region",
+          "start": 1097,
+          "end": 1137,
+          "description": "Disordered",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Active site",
+          "start": 837,
+          "end": 837,
+          "description": "Proton acceptor",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Binding site",
+          "start": 718,
+          "end": 726,
+          "description": "",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Binding site",
+          "start": 745,
+          "end": 745,
+          "description": "",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Binding site",
+          "start": 790,
+          "end": 791,
+          "description": "",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Binding site",
+          "start": 855,
+          "end": 855,
+          "description": "",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Site",
+          "start": 1016,
+          "end": 1016,
+          "description": "Important for interaction with PIK3C2B",
+          "evidence": []
+        }
+      ]
+    },
+    "interpro": {
+      "count": 0,
+      "domains": []
+    }
+  },
+  "ptm": {
+    "uniprot": {
+      "count": 48,
+      "modifications": [
+        {
+          "type": "Modified residue",
+          "start": 229,
+          "end": 229,
+          "description": "Phosphoserine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 678,
+          "end": 678,
+          "description": "Phosphothreonine; by PKC and PKD/PRKD1",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 693,
+          "end": 693,
+          "description": "Phosphothreonine; by PKD/PRKD1",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 695,
+          "end": 695,
+          "description": "Phosphoserine",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 745,
+          "end": 745,
+          "description": "N6-(2-hydroxyisobutyryl)lysine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 869,
+          "end": 869,
+          "description": "Phosphotyrosine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 991,
+          "end": 991,
+          "description": "Phosphoserine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 995,
+          "end": 995,
+          "description": "Phosphoserine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 998,
+          "end": 998,
+          "description": "Phosphotyrosine; by autocatalysis",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1016,
+          "end": 1016,
+          "description": "Phosphotyrosine; by autocatalysis",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1026,
+          "end": 1026,
+          "description": "Phosphoserine",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1039,
+          "end": 1039,
+          "description": "Phosphoserine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1041,
+          "end": 1041,
+          "description": "Phosphothreonine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1042,
+          "end": 1042,
+          "description": "Phosphoserine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1064,
+          "end": 1064,
+          "description": "Phosphoserine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1069,
+          "end": 1069,
+          "description": "Phosphotyrosine",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1070,
+          "end": 1070,
+          "description": "Phosphoserine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1071,
+          "end": 1071,
+          "description": "Phosphoserine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1081,
+          "end": 1081,
+          "description": "Phosphoserine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1092,
+          "end": 1092,
+          "description": "Phosphotyrosine; by autocatalysis",
+          "evidence": [
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1110,
+          "end": 1110,
+          "description": "Phosphotyrosine; by autocatalysis",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1166,
+          "end": 1166,
+          "description": "Phosphoserine",
+          "evidence": [
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1172,
+          "end": 1172,
+          "description": "Phosphotyrosine; by autocatalysis",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1197,
+          "end": 1197,
+          "description": "Phosphotyrosine; by autocatalysis",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Modified residue",
+          "start": 1199,
+          "end": 1199,
+          "description": "Omega-N-methylarginine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Lipidation",
+          "start": 1049,
+          "end": 1049,
+          "description": "S-palmitoyl cysteine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Lipidation",
+          "start": 1146,
+          "end": 1146,
+          "description": "S-palmitoyl cysteine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 56,
+          "end": 56,
+          "description": "N-linked (GlcNAc...) (complex) asparagine; atypical; partial",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 73,
+          "end": 73,
+          "description": "N-linked (GlcNAc...) asparagine; atypical",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 128,
+          "end": 128,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 175,
+          "end": 175,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 196,
+          "end": 196,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 352,
+          "end": 352,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 361,
+          "end": 361,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 413,
+          "end": 413,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 444,
+          "end": 444,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 528,
+          "end": 528,
+          "description": "N-linked (GlcNAc...) asparagine",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 568,
+          "end": 568,
+          "description": "N-linked (GlcNAc...) asparagine; partial",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 603,
+          "end": 603,
+          "description": "N-linked (GlcNAc...) asparagine; partial",
+          "evidence": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Glycosylation",
+          "start": 623,
+          "end": 623,
+          "description": "N-linked (GlcNAc...) (high mannose) asparagine",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 716,
+          "end": 716,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 737,
+          "end": 737,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 754,
+          "end": 754,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 757,
+          "end": 757,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 867,
+          "end": 867,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null,
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 929,
+          "end": 929,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 960,
+          "end": 960,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null
+          ]
+        },
+        {
+          "type": "Cross-link",
+          "start": 970,
+          "end": 970,
+          "description": "Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in ubiquitin)",
+          "evidence": [
+            null
+          ]
+        }
+      ]
+    }
+  },
+  "retrieved_at": "2025-07-22T03:47:28.108Z"
+}
