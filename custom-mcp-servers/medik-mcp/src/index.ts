@@ -8,7 +8,7 @@ import { z } from "zod";
 import { createInterface } from 'readline';
 import { formatKnowledgeGraphArtifact, formatNetworkNeighborhood } from "./formatters.js";
 import { randomUUID } from 'crypto';
-import { LLMClient } from "../../mcp-helpers/llm-client.js";
+// import { LLMClient } from "./mcp-helpers/llm-client.js";
 import logger from './logger.js';
 import fs from 'fs';
 import path from 'path';
@@ -97,13 +97,13 @@ const MEDIKANREN_API_BASE = "https://medikanren.metareflective.systems";
 const DEBUG = false;  // Set to false to reduce logging
 
 // Initialize the LLM client
-const llmClient = new LLMClient({
-    mcpName: 'medik-mcp', // Identifies this MCP in logs
-    retries: 3 // Number of retry attempts for failed requests
-});
+// const llmClient = new LLMClient({
+//     mcpName: 'medik-mcp', // Identifies this MCP in logs
+//     retries: 3 // Number of retry attempts for failed requests
+// });
 
 // Log LLM client initialization 
-if (DEBUG) console.error('[medik-mcp] LLM Client initialized');
+// if (DEBUG) console.error('[medik-mcp] LLM Client initialized');
 
 // Define interface types for API responses
 interface QueryErrorResponse {
@@ -397,28 +397,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     // Create the tools array with all tools
     console.error('[TOOLS-DEBUG] Creating tools array...');
     const allTools = [
-        {
-            name: "run-query",
-            description: "Run a 1-hop query in mediKanren. Note: If you need comprehensive bidirectional relationships, use get-everything instead as it provides complete coverage.",
-            inputSchema: {
-                type: "object",
-                properties: {
-                    e1: {
-                        type: "string",
-                        description: "X->Known or Known->X, for subject unknown or object unknown respectively.",
-                    },
-                    e2: {
-                        type: "string",
-                        description: "A biolink predicate such as biolink:treats, from the biolink list.",
-                    },
-                    e3: {
-                        type: "string",
-                        description: "A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.",
-                    }
-                },
-                required: ["e1", "e2", "e3"],
-            },
-        },
+        // {
+        //     name: "run-query",
+        //     description: "Run a 1-hop query in mediKanren. Note: If you need comprehensive bidirectional relationships, use get-everything instead as it provides complete coverage.",
+        //     inputSchema: {
+        //         type: "object",
+        //         properties: {
+        //             e1: {
+        //                 type: "string",
+        //                 description: "X->Known or Known->X, for subject unknown or object unknown respectively.",
+        //             },
+        //             e2: {
+        //                 type: "string",
+        //                 description: "A biolink predicate such as biolink:treats, from the biolink list.",
+        //             },
+        //             e3: {
+        //                 type: "string",
+        //                 description: "A CURIE such as MONDO:0011719; you can ask a Monarch action to get a CURIE from a name.",
+        //             }
+        //         },
+        //         required: ["e1", "e2", "e3"],
+        //     },
+        // },
         {
             name: "get-everything",
             description: "Run both X->Known and Known->X queries with biolink:related_to to get all relationships for a CURIE. This is the recommended comprehensive query that provides complete bidirectional coverage. Do not use run-query if you are using this tool as it would be redundant.",
@@ -433,35 +433,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 required: ["curie"],
             },
         },
-        {
-            name: "find-pathway",
-            description: "Find potential connection pathways between two biomedical entities by exploring the knowledge graph",
-            inputSchema: {
-                type: "object",
-                properties: {
-                    sourceCurie: {
-                        type: "string",
-                        description: "CURIE of the first entity (e.g., gene HGNC:1097)",
-                    },
-                    targetCurie: {
-                        type: "string", 
-                        description: "CURIE of the second entity (e.g., disease MONDO:0011719)",
-                    },
-                    maxIterations: {
-                        type: "number",
-                        description: "Maximum number of exploration iterations (default: 3)",
-                    },
-                    maxNodesPerIteration: {
-                        type: "number",
-                        description: "Number of candidate nodes to explore in each iteration (default: 5)",
-                    }
-                },
-                required: ["sourceCurie", "targetCurie"],
-            },
-            // These fields were causing issues, removing them
-            // version: "0.1",
-            // enabled: true  // Explicitly mark the tool as enabled
-        },
+        // {
+        //     name: "find-pathway",
+        //     description: "Find potential connection pathways between two biomedical entities by exploring the knowledge graph",
+        //     inputSchema: {
+        //         type: "object",
+        //         properties: {
+        //             sourceCurie: {
+        //                 type: "string",
+        //                 description: "CURIE of the first entity (e.g., gene HGNC:1097)",
+        //             },
+        //             targetCurie: {
+        //                 type: "string", 
+        //                 description: "CURIE of the second entity (e.g., disease MONDO:0011719)",
+        //             },
+        //             maxIterations: {
+        //                 type: "number",
+        //                 description: "Maximum number of exploration iterations (default: 3)",
+        //             },
+        //             maxNodesPerIteration: {
+        //                 type: "number",
+        //                 description: "Number of candidate nodes to explore in each iteration (default: 5)",
+        //             }
+        //         },
+        //         required: ["sourceCurie", "targetCurie"],
+        //     },
+        //     // These fields were causing issues, removing them
+        //     // version: "0.1",
+        //     // enabled: true  // Explicitly mark the tool as enabled
+        // },
         {
             name: "network-neighborhood",
             description: "Find genes or proteins that are neighbors in the network.",
@@ -522,7 +522,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
             console.error('MEDIK: Tool request:', { toolName, toolArgs });
         }
 
-        if (toolName === "run-query") {
+        // if (toolName === "run-query") {
             const { e1, e2, e3 } = QueryRequestSchema.parse(toolArgs);
             
             if (DEBUG) {

@@ -73,6 +73,7 @@
         "./custom-mcp-servers/medik-mcp2/dist/index.js"
       ]
     },
+
     "arax-mcp": {
       "command": "node",
       "args": [
@@ -166,6 +167,14 @@
       "args": [
         "./custom-mcp-servers/variant-domain-mcp/dist/index.js"
       ]
+    },
+
+    "chembl-moa": {
+      "command": "node",
+      "args": [
+        "./custom-mcp-servers/chembl-mcp/dist/index.js"
+      ],
+      "timeout": 60000
     }
   }
 }
