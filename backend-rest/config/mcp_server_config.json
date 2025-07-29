@@ -1,0 +1,152 @@
+{
+  "mcpServers": {
+    "pubmed": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/pubmed-mcp/dist/index.js"
+      ],
+      "env": {
+        "NCBI_API_KEY": "${NCBI_API_KEY}",
+        "NCBI_TOOL_EMAIL": "${NCBI_TOOL_EMAIL}"
+      }
+    },
+    "gene-fetcher": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/gene-fetcher/dist/index.js"
+      ],
+      "env": {
+        "NCBI_EMAIL": "${NCBI_EMAIL}",
+        "NCBI_API_KEY": "${NCBI_API_KEY}"
+      }
+    },
+    "gtex-fetcher": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/gtex-fetcher/dist/index.js"
+      ]
+    },
+    "server-sequential-thinking": {
+      "command": "node",
+      "args": [
+        "../node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"
+      ]
+    },
+    "memory": {
+      "command": "node",
+      "args": [
+        "../node_modules/@modelcontextprotocol/server-memory/dist/index.js"
+      ]
+    },
+    "string-db": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/string-db-mcp/dist/index.js"
+      ]
+    },
+
+    "medik-mcp2": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/medik-mcp2/dist/index.js"
+      ]
+    },
+
+    "arax-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/arax-mcp/dist/index.js"
+      ],
+      "timeout": 120000
+    },
+    "arax-pathfinder": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/arax-pathfinder/dist/index.js"
+      ],
+      "timeout": 60000
+    },
+    "translator-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/translator-mcp/dist/index.js"
+      ],
+      "timeout": 120000
+    },
+    "python": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/python-mcp/dist/index.js"
+      ]
+    },
+    "r": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/r-mcp/dist/index.js"
+      ]
+    },
+    "graph": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphManipulate-mcp/dist/index.js"
+      ],
+      "timeout": 120000
+    },
+    "id-finder": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/id-finder-mcp/dist/index.js"
+      ]
+    },
+    "aims-review": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/aims-review-mcp/dist/index.js"
+      ]
+    },
+    "pkded-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/pkded-mcp/dist/index.js"
+      ]
+    },
+    "medik-litsearch": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/medik-litsearch-mcp/dist/index.js"
+      ]
+    },
+    "variant-litsearch": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/variant-litsearch-mcp/dist/index.js"
+      ]
+    },
+    "wiki-disease": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/wiki-disease-mcp/dist/index.js"
+      ]
+    },
+    "hpa": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/hpa-mcp/dist/index.js"
+      ]
+    },
+    "variant-domain": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/variant-domain-mcp/dist/index.js"
+      ]
+    },
+
+    "chembl-moa": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/chembl-mcp/dist/index.js"
+      ],
+      "timeout": 60000
+    }
+  }
+}

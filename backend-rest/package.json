@@ -1,0 +1,25 @@
+{
+  "name": "backend-rest",
+  "version": "0.0.1",
+  "description": "REST service for the thing",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.ts",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "server": "tsx src/index.ts",
+    "server:dev": "nodemon --watch src/ -e ts,js --exec tsx src/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "nodemon": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3"
+  }
+}
