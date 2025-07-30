@@ -15,12 +15,10 @@ export default defineConfig({
     }
   },
   test: {
-    browser: {
-      enabled: true,
-      provider: 'playwright',
-      instances: [
-        { browser: 'chromium' },
-      ],
+    environment: 'happy-dom',
+    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
+    alias: {
+      '@charm-mcp/shared': new URL('../shared/', import.meta.url).pathname, 
     },
   },
 })

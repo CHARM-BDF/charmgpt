@@ -7,8 +7,8 @@
         "esModuleInterop": true,
         "isolatedModules": true,
         "paths": {
-            "@charm-mcp/shared": ["../shared"]
+            "@charm-mcp/shared": ["../shared"],
+            "@/*": ["./src/*"],
         },
     },
-    "references": [{"path": "../shared"}]
 }

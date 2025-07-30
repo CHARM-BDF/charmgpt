@@ -5,10 +5,10 @@
  * Run with: ts-node src/server/services/llm/test-providers.ts
  */
 
-import { AnthropicProvider } from './providers/anthropic';
-import { OpenAIProvider } from './providers/openai';
-import { GeminiProvider } from './providers/gemini';
-import { LLMProvider, LLMProviderOptions } from './types';
+import { AnthropicProvider } from '../../../../src/services/llm/providers/anthropic';
+import { OpenAIProvider } from '../../../../src/services/llm/providers/openai';
+import { GeminiProvider } from '../../../../src/services/llm/providers/gemini';
+import { LLMProvider, LLMProviderOptions } from '../../../../src/services/llm/types';
 import dotenv from 'dotenv';
 
 // Load environment variables

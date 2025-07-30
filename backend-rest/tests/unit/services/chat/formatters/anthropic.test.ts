@@ -2,9 +2,9 @@
  * Tests for Anthropic Response Formatter Adapter
  */
 
-import { jest } from '@jest/globals';
-import { AnthropicResponseFormatterAdapter } from '../anthropic.js';
-import { FormatterOutput } from '../types.js';
+import { beforeEach, describe, expect, test } from 'vitest';
+import { AnthropicResponseFormatterAdapter } from '@/services/chat/formatters/anthropic';
+import { FormatterOutput } from '@/services/chat/formatters/types.js';
 
 describe('AnthropicResponseFormatterAdapter', () => {
   let adapter: AnthropicResponseFormatterAdapter;
@@ -14,7 +14,7 @@ describe('AnthropicResponseFormatterAdapter', () => {
   });
   
   describe('getResponseFormatterToolDefinition', () => {
-    it('should return a valid Anthropic tool definition', () => {
+    test('should return a valid Anthropic tool definition', () => {
       const definition = adapter.getResponseFormatterToolDefinition();
       
       // Check structure
@@ -31,8 +31,8 @@ describe('AnthropicResponseFormatterAdapter', () => {
   });
   
   describe('extractFormatterOutput', () => {
-    it('should extract formatter output from Anthropic response', () => {
-      // Mock Anthropic response with tool_use
+    test('should extract formatter output from Anthropic response', () => {
+      // Mock Anthropic response wtesth tool_use
       const mockResponse = {
         content: [
           { 
@@ -63,7 +63,7 @@ describe('AnthropicResponseFormatterAdapter', () => {
       expect(output.conversation[0]).toHaveProperty('content', 'Test content');
     });
     
-    it('should throw error if no content in response', () => {
+    test('should throw error if no content in response', () => {
       // Mock empty response
       const mockResponse = {
         content: []
@@ -73,8 +73,8 @@ describe('AnthropicResponseFormatterAdapter', () => {
         .toThrow('Empty response from Anthropic');
     });
     
-    it('should throw error if no tool_use block', () => {
-      // Mock response with no tool_use
+    test('should throw error if no tool_use block', () => {
+      // Mock response wtesth no tool_use
       const mockResponse = {
         content: [
           { type: 'text', text: 'Just text response' }
@@ -85,8 +85,8 @@ describe('AnthropicResponseFormatterAdapter', () => {
         .toThrow('Expected response_formatter tool use in Anthropic response');
     });
     
-    it('should throw error if wrong tool was used', () => {
-      // Mock response with wrong tool
+    test('should throw error if wrong tool was used', () => {
+      // Mock response wtesth wrong tool
       const mockResponse = {
         content: [
           {
@@ -104,7 +104,7 @@ describe('AnthropicResponseFormatterAdapter', () => {
   });
   
   describe('convertToStoreFormat', () => {
-    it('should convert formatter output to store format', () => {
+    test('should convert formatter output to store format', () => {
       // Mock formatter output
       const formatterOutput: FormatterOutput = {
         thinking: 'Test thinking',
@@ -130,11 +130,11 @@ describe('AnthropicResponseFormatterAdapter', () => {
       expect(storeFormat).toHaveProperty('artifacts');
       expect(storeFormat.artifacts).toBeInstanceOf(Array);
       expect(storeFormat.artifacts?.[0]).toHaveProperty('type', 'text/markdown');
-      expect(storeFormat.artifacts?.[0]).toHaveProperty('title', 'Test artifact');
+      expect(storeFormat.artifacts?.[0]).toHaveProperty('ttestle', 'Test artifact');
       expect(storeFormat.artifacts?.[0]).toHaveProperty('content', '# Test content');
     });
     
-    it('should handle missing artifacts', () => {
+    test('should handle missing artifacts', () => {
       // Mock formatter output with no artifacts
       const formatterOutput: FormatterOutput = {
         thinking: 'Test thinking',

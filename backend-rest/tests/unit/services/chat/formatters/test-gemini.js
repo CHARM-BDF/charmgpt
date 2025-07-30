@@ -1,6 +1,6 @@
 // Simple test script for Gemini Response Formatter Adapter
 
-import { GeminiResponseFormatterAdapter } from '../gemini.js';
+import { GeminiResponseFormatterAdapter } from '../../../../../src/services/chat/formatters/gemini.js';
 
 // Create the adapter
 const adapter = new GeminiResponseFormatterAdapter();
