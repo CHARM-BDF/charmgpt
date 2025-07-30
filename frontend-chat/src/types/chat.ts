@@ -1,4 +1,4 @@
-import { Artifact, ArtifactType } from './artifacts';
+import { Artifact, ArtifactType } from '../../../shared/artifacts';
 
 export interface Message {
   id: string;

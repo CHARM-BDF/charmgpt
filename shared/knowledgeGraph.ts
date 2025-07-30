@@ -3,6 +3,7 @@ export interface KnowledgeGraphNode {
   id: string;
   name: string;
   group?: number;
+  entityType?: string; // Copied this from the shared utils, will return to its usage
   val?: number; // Optional size value
   color?: string; // Optional color
   [key: string]: any; // Allow for additional properties
@@ -14,6 +15,7 @@ export interface KnowledgeGraphLink {
   value?: number;
   label?: string;
   color?: string;
+  evidence?: string[];
   [key: string]: any; // Allow for additional properties
 }
 

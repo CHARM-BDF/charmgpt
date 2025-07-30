@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Artifact } from '../../types/artifacts';
+import { Artifact } from '../../../../shared/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

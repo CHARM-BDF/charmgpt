@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MessageWithThinking, Message, StatusUpdate } from '../../types/chat';
-import { Artifact } from '../../types/artifacts';
+import { Artifact } from '../../../../shared/artifacts';
 import { useChatStore } from '../../store/chatStore';
 import { AssistantMarkdown } from './AssistantMarkdown';
 import { ClipboardIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
