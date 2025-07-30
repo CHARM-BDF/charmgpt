@@ -1,10 +1,10 @@
 import React from 'react';
 
-import { vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FileReferencePopup } from '../src/components/fileReference/FileReferencePopup';
-import { FileEntry } from '../src/types/fileManagement';
+import { FileEntry } from '@charm-mcp/shared';
 
 const mockFiles: FileEntry[] = [
   {
@@ -57,12 +57,12 @@ describe('FileReferencePopup', () => {
     vi.clearAllMocks();
   });
 
-  it('renders loading state initially', () => {
+  test('renders loading state initially', () => {
     render(<FileReferencePopup {...defaultProps} />);
     expect(screen.getByText('Loading files...')).toBeInTheDocument();
   });
 
-  it('renders files after loading', async () => {
+  test('renders files after loading', async () => {
     render(<FileReferencePopup {...defaultProps} />);
     
     // Wait for files to load
@@ -73,7 +73,7 @@ describe('FileReferencePopup', () => {
     expect(file2).toBeInTheDocument();
   });
 
-  it('filters files based on query', async () => {
+  test('filters files based on query', async () => {
     render(<FileReferencePopup {...defaultProps} query="test1" />);
     
     // Wait for files to load and filter
@@ -82,7 +82,7 @@ describe('FileReferencePopup', () => {
     expect(screen.queryByText('test2.md')).not.toBeInTheDocument();
   });
 
-  it('calls onSelect when a file is clicked', async () => {
+  test('calls onSelect when a file is clicked', async () => {
     render(<FileReferencePopup {...defaultProps} />);
     
     // Wait for files to load
@@ -92,7 +92,7 @@ describe('FileReferencePopup', () => {
     expect(defaultProps.onSelect).toHaveBeenCalledWith(mockFiles[0]);
   });
 
-  it('handles keyboard navigation', async () => {
+  test('handles keyboard navigation', async () => {
     render(<FileReferencePopup {...defaultProps} />);
     
     // Wait for files to load
@@ -115,7 +115,7 @@ describe('FileReferencePopup', () => {
     expect(defaultProps.onSelect).toHaveBeenCalledWith(mockFiles[0]);
   });
 
-  it('calls onClose when Escape is pressed', async () => {
+  test('calls onClose when Escape is pressed', async () => {
     render(<FileReferencePopup {...defaultProps} />);
     
     // Wait for files to load
@@ -125,14 +125,14 @@ describe('FileReferencePopup', () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it('shows appropriate message when no files match query', async () => {
+  test('shows appropriate message when no files match query', async () => {
     render(<FileReferencePopup {...defaultProps} query="nonexistent" />);
     
     // Wait for loading to complete
     await screen.findByText('No matching files found');
   });
 
-  it('shows appropriate message when no files are available', async () => {
+  test('shows appropriate message when no files are available', async () => {
     mockStorageService.listFiles.mockResolvedValueOnce([]);
     render(<FileReferencePopup {...defaultProps} />);
     

@@ -5,7 +5,7 @@
  * Run with: ts-node src/server/services/llm/test-service.ts
  */
 
-import { LLMService } from './index';
+import { LLMService } from '../../../../src/services/llm/index';
 import dotenv from 'dotenv';
 
 // Load environment variables
