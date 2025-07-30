@@ -12,6 +12,9 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
+    "paths": {
+      "@charm-mcp/shared": ["../shared"]
+    },
 
     /* Linting */
     "strict": true,
@@ -19,5 +22,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
+  "references": [{"path": "../shared"}],
   "include": ["vite.config.ts"]
+  
 }

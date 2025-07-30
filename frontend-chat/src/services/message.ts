@@ -1,5 +1,5 @@
 import { Message, MessageWithThinking, ConversationItem } from '../types/chat';
-import { Artifact } from '../types/artifacts';
+import { Artifact } from '../../../shared/artifacts';
 import { v4 as uuidv4 } from 'uuid';
 import { KnowledgeGraph } from '../utils/knowledgeGraphUtils';
 

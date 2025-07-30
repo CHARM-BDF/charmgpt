@@ -3,7 +3,7 @@ import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import originalSampleData from '../../data/sample-knowledge-graph.json';
 import medikanrenData from '../../data/medikanren-knowledge-graph.json';
-import { Artifact } from '../../types/artifacts';
+import { Artifact } from '../../../../shared/artifacts';
 import { ArtifactContent } from './ArtifactContent';
 
 const KnowledgeGraphTest: React.FC = () => {

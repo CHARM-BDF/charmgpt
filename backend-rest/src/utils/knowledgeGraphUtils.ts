@@ -1,24 +1,7 @@
+import { KnowledgeGraphNode, KnowledgeGraphLink } from "@charm-mcp/shared";
 /**
  * Knowledge Graph utilities for merging and processing knowledge graph data
  */
-
-export interface KnowledgeGraphNode {
-    id: string;
-    name: string;
-    group?: number;
-    entityType?: string;
-    val?: number;
-    [key: string]: any;
-  }
-  
-  export interface KnowledgeGraphLink {
-    source: string;
-    target: string;
-    label?: string;
-    value?: number;
-    evidence?: string[];
-    [key: string]: any;
-  }
   
   export interface KnowledgeGraph {
     nodes: KnowledgeGraphNode[];

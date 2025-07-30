@@ -1,5 +1,5 @@
 import { XMLResponse, XMLArtifact, XMLRef } from '../types/chat';
-import { ArtifactType } from '../types/artifacts';
+import { ArtifactType } from '../../../shared/artifacts';
 
 /**
  * Validates and converts a string to ArtifactType

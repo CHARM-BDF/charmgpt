@@ -15,7 +15,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, MessageWithThinking, ConversationMetadata, Conversation, ConversationState, StatusUpdate } from '../types/chat';
-import { Artifact, ArtifactType } from '../types/artifacts';
+import { Artifact, ArtifactType } from '../../../shared/artifacts';
 import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';
 // Remove mcpStore import to break circular dependency - will import lazily when needed

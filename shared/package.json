@@ -1,0 +1,10 @@
+{
+    "name": "shared",
+    "version": "0.0.0",
+    "description": "",
+    "license": "ISC",
+    "author": "",
+    "type": "module",
+    "main": "index.ts"
+  }
+  

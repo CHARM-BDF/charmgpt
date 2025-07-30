@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { MCPArtifact } from '../../../frontend-chat/src/types/mcp';
+import { MCPArtifact } from '@charm-mcp/shared';
 
 // Types
 export interface ChatMessage {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useChatStore } from '../../store/chatStore';
-import { ArtifactType } from '../../types/artifacts';
+import { ArtifactType } from '../../../../shared/artifacts';
 
 const TypeIcon: React.FC<{ type: ArtifactType }> = ({ type }) => {
   switch (type) {
