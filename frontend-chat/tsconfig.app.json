@@ -27,6 +27,5 @@
     /* Testing */
     "types": ["vitest/globals"]
   },
-  "references": [{"path": "../shared"}],
   "include": ["src"]
 }
