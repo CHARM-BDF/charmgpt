@@ -5,7 +5,6 @@ import fs from 'fs';
 import { randomUUID } from 'crypto';
 import { LoggingService } from '../services/logging';
 // import pdfParse from 'pdf-parse';
-// import mammoth from 'mammoth';
 import { FileMetadata as FullFileMetadata } from '@charm-mcp/shared';
 
 // Simplified FileMetadata interface that makes all fields optional

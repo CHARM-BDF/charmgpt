@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
-import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../../types/knowledgeGraph';
+import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '@charm-mcp/shared';
 import { useChatStore } from '../../store/chatStore';
 import { Pin, PinOff } from 'lucide-react';
 
