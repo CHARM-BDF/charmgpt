@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Project, ProjectFile } from '../../store/projectStore';
-import { FileEntry } from '../../types/fileManagement';
+import type { FileEntry } from '@charm-mcp/shared';
 // @ts-expect-error - Heroicons type definitions mismatch
 import { ArrowLeftIcon, StarIcon, EllipsisHorizontalIcon, LockClosedIcon, BookOpenIcon, PlusIcon, TrashIcon, PencilIcon, ArrowUpTrayIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { useChatStore, ChatState } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
-import { ConversationState } from '../../types/chat';
 import { ProjectChatInput } from './ProjectChatInput';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
-import { FileManager } from '../files/FileManager';
 import { getRelativeTimeString } from '../../utils/dateUtils';
 
 interface ProjectViewProps {
@@ -42,9 +39,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
         return foundProject;
     });
     
-    const addConversationToProject = useProjectStore((state) => state.addConversationToProject);
     const addFileToProject = useProjectStore((state) => state.addFileToProject);
-    const createNewChat = useChatStore((state: ChatState) => state.startNewConversation);
     const switchConversation = useChatStore((state: ChatState) => state.switchConversation);
     const updateProject = useProjectStore((state) => state.updateProject);
 

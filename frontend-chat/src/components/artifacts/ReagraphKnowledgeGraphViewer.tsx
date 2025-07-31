@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { GraphCanvas } from 'reagraph';
-import { KnowledgeGraphData } from '../../types/knowledgeGraph';
+import { KnowledgeGraphData } from '@charm-mcp/shared';
 import { useChatStore } from '../../store/chatStore';
 import {  ChevronDown, ChevronUp, Filter, Save, Pin, PinOff } from 'lucide-react';
 import { useMCPStore } from '../../store/mcpStore';

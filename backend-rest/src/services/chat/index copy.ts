@@ -215,7 +215,7 @@ export class ChatService {
     console.log(`🔍 ARTIFACT-COLLECTION: Beginning unified artifact collection phase`);
     
     // Initialize artifacts collection array
-    let artifactsToAdd = [];
+    const artifactsToAdd = [];
     
     // Add any pinned graph if provided in options
     if (options.pinnedGraph) {

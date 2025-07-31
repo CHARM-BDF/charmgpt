@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileEntry } from '../../types/fileManagement';
+import { FileEntry } from '@charm-mcp/shared';
+
 // @ts-ignore - Heroicons type definitions mismatch
 import { FolderIcon, PlusIcon, DocumentTextIcon, BeakerIcon } from '@heroicons/react/24/outline';
-import { useModeStore } from '../../store/modeStore';
-import { useProjectStore, Project } from '../../store/projectStore';
+import { useProjectStore } from '../../store/projectStore';
 import { useChatStore } from '../../store/chatStore';
 import { GrantReviewListView } from './GrantReviewListView';
 
@@ -19,7 +19,6 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
   const [newProjectName, setNewProjectName] = useState('');
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const { currentMode } = useModeStore();
   const { projects, selectedProjectId, addProject, selectProject } = useProjectStore();
   const { startNewConversation } = useChatStore();
 
@@ -97,54 +96,6 @@ export const ProjectDrawer: React.FC<ProjectDrawerProps> = ({ storageService }) 
     
     setNewProjectName('');
     setShowNewProjectDialog(false);
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !selectedProjectId) return;
-
-    try {
-      const content = await file.arrayBuffer();
-      await storageService.createFile(new Uint8Array(content), {
-        description: file.name,
-        tags: [`project:${selectedProjectId}`],
-        schema: {
-          type: 'file',
-          format: file.type || 'application/octet-stream'
-        }
-      });
-      
-      // Refresh file list
-      loadFiles();
-    } catch (error) {
-      console.error('Error uploading file:', error);
-    }
-  };
-
-  const handleFileDelete = async (fileId: string) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) {
-      return;
-    }
-
-    try {
-      await storageService.deleteFile(fileId);
-      // Refresh file list
-      loadFiles();
-    } catch (error) {
-      console.error('Error deleting file:', error);
-    }
-  };
-
-  const handleFileRename = async (fileId: string, newName: string) => {
-    try {
-      const metadata = await storageService.getMetadata(fileId);
-      metadata.description = newName;
-      await storageService.updateMetadata(fileId, metadata);
-      // Refresh file list
-      loadFiles();
-    } catch (error) {
-      console.error('Error renaming file:', error);
-    }
   };
 
   return (

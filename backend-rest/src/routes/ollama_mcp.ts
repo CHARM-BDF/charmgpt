@@ -160,7 +160,7 @@ async function handleResponse(
   loggingService.log('info', 'OLLAMA: Processing initial response');
   messages.push(initialResponse.message);
   
-  let currentResponse = initialResponse;
+  const currentResponse = initialResponse;
   let toolCalls = currentResponse.message.tool_calls || [];
   
   // Initialize collections for bibliography and binary outputs
@@ -584,7 +584,7 @@ For regular conversation, just write normally. Be concise and helpful.`;
       
       // STREAMING VERSION
       // Create a variable to collect the full formatting response
-      let streamedFormattingResponse: OllamaChatResponse = {
+      const streamedFormattingResponse: OllamaChatResponse = {
         message: {
           role: 'assistant',
           content: '',

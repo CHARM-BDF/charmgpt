@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { MCPServerState, MCPTool } from '../mcp/types';
-import { GraphCommand } from '../types/knowledgeGraph';
+import { MCPServerState } from '../mcp/types';
+import { GraphCommand } from '@charm-mcp/shared';
 import { useChatStore } from './chatStore';
 
 // Define a mapping for migration from shortened names to full technical names
@@ -68,8 +68,6 @@ export interface ServerTool {
         properties?: Record<string, unknown>;
     };
 }
-
-type ServerStatus = 'inactive' | 'active' | 'blocked';
 
 interface MCPStoreState {
     servers: MCPServerState[];

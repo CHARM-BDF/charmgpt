@@ -5,7 +5,7 @@ import {
     BranchInfo, 
     OperationType,
     SchemaInfo 
-} from '../../types/fileManagement';
+} from '@charm-mcp/shared';
 
 export class APIStorageService extends BaseStorageService {
     private readonly baseUrl: string;

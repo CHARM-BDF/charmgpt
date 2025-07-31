@@ -1,5 +1,5 @@
 import React from 'react';
-// @ts-ignore - Heroicons type definitions mismatch
+//  @ts-expect-error - Heroicons type definitions mismatch
 import { DocumentTextIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import { useModeStore } from '../../store/modeStore';
 
