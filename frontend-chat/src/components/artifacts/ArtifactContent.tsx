@@ -10,7 +10,6 @@ import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import { ProteinVisualizationViewer } from './ProteinVisualizationViewer';
 import { useChatStore } from '../../store/chatStore';
-import { useMCPStore } from '../../store/mcpStore';
 import { Pin, PinOff } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
@@ -22,7 +21,7 @@ export const ArtifactContent: React.FC<{
 }> = ({ artifact, storageService }) => {
   const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
-  const [useReagraph, setUseReagraph] = useState(true);
+  const [useReagraph,] = useState(true);
   const [savingToProject, setSavingToProject] = useState(false);
   
   // Use selector functions to only subscribe to the specific state we need
@@ -327,8 +326,12 @@ export const ArtifactContent: React.FC<{
                   // });
                   
                   // Remove all non-HTML attributes
-                  const { ordered: _, checked: __, node: ___, className: ____, ...cleanProps } = props;
-                  
+
+                  const excludedProps = ['ordered', 'checked', 'node', 'className'];
+                  const cleanProps = Object.fromEntries(
+                    Object.entries(props).filter(([key]) => !excludedProps.includes(key))
+                  );
+                                    
                   return (
                     <li className="font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed" {...cleanProps}>
                       {children}

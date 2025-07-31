@@ -70,7 +70,7 @@ async function testProviderSwitching(service: LLMService) {
   
   try {
     // Start with first provider
-    let currentProvider = availableProviders[0];
+    const currentProvider = availableProviders[0];
     console.log(`Starting with provider: ${currentProvider}`);
     service.setProvider({ provider: currentProvider as any });
     
@@ -113,7 +113,7 @@ async function runTests() {
   const results: Record<string, boolean> = {};
   
   // Initialize service with default provider (anthropic)
-  let service = new LLMService();
+  const service = new LLMService();
   
   // Test with Anthropic if API key or Vertex AI is available
   const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;

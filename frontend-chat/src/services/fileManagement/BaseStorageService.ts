@@ -5,7 +5,7 @@ import {
     OperationType,
     BranchInfo,
     SchemaInfo
-} from '../../types/fileManagement';
+} from '@charm-mcp/shared';
 import { IStorageService } from './IStorageService';
 
 /**

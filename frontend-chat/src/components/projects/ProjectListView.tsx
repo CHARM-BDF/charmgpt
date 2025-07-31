@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useProjectStore } from '../../store/projectStore';
-// @ts-ignore - Heroicons type definitions mismatch
+// @ts-expect-error - Heroicons type definitions mismatch
 import { PlusIcon, XMarkIcon, ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { ProjectView } from './ProjectView';
 

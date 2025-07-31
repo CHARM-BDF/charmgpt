@@ -4,7 +4,7 @@ import { useProjectStore } from '../../store/projectStore';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import { useFileReference } from '../../hooks/useFileReference';
 import { FileReferencePopup } from '../fileReference/FileReferencePopup';
-import { FileEntry } from '../../types/fileManagement';
+import { FileEntry } from '@charm-mcp/shared';
 
 interface ChatInputProps {
   storageService: APIStorageService;

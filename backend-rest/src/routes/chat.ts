@@ -200,7 +200,7 @@ router.post('/', async (req: Request<{}, {}, {
     
     console.log('2. Type of blockedServers:', Array.isArray(req.body.blockedServers) ? 'Array' : typeof req.body.blockedServers);
 
-    let messages: ChatMessage[] = [...history, { role: 'user', content: message }];
+    const messages: ChatMessage[] = [...history, { role: 'user', content: message }];
     let isSequentialThinkingComplete = false;
 
     // Set MCP log message handler for this request
@@ -710,7 +710,7 @@ router.post('/', async (req: Request<{}, {}, {
     
     // Process all artifacts in a unified way
     console.log('\n🟡🟡🟡 CHAT ROUTE: Starting unified artifact collection 🟡🟡🟡');
-    let artifactsToAdd = [];
+    const artifactsToAdd = [];
     
     // Handle bibliography if present
     if ((messages as any).bibliography) {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, KeyboardEvent } from 'react';
-import { FileEntry } from '../../types/fileManagement';
+import { FileEntry } from '@charm-mcp/shared';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 // @ts-ignore - Heroicons type definitions mismatch
 import { DocumentIcon, DocumentTextIcon } from '@heroicons/react/24/outline';

@@ -13,13 +13,12 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { v4 as uuidv4 } from 'uuid';
-import { Message, MessageWithThinking, ConversationMetadata, Conversation, ConversationState, StatusUpdate } from '../types/chat';
+import { Message, MessageWithThinking, ConversationState, StatusUpdate } from '../types/chat';
 import { Artifact, ArtifactType } from '../../../shared/artifacts';
 import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';
 // Remove mcpStore import to break circular dependency - will import lazily when needed
-import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '../types/knowledgeGraph';
+import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '@charm-mcp/shared';
 import { useProjectStore } from './projectStore';
 
 /**
