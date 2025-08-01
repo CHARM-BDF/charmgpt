@@ -1,5 +1,5 @@
 {
-  "name": "backend-rest",
+  "name": "backend-mcp-client",
   "version": "0.0.1",
   "description": "REST service for the thing",
   "license": "ISC",
