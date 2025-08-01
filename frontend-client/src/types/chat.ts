@@ -1,4 +1,4 @@
-import { Artifact, ArtifactType } from '../../../shared/artifacts';
+import { Artifact, ArtifactType } from '@charm-mcp/shared';
 
 export interface Message {
   id: string;
