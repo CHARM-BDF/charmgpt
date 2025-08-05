@@ -10,8 +10,7 @@
     "lint:auto": "eslint --fix .",
     "type-check": "tsc --noEmit",
     "check:prereq": "./etc/check-prerequisites.sh",
-    "start:services": "./etc/start-services.sh",
-    "stop:services": "./etc/stop-services.sh"
+    "start:services": "./etc/start-services.sh"
   },
   "devDependencies": {
     "cypress": "^13.6.0",
