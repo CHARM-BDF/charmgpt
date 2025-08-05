@@ -220,7 +220,7 @@ export const ChatInterface: React.FC = () => {
                   showSettings ? 'w-[512px] opacity-100' : 'w-0 opacity-0'
                 }`}>
                   {/* Model Selection with dividers */}
-                  <div className="flex items-center px-3 border-x border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center px-3 border-x border-gray-200 dark:border-gray-700" data-test="model-selection">
                     <ModelSelector />
                   </div>
 

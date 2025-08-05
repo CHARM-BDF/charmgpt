@@ -30,7 +30,8 @@ export class OllamaToolAdapter implements ToolCallAdapter {
    */
   convertToolDefinitions(tools: AnthropicTool[]): any[] {
     console.log('🟤 [ADAPTER: OLLAMA] Converting tool definitions');
-    console.log('🟤 [ADAPTER: OLLAMA] First tool structure:', JSON.stringify(tools[0]).substring(0, 200));
+    console.log(tools)
+    console.log('🟤 [ADAPTER: OLLAMA] Input MCP tools:', JSON.stringify(tools, null, 2));
     
     return tools.map(tool => {
       // Make sure tool is defined

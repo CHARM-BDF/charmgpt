@@ -45,7 +45,7 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
             <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
             
             <div className="fixed inset-0 flex items-center justify-center p-4">
-                <Dialog.Panel className="mx-auto w-[900px] max-h-[80vh] rounded-lg bg-white p-6 shadow-xl">
+                <Dialog.Panel className="mx-auto w-[900px] max-h-[80vh] rounded-lg bg-white p-6 shadow-xl" data-test="mcp-status-modal">
                     <div className="flex justify-between items-center mb-4">
                         <Dialog.Title className="text-lg font-medium">
                             MCP Server Status
@@ -91,6 +91,7 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                                             </span>
                                         </div>
                                         <Switch
+                                            data-test="mcp-server-button"
                                             checked={server.status !== 'blocked'}
                                             onChange={() => {
                                                 if (server.isRunning) {

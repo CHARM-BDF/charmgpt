@@ -48,3 +48,9 @@ venv/
 
 # uploads
 uploads/
+
+# Cypress - e2e testing
+**/cypress/videos/
+**/cypress/screenshots/
+**/cypress/reports/
+**/cypress/results/
