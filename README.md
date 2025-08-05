@@ -140,11 +140,14 @@ Alternatively, you can run them separately:
 
 ```bash
 # Start just the frontend
-npm run dev
+npm run dev --workspace=frontend-client
 
 # Start just the backend server
-npm run server:dev
+npm run server:dev --workspace=backend-mcp-client
 ```
+
+### Running System Tests
+Read [System Tests Readme](./system-tests/README.md) for instructions on how to run cypress system tests.
 
 ### Access the Application
 
