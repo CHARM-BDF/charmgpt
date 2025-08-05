@@ -1,0 +1,14 @@
+{
+    "name": "mcp-helpers",
+    "version": "1.0.0",
+    "description": "MCP helpers for MCP servers",
+    "type": "module",
+    "author": "",
+    "license": "ISC",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "node-fetch": "^3.3.2"
+    }
+}

@@ -58,8 +58,8 @@ const PYTHON_EXECUTION_TOOL = {
       },
       timeout: {
         type: "number",
-        description: "Execution timeout in seconds (max 30)",
-        default: 30
+        description: "Execution timeout in seconds (max 60)",
+        default: 60
       }
     },
     required: ["code"]

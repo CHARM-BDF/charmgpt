@@ -7,7 +7,8 @@
         "build:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Building $dir...\" && npm run build); fi; done",
         "dev:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Starting $dir...\" && npm run dev); fi; done",
         "install:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Installing dependencies for $dir...\" && npm install); fi; done",
-        "build:all": "npm run build:mcp-servers && npm run build"
+        "build:all": "npm run build:mcp-servers && npm run build",
+        "test:system": "npm run test:e2e --workspace=system-tests"
     },
     "devDependencies": {
         "concurrently": "^9.2.0"
@@ -16,6 +17,7 @@
         "backend-mcp-client",
         "frontend-client",
         "shared",
-        "prototype"
+        "prototype",
+        "system-tests"
     ]
 }
