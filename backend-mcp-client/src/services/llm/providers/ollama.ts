@@ -149,6 +149,12 @@ export class OllamaProvider implements LLMProvider {
       if (isResponseFormatterRequest) {
         console.log(`🟤 OllamaProvider: Detected response formatter request - using structured outputs instead of tool calling`);
         
+        // Added to simplify the prompt for Ollama using the response_formatter to speed up the request for testing purposes
+        const systemPromptFind = messages.find(message => message.role === 'system');
+        if (systemPromptFind) {
+          systemPromptFind.content = `You are a helpful assistant. Answer the following question: ${prompt}`;
+        }
+
         // Use structured outputs for response formatting
         const formatSchema = {
           type: "object",
@@ -216,7 +222,7 @@ export class OllamaProvider implements LLMProvider {
             temperature: options.temperature || 0.2,
             top_p: ollamaOptions.top_p || 0.9,
             top_k: ollamaOptions.top_k || 40,
-            num_predict: options.maxTokens || 1024,
+            num_predict: 1000,
             repeat_penalty: ollamaOptions.repeat_penalty || 1.1
           }
         };
