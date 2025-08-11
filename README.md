@@ -158,9 +158,10 @@ Once started, the application will be available at:
 
 ## Environment Variables
 
-Create a `.env` file in the root directory with the following variables (as needed):
+Create a `.env` file in the MCP Client backend in `./backend-mcp-client` root directory with the following variables
+(as needed):
 
-```
+```dotenv
 # Server Configuration
 PORT=3000
 NODE_ENV=development
