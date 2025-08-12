@@ -101,7 +101,7 @@ If you prefer to set up the servers step by step, follow these instructions:
    docker pull namin/my-r-mcp
    docker tag namin/my-r-mcp my-r-mcp
    ```
-   This process may take a long time (potentially 30+ minutes) as it installs R and all required packages. The `--platform linux/amd64` flag ensures compatibility.
+   The (commented out) process may take a long time (potentially 30+ minutes) as it installs R and all required packages. The `--platform linux/amd64` flag ensures compatibility.
 
 2. **Verify the Build**
    
@@ -109,6 +109,23 @@ If you prefer to set up the servers step by step, follow these instructions:
    docker images
    ```
    You should see `my-r-mcp` in the list of available images.
+
+#### Racket MCP
+
+1. **Build the Racket MCP Docker Image**
+   
+   ```bash
+   cd custom-mcp-servers/racket-mcp
+   docker build --platform linux/amd64 -t my-racket-mcp .
+   ```
+   The `--platform linux/amd64` flag ensures compatibility.
+
+2. **Verify the Build**
+   
+   ```bash
+   docker images
+   ```
+   You should see `my-racket-mcp` in the list of available images.
 
 ## Running the Application
 
