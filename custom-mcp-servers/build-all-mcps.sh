@@ -70,21 +70,29 @@ build_docker_images() {
   echo "Building Docker images"
   echo "====================================="
   
-  # Build Python MCP Docker
-  echo "Building Python MCP Docker image..."
+  # Set up Python MCP Docker
+  echo "Setting up Python MCP Docker image..."
   cd "$MCP_ROOT/python-mcp"
   # docker build -t my-python-mcp .
   docker pull namin/my-python-mcp
   docker tag namin/my-python-mcp my-python-mcp
-  echo "✅ Python MCP Docker image built successfully."
+  echo "✅ Python MCP Docker image pulled successfully."
   
-  # Build R MCP Docker
-  echo "Building R MCP Docker image (this may take 30+ minutes)..."
+  # Set up R MCP Docker
+  echo "Setting up R MCP Docker image..."
   cd "$MCP_ROOT/r-mcp"
   #docker build --platform linux/amd64 -t my-r-mcp .
   docker pull namin/my-r-mcp
   docker tag namin/my-r-mcp my-r-mcp
-  echo "✅ R MCP Docker image built successfully."
+  echo "✅ R MCP Docker image pulled successfully."
+
+  # Build Racket MCP Docker
+  echo "Building Racket MCP Docker image..."
+  cd "$MCP_ROOT/racket-mcp"
+  docker build --platform linux/amd64 -t my-racket-mcp .
+  # docker pull namin/my-racket-mcp
+  # docker tag namin/my-racket-mcp my-racket-mcp
+  echo "✅ Racket MCP Docker image built successfully."
 }
 
 # Main execution
@@ -97,7 +105,7 @@ echo "====================================="
 echo "All MCP servers and Docker images built successfully!"
 echo "====================================="
 echo "Docker images:"
-docker images | grep -E 'my-python-mcp|my-r-mcp'
+docker images | grep -E 'my-python-mcp|my-r-mcp|my-racket-mcp'
 echo
 echo "You can now run the MCP servers."
 echo "=====================================" 
