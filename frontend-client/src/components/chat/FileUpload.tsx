@@ -10,14 +10,7 @@ interface FileUploadProps {
   className?: string;
 }
 
-const DEFAULT_ACCEPTED_TYPES = [
-  '.csv',
-  '.json',
-  '.xlsx',
-  '.xls', 
-  '.txt',
-  '.parquet'
-];
+const DEFAULT_ACCEPTED_TYPES: string[] = []; // Accept all file types
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   storageService,
@@ -60,6 +53,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, []);
 
   const isValidFileType = (file: File): boolean => {
+    // Accept all file types if acceptedTypes is empty, otherwise check the extension
+    if (acceptedTypes.length === 0) {
+      return true;
+    }
     const extension = '.' + file.name.split('.').pop()?.toLowerCase();
     return acceptedTypes.includes(extension);
   };
@@ -92,11 +89,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
-    // Validate file types
-    const invalidFiles = files.filter(file => !isValidFileType(file));
-    if (invalidFiles.length > 0) {
-      alert(`Invalid file types: ${invalidFiles.map(f => f.name).join(', ')}\nAccepted types: ${acceptedTypes.join(', ')}`);
-      return;
+    // Validate file types (only if specific types are required)
+    if (acceptedTypes.length > 0) {
+      const invalidFiles = files.filter(file => !isValidFileType(file));
+      if (invalidFiles.length > 0) {
+        alert(`Invalid file types: ${invalidFiles.map(f => f.name).join(', ')}\nAccepted types: ${acceptedTypes.join(', ')}`);
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -168,7 +167,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         ref={fileInputRef}
         type="file"
         multiple
-        accept={acceptedTypes.join(',')}
+        accept={acceptedTypes.length > 0 ? acceptedTypes.join(',') : '*/*'}
         onChange={handleFileInput}
         className="hidden"
       />
