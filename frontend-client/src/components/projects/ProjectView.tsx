@@ -73,17 +73,7 @@ export function ProjectView({ projectId, onBack, onClose }: ProjectViewProps) {
         if (files && files.length > 0) {
             const file = files[0];
             
-            // Define allowed MIME types
-            const allowedTypes = [
-                'text/plain',
-                'text/markdown'
-            ];
-            
-            // Check if file type is allowed
-            if (!allowedTypes.includes(file.type)) {
-                alert('Only text and markdown files are supported.');
-                return;
-            }
+            // All file types are now supported - no restrictions
 
             try {
                 const arrayBuffer = await file.arrayBuffer();

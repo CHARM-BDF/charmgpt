@@ -32,20 +32,9 @@ const storage = multer.diskStorage({
   }
 });
 
-// Add file filter to reject PDFs and Word documents
+// Accept all file types - no restrictions
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const disallowedTypes = [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ];
-  
-  if (disallowedTypes.includes(file.mimetype)) {
-    cb(null, false); // Reject the file
-    return;
-  }
-  
-  cb(null, true); // Accept the file
+  cb(null, true); // Accept all files
 };
 
 const upload = multer({ 
