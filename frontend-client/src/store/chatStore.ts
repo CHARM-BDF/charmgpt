@@ -13,7 +13,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Message, MessageWithThinking, ConversationState, StatusUpdate } from '../types/chat';
+import { Message, MessageWithThinking, ConversationState, StatusUpdate, FileAttachment } from '../types/chat';
 import { Artifact, ArtifactType } from '../../../shared/artifacts';
 import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';
@@ -56,7 +56,7 @@ export interface ChatState extends ConversationState {
   selectArtifact: (id: string | null) => void;
   toggleArtifactWindow: () => void;
   setShowList: (show: boolean) => void;
-  processMessage: (content: string) => Promise<void>;
+  processMessage: (content: string, attachments?: FileAttachment[]) => Promise<void>;
   clearMessages: () => void;
   clearChat: () => void;
   startStreaming: (messageId: string) => void;
@@ -432,7 +432,7 @@ export const useChatStore = create<ChatState>()(
          * DO NOT REMOVE the server communication logic unless explicitly replacing it
          * with an alternative communication method
          */
-        processMessage: async (content: string) => {
+        processMessage: async (content: string, attachments?: FileAttachment[]) => {
           const { conversations, currentConversationId, activeCompletionId } = get();
           console.log('[DEBUG] Starting processMessage');
           
@@ -578,7 +578,8 @@ export const useChatStore = create<ChatState>()(
             history: messageHistory,
             blockedServers: sanitizedBlockedServers,
             pinnedArtifacts: pinnedArtifacts,
-            modelProvider: selectedModel
+            modelProvider: selectedModel,
+            attachments: attachments || undefined
           });
 
           // console.log('Full request body stringified:', requestBody);

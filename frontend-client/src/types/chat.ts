@@ -1,10 +1,19 @@
 import { Artifact, ArtifactType } from '@charm-mcp/shared';
 
+export interface FileAttachment {
+  id: string;          // File UUID from storage
+  name: string;        // Display name
+  size: number;        // File size in bytes
+  type: string;        // MIME type
+  varName?: string;    // Variable name for code execution
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  attachments?: FileAttachment[];  // File attachments
 }
 
 export interface StatusUpdate {

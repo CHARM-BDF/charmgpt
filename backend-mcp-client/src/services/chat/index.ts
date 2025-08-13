@@ -22,6 +22,14 @@ import path from 'path';
 // Importing types
 type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
 
+interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  varName?: string;
+}
+
 // Basic chat message type with union of valid roles
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -142,6 +150,7 @@ export class ChatService {
         title: string;
         content: string;
       }>;
+      attachments?: FileAttachment[];
       temperature?: number;
       maxTokens?: number;
     },
@@ -181,7 +190,8 @@ export class ChatService {
       {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
-        pinnedArtifacts: options.pinnedArtifacts
+        pinnedArtifacts: options.pinnedArtifacts,
+        attachments: options.attachments
       },
       statusHandler,
       toolExecutions // Pass toolExecutions array to track usage
@@ -746,6 +756,7 @@ export class ChatService {
         title: string;
         content: string;
       }>;
+      attachments?: FileAttachment[];
     } = {},
     statusHandler?: (status: string) => void,
     toolExecutions: Array<{name: string; description: string}> = []
@@ -754,6 +765,15 @@ export class ChatService {
     const workingMessages: any[] = [
       ...this.formatMessageHistory(history, modelProvider)
     ];
+
+    // Add file context if attachments are present
+    if (options.attachments && options.attachments.length > 0) {
+      const fileList = options.attachments.map(att => att.name).join(', ');
+      workingMessages.push({
+        role: 'system',
+        content: `Note: The following uploaded files are available in the current directory: ${fileList}`
+      });
+    }
 
     // Add pinned artifacts to the conversation context BEFORE the user message
     if (options.pinnedArtifacts && options.pinnedArtifacts.length > 0) {
@@ -1299,11 +1319,34 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
           description: `Used ${toolName} on ${serverName} server with input: ${JSON.stringify(toolCall.input)}`
         });
         
+        // Add file attachments to MCPs that support dataFiles (schema-based detection)
+        let enhancedInput = toolCall.input;
+        
+        // Find the tool schema to check if it supports dataFiles
+        const toolSchema = mcpTools.find(tool => 
+          this.mcpService?.getOriginalToolName(tool.name) === originalToolName
+        );
+        const supportsDataFiles = toolSchema?.input_schema?.properties?.dataFiles;
+        
+        if (supportsDataFiles && options.attachments && options.attachments.length > 0) {
+          // Convert attachments to dataFiles format
+          const dataFiles: Record<string, string> = {};
+          for (const attachment of options.attachments) {
+            const varName = attachment.varName || attachment.name.split('.')[0];
+            dataFiles[varName] = attachment.name; // Use filename so user can reference it naturally
+          }
+          
+          enhancedInput = {
+            ...toolCall.input,
+            dataFiles
+          };
+        }
+        
         // Execute the tool call
         const toolResult = await this.mcpService.callTool(
           serverName,
           toolName,
-          toolCall.input
+          enhancedInput
         );
         
         // Log tool execution result

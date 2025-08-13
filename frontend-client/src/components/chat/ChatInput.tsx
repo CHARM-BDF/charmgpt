@@ -5,6 +5,9 @@ import { APIStorageService } from '../../services/fileManagement/APIStorageServi
 import { useFileReference } from '../../hooks/useFileReference';
 import { FileReferencePopup } from '../fileReference/FileReferencePopup';
 import { FileEntry } from '@charm-mcp/shared';
+import { FileUpload } from './FileUpload';
+import { FileAttachments } from './FileAttachments';
+import { FileAttachment } from '../../types/chat';
 
 interface ChatInputProps {
   storageService: APIStorageService;
@@ -36,6 +39,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   // Local state for input to debounce updates to the store
   const [localInput, setLocalInput] = useState(chatInput);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // File attachments state
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
   // Update local input when chatInput changes from elsewhere
   useEffect(() => {
@@ -69,6 +75,27 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     console.log('2. About to call handleFileRefInputChange');
     handleFileRefInputChange(value);
     updateChatInput(value, false);
+  };
+
+  // File upload handlers
+  const handleFilesUploaded = (newFiles: FileAttachment[]) => {
+    console.log('🔍 UPLOAD DEBUG: handleFilesUploaded called with:', newFiles);
+    setAttachments(prev => {
+      const updated = [...prev, ...newFiles];
+      console.log('🔍 UPLOAD DEBUG: Updated attachments state:', updated);
+      return updated;
+    });
+    console.log('Files uploaded:', newFiles);
+  };
+
+  const handleRemoveAttachment = (fileId: string) => {
+    setAttachments(prev => prev.filter(f => f.id !== fileId));
+  };
+
+  const handleEditVarName = (fileId: string, newVarName: string) => {
+    setAttachments(prev => prev.map(f => 
+      f.id === fileId ? { ...f, varName: newVarName } : f
+    ));
   };
 
   // Auto-resize textarea as content grows
@@ -108,14 +135,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         // Add user message to chat store first
         addMessage({
           role: 'user',
-          content: localInput
+          content: localInput,
+          attachments: attachments.length > 0 ? [...attachments] : undefined
         });
 
         // Transition to chat interface immediately
         onBack?.();
 
         try {
-          await processMessage(localInput);
+          console.log('🔍 CHATINPUT DEBUG: About to call processMessage with attachments:', attachments);
+          console.log('🔍 CHATINPUT DEBUG: Attachments length:', attachments.length);
+          await processMessage(localInput, attachments.length > 0 ? attachments : undefined);
           console.log('ChatInput: Message processed successfully');
         } catch (error) {
           console.error('ChatInput: Error processing message:', error);
@@ -133,20 +163,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
       // Add message to current conversation (either existing or newly created)
       addMessage({
         role: 'user',
-        content: localInput
+        content: localInput,
+        attachments: attachments.length > 0 ? [...attachments] : undefined
       });
 
       try {
-        await processMessage(localInput);
+        console.log('🔍 CHATINPUT DEBUG: About to call processMessage with attachments:', attachments);
+        console.log('🔍 CHATINPUT DEBUG: Attachments length:', attachments.length);
+        await processMessage(localInput, attachments.length > 0 ? attachments : undefined);
         console.log('ChatInput: Message processed successfully');
       } catch (error) {
         console.error('ChatInput: Error processing message:', error);
       }
     }
 
-    // Clear the input after sending
-    // Set back to default text after sending
+    // Clear the input and attachments after sending
     handleInputChange('');
+    setAttachments([]);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -167,7 +200,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
   return (
     <div className="sticky bottom-0 bg-gray-200 dark:bg-gray-900 shadow-lg">
-      <div className="w-full max-w-4xl mx-auto px-4 flex relative">
+      <div className="w-full max-w-4xl mx-auto px-4 relative">
+        
+        {/* File attachments display */}
+        {attachments.length > 0 && (
+          <div className="py-3 border-b border-gray-300 dark:border-gray-600">
+            <FileAttachments
+              attachments={attachments}
+              onRemove={handleRemoveAttachment}
+              onEditVarName={handleEditVarName}
+              editable={true}
+              showVarNames={true}
+            />
+          </div>
+        )}
+        
+        <div className="flex relative">
         {/* Popup moved outside form but inside the container */}
         {isActive && position && selectedProjectId ? (
           <div
@@ -195,7 +243,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="relative w-full flex">
+        <form onSubmit={handleSubmit} className="relative w-full flex items-end">
+          <div className="flex-shrink-0 pb-3">
+            <FileUpload
+              storageService={storageService}
+              onFilesUploaded={handleFilesUploaded}
+              className="relative"
+            />
+          </div>
           <textarea
             ref={textareaRef}
             value={localInput}
@@ -216,6 +271,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
             placeholder="Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
           />
         </form>
+        </div>
       </div>
     </div>
   );

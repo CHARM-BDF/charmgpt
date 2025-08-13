@@ -13,6 +13,14 @@ import crypto from 'crypto';
 const router = express.Router();
 
 // Chat with artifacts endpoint
+interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  varName?: string;
+}
+
 router.post('/', async (req: Request<{}, {}, { 
   message: string; 
   history: Array<{ role: 'user' | 'assistant' | 'system'; content: string | any[] }>;
@@ -24,6 +32,7 @@ router.post('/', async (req: Request<{}, {}, {
     title: string;
     content: string;
   }>;
+  attachments?: FileAttachment[];
   temperature?: number;
   maxTokens?: number;
 }>, res: Response) => {
@@ -90,6 +99,7 @@ router.post('/', async (req: Request<{}, {}, {
       modelProvider = 'anthropic',
       blockedServers = [],
       pinnedArtifacts,
+      attachments,
       temperature = 0.2,
       maxTokens = 4000
     } = req.body;
@@ -218,6 +228,7 @@ router.post('/', async (req: Request<{}, {}, {
         modelProvider,
         blockedServers,
         pinnedArtifacts,
+        attachments,
         temperature,
         maxTokens
       },

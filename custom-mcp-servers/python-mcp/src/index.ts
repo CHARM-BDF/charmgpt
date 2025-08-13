@@ -54,7 +54,7 @@ const PYTHON_EXECUTION_TOOL = {
       },
       dataFiles: {
         type: "object",
-        description: "Map of variable names to file paths"
+        description: "Map of variable names to file IDs or file paths. File IDs are UUIDs from uploaded files. Files will be automatically loaded as Python variables with the specified names. Supports CSV (pandas DataFrame), JSON (dict), Excel (pandas DataFrame), text files (string), and Parquet (pandas DataFrame)."
       },
       timeout: {
         type: "number",
@@ -125,7 +125,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     logger.info("Validating Python code...");
-    validatePythonCode(code);
+    // Allow file operations if we have dataFiles
+    const hasDataFiles = dataFiles && Object.keys(dataFiles).length > 0;
+    validatePythonCode(code, hasDataFiles);
     logger.info("Code validation successful");
 
     logger.info("Executing Python code...");

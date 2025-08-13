@@ -6,6 +6,7 @@ import { AssistantMarkdown } from './AssistantMarkdown';
 import { ClipboardIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
 import { BookOpen, FileText, GraduationCap, Library, Network, ChevronDown, ChevronRight } from 'lucide-react';
 import BrainWaveCharm from '../animations/BrainWaveCharm';
+import { FileAttachments } from './FileAttachments';
 
 // Remove or set to a past date to enable copy buttons for all messages
 // const COPY_FEATURE_START_DATE = new Date('2000-01-01');
@@ -376,7 +377,19 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                     </div>
                   </>
                 ) : (
-                  <div className="whitespace-pre-wrap break-words text-gray-900 dark:text-gray-100">{message.content}</div>
+                  <div>
+                    {/* Display file attachments for user messages */}
+                    {message.attachments && message.attachments.length > 0 && (
+                      <div className="mb-3">
+                        <FileAttachments
+                          attachments={message.attachments}
+                          editable={false}
+                          showVarNames={true}
+                        />
+                      </div>
+                    )}
+                    <div className="whitespace-pre-wrap break-words text-gray-900 dark:text-gray-100">{message.content}</div>
+                  </div>
                 )}
               </div>
             </div>
