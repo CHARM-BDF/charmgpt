@@ -6,6 +6,11 @@ import { appendFileSync, mkdirSync } from 'fs';
 import { createWriteStream } from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
+import { randomUUID } from 'crypto';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const execAsync = promisify(exec);
 
@@ -13,6 +18,10 @@ const execAsync = promisify(exec);
 const DOCKER_IMAGE = 'my-python-mcp';
 const CONTAINER_TEMP_DIR = '/app/temp';
 const CONTAINER_LOGS_DIR = '/app/logs';
+const CONTAINER_UPLOADS_DIR = '/app/uploads';
+
+// Get uploads directory path (relative to project root)
+const UPLOADS_DIR = path.join(__dirname, '../../../../backend-mcp-client/uploads');
 
 // Ensure log directory exists
 try {
@@ -119,6 +128,207 @@ interface ExecuteResult {
       sourceCode: string;  // Source code that generated the output
     };
   };
+}
+
+// File processing functions
+interface ProcessedFile {
+  varName: string;
+  filePath: string;
+  fileType: string;
+  originalName: string;
+}
+
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+async function resolveFileId(fileReference: string): Promise<{ filePath: string; metadata: any } | null> {
+  try {
+    // First, try as a UUID (file ID)
+    if (isValidUUID(fileReference)) {
+      const filePath = path.join(UPLOADS_DIR, fileReference);
+      const metadataPath = path.join(UPLOADS_DIR, 'metadata', `${fileReference}.json`);
+      
+      // Check if file exists
+      await fs.access(filePath);
+      
+      // Try to read metadata
+      let metadata = {};
+      try {
+        const metadataContent = await fs.readFile(metadataPath, 'utf-8');
+        metadata = JSON.parse(metadataContent);
+      } catch (error) {
+        // Metadata not required, continue without it
+      }
+      
+      return { filePath, metadata };
+    }
+    
+    // If not a UUID, try to find by filename in the uploads directory
+    const metadataDir = path.join(UPLOADS_DIR, 'metadata');
+    const metadataFiles = await fs.readdir(metadataDir);
+    
+    for (const metadataFile of metadataFiles) {
+      if (metadataFile.endsWith('.json')) {
+        try {
+          const metadataPath = path.join(metadataDir, metadataFile);
+          const metadataContent = await fs.readFile(metadataPath, 'utf-8');
+          const metadata = JSON.parse(metadataContent);
+          
+          // Check if this file matches the requested filename
+          if (metadata.description === fileReference) {
+            const fileId = metadataFile.replace('.json', '');
+            const filePath = path.join(UPLOADS_DIR, fileId);
+            
+            // Verify the file exists
+            await fs.access(filePath);
+            
+            return { filePath, metadata };
+          }
+        } catch (error) {
+          // Skip this metadata file if it's invalid
+          continue;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function detectFileType(filePath: string, metadata: any): string {
+  const ext = path.extname(filePath).toLowerCase();
+  
+  // Use metadata if available
+  if (metadata.schema?.format) {
+    return metadata.schema.format;
+  }
+  
+  // Fall back to extension detection
+  switch (ext) {
+    case '.csv': return 'csv';
+    case '.json': return 'json';
+    case '.xlsx': case '.xls': return 'excel';
+    case '.txt': return 'text';
+    case '.parquet': return 'parquet';
+    default: return 'unknown';
+  }
+}
+
+async function processDataFiles(dataFiles: Record<string, string>, logger: Logger): Promise<ProcessedFile[]> {
+  const processedFiles: ProcessedFile[] = [];
+  
+  for (const [varName, fileReference] of Object.entries(dataFiles)) {
+    logger.log(`Processing dataFile: ${varName} -> ${fileReference}`);
+    
+    let sourceFilePath: string;
+    let metadata: any = {};
+    let originalName: string;
+    
+    // Try to resolve the file reference (either UUID or filename)
+    logger.log(`Resolving file reference: ${fileReference}`);
+    const resolved = await resolveFileId(fileReference);
+    
+    if (resolved) {
+      // Successfully resolved (either by UUID or filename)
+      sourceFilePath = resolved.filePath;
+      metadata = resolved.metadata;
+      originalName = metadata.description || fileReference;
+    } else {
+      // Fallback: treat as direct file path (backward compatibility)
+      logger.log(`File reference not found in uploads, treating as direct path: ${fileReference}`);
+      sourceFilePath = fileReference;
+      originalName = path.basename(fileReference);
+    }
+    
+    // Copy file to temp directory with original name
+    const tempFilePath = path.join(TEMP_DIR, originalName);
+    
+    logger.log(`Copying file from ${sourceFilePath} to ${tempFilePath}`);
+    await fs.copyFile(sourceFilePath, tempFilePath);
+    
+    // Set proper permissions for Docker
+    await fs.chmod(tempFilePath, 0o644);
+    
+    const fileType = detectFileType(sourceFilePath, metadata);
+    
+    processedFiles.push({
+      varName,
+      filePath: tempFilePath,
+      fileType,
+      originalName
+    });
+    
+    logger.log(`Processed file: ${varName} (${fileType}) -> ${tempFilePath}`);
+  }
+  
+  return processedFiles;
+}
+
+function generateFileLoadingCode(processedFiles: ProcessedFile[]): string {
+  if (processedFiles.length === 0) {
+    return '';
+  }
+  
+  let loadingCode = '# Auto-generated file loading code\n';
+  loadingCode += 'import os\n';
+  
+  const requiredImports = new Set<string>();
+  
+  for (const file of processedFiles) {
+    const containerPath = path.posix.join(CONTAINER_TEMP_DIR, path.basename(file.filePath));
+    
+    switch (file.fileType) {
+      case 'csv':
+        requiredImports.add('import pandas as pd');
+        loadingCode += `${file.varName} = pd.read_csv('${containerPath}')\n`;
+        loadingCode += `print(f"Loaded CSV file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
+        break;
+        
+      case 'json':
+        requiredImports.add('import json');
+        loadingCode += `with open('${containerPath}', 'r') as f:\n`;
+        loadingCode += `    ${file.varName} = json.load(f)\n`;
+        loadingCode += `print(f"Loaded JSON file '${file.originalName}' as '${file.varName}'")\n`;
+        break;
+        
+      case 'excel':
+        requiredImports.add('import pandas as pd');
+        loadingCode += `${file.varName} = pd.read_excel('${containerPath}')\n`;
+        loadingCode += `print(f"Loaded Excel file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
+        break;
+        
+      case 'text':
+        loadingCode += `with open('${containerPath}', 'r') as f:\n`;
+        loadingCode += `    ${file.varName} = f.read()\n`;
+        loadingCode += `print(f"Loaded text file '${file.originalName}' as '${file.varName}': {len(${file.varName})} characters")\n`;
+        break;
+        
+      case 'parquet':
+        requiredImports.add('import pandas as pd');
+        loadingCode += `${file.varName} = pd.read_parquet('${containerPath}')\n`;
+        loadingCode += `print(f"Loaded Parquet file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
+        break;
+        
+      default:
+        // For unknown file types, just make the path available
+        loadingCode += `${file.varName}_path = '${containerPath}'\n`;
+        loadingCode += `print(f"File '${file.originalName}' available at path: ${file.varName}_path")\n`;
+    }
+  }
+  
+  // Add required imports at the beginning
+  const imports = Array.from(requiredImports).join('\n');
+  if (imports) {
+    loadingCode = imports + '\n' + loadingCode;
+  }
+  
+  loadingCode += '# End of auto-generated file loading code\n\n';
+  
+  return loadingCode;
 }
 
 // Add helper function for code transformation
@@ -317,25 +527,35 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
 }
 
 export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
-  const { code: originalCode, timeout = 30 } = args;
+  const { code: originalCode, dataFiles, timeout = 30 } = args;
   
   // Create logger first
   const logger = createRunLogger();
   let scriptPath = '';
+  let processedFiles: ProcessedFile[] = [];
   
   try {
+    // Process dataFiles first
+    if (dataFiles && Object.keys(dataFiles).length > 0) {
+      logger.log('Processing dataFiles...');
+      processedFiles = await processDataFiles(dataFiles, logger);
+      logger.log(`Processed ${processedFiles.length} files`);
+    }
+    
     // Validate Python code before transformation
-    validatePythonCode(originalCode);
+    // Allow file operations if we have processed files
+    const allowFileOperations = processedFiles.length > 0;
+    validatePythonCode(originalCode, allowFileOperations);
     logger.log('Python code validation passed');
     
     // Transform code to handle file operations
     const code = transformPythonCode(originalCode, logger);
     
-    // Log if code was transformed
+    // Log if code was transformed or files were added
     if (code !== originalCode) {
-      logger.log('Code was transformed to use OUTPUT_DIR for file operations');
+      logger.log('Code was enhanced with file loading and/or transformations');
       logger.log(`Original code: ${originalCode}`);
-      logger.log(`Transformed code: ${code}`);
+      logger.log(`Final code: ${code}`);
     }
 
     // Log the Python code being executed
@@ -422,6 +642,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
 
     // Clean up after execution
     await cleanupPythonEnvironment();
+    
+    // Clean up script file
     try {
       logger.log(`Cleaning up script file: ${scriptPath}`);
       await fs.unlink(scriptPath);
@@ -430,6 +652,19 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       if (error instanceof Error && !error.message.includes('ENOENT')) {
         logger.log(`Error cleaning up temp file: ${error}`);
         console.error(`PYTHON SERVER LOGS: Error cleaning up temp file: ${error}`);
+      }
+    }
+    
+    // Clean up processed data files
+    for (const file of processedFiles) {
+      try {
+        logger.log(`Cleaning up processed file: ${file.filePath}`);
+        await fs.unlink(file.filePath);
+      } catch (error) {
+        // Ignore file not found errors during cleanup
+        if (error instanceof Error && !error.message.includes('ENOENT')) {
+          logger.log(`Error cleaning up processed file: ${error}`);
+        }
       }
     }
 
@@ -462,6 +697,10 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       await cleanupPythonEnvironment();
       if (scriptPath) {
         await fs.unlink(scriptPath).catch(() => {}); // Ignore cleanup errors
+      }
+      // Clean up processed files on error
+      for (const file of processedFiles) {
+        await fs.unlink(file.filePath).catch(() => {}); // Ignore cleanup errors
       }
     } catch (cleanupError) {
       logger.log(`Cleanup error: ${cleanupError}`);
