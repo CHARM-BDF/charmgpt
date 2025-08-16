@@ -157,11 +157,14 @@ Alternatively, you can run them separately:
 
 ```bash
 # Start just the frontend
-npm run dev
+npm run dev --workspace=frontend-client
 
 # Start just the backend server
-npm run server:dev
+npm run server:dev --workspace=backend-mcp-client
 ```
+
+### Running System Tests
+Read [System Tests Readme](./system-tests/README.md) for instructions on how to run cypress system tests.
 
 ### Access the Application
 
@@ -172,9 +175,10 @@ Once started, the application will be available at:
 
 ## Environment Variables
 
-Create a `.env` file in the root directory with the following variables (as needed):
+Create a `.env` file in the MCP Client backend in `./backend-mcp-client` root directory with the following variables
+(as needed):
 
-```
+```dotenv
 # Server Configuration
 PORT=3000
 NODE_ENV=development

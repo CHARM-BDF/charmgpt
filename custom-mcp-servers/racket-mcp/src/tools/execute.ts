@@ -306,23 +306,140 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
   }
 }
 
+interface ProcessedFile {
+  originalName: string;
+  varName: string;
+  path: string;
+}
+
+// File resolution helper functions (similar to Python MCP)
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+async function resolveFileId(fileReference: string, uploadsDir: string): Promise<{ filePath: string; metadata: any } | null> {
+  try {
+    // First, try as a UUID (file ID)
+    if (isValidUUID(fileReference)) {
+      const filePath = path.join(uploadsDir, fileReference);
+      const metadataPath = path.join(uploadsDir, 'metadata', `${fileReference}.json`);
+      
+      // Check if file exists
+      await fs.access(filePath);
+      
+      // Try to read metadata
+      let metadata = {};
+      try {
+        const metadataContent = await fs.readFile(metadataPath, 'utf-8');
+        metadata = JSON.parse(metadataContent);
+      } catch (error) {
+        // Metadata not required, continue without it
+      }
+      
+      return { filePath, metadata };
+    }
+    
+    // If not a UUID, try to find by filename in the uploads directory
+    const metadataDir = path.join(uploadsDir, 'metadata');
+    const metadataFiles = await fs.readdir(metadataDir);
+    
+    for (const metadataFile of metadataFiles) {
+      if (metadataFile.endsWith('.json')) {
+        try {
+          const metadataPath = path.join(metadataDir, metadataFile);
+          const metadataContent = await fs.readFile(metadataPath, 'utf-8');
+          const metadata = JSON.parse(metadataContent);
+          
+          // Check if this file matches the requested filename
+          if (metadata.description === fileReference) {
+            const fileId = metadataFile.replace('.json', '');
+            const filePath = path.join(uploadsDir, fileId);
+            
+            // Verify the file exists
+            await fs.access(filePath);
+            
+            return { filePath, metadata };
+          }
+        } catch (error) {
+          // Skip this metadata file if it's invalid
+          continue;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
 export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
-  const { code: originalCode, timeout = 30 } = args;
+  const { code: originalCode, dataFiles, timeout = 30 } = args;
   
   // Create logger first
   const logger = createRunLogger();
   let scriptPath = '';
+  let processedFiles: ProcessedFile[] = [];
   
   try {
+    // Process dataFiles first
+    if (dataFiles && Object.keys(dataFiles).length > 0) {
+      logger.log(`Processing ${Object.keys(dataFiles).length} data files`);
+      
+      const uploadsDir = path.resolve('/Users/namin/code/bdf/charm-mcp-pins/backend-mcp-client/uploads');
+      logger.log(`Looking for files in uploads directory: ${uploadsDir}`);
+      
+      for (const [varName, fileReference] of Object.entries(dataFiles)) {
+        logger.log(`Processing dataFile: ${varName} -> ${fileReference}`);
+        
+        // Try to resolve the file reference (either UUID or filename)
+        logger.log(`Resolving file reference: ${fileReference}`);
+        const resolved = await resolveFileId(fileReference, uploadsDir);
+        
+        if (resolved) {
+          // Successfully resolved
+          const originalName = resolved.metadata.description || fileReference;
+          const targetPath = path.join(TEMP_DIR, originalName);
+          
+          logger.log(`Copying file from ${resolved.filePath} to ${targetPath}`);
+          await fs.copyFile(resolved.filePath, targetPath);
+          
+          // Set proper permissions for Docker
+          await fs.chmod(targetPath, 0o644);
+          
+          processedFiles.push({
+            originalName,
+            varName,
+            path: targetPath
+          });
+          
+          logger.log(`Successfully processed file: ${varName} -> ${targetPath}`);
+        } else {
+          logger.log(`Warning: Could not find uploaded file for ${fileReference}`);
+        }
+      }
+      
+      logger.log(`Successfully processed ${processedFiles.length} files`);
+    }
     // Validate Racket code before transformation
     validateRacketCode(originalCode);
     logger.log('Racket code validation passed');
     
+    // Add file context if files were processed
+    let codeWithContext = originalCode;
+    if (processedFiles.length > 0) {
+      const fileList = processedFiles.map(f => f.originalName).join(', ');
+      const fileContext = `; The following uploaded files are available in the current directory: ${fileList}\n; You can read them directly using their original names (e.g., (file->string "${processedFiles[0].originalName}"))\n\n`;
+      codeWithContext = fileContext + originalCode;
+      logger.log(`Added file context for ${processedFiles.length} files: ${fileList}`);
+    }
+    
     // Transform code to handle file operations
-    const code = transformRacketCode(originalCode, logger);
+    const code = transformRacketCode(codeWithContext, logger);
     
     // Log if code was transformed
-    if (code !== originalCode) {
+    if (code !== codeWithContext) {
       logger.log('Code was transformed to use OUTPUT_DIR for file operations');
       logger.log(`Original code: ${originalCode}`);
       logger.log(`Transformed code: ${code}`);
@@ -412,6 +529,19 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
 
     // Clean up after execution
     await cleanupRacketEnvironment();
+    
+    // Clean up copied data files
+    for (const file of processedFiles) {
+      try {
+        logger.log(`Cleaning up data file: ${file.path}`);
+        await fs.unlink(file.path);
+      } catch (error) {
+        if (error instanceof Error && !error.message.includes('ENOENT')) {
+          logger.log(`Error cleaning up data file: ${error}`);
+        }
+      }
+    }
+    
     try {
       logger.log(`Cleaning up script file: ${scriptPath}`);
       await fs.unlink(scriptPath);
@@ -450,6 +580,12 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     logger.log(`Execution error: ${error}`);
     try {
       await cleanupRacketEnvironment();
+      
+      // Clean up copied data files
+      for (const file of processedFiles) {
+        await fs.unlink(file.path).catch(() => {}); // Ignore cleanup errors
+      }
+      
       if (scriptPath) {
         await fs.unlink(scriptPath).catch(() => {}); // Ignore cleanup errors
       }

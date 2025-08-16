@@ -54,12 +54,13 @@ const ALLOWED_PACKAGES = new Set([
   'gc',  // For garbage collection
   'threading',  // For thread management
   'time',  // For time operations
-  'os'  // Limited usage for process management
+  'os',  // Limited usage for process management
+  'sys'  // Limited usage for system information
 ]);
 
 // List of dangerous patterns to check for
 const DANGEROUS_PATTERNS = [
-  'import sys',
+  // Note: 'import sys' removed - now handled with granular validation below
   'import subprocess',
   '__import__',
   'eval(',
@@ -77,10 +78,44 @@ const DANGEROUS_PATTERNS = [
   'os.exec'
 ];
 
-export function validatePythonCode(code: string): void {
+/**
+ * Check if a file operation is safe (only reads from container temp directory)
+ */
+function isSafeFileOperation(code: string, pattern: string): boolean {
+  if (pattern === 'open(' || pattern === 'file(') {
+    // Find all file operation calls
+    const fileOpRegex = pattern === 'open(' ? /open\([^)]+\)/g : /file\([^)]+\)/g;
+    const fileOpCalls = code.match(fileOpRegex) || [];
+    
+    for (const fileOpCall of fileOpCalls) {
+      // Check if the file operation is reading from our container temp directory
+      const functionName = pattern.replace('(', '');
+      const containerTempPattern = new RegExp(`${functionName}\\(['"][^'"]*\\/app\\/temp\\/[^'"]*['"][^)]*\\)`);
+      const safeReadPattern = new RegExp(`with\\s+${functionName}\\(['"][^'"]*\\/app\\/temp\\/[^'"]*['"],\\s*['"]r['"][^)]*\\)`);
+      
+      // Allow if it's reading from container temp directory
+      if (containerTempPattern.test(fileOpCall) || safeReadPattern.test(code)) {
+        continue;
+      }
+      
+      // Block if it's not a safe file operation
+      return false;
+    }
+    
+    return true; // All file operations are safe
+  }
+  
+  return false; // Other patterns are not safe
+}
+
+export function validatePythonCode(code: string, allowFileOperations: boolean = false): void {
   // Check for dangerous imports and operations
   for (const pattern of DANGEROUS_PATTERNS) {
     if (code.includes(pattern)) {
+      // Allow safe file operations when processing uploaded files
+      if ((pattern === 'open(' || pattern === 'file(') && (allowFileOperations || isSafeFileOperation(code, pattern))) {
+        continue; // Skip this check for safe file operations
+      }
       throw new Error(`Forbidden operation detected: ${pattern}`);
     }
   }
@@ -96,17 +131,87 @@ export function validatePythonCode(code: string): void {
 
   // Additional check for os module usage
   if (code.includes('import os')) {
-    const osOperations = code.match(/os\.\w+/g) || [];
+    // Match both os.operation and os.path.operation patterns
+    const osOperations = [
+      ...(code.match(/os\.\w+/g) || []),
+      ...(code.match(/os\.path\.\w+/g) || [])
+    ];
     const allowedOsOperations = new Set([
+      // Process management
       'os.getpid',
       'os._exit',
+      
+      // Environment and directory operations (safe)
       'os.environ',
+      'os.getcwd',
+      'os.chdir',
+      'os.listdir',
+      'os.mkdir',
+      'os.makedirs',
+      'os.rmdir',
+      'os.remove',
+      'os.rename',
+      'os.stat',
       'os.path',
-      'os.path.join'
+      'os.path.join',
+      'os.path.exists',
+      'os.path.isfile',
+      'os.path.isdir',
+      'os.path.basename',
+      'os.path.dirname',
+      'os.path.abspath',
+      'os.path.relpath',
+      'os.path.splitext',
+      'os.path.getsize',
+      
+      // File permissions (safe)
+      'os.chmod',
+      'os.access',
+      
+      // System info (safe)
+      'os.name',
+      'os.uname'
     ]);
     for (const op of osOperations) {
       if (!allowedOsOperations.has(op)) {
         throw new Error(`Forbidden os operation: ${op}. Only process management operations and path operations are allowed.`);
+      }
+    }
+  }
+
+  // Additional check for sys module usage
+  if (code.includes('import sys')) {
+    const sysOperations = code.match(/sys\.\w+/g) || [];
+    const allowedSysOperations = new Set([
+      // System information (safe)
+      'sys.version',
+      'sys.version_info',
+      'sys.platform',
+      'sys.path',
+      'sys.modules',
+      
+      // Object inspection (safe)
+      'sys.getsizeof',
+      'sys.getrefcount',
+      
+      // Output streams (safe in containerized environment)
+      'sys.stdout',
+      'sys.stderr',
+      'sys.stdin',
+      
+      // Python internals (safe for inspection)
+      'sys.maxsize',
+      'sys.byteorder',
+      'sys.builtin_module_names',
+      'sys.copyright',
+      'sys.executable',
+      'sys.prefix',
+      'sys.base_prefix'
+    ]);
+    
+    for (const op of sysOperations) {
+      if (!allowedSysOperations.has(op)) {
+        throw new Error(`Forbidden sys operation: ${op}. Only safe inspection operations are allowed.`);
       }
     }
   }
