@@ -522,7 +522,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
             console.error('MEDIK: Tool request:', { toolName, toolArgs });
         }
 
-        // if (toolName === "run-query") {
+        if (toolName === "run-query") {
             const { e1, e2, e3 } = QueryRequestSchema.parse(toolArgs);
             
             if (DEBUG) {
