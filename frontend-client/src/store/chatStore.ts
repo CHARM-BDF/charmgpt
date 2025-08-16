@@ -13,7 +13,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Message, MessageWithThinking, ConversationState, StatusUpdate, FileAttachment } from '../types/chat';
+import { Message, MessageWithThinking, ConversationState, StatusUpdate } from '../types/chat';
+import { FileAttachment } from '@charm-mcp/shared';
 import { Artifact, ArtifactType } from '../../../shared/artifacts';
 import { API_ENDPOINTS, getApiUrl } from '../utils/api';
 import { useModelStore } from './modelStore';

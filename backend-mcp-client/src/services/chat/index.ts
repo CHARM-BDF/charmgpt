@@ -19,16 +19,10 @@ import { toolCallingSystemPrompt } from './systemPrompt_tools';
 import fs from 'fs';
 import path from 'path';
 
+import { FileAttachment } from '@charm-mcp/shared';
+
 // Importing types
 type ModelType = 'anthropic' | 'ollama' | 'openai' | 'gemini';
-
-interface FileAttachment {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  varName?: string;
-}
 
 // Basic chat message type with union of valid roles
 interface ChatMessage {

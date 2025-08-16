@@ -8,18 +8,10 @@
 import express, { Request, Response } from 'express';
 import { ChatService } from '../services/chat';
 import { MCPService, MCPLogMessage } from '../services/mcp';
+import { FileAttachment } from '@charm-mcp/shared';
 import crypto from 'crypto';
 
 const router = express.Router();
-
-// Chat with artifacts endpoint
-interface FileAttachment {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  varName?: string;
-}
 
 router.post('/', async (req: Request<{}, {}, { 
   message: string; 
