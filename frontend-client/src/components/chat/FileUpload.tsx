@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useRef } from 'react';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
-import { FileAttachment } from '../../types/chat';
+import { FileAttachment } from '@charm-mcp/shared';
 
 interface FileUploadProps {
   storageService: APIStorageService;

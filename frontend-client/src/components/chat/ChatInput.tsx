@@ -7,7 +7,7 @@ import { FileReferencePopup } from '../fileReference/FileReferencePopup';
 import { FileEntry } from '@charm-mcp/shared';
 import { FileUpload } from './FileUpload';
 import { FileAttachments } from './FileAttachments';
-import { FileAttachment } from '../../types/chat';
+import { FileAttachment } from '@charm-mcp/shared';
 
 interface ChatInputProps {
   storageService: APIStorageService;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileAttachment } from '../../types/chat';
+import { FileAttachment } from '@charm-mcp/shared';
 
 interface FileAttachmentsProps {
   attachments: FileAttachment[];

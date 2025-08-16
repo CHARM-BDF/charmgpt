@@ -1,6 +1,17 @@
 import { Artifact } from './artifacts';
 
 /**
+ * Lightweight file attachment for chat messages
+ */
+export interface FileAttachment {
+  id: string;          // File UUID from storage
+  name: string;        // Display name
+  size: number;        // File size in bytes
+  type: string;        // MIME type
+  varName?: string;    // Variable name for code execution
+}
+
+/**
  * Core file entry structure representing a single file in the system
  */
 export interface FileEntry {
