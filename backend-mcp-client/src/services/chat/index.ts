@@ -213,7 +213,8 @@ export class ChatService {
     const structuredPrompt = this.formatSequentialThinkingData(
       message, // Original query
       processedHistory, // All processed messages
-      toolExecutions // Tool execution history
+      toolExecutions, // Tool execution history
+      options.attachments // File attachments
     );
     
     // Build the system prompt for formatter
@@ -1994,7 +1995,8 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
   private formatSequentialThinkingData(
     originalQuery: string,
     processedMessages: any[],
-    toolExecutions: any[] = []
+    toolExecutions: any[] = [],
+    attachments?: FileAttachment[]
   ): string {
     let prompt = `<SYSTEM>
 You are an AI assistant tasked with creating comprehensive, accurate responses based on information gathered through tools. The information below has already been collected in response to the user's query. Your job is to synthesize this information into a helpful response.
@@ -2008,6 +2010,12 @@ ${originalQuery}
 The following tools were executed to gather information:
 ${toolExecutions.map((tool, index) => `${index + 1}. ${tool.name}: ${tool.description}`).join('\n')}
 </TOOL_EXECUTION_SUMMARY>
+
+<AVAILABLE_ATTACHMENTS>
+${attachments && attachments.length > 0 
+  ? `The following files are available as attachments:\n${attachments.map(att => `- ${att.name} (${att.type})`).join('\n')}`
+  : 'No file attachments are available.'}
+</AVAILABLE_ATTACHMENTS>
 
 <GATHERED_DATA>
 ${processedMessages.filter(msg => msg.role === 'user' && msg.content !== originalQuery)
@@ -2028,11 +2036,12 @@ ${processedMessages.filter(msg => msg.role === 'user' && msg.content !== origina
   }
 
   prompt += `\n\n<RESPONSE_REQUIREMENTS>
-1. Provide a concise summary of the gathered information
-2. Highlight key findings or innovations
-3. Identify common themes or connections
-4. Format your response in clear, readable sections
-5. THIS INFORMATION IS NEW TO THE USER - they have not seen this data yet
+1. If no tools were executed but attachments are available, answer based on the attachment information provided
+2. If tools were executed, provide a concise summary of the gathered information
+3. Highlight key findings or innovations
+4. Identify common themes or connections
+5. Format your response in clear, readable sections
+6. THIS INFORMATION IS NEW TO THE USER - they have not seen this data yet
 </RESPONSE_REQUIREMENTS>
 
 <STATE_INFORMATION>

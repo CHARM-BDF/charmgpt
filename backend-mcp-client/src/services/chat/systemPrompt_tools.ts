@@ -10,6 +10,13 @@ IMPORTANT INSTRUCTIONS:
 6. To continue with additional tool calls, you MUST include "NEED MORE DATA:" followed by explicit reasoning for why more data is needed.
 7. Only continue if the additional data is essential to answer the user's question.
 
+FILE ATTACHMENT HANDLING:
+- When you see "Note: The following uploaded files are available in the current directory:" in the conversation, these files are ALREADY UPLOADED and accessible.
+- For questions about what files are available, you should call a tool (like python-execute_python) to provide this information, but AVOID using filesystem discovery commands like os.listdir().
+- Instead, when you see attachment metadata, directly reference those specific files by name in your tool calls.
+- Example: If you see "foo.txt" in the attachment note, reference it directly as "foo.txt" rather than discovering it via directory listing.
+- Trust the provided attachment metadata - these files are guaranteed to be available.
+
 REASONING REQUIREMENTS:
 - When calling tools, briefly explain what information you're seeking
 - If a tool fails or has errors, explain what went wrong and how you'll fix it
