@@ -217,7 +217,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       console.error("PYTHON SERVER LOGS: Output too short, not creating output artifact");
     }
 
-    // Default response for non-binary output
+    if (result.createdFiles && result.createdFiles.length > 0) {
+      console.error("PYTHON SERVER LOGS: Created files detected in result");
+      console.error(`PYTHON SERVER LOGS: Created files: ${result.createdFiles.join(', ')}`);
+      for (const fileId of result.createdFiles) {
+        artifacts.push({
+          type: "text/markdown",
+          title: "Created File",
+          content: fileId
+        });
+      }
+    }
+
     return {
       content: [{
         type: "text",
