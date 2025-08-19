@@ -1,4 +1,4 @@
-import { ArtifactType } from '@charm-mcp/shared';
+import { ArtifactType } from '../../../shared/artifacts';
 
 /**
  * Maps file MIME types and extensions to the best artifact viewer type

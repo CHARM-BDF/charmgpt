@@ -8,18 +8,32 @@ import { exec } from 'child_process';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 
+export function getMimeType(filename: string): string {
+  const ext = path.extname(filename).toLowerCase();
+  switch (ext) {
+    case '.csv': return 'text/csv';
+    case '.json': return 'application/json';
+    case '.txt': return 'text/plain';
+    case '.png': return 'image/png';
+    case '.jpg': case '.jpeg': return 'image/jpeg';
+    case '.parquet': return 'application/octet-stream';
+    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    default: return 'application/octet-stream';
+  }
+}
+
 async function storeFileInServerStorage(
   tempFilePath: string, 
   originalFilename: string, 
   sourceCode: string,
   logger: Logger
-): Promise<string> {
+): Promise<{fileId: string, size: number}> {
   try {
     // Generate UUID for the file
     const fileId = randomUUID();
     
     // Move file to uploads directory (same as storage API)
-    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const uploadsDir = path.resolve(__dirname, '../../../../backend-mcp-client/uploads');
     if (!fsSync.existsSync(uploadsDir)) {
       fsSync.mkdirSync(uploadsDir, { recursive: true });
     }
@@ -53,25 +67,11 @@ async function storeFileInServerStorage(
     await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
     
     logger.log(`Stored file in server storage: ${originalFilename} -> ${fileId}`);
-    return fileId;
+    return {fileId, size: stats.size}; // Return both fileId and size
     
   } catch (error) {
     logger.log(`Error storing file in server storage: ${error}`);
     throw error;
-  }
-}
-
-function getMimeType(filename: string): string {
-  const ext = path.extname(filename).toLowerCase();
-  switch (ext) {
-    case '.csv': return 'text/csv';
-    case '.json': return 'application/json';
-    case '.txt': return 'text/plain';
-    case '.png': return 'image/png';
-    case '.jpg': case '.jpeg': return 'image/jpeg';
-    case '.parquet': return 'application/octet-stream';
-    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    default: return 'application/octet-stream';
   }
 }
 
@@ -200,6 +200,7 @@ interface ExecuteResult {
 interface CreatedFile {
   fileId: string;
   originalFilename: string;
+  size: number; // Add this field
 }
 
 // File processing functions
@@ -667,17 +668,21 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       
       try {
         // Store file using server-side storage system
-        const fileId = await storeFileInServerStorage(tempFilePath, filename, code, logger);
-        createdFiles.push({fileId, originalFilename: filename});
+        const result = await storeFileInServerStorage(tempFilePath, filename, code, logger);
+        createdFiles.push({
+          fileId: result.fileId, 
+          originalFilename: filename,
+          size: result.size
+        });
         
-        logger.log(`Successfully stored new file: ${filename} -> ${fileId}`);
+        logger.log(`Successfully stored new file: ${filename} -> ${result.fileId}`);
         
       } catch (error) {
         logger.log(`Error processing new file ${filename}: ${error}`);
       }
     }
 
-    logger.log(`Created ${createdFiles.length} files in server storage: ${createdFiles.join(', ')}`);
+    logger.log(`Created ${createdFiles.length} files in server storage: ${createdFiles.map(f => f.originalFilename).join(', ')}`);
 
     let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
 
