@@ -9,6 +9,7 @@ import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import { ProteinVisualizationViewer } from './ProteinVisualizationViewer';
+import { CodeEditorView } from './CodeEditorView';
 import { useChatStore } from '../../store/chatStore';
 import { Pin, PinOff } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
@@ -19,7 +20,7 @@ export const ArtifactContent: React.FC<{
   artifact: Artifact;
   storageService?: any;
 }> = ({ artifact, storageService }) => {
-  const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
+  const [viewMode, setViewMode] = useState<'rendered' | 'editor' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph,] = useState(true);
   const [savingToProject, setSavingToProject] = useState(false);
@@ -35,6 +36,12 @@ export const ArtifactContent: React.FC<{
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
   const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
+  
+  // Check if artifact supports editor view (code artifacts with editorView metadata)
+  const supportsEditorView = (
+    ['code', 'application/python', 'application/vnd.ant.python', 'application/javascript', 'application/vnd.react'].includes(artifact.type) &&
+    artifact.metadata?.editorView === true
+  ) || false;
 
   const handleSaveToProject = async () => {
     if (!storageService || !selectedProjectId || !isMarkdown) return;
@@ -149,6 +156,20 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.ant.python':
       case 'application/javascript':
       case 'application/vnd.react':
+        // If this artifact supports editor view and we're in editor mode, use CodeEditorView
+        if (supportsEditorView && viewMode === 'editor') {
+          return (
+            <CodeEditorView
+              code={artifact.content}
+              language={artifact.language || getLanguage(artifact.type, artifact.language)}
+              title={artifact.language || artifact.type.replace('application/', '')}
+              isDarkMode={false} // TODO: Get from theme context
+              readOnly={true}
+            />
+          );
+        }
+        
+        // Default syntax highlighting view
         return (
           <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -586,7 +607,7 @@ export const ArtifactContent: React.FC<{
     }
   };
 
-  const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type);
+  const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type) || supportsEditorView;
 
   return (
     <div className="h-full mx-auto w-[95%] flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
@@ -624,12 +645,51 @@ export const ArtifactContent: React.FC<{
             </button>
           )}
           {canToggleView && (
-            <button
-              onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
-              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
-            >
-              {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
-            </button>
+            <div className="flex items-center space-x-1">
+              {supportsEditorView ? (
+                // Three-way toggle for code artifacts with editor support
+                <>
+                  <button
+                    onClick={() => setViewMode('rendered')}
+                    className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md shadow-sm ${
+                      viewMode === 'rendered' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Rendered
+                  </button>
+                  <button
+                    onClick={() => setViewMode('editor')}
+                    className={`px-3 py-1 text-sm border-t border-b border-gray-300 dark:border-gray-600 shadow-sm ${
+                      viewMode === 'editor' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Editor
+                  </button>
+                  <button
+                    onClick={() => setViewMode('source')}
+                    className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-r-md shadow-sm ${
+                      viewMode === 'source' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Source
+                  </button>
+                </>
+              ) : (
+                // Two-way toggle for other artifacts
+                <button
+                  onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
+                  className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
+                >
+                  {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
