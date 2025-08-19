@@ -194,7 +194,12 @@ interface ExecuteResult {
       sourceCode: string;  // Source code that generated the output
     };
   };
-  createdFiles?: string[]; // Array of file IDs for the files created by the code
+  createdFiles?: CreatedFile[];
+}
+
+interface CreatedFile {
+  fileId: string;
+  originalFilename: string;
 }
 
 // File processing functions
@@ -655,7 +660,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     logger.log(`New files created: ${newFiles.join(', ')}`);
 
     // Process new files and store them in server-side storage
-    const createdFiles: string[] = [];
+    const createdFiles: CreatedFile[] = [];
 
     for (const filename of newFiles) {
       const tempFilePath = path.join(TEMP_DIR, filename);
@@ -663,7 +668,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       try {
         // Store file using server-side storage system
         const fileId = await storeFileInServerStorage(tempFilePath, filename, code, logger);
-        createdFiles.push(fileId);
+        createdFiles.push({fileId, originalFilename: filename});
         
         logger.log(`Successfully stored new file: ${filename} -> ${fileId}`);
         
