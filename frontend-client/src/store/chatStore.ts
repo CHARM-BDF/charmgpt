@@ -759,7 +759,8 @@ export const useChatStore = create<ChatState>()(
                         title: data.artifact.title,
                         content: data.artifact.content,
                         position: data.artifact.position || 0,
-                        language: data.artifact.language
+                        language: data.artifact.language,
+                        metadata: data.artifact.metadata
                       });
                       
                       // Associate artifact with the message
@@ -877,7 +878,8 @@ export const useChatStore = create<ChatState>()(
                   title: artifact.title,
                   content: artifact.content,
                   position: artifact.position,
-                  language: artifact.language
+                  language: artifact.language,
+                  metadata: artifact.metadata
                 });
               }) || [];
               
