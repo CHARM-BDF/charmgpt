@@ -161,6 +161,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         ],
         artifacts: [
+          // Add code artifact first
+          {
+            type: "code",
+            title: "Python Code",
+            content: result.code,
+            language: "python",
+            metadata: {
+              editorView: true,
+              executable: true,
+              sourceCode: result.code
+            }
+          },
+          // Then add the binary output artifact
           {
             type: result.binaryOutput.type,
             title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
