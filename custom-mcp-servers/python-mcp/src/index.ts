@@ -139,6 +139,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     logger.info("Code execution completed successfully");
     logger.debug("Raw execution result:", result);
 
+    const artifacts = [];
+    const content = [];
+    let metadata = null;
+
+    artifacts.push({
+      type: "code",
+      title: "Python Code",
+      content: result.code,
+      language: "python",
+      metadata: {
+        editorView: true,
+        executable: true,
+        sourceCode: result.code
+      }
+    })
+  
     // Handle binary output if present
     if (result.binaryOutput) {
       console.error("PYTHON SERVER LOGS: Binary output detected!");
@@ -152,53 +168,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       logger.info(`- Size: ${result.binaryOutput.metadata.size} bytes`);
       logger.info(`- Metadata: ${JSON.stringify(result.binaryOutput.metadata, null, 2)}`);
 
-      // Use standard artifacts array format instead of binaryOutput
-      const artifactResponse = {
-        content: [
-          {
-            type: "text",
-            text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
+      content.push(
+        {
+          type: "text",
+          text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
+        }
+      );
+      artifacts.push(
+        {
+          type: result.binaryOutput.type,
+          title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
+          content: result.binaryOutput.data,
+          metadata: {
+            ...result.binaryOutput.metadata,
+            sourceCode: result.code
           }
-        ],
-        artifacts: [
-          // Add code artifact first
-          {
-            type: "code",
-            title: "Python Code",
-            content: result.code,
-            language: "python",
-            metadata: {
-              editorView: true,
-              executable: true,
-              sourceCode: result.code
-            }
-          },
-          // Then add the binary output artifact
-          {
-            type: result.binaryOutput.type,
-            title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
-            content: result.binaryOutput.data,
-            metadata: {
-              ...result.binaryOutput.metadata,
-              sourceCode: result.code
-            }
-          }
-        ],
-        metadata: {
+        }
+      );
+      metadata = {
           hasBinaryOutput: true,
           binaryType: result.binaryOutput.type,
-        },
-        isError: false,
-      };
-      
-      console.error("PYTHON SERVER LOGS: Returning artifact with following structure:");
-      console.error(`PYTHON SERVER LOGS: - Content items: ${artifactResponse.content.length}`);
-      console.error(`PYTHON SERVER LOGS: - Artifacts items: ${artifactResponse.artifacts.length}`);
-      console.error(`PYTHON SERVER LOGS: - First artifact type: ${artifactResponse.artifacts[0].type}`);
-      console.error(`PYTHON SERVER LOGS: - First artifact title: ${artifactResponse.artifacts[0].title}`);
-      console.error(`PYTHON SERVER LOGS: - Content data length: ${artifactResponse.artifacts[0].content.length} characters`);
-      
-      return artifactResponse;
+      }
     } else {
       console.error("PYTHON SERVER LOGS: No binary output detected in execution result");
     }
@@ -214,27 +204,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (result.metadata) {
       logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
     }
-
-    // For text output, create artifacts for both code and output
-    let artifacts = [];
     
-    // Always create a code artifact for the executed code
-    console.error("PYTHON SERVER LOGS: Creating code artifact for executed Python code");
-    artifacts.push({
-      type: "code",
-      title: "Python Code",
-      content: result.code,
-      language: "python",
-      metadata: {
-        editorView: true,
-        executable: true,
-        sourceCode: result.code
-      }
-    });
-    
-    // Create output artifact if substantial
-    if (result.output.length > 200 || result.output.includes('\n')) {
-      console.error("PYTHON SERVER LOGS: Creating text/markdown artifact for long output");
+    if (result.output.length > 1 || result.output.includes('\n')) {
+      console.error("PYTHON SERVER LOGS: Creating text/markdown artifact for output");
       artifacts.push({
         type: "text/markdown",
         title: "Python Output",
@@ -252,7 +224,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         text: result.output || "Code executed successfully with no text output.",
       }],
       artifacts,
-      metadata: result.metadata,
+      metadata: metadata || result.metadata,
       isError: false,
     };
   } catch (error) {
