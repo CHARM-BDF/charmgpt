@@ -20,7 +20,7 @@ const debounce = (fn: Function, ms = 300) => {
   };
 };
 
-export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ messages }) => {
+export const ChatMessages: React.FC<{ messages: MessageWithThinking[], storageService?: any }> = ({ messages, storageService }) => {
   // Use regular useChatStore without a selector function to avoid infinite loops
   const chatStore = useChatStore();
   
@@ -39,6 +39,28 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
   const lastMessageRef = useRef<string | null>(null);
   const [showThinkingMap, setShowThinkingMap] = useState<Record<string, boolean>>({});
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+  // Handler for viewing attachments as artifacts
+  const handleViewAsArtifact = async (attachment: any) => {
+    if (!storageService) {
+      console.warn('Storage service not available for viewing attachment');
+      return;
+    }
+    
+    try {
+      const createArtifactFromAttachment = useChatStore.getState().createArtifactFromAttachment;
+      const artifactId = await createArtifactFromAttachment(attachment, storageService);
+      
+      if (artifactId) {
+        selectArtifact(artifactId);
+        console.log('Created artifact from attachment:', artifactId);
+      } else {
+        console.warn('Failed to create artifact from attachment');
+      }
+    } catch (error) {
+      console.error('Error viewing attachment as artifact:', error);
+    }
+  };
   
   // Function to get all artifacts associated with a message
   const getMessageArtifacts = (message: MessageWithThinking) => {
@@ -383,6 +405,7 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[] }> = ({ me
                       <div className="mb-3">
                         <FileAttachments
                           attachments={message.attachments}
+                          onViewAsArtifact={storageService ? handleViewAsArtifact : undefined}
                           editable={false}
                           showVarNames={true}
                         />

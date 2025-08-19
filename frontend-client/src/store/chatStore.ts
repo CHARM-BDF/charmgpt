@@ -106,6 +106,9 @@ export interface ChatState extends ConversationState {
   
   // Add new migration function
   migrateConversationsToProjects: () => void;
+  
+  // Add function to create artifact from file attachment
+  createArtifactFromAttachment: (attachment: FileAttachment, storageService: any) => Promise<string | null>;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -1374,6 +1377,93 @@ export const useChatStore = create<ChatState>()(
         setProjectConversationFlow: (enabled: boolean) => {
           // console.log('ChatStore: Setting project conversation flow state:', enabled);
           set({ inProjectConversationFlow: enabled });
+        },
+
+        // Add function to create artifact from file attachment
+        createArtifactFromAttachment: async (attachment: FileAttachment, storageService: any): Promise<string | null> => {
+          try {
+            console.log('Creating artifact from attachment:', attachment.name, attachment.type);
+            
+            // Import utilities
+            const { getArtifactTypeForFile, canViewAsArtifact, getLanguageForFile } = await import('../utils/fileArtifactMapping');
+            const { csvToMarkdown, tsvToMarkdown } = await import('../utils/csvToMarkdown');
+
+            // Check if file can be viewed as artifact
+            if (!canViewAsArtifact(attachment.name, attachment.type)) {
+              console.warn('File type not suitable for artifact viewing:', attachment.type);
+              return null;
+            }
+
+            // Get file content directly to avoid metadata update issues
+            let content: Uint8Array;
+            try {
+              content = await storageService.readContent(attachment.id);
+              console.log('Successfully read file content, size:', content.length);
+            } catch (error) {
+              console.error('Failed to read file content:', error);
+              return null;
+            }
+
+            // Convert content to text
+            let textContent: string;
+            if (content instanceof Uint8Array) {
+              // Try to decode as text
+              try {
+                textContent = new TextDecoder('utf-8').decode(content);
+                console.log('Successfully decoded content, length:', textContent.length);
+              } catch (error) {
+                console.error('Failed to decode file as text:', error);
+                return null;
+              }
+            } else {
+              textContent = content as string;
+            }
+
+            // Check for empty content
+            if (!textContent || textContent.trim().length === 0) {
+              console.warn('File appears to be empty');
+              textContent = '(Empty file)';
+            }
+
+            // Determine artifact type and process content
+            const artifactType = getArtifactTypeForFile(attachment.name, attachment.type);
+            let processedContent = textContent;
+            let title = `File: ${attachment.name}`;
+
+            console.log('Determined artifact type:', artifactType);
+
+            // Special processing for certain file types
+            const extension = attachment.name.toLowerCase().split('.').pop() || '';
+            try {
+              if (extension === 'csv') {
+                processedContent = csvToMarkdown(textContent);
+                title = `CSV File: ${attachment.name}`;
+              } else if (extension === 'tsv') {
+                processedContent = tsvToMarkdown(textContent);
+                title = `TSV File: ${attachment.name}`;
+              }
+            } catch (processingError) {
+              console.warn('Failed to process file content, using raw text:', processingError);
+              // Fall back to raw content if processing fails
+            }
+
+            // Create artifact
+            const artifactId = get().addArtifact({
+              id: crypto.randomUUID(),
+              artifactId: crypto.randomUUID(),
+              type: artifactType,
+              title,
+              content: processedContent,
+              position: get().artifacts.length,
+              language: getLanguageForFile(attachment.name, attachment.type)
+            });
+
+            console.log('Successfully created artifact:', artifactId);
+            return artifactId;
+          } catch (error) {
+            console.error('Failed to create artifact from attachment:', error);
+            return null;
+          }
         },
       };
     },
