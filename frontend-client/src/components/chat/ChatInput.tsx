@@ -98,6 +98,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     ));
   };
 
+  const handleViewAsArtifact = async (attachment: FileAttachment) => {
+    try {
+      const createArtifactFromAttachment = useChatStore.getState().createArtifactFromAttachment;
+      const artifactId = await createArtifactFromAttachment(attachment, storageService);
+      
+      if (artifactId) {
+        // Select the artifact and show the artifact window
+        const selectArtifact = useChatStore.getState().selectArtifact;
+        selectArtifact(artifactId);
+        console.log('Created artifact from attachment:', artifactId);
+      } else {
+        console.warn('Failed to create artifact from attachment');
+      }
+    } catch (error) {
+      console.error('Error viewing attachment as artifact:', error);
+    }
+  };
+
   // Auto-resize textarea as content grows
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -209,6 +227,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
               attachments={attachments}
               onRemove={handleRemoveAttachment}
               onEditVarName={handleEditVarName}
+              onViewAsArtifact={handleViewAsArtifact}
               editable={true}
               showVarNames={true}
             />

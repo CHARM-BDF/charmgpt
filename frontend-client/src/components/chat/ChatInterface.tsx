@@ -349,7 +349,7 @@ export const ChatInterface: React.FC = () => {
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
               <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
-                <ChatMessages messages={messages} />
+                <ChatMessages messages={messages} storageService={storageService} />
               </div>
             </div>
             <ChatInput storageService={storageService} />
