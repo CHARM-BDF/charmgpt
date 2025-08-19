@@ -159,6 +159,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         ],
         artifacts: [
+          // Add code artifact first
+          {
+            type: "code",
+            title: "Racket Code",
+            content: result.code,
+            language: "racket",
+            metadata: {
+              editorView: true,
+              executable: true,
+              sourceCode: result.code
+            }
+          },
+          // Then add the binary output artifact
           {
             type: result.binaryOutput.type,
             title: `Racket Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
