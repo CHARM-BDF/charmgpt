@@ -5,9 +5,53 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { execute } from "./tools/execute.js";
+import { getMimeType, execute } from "./tools/execute.js";
 import { validatePythonCode } from "./tools/env.js";
 import os from "os";
+import crypto from 'crypto';
+
+// import { getArtifactTypeForFile, canViewAsArtifact, getLanguageForFile } from '../../../frontend-client/src/utils/fileArtifactMapping.js';
+// Add these local functions instead:
+function getArtifactTypeForFile(fileName: string, mimeType: string): string {
+  const extension = fileName.toLowerCase().split('.').pop() || '';
+  
+  // Direct MIME type mappings
+  if (mimeType.startsWith('image/svg')) return 'image/svg+xml';
+  if (mimeType.startsWith('image/png')) return 'image/png';
+  if (mimeType === 'text/html') return 'html';
+  if (mimeType === 'application/json') return 'application/json';
+  if (mimeType === 'text/markdown') return 'text/markdown';
+  
+  // Extension-based mappings
+  switch (extension) {
+    case 'json': return 'application/json';
+    case 'md': case 'markdown': return 'text/markdown';
+    case 'html': case 'htm': return 'html';
+    case 'png': return 'image/png';
+    case 'py': return 'application/python';
+    case 'csv': case 'tsv': return 'text/markdown'; // CSV displayed as table
+    case 'txt': case 'log': return 'text';
+    default: return 'text';
+  }
+}
+
+function canViewAsArtifact(fileName: string, mimeType: string): boolean {
+  const extension = fileName.toLowerCase().split('.').pop() || '';
+  const unsupportedExtensions = ['exe', 'bin', 'dll', 'so', 'zip', 'rar', '7z'];
+  return !unsupportedExtensions.includes(extension);
+}
+
+function getLanguageForFile(fileName: string, mimeType: string): string | undefined {
+  const extension = fileName.toLowerCase().split('.').pop() || '';
+  switch (extension) {
+    case 'py': return 'python';
+    case 'js': return 'javascript';
+    case 'json': return 'json';
+    case 'html': return 'html';
+    case 'md': return 'markdown';
+    default: return undefined;
+  }
+}
 
 // Logger utility
 const logger = {
@@ -217,15 +261,44 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       console.error("PYTHON SERVER LOGS: Output too short, not creating output artifact");
     }
 
+    // Handle created files if present
     if (result.createdFiles && result.createdFiles.length > 0) {
       console.error("PYTHON SERVER LOGS: Created files detected in result");
-      console.error(`PYTHON SERVER LOGS: Created files: ${result.createdFiles.join(', ')}`);
+      console.error(`PYTHON SERVER LOGS: Created ${result.createdFiles.length} files`);
+      
       for (const createdFile of result.createdFiles) {
-        artifacts.push({
-          type: "text/markdown",
-          title: createdFile.originalFilename,
-          content: createdFile.fileId
-        });
+        console.error(`PYTHON SERVER LOGS: Processing created file: ${createdFile.originalFilename} (${createdFile.fileId})`);
+        
+        // Determine MIME type from filename
+        const mimeType = getMimeType(createdFile.originalFilename);
+        
+        // Check if file can be viewed as artifact
+        if (canViewAsArtifact(createdFile.originalFilename, mimeType)) {
+          const artifactType = getArtifactTypeForFile(createdFile.originalFilename, mimeType);
+          
+          artifacts.push({
+            id: crypto.randomUUID(),
+            artifactId: crypto.randomUUID(),
+            type: artifactType,
+            title: `Generated: ${createdFile.originalFilename}`,
+            content: '', // Empty content - will be loaded dynamically
+            timestamp: new Date(),
+            position: artifacts.length,
+            language: getLanguageForFile(createdFile.originalFilename, mimeType),
+            metadata: {
+              fileReference: {
+                fileId: createdFile.fileId,
+                fileName: createdFile.originalFilename,
+                fileType: mimeType,
+                fileSize: createdFile.size
+              }
+            }
+          });
+          
+          console.error(`PYTHON SERVER LOGS: Created file reference artifact for: ${createdFile.originalFilename}`);
+        } else {
+          console.error(`PYTHON SERVER LOGS: File type not suitable for artifact viewing: ${createdFile.originalFilename}`);
+        }
       }
     }
 
