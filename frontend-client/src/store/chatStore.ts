@@ -1386,7 +1386,6 @@ export const useChatStore = create<ChatState>()(
             
             // Import utilities
             const { getArtifactTypeForFile, canViewAsArtifact, getLanguageForFile } = await import('../utils/fileArtifactMapping');
-            const { csvToMarkdown, tsvToMarkdown } = await import('../utils/csvToMarkdown');
 
             // Check if file can be viewed as artifact
             if (!canViewAsArtifact(attachment.name, attachment.type)) {
@@ -1394,71 +1393,33 @@ export const useChatStore = create<ChatState>()(
               return null;
             }
 
-            // Get file content directly to avoid metadata update issues
-            let content: Uint8Array;
-            try {
-              content = await storageService.readContent(attachment.id);
-              console.log('Successfully read file content, size:', content.length);
-            } catch (error) {
-              console.error('Failed to read file content:', error);
-              return null;
-            }
-
-            // Convert content to text
-            let textContent: string;
-            if (content instanceof Uint8Array) {
-              // Try to decode as text
-              try {
-                textContent = new TextDecoder('utf-8').decode(content);
-                console.log('Successfully decoded content, length:', textContent.length);
-              } catch (error) {
-                console.error('Failed to decode file as text:', error);
-                return null;
-              }
-            } else {
-              textContent = content as string;
-            }
-
-            // Check for empty content
-            if (!textContent || textContent.trim().length === 0) {
-              console.warn('File appears to be empty');
-              textContent = '(Empty file)';
-            }
-
-            // Determine artifact type and process content
+            // Determine artifact type
             const artifactType = getArtifactTypeForFile(attachment.name, attachment.type);
-            let processedContent = textContent;
-            let title = `File: ${attachment.name}`;
+            const title = `File: ${attachment.name}`;
 
             console.log('Determined artifact type:', artifactType);
 
-            // Special processing for certain file types
-            const extension = attachment.name.toLowerCase().split('.').pop() || '';
-            try {
-              if (extension === 'csv') {
-                processedContent = csvToMarkdown(textContent);
-                title = `CSV File: ${attachment.name}`;
-              } else if (extension === 'tsv') {
-                processedContent = tsvToMarkdown(textContent);
-                title = `TSV File: ${attachment.name}`;
-              }
-            } catch (processingError) {
-              console.warn('Failed to process file content, using raw text:', processingError);
-              // Fall back to raw content if processing fails
-            }
-
-            // Create artifact
+            // Create artifact that references the file instead of storing content
+            // This avoids localStorage bloat by keeping file content on the server
             const artifactId = get().addArtifact({
               id: crypto.randomUUID(),
               artifactId: crypto.randomUUID(),
               type: artifactType,
               title,
-              content: processedContent,
+              content: '', // Empty content - will be loaded dynamically
               position: get().artifacts.length,
-              language: getLanguageForFile(attachment.name, attachment.type)
+              language: getLanguageForFile(attachment.name, attachment.type),
+              metadata: {
+                fileReference: {
+                  fileId: attachment.id,
+                  fileName: attachment.name,
+                  fileType: attachment.type,
+                  fileSize: attachment.size
+                }
+              }
             });
 
-            console.log('Successfully created artifact:', artifactId);
+            console.log('Successfully created file reference artifact:', artifactId);
             return artifactId;
           } catch (error) {
             console.error('Failed to create artifact from attachment:', error);

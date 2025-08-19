@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Artifact } from '../../../../shared/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
@@ -25,6 +25,11 @@ export const ArtifactContent: React.FC<{
   const [useReagraph,] = useState(true);
   const [savingToProject, setSavingToProject] = useState(false);
   
+  // State for handling file reference artifacts
+  const [fileContent, setFileContent] = useState<string>('');
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [fileLoadError, setFileLoadError] = useState<string | null>(null);
+  
   // Use selector functions to only subscribe to the specific state we need
   const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
   const toggleArtifactPin = useChatStore(state => state.toggleArtifactPin);
@@ -43,6 +48,54 @@ export const ArtifactContent: React.FC<{
     artifact.metadata?.editorView === true
   ) || false;
 
+  // Check if this is a file reference artifact
+  const isFileReference = !!(artifact.metadata?.fileReference);
+  
+  // Load file content for file reference artifacts
+  useEffect(() => {
+    if (isFileReference && storageService && !fileContent && !isLoadingFile) {
+      const loadFileContent = async () => {
+        setIsLoadingFile(true);
+        setFileLoadError(null);
+        
+        try {
+          const fileRef = artifact.metadata!.fileReference!;
+          console.log('Loading file content for artifact:', fileRef.fileName);
+          
+          // Get file content from storage service
+          const content = await storageService.readContent(fileRef.fileId);
+          let textContent: string;
+          
+          if (content instanceof Uint8Array) {
+            textContent = new TextDecoder('utf-8').decode(content);
+          } else {
+            textContent = content as string;
+          }
+          
+          // Process content based on file type
+          const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
+          if (extension === 'csv') {
+            const { csvToMarkdown } = await import('../../utils/csvToMarkdown');
+            textContent = csvToMarkdown(textContent);
+          } else if (extension === 'tsv') {
+            const { tsvToMarkdown } = await import('../../utils/csvToMarkdown');
+            textContent = tsvToMarkdown(textContent);
+          }
+          
+          setFileContent(textContent);
+          console.log('Successfully loaded file content, length:', textContent.length);
+        } catch (error) {
+          console.error('Failed to load file content:', error);
+          setFileLoadError('Failed to load file content');
+        } finally {
+          setIsLoadingFile(false);
+        }
+      };
+      
+      loadFileContent();
+    }
+  }, [isFileReference, storageService, fileContent, isLoadingFile, artifact.metadata]);
+
   const handleSaveToProject = async () => {
     if (!storageService || !selectedProjectId || !isMarkdown) return;
     
@@ -50,7 +103,8 @@ export const ArtifactContent: React.FC<{
       setSavingToProject(true);
       const fileName = `${artifact.title || 'document'}.md`;
       
-      await storageService.createFile(artifact.content, {
+      const contentToSave = isFileReference ? fileContent : artifact.content;
+      await storageService.createFile(contentToSave, {
         description: fileName,
         tags: [`project:${selectedProjectId}`],
         schema: {
@@ -99,7 +153,8 @@ export const ArtifactContent: React.FC<{
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(artifact.content);
+      const contentToCopy = isFileReference ? fileContent : artifact.content;
+      await navigator.clipboard.writeText(contentToCopy);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
@@ -108,14 +163,48 @@ export const ArtifactContent: React.FC<{
   };
 
   const renderContent = () => {
+    // Handle file reference artifacts
+    if (isFileReference) {
+      if (isLoadingFile) {
+        return (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <span className="ml-2">Loading file content...</span>
+          </div>
+        );
+      }
+      
+      if (fileLoadError) {
+        return (
+          <div className="text-red-500 p-4">
+            <p>Error loading file: {fileLoadError}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              File: {artifact.metadata?.fileReference?.fileName}
+            </p>
+          </div>
+        );
+      }
+      
+      if (!fileContent) {
+        return (
+          <div className="text-gray-500 p-4">
+            <p>No content available</p>
+          </div>
+        );
+      }
+    }
+    
+    // Get the content to display
+    const displayContent = isFileReference ? fileContent : artifact.content;
+    
     if (viewMode === 'source') {
       // For knowledge graph artifacts, format as JSON with syntax highlighting
       if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
         try {
           // Parse and pretty-print the JSON
-          const jsonObj = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const jsonObj = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           const prettyJson = JSON.stringify(jsonObj, null, 2);
           
@@ -144,7 +233,7 @@ export const ArtifactContent: React.FC<{
       return (
         <div className="relative w-full min-w-0 overflow-x-auto">
           <pre className="w-max bg-gray-50 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-md">
-            <code className="whitespace-pre">{artifact.content}</code>
+            <code className="whitespace-pre">{displayContent}</code>
           </pre>
         </div>
       );
@@ -160,7 +249,7 @@ export const ArtifactContent: React.FC<{
         if (supportsEditorView && viewMode === 'editor') {
           return (
             <CodeEditorView
-              code={artifact.content}
+              code={displayContent}
               language={artifact.language || getLanguage(artifact.type, artifact.language)}
               title={artifact.language || artifact.type.replace('application/', '')}
               isDarkMode={false} // TODO: Get from theme context
@@ -181,7 +270,7 @@ export const ArtifactContent: React.FC<{
                 style={oneLight}
                 customStyle={{ margin: 0, background: 'transparent' }}
               >
-                {artifact.content}
+                {displayContent}
               </SyntaxHighlighter>
             </div>
           </div>
@@ -205,13 +294,13 @@ export const ArtifactContent: React.FC<{
             {useReagraph ? (
               <div className="w-full h-full overflow-hidden">
                 <ReagraphKnowledgeGraphViewer 
-                  data={artifact.content} 
+                  data={displayContent} 
                   artifactId={artifact.id}
                 />
               </div>
             ) : (
               <KnowledgeGraphViewer 
-                data={artifact.content} 
+                data={displayContent} 
                 artifactId={artifact.id}
                 showVersionControls={true}
               />
@@ -223,7 +312,7 @@ export const ArtifactContent: React.FC<{
         return (
           <div className="w-full h-full min-h-[500px] flex flex-col">
             <ProteinVisualizationViewer 
-              data={artifact.content}
+              data={displayContent}
             />
           </div>
         );
@@ -232,7 +321,7 @@ export const ArtifactContent: React.FC<{
         return (
           <div 
             className="border rounded-lg p-4 bg-white"
-            dangerouslySetInnerHTML={{ __html: sanitizeHTML(artifact.content) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(displayContent) }}
           />
         );
       
@@ -241,7 +330,7 @@ export const ArtifactContent: React.FC<{
           <div className="flex flex-col items-center gap-4">
             <div className="flex justify-center items-center">
               <img 
-                src={`data:image/png;base64,${artifact.content}`}
+                src={`data:image/png;base64,${displayContent}`}
                 alt={artifact.title}
                 className="max-w-full h-auto"
               />
@@ -272,33 +361,33 @@ export const ArtifactContent: React.FC<{
           <div 
             className="border rounded-lg p-4 bg-white flex justify-center items-center"
             dangerouslySetInnerHTML={{ 
-              __html: sanitizeHTML(artifact.content.trim()) 
+              __html: sanitizeHTML(displayContent.trim()) 
             }}
           />
         );
       
       case 'application/vnd.ant.mermaid':
-        return <div className="mermaid">{artifact.content}</div>;
+        return <div className="mermaid">{displayContent}</div>;
       
       case 'text/markdown':
         const trimmedContent = (() => {
           // Check if we have a JSON string with nested content
-          if (artifact.content.trim().startsWith('{')) {
+          if (displayContent.trim().startsWith('{')) {
             try {
-              const parsed = JSON.parse(artifact.content);
+              const parsed = JSON.parse(displayContent);
               // If it has a content property, use that instead
               if (parsed.content) {
                 console.log('Found nested content in artifact, extracting inner content');
                 return typeof parsed.content === 'string' 
                   ? parsed.content.split('\n').map((line: string) => line.trimStart()).join('\n')
-                  : artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+                  : displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
               }
             } catch (e) {
               console.log('Content looks like JSON but failed to parse:', e);
             }
           }
           // Default trimming for normal content
-          return artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+          return displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
         })();
 
         // Debug logging
@@ -473,14 +562,14 @@ export const ArtifactContent: React.FC<{
         );
 
       case 'text':
-        return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
+        return <div className="prose max-w-none whitespace-pre-wrap">{displayContent}</div>;
 
       case 'application/vnd.bibliography':
         try {
           // Check if content is already an object or a string that needs parsing
-          const bibliography = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const bibliography = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           return (
             <div className="prose max-w-none dark:prose-invert">
@@ -527,16 +616,16 @@ export const ArtifactContent: React.FC<{
           );
         } catch (error) {
           console.error('Failed to parse bibliography:', error);
-          return <div className="prose max-w-none whitespace-pre-wrap">{typeof artifact.content === 'string' ? artifact.content : 'Invalid bibliography format'}</div>;
+          return <div className="prose max-w-none whitespace-pre-wrap">{typeof displayContent === 'string' ? displayContent : 'Invalid bibliography format'}</div>;
         }
 
       case 'application/json':
       case 'application/vnd.ant.json':
         try {
           // Try to parse and pretty-print the JSON
-          const jsonObj = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const jsonObj = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           const prettyJson = JSON.stringify(jsonObj, null, 2);
           
@@ -559,11 +648,11 @@ export const ArtifactContent: React.FC<{
         } catch (error) {
           console.error('Failed to parse JSON:', error);
           // If JSON parsing fails, try to render as markdown or plain text
-          return renderFallbackContent(artifact.content);
+          return renderFallbackContent(displayContent);
         }
 
       default:
-        return renderFallbackContent(artifact.content);
+        return renderFallbackContent(displayContent);
     }
   };
 
