@@ -106,6 +106,9 @@ export interface ChatState extends ConversationState {
   
   // Add new migration function
   migrateConversationsToProjects: () => void;
+  
+  // Add function to create artifact from file attachment
+  createArtifactFromAttachment: (attachment: FileAttachment, storageService: any) => Promise<string | null>;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -756,7 +759,8 @@ export const useChatStore = create<ChatState>()(
                         title: data.artifact.title,
                         content: data.artifact.content,
                         position: data.artifact.position || 0,
-                        language: data.artifact.language
+                        language: data.artifact.language,
+                        metadata: data.artifact.metadata
                       });
                       
                       // Associate artifact with the message
@@ -874,7 +878,8 @@ export const useChatStore = create<ChatState>()(
                   title: artifact.title,
                   content: artifact.content,
                   position: artifact.position,
-                  language: artifact.language
+                  language: artifact.language,
+                  metadata: artifact.metadata
                 });
               }) || [];
               
@@ -1374,6 +1379,54 @@ export const useChatStore = create<ChatState>()(
         setProjectConversationFlow: (enabled: boolean) => {
           // console.log('ChatStore: Setting project conversation flow state:', enabled);
           set({ inProjectConversationFlow: enabled });
+        },
+
+        // Add function to create artifact from file attachment
+        createArtifactFromAttachment: async (attachment: FileAttachment, storageService: any): Promise<string | null> => {
+          try {
+            console.log('Creating artifact from attachment:', attachment.name, attachment.type);
+            
+            // Import utilities
+            const { getArtifactTypeForFile, canViewAsArtifact, getLanguageForFile } = await import('../utils/fileArtifactMapping');
+
+            // Check if file can be viewed as artifact
+            if (!canViewAsArtifact(attachment.name, attachment.type)) {
+              console.warn('File type not suitable for artifact viewing:', attachment.type);
+              return null;
+            }
+
+            // Determine artifact type
+            const artifactType = getArtifactTypeForFile(attachment.name, attachment.type);
+            const title = `File: ${attachment.name}`;
+
+            console.log('Determined artifact type:', artifactType);
+
+            // Create artifact that references the file instead of storing content
+            // This avoids localStorage bloat by keeping file content on the server
+            const artifactId = get().addArtifact({
+              id: crypto.randomUUID(),
+              artifactId: crypto.randomUUID(),
+              type: artifactType,
+              title,
+              content: '', // Empty content - will be loaded dynamically
+              position: get().artifacts.length,
+              language: getLanguageForFile(attachment.name, attachment.type),
+              metadata: {
+                fileReference: {
+                  fileId: attachment.id,
+                  fileName: attachment.name,
+                  fileType: attachment.type,
+                  fileSize: attachment.size
+                }
+              }
+            });
+
+            console.log('Successfully created file reference artifact:', artifactId);
+            return artifactId;
+          } catch (error) {
+            console.error('Failed to create artifact from attachment:', error);
+            return null;
+          }
         },
       };
     },

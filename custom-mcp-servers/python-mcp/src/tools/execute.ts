@@ -1,13 +1,79 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
+import * as fsSync from 'fs';
 import { setupPythonEnvironment, cleanupPythonEnvironment, validatePythonCode, TEMP_DIR, LOGS_DIR } from './env.js';
-import { appendFileSync, mkdirSync } from 'fs';
-import { createWriteStream } from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
+
+export function getMimeType(filename: string): string {
+  const ext = path.extname(filename).toLowerCase();
+  switch (ext) {
+    case '.csv': return 'text/csv';
+    case '.json': return 'application/json';
+    case '.txt': return 'text/plain';
+    case '.png': return 'image/png';
+    case '.jpg': case '.jpeg': return 'image/jpeg';
+    case '.parquet': return 'application/octet-stream';
+    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    default: return 'application/octet-stream';
+  }
+}
+
+async function storeFileInServerStorage(
+  tempFilePath: string, 
+  originalFilename: string, 
+  sourceCode: string,
+  logger: Logger
+): Promise<{fileId: string, size: number}> {
+  try {
+    // Generate UUID for the file
+    const fileId = randomUUID();
+    
+    // Move file to uploads directory (same as storage API)
+    const uploadsDir = path.resolve(__dirname, '../../../../backend-mcp-client/uploads');
+    if (!fsSync.existsSync(uploadsDir)) {
+      fsSync.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const permanentFilePath = path.join(uploadsDir, fileId);
+    await fs.rename(tempFilePath, permanentFilePath);
+    
+    // Create metadata (same format as storage API)
+    const stats = await fs.stat(permanentFilePath);
+    const metadata = {
+      description: originalFilename,
+      schema: {
+        type: 'tabular' as const,
+        format: getMimeType(originalFilename),
+        encoding: 'utf-8',
+        sampleData: ''
+      },
+      tags: ['python-output', 'auto-generated'],
+      originalFilename,
+      generatedBy: 'python-mcp',
+      generatedAt: new Date().toISOString(),
+      sourceCode,
+      size: stats.size
+    };
+    
+    // Store metadata (same as storage API)
+    const metadataDir = path.join(uploadsDir, 'metadata');
+    if (!fsSync.existsSync(metadataDir)) {
+      fsSync.mkdirSync(metadataDir, { recursive: true });
+    }
+    const metadataPath = path.join(metadataDir, `${fileId}.json`);
+    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    
+    logger.log(`Stored file in server storage: ${originalFilename} -> ${fileId}`);
+    return {fileId, size: stats.size}; // Return both fileId and size
+    
+  } catch (error) {
+    logger.log(`Error storing file in server storage: ${error}`);
+    throw error;
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,7 +91,7 @@ const UPLOADS_DIR = path.join(__dirname, '../../../../backend-mcp-client/uploads
 
 // Ensure log directory exists
 try {
-  mkdirSync(LOGS_DIR, { recursive: true });
+  fsSync.mkdirSync(LOGS_DIR, { recursive: true });
   console.error('Created/verified log directory:', LOGS_DIR); // Debug log
 } catch (error) {
   console.error('Error creating log directory:', error);
@@ -33,7 +99,7 @@ try {
 
 // Ensure temp directory exists (for PNG files and scripts)
 try {
-  mkdirSync(TEMP_DIR, { recursive: true });
+  fsSync.mkdirSync(TEMP_DIR, { recursive: true });
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
@@ -52,7 +118,7 @@ function createRunLogger(): Logger {
   const logFilePath = path.join(LOGS_DIR, logFileName);
   
   // Create write stream for logging
-  const logStream = createWriteStream(logFilePath, { flags: 'a' });
+  const logStream = fsSync.createWriteStream(logFilePath, { flags: 'a' });
   let isClosed = false;
   
   // Log the paths being used
@@ -98,7 +164,7 @@ function log(type: string, message: string, color: string, logFile: string) {
   
   // Write to run-specific log file without color
   try {
-    appendFileSync(logFile, fileMessage);
+    fsSync.appendFileSync(logFile, fileMessage);
   } catch (error) {
     console.error('Error writing to log file:', error);
   }
@@ -128,6 +194,13 @@ interface ExecuteResult {
       sourceCode: string;  // Source code that generated the output
     };
   };
+  createdFiles?: CreatedFile[];
+}
+
+interface CreatedFile {
+  fileId: string;
+  originalFilename: string;
+  size: number; // Add this field
 }
 
 // File processing functions
@@ -575,18 +648,45 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     await fs.writeFile(scriptPath, code, 'utf-8');
     logger.log('Python code written to temporary file');
 
+    // Take pre-execution snapshot of files in temp directory
+    const preExecutionFiles = new Set(await fs.readdir(TEMP_DIR));
+    logger.log(`Pre-execution files: ${Array.from(preExecutionFiles).join(', ')}`);
+
     // Run the code in Docker and collect output
     const output = await runInDocker(scriptPath, envConfig, logger);
 
-    // Check for binary output files in the temp directory
-    logger.log('Checking temp directory for files...');
-    const files = await fs.readdir(TEMP_DIR);
-    logger.log(`Files in temp directory: ${files.join(', ')}`);
-    console.error(`PYTHON SERVER LOGS: Files found in temp directory: ${files.join(', ')}`);
-    
+    // Detect new files created after execution
+    const postExecutionFiles = await fs.readdir(TEMP_DIR);
+    const newFiles = postExecutionFiles.filter(file => !Array.from(preExecutionFiles).includes(file));
+    logger.log(`New files created: ${newFiles.join(', ')}`);
+
+    // Process new files and store them in server-side storage
+    const createdFiles: CreatedFile[] = [];
+
+    for (const filename of newFiles) {
+      const tempFilePath = path.join(TEMP_DIR, filename);
+      
+      try {
+        // Store file using server-side storage system
+        const result = await storeFileInServerStorage(tempFilePath, filename, code, logger);
+        createdFiles.push({
+          fileId: result.fileId, 
+          originalFilename: filename,
+          size: result.size
+        });
+        
+        logger.log(`Successfully stored new file: ${filename} -> ${result.fileId}`);
+        
+      } catch (error) {
+        logger.log(`Error processing new file ${filename}: ${error}`);
+      }
+    }
+
+    logger.log(`Created ${createdFiles.length} files in server storage: ${createdFiles.map(f => f.originalFilename).join(', ')}`);
+
     let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
 
-    for (const file of files) {
+    for (const file of postExecutionFiles) {
       logger.log(`Processing file: ${file}`);
       console.error(`PYTHON SERVER LOGS: Processing file: ${file}`);
       
@@ -674,7 +774,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       code,
       type: binaryOutput ? 'matplotlib.figure' as const : 'text' as const,
       metadata: binaryOutput ? { hasBinaryOutput: true } : {},
-      binaryOutput
+      binaryOutput,
+      createdFiles
     };
     
     logger.log(`Execution completed successfully`);

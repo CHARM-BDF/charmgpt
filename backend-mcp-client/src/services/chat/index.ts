@@ -1323,18 +1323,33 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
         );
         const supportsDataFiles = toolSchema?.input_schema?.properties?.dataFiles;
         
-        if (supportsDataFiles && options.attachments && options.attachments.length > 0) {
-          // Convert attachments to dataFiles format
+        if (supportsDataFiles) {
           const dataFiles: Record<string, string> = {};
-          for (const attachment of options.attachments) {
-            const varName = attachment.varName || attachment.name.split('.')[0];
-            dataFiles[varName] = attachment.name; // Use filename so user can reference it naturally
+          // Process attachments
+          if (options.attachments) {
+            for (const attachment of options.attachments) {
+              const varName = attachment.varName || attachment.name.split('.')[0];
+              dataFiles[varName] = attachment.name; // Use filename so user can reference it naturally
+            }
           }
-          
-          enhancedInput = {
-            ...toolCall.input,
-            dataFiles
-          };
+          // Process pinned artifacts with file references
+          if (options.pinnedArtifacts) {
+            for (const artifact of options.pinnedArtifacts) {
+              if (artifact.metadata?.fileReference) {
+                const fileRef = artifact.metadata.fileReference;
+                // Use existing varName logic (same as attachments)
+                const varName = fileRef.fileName.split('.')[0]; // Simple fallback like attachments
+                dataFiles[varName] = fileRef.fileName;
+                console.log(`Adding pinned file artifact to dataFiles: ${varName} -> ${fileRef.fileName}`);
+              }
+            }
+          }
+          if (Object.keys(dataFiles).length > 0) {
+            enhancedInput = {
+              ...toolCall.input,
+              dataFiles
+            };
+          }
         }
         
         // Execute the tool call

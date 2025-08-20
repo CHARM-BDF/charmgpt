@@ -160,6 +160,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         ],
         artifacts: [
+          // Add code artifact first
+          {
+            type: "code",
+            title: "R Code",
+            content: result.code,
+            language: "r",
+            metadata: {
+              editorView: true,
+              executable: true,
+              sourceCode: result.code
+            }
+          },
+          // Then add the binary output artifact
           {
             type: result.binaryOutput.type,
             title: `R Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
@@ -201,20 +214,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
     }
 
-    // For text output, create an artifact if it's rich enough to deserve one
-    let artifacts = undefined;
+    // For text output, create artifacts for both code and output
+    let artifacts = [];
+    
+    // Always create a code artifact for the executed code
+    console.error("R SERVER LOGS: Creating code artifact for executed R code");
+    artifacts.push({
+      type: "code",
+      title: "R Code",
+      content: result.code,
+      language: "r",
+      metadata: {
+        editorView: true,
+        executable: true,
+        sourceCode: result.code
+      }
+    });
+    
+    // Create output artifact if substantial
     if (result.output.length > 200 || result.output.includes('\n')) {
       console.error("R SERVER LOGS: Creating text/markdown artifact for long output");
-      artifacts = [
-        {
-          type: "text/markdown",
-          title: "R Output",
-          content: "```\n" + result.output + "\n```"
-        }
-      ];
-      console.error(`R SERVER LOGS: Created markdown artifact with length ${artifacts[0].content.length}`);
+      artifacts.push({
+        type: "text/markdown",
+        title: "R Output",
+        content: "```\n" + result.output + "\n```"
+      });
+      console.error(`R SERVER LOGS: Created markdown artifact with length ${artifacts[artifacts.length - 1].content.length}`);
     } else {
-      console.error("R SERVER LOGS: Output too short, not creating artifact");
+      console.error("R SERVER LOGS: Output too short, not creating output artifact");
     }
 
     // Default response for non-binary output

@@ -42,4 +42,16 @@ export interface Artifact {
     lastCommand?: string;      // Description of command that created this version
     commandParams?: Record<string, any>; // Parameters of the command
   };
+  
+  // General metadata for various artifact types
+  metadata?: {
+    editorView?: boolean;  // For code artifacts that support editor view
+    fileReference?: {      // For file reference artifacts that don't store content in localStorage
+      fileId: string;
+      fileName: string;
+      fileType: string;
+      fileSize?: number;
+    };
+    [key: string]: any;    // Allow other metadata properties
+  };
 }
