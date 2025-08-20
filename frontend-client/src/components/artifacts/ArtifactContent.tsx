@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Artifact } from '../../../../shared/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
@@ -9,6 +9,7 @@ import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import { ProteinVisualizationViewer } from './ProteinVisualizationViewer';
+import { CodeEditorView } from './CodeEditorView';
 import { useChatStore } from '../../store/chatStore';
 import { Pin, PinOff } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
@@ -19,10 +20,15 @@ export const ArtifactContent: React.FC<{
   artifact: Artifact;
   storageService?: any;
 }> = ({ artifact, storageService }) => {
-  const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
+  const [viewMode, setViewMode] = useState<'rendered' | 'editor' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph,] = useState(true);
   const [savingToProject, setSavingToProject] = useState(false);
+  
+  // State for handling file reference artifacts
+  const [fileContent, setFileContent] = useState<string>('');
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [fileLoadError, setFileLoadError] = useState<string | null>(null);
   
   // Use selector functions to only subscribe to the specific state we need
   const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
@@ -35,6 +41,74 @@ export const ArtifactContent: React.FC<{
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
   const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
+  
+  // Check if artifact supports editor view (code artifacts with editorView metadata)
+  const supportsEditorView = (
+    ['code', 'application/python', 'application/vnd.ant.python', 'application/javascript', 'application/vnd.react'].includes(artifact.type) &&
+    artifact.metadata?.editorView === true
+  ) || false;
+
+  // Check if this is a file reference artifact
+  const isFileReference = !!(artifact.metadata?.fileReference);
+  
+  useEffect(() => {
+    if (isFileReference && storageService && !isLoadingFile) {
+      setIsLoadingFile(true);
+      setFileLoadError(null);
+      
+      storageService.readContent(artifact.metadata.fileReference.fileId)
+        .then((content: any) => {
+          const fileRef = artifact.metadata!.fileReference!;
+          let textContent: string;
+          
+          if (content instanceof Uint8Array) {
+            const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+              // For images, convert to base64 using a more reliable method
+              let binary = '';
+              const len = content.byteLength;
+              for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(content[i]);
+              }
+              const base64String = btoa(binary);
+              textContent = base64String;
+            } else {
+              // For text files, decode as UTF-8
+              textContent = new TextDecoder('utf-8').decode(content);
+            }
+          } else {
+            textContent = content as string;
+          }
+          
+          // Process content based on file type
+          const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
+          if (extension === 'csv') {
+            import('../../utils/csvToMarkdown').then(({ csvToMarkdown }) => {
+              setFileContent(csvToMarkdown(textContent));
+            });
+          } else if (extension === 'tsv') {
+            import('../../utils/csvToMarkdown').then(({ tsvToMarkdown }) => {
+              setFileContent(tsvToMarkdown(textContent));
+            });
+          } else {
+            setFileContent(textContent);
+          }
+          setFileContent(textContent);
+          setIsLoadingFile(false);
+        })
+        .catch((error: any) => {
+          console.error('Failed to load file content:', error);
+          setFileLoadError('Failed to load file content');
+          setIsLoadingFile(false);
+        });
+    }
+  }, [artifact.id]);
+  
+  // Clear content when artifact changes
+  useEffect(() => {
+    setFileContent('');
+    setFileLoadError(null);
+  }, [artifact.id]);
 
   const handleSaveToProject = async () => {
     if (!storageService || !selectedProjectId || !isMarkdown) return;
@@ -43,7 +117,8 @@ export const ArtifactContent: React.FC<{
       setSavingToProject(true);
       const fileName = `${artifact.title || 'document'}.md`;
       
-      await storageService.createFile(artifact.content, {
+      const contentToSave = isFileReference ? fileContent : artifact.content;
+      await storageService.createFile(contentToSave, {
         description: fileName,
         tags: [`project:${selectedProjectId}`],
         schema: {
@@ -92,7 +167,8 @@ export const ArtifactContent: React.FC<{
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(artifact.content);
+      const contentToCopy = isFileReference ? fileContent : artifact.content;
+      await navigator.clipboard.writeText(contentToCopy);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
@@ -101,14 +177,48 @@ export const ArtifactContent: React.FC<{
   };
 
   const renderContent = () => {
+    // Handle file reference artifacts
+    if (isFileReference) {
+      if (isLoadingFile) {
+        return (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <span className="ml-2">Loading file content...</span>
+          </div>
+        );
+      }
+      
+      if (fileLoadError) {
+        return (
+          <div className="text-red-500 p-4">
+            <p>Error loading file: {fileLoadError}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              File: {artifact.metadata?.fileReference?.fileName}
+            </p>
+          </div>
+        );
+      }
+      
+      if (!fileContent) {
+        return (
+          <div className="text-gray-500 p-4">
+            <p>No content available</p>
+          </div>
+        );
+      }
+    }
+    
+    // Get the content to display
+    const displayContent = isFileReference ? fileContent : artifact.content;
+    
     if (viewMode === 'source') {
       // For knowledge graph artifacts, format as JSON with syntax highlighting
       if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
         try {
           // Parse and pretty-print the JSON
-          const jsonObj = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const jsonObj = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           const prettyJson = JSON.stringify(jsonObj, null, 2);
           
@@ -137,7 +247,7 @@ export const ArtifactContent: React.FC<{
       return (
         <div className="relative w-full min-w-0 overflow-x-auto">
           <pre className="w-max bg-gray-50 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-md">
-            <code className="whitespace-pre">{artifact.content}</code>
+            <code className="whitespace-pre">{displayContent}</code>
           </pre>
         </div>
       );
@@ -149,6 +259,20 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.ant.python':
       case 'application/javascript':
       case 'application/vnd.react':
+        // If this artifact supports editor view and we're in editor mode, use CodeEditorView
+        if (supportsEditorView && viewMode === 'editor') {
+          return (
+            <CodeEditorView
+              code={displayContent}
+              language={artifact.language || getLanguage(artifact.type, artifact.language)}
+              title={artifact.language || artifact.type.replace('application/', '')}
+              isDarkMode={false} // TODO: Get from theme context
+              readOnly={true}
+            />
+          );
+        }
+        
+        // Default syntax highlighting view
         return (
           <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -160,7 +284,7 @@ export const ArtifactContent: React.FC<{
                 style={oneLight}
                 customStyle={{ margin: 0, background: 'transparent' }}
               >
-                {artifact.content}
+                {displayContent}
               </SyntaxHighlighter>
             </div>
           </div>
@@ -184,13 +308,13 @@ export const ArtifactContent: React.FC<{
             {useReagraph ? (
               <div className="w-full h-full overflow-hidden">
                 <ReagraphKnowledgeGraphViewer 
-                  data={artifact.content} 
+                  data={displayContent} 
                   artifactId={artifact.id}
                 />
               </div>
             ) : (
               <KnowledgeGraphViewer 
-                data={artifact.content} 
+                data={displayContent} 
                 artifactId={artifact.id}
                 showVersionControls={true}
               />
@@ -202,7 +326,7 @@ export const ArtifactContent: React.FC<{
         return (
           <div className="w-full h-full min-h-[500px] flex flex-col">
             <ProteinVisualizationViewer 
-              data={artifact.content}
+              data={displayContent}
             />
           </div>
         );
@@ -211,7 +335,7 @@ export const ArtifactContent: React.FC<{
         return (
           <div 
             className="border rounded-lg p-4 bg-white"
-            dangerouslySetInnerHTML={{ __html: sanitizeHTML(artifact.content) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(displayContent) }}
           />
         );
       
@@ -220,7 +344,7 @@ export const ArtifactContent: React.FC<{
           <div className="flex flex-col items-center gap-4">
             <div className="flex justify-center items-center">
               <img 
-                src={`data:image/png;base64,${artifact.content}`}
+                src={`data:image/png;base64,${displayContent}`}
                 alt={artifact.title}
                 className="max-w-full h-auto"
               />
@@ -251,33 +375,33 @@ export const ArtifactContent: React.FC<{
           <div 
             className="border rounded-lg p-4 bg-white flex justify-center items-center"
             dangerouslySetInnerHTML={{ 
-              __html: sanitizeHTML(artifact.content.trim()) 
+              __html: sanitizeHTML(displayContent.trim()) 
             }}
           />
         );
       
       case 'application/vnd.ant.mermaid':
-        return <div className="mermaid">{artifact.content}</div>;
+        return <div className="mermaid">{displayContent}</div>;
       
       case 'text/markdown':
         const trimmedContent = (() => {
           // Check if we have a JSON string with nested content
-          if (artifact.content.trim().startsWith('{')) {
+          if (displayContent.trim().startsWith('{')) {
             try {
-              const parsed = JSON.parse(artifact.content);
+              const parsed = JSON.parse(displayContent);
               // If it has a content property, use that instead
               if (parsed.content) {
                 console.log('Found nested content in artifact, extracting inner content');
                 return typeof parsed.content === 'string' 
                   ? parsed.content.split('\n').map((line: string) => line.trimStart()).join('\n')
-                  : artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+                  : displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
               }
             } catch (e) {
               console.log('Content looks like JSON but failed to parse:', e);
             }
           }
           // Default trimming for normal content
-          return artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+          return displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
         })();
 
         // Debug logging
@@ -452,14 +576,14 @@ export const ArtifactContent: React.FC<{
         );
 
       case 'text':
-        return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
+        return <div className="prose max-w-none whitespace-pre-wrap">{displayContent}</div>;
 
       case 'application/vnd.bibliography':
         try {
           // Check if content is already an object or a string that needs parsing
-          const bibliography = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const bibliography = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           return (
             <div className="prose max-w-none dark:prose-invert">
@@ -506,16 +630,16 @@ export const ArtifactContent: React.FC<{
           );
         } catch (error) {
           console.error('Failed to parse bibliography:', error);
-          return <div className="prose max-w-none whitespace-pre-wrap">{typeof artifact.content === 'string' ? artifact.content : 'Invalid bibliography format'}</div>;
+          return <div className="prose max-w-none whitespace-pre-wrap">{typeof displayContent === 'string' ? displayContent : 'Invalid bibliography format'}</div>;
         }
 
       case 'application/json':
       case 'application/vnd.ant.json':
         try {
           // Try to parse and pretty-print the JSON
-          const jsonObj = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const jsonObj = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           const prettyJson = JSON.stringify(jsonObj, null, 2);
           
@@ -538,11 +662,11 @@ export const ArtifactContent: React.FC<{
         } catch (error) {
           console.error('Failed to parse JSON:', error);
           // If JSON parsing fails, try to render as markdown or plain text
-          return renderFallbackContent(artifact.content);
+          return renderFallbackContent(displayContent);
         }
 
       default:
-        return renderFallbackContent(artifact.content);
+        return renderFallbackContent(displayContent);
     }
   };
 
@@ -586,7 +710,7 @@ export const ArtifactContent: React.FC<{
     }
   };
 
-  const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type);
+  const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type) || supportsEditorView;
 
   return (
     <div className="h-full mx-auto w-[95%] flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
@@ -624,12 +748,51 @@ export const ArtifactContent: React.FC<{
             </button>
           )}
           {canToggleView && (
-            <button
-              onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
-              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
-            >
-              {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
-            </button>
+            <div className="flex items-center space-x-1">
+              {supportsEditorView ? (
+                // Three-way toggle for code artifacts with editor support
+                <>
+                  <button
+                    onClick={() => setViewMode('rendered')}
+                    className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md shadow-sm ${
+                      viewMode === 'rendered' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Rendered
+                  </button>
+                  <button
+                    onClick={() => setViewMode('editor')}
+                    className={`px-3 py-1 text-sm border-t border-b border-gray-300 dark:border-gray-600 shadow-sm ${
+                      viewMode === 'editor' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Editor
+                  </button>
+                  <button
+                    onClick={() => setViewMode('source')}
+                    className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-r-md shadow-sm ${
+                      viewMode === 'source' 
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Source
+                  </button>
+                </>
+              ) : (
+                // Two-way toggle for other artifacts
+                <button
+                  onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
+                  className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
+                >
+                  {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
