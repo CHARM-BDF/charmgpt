@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Artifact } from '../../../../shared/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
@@ -51,23 +51,31 @@ export const ArtifactContent: React.FC<{
   // Check if this is a file reference artifact
   const isFileReference = !!(artifact.metadata?.fileReference);
   
-  // Load file content for file reference artifacts
   useEffect(() => {
-    if (isFileReference && storageService && !fileContent && !isLoadingFile) {
-      const loadFileContent = async () => {
-        setIsLoadingFile(true);
-        setFileLoadError(null);
-        
-        try {
+    if (isFileReference && storageService && !isLoadingFile) {
+      setIsLoadingFile(true);
+      setFileLoadError(null);
+      
+      storageService.readContent(artifact.metadata.fileReference.fileId)
+        .then((content: any) => {
           const fileRef = artifact.metadata!.fileReference!;
-          console.log('Loading file content for artifact:', fileRef.fileName);
-          
-          // Get file content from storage service
-          const content = await storageService.readContent(fileRef.fileId);
           let textContent: string;
           
           if (content instanceof Uint8Array) {
-            textContent = new TextDecoder('utf-8').decode(content);
+            const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+              // For images, convert to base64 using a more reliable method
+              let binary = '';
+              const len = content.byteLength;
+              for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(content[i]);
+              }
+              const base64String = btoa(binary);
+              textContent = base64String;
+            } else {
+              // For text files, decode as UTF-8
+              textContent = new TextDecoder('utf-8').decode(content);
+            }
           } else {
             textContent = content as string;
           }
@@ -75,26 +83,32 @@ export const ArtifactContent: React.FC<{
           // Process content based on file type
           const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
           if (extension === 'csv') {
-            const { csvToMarkdown } = await import('../../utils/csvToMarkdown');
-            textContent = csvToMarkdown(textContent);
+            import('../../utils/csvToMarkdown').then(({ csvToMarkdown }) => {
+              setFileContent(csvToMarkdown(textContent));
+            });
           } else if (extension === 'tsv') {
-            const { tsvToMarkdown } = await import('../../utils/csvToMarkdown');
-            textContent = tsvToMarkdown(textContent);
+            import('../../utils/csvToMarkdown').then(({ tsvToMarkdown }) => {
+              setFileContent(tsvToMarkdown(textContent));
+            });
+          } else {
+            setFileContent(textContent);
           }
-          
           setFileContent(textContent);
-          console.log('Successfully loaded file content, length:', textContent.length);
-        } catch (error) {
+          setIsLoadingFile(false);
+        })
+        .catch((error: any) => {
           console.error('Failed to load file content:', error);
           setFileLoadError('Failed to load file content');
-        } finally {
           setIsLoadingFile(false);
-        }
-      };
-      
-      loadFileContent();
+        });
     }
-  }, [isFileReference, storageService, fileContent, isLoadingFile, artifact.metadata]);
+  }, [artifact.id]);
+  
+  // Clear content when artifact changes
+  useEffect(() => {
+    setFileContent('');
+    setFileLoadError(null);
+  }, [artifact.id]);
 
   const handleSaveToProject = async () => {
     if (!storageService || !selectedProjectId || !isMarkdown) return;
