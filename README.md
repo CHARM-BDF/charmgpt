@@ -38,7 +38,7 @@ This script handles the entire setup process:
 - Checks if Docker is running and starts it if needed
 - Installs dependencies for all MCP servers
 - Builds all MCP servers (TypeScript compilation)
-- Builds the Docker images for both Python and R MCPs
+- Builds the Docker images for Python, R, and R MCPs
 
 ## Manual Setup
 
@@ -276,6 +276,10 @@ The utility will automatically collect and group these logs for easier debugging
 - If the build process is interrupted, you can simply run the build command again - Docker will use cached layers when possible
 - If you encounter memory issues during the build, try increasing the resources allocated to Docker in Docker Desktop settings
 - For Mac with Apple Silicon (M1/M2/M3), the `--platform linux/amd64` flag is essential for compatibility
+
+### Racket MCP Issues
+
+No known issues.
 
 ### Building and Running
 
