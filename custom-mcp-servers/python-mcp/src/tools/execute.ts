@@ -38,7 +38,7 @@ async function storeFileInServerStorage(
       fsSync.mkdirSync(uploadsDir, { recursive: true });
     }
     const permanentFilePath = path.join(uploadsDir, fileId);
-    await fs.copyFile(tempFilePath, permanentFilePath);
+    await fs.rename(tempFilePath, permanentFilePath);
     
     // Create metadata (same format as storage API)
     const stats = await fs.stat(permanentFilePath);
