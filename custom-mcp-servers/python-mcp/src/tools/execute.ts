@@ -5,89 +5,13 @@ import * as fsSync from 'fs';
 import { setupPythonEnvironment, cleanupPythonEnvironment, validatePythonCode, TEMP_DIR, LOGS_DIR } from './env.js';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { randomUUID } from 'crypto';
-import { fileURLToPath } from 'url';
+import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
 
-export function getMimeType(filename: string): string {
-  const ext = path.extname(filename).toLowerCase();
-  switch (ext) {
-    case '.csv': return 'text/csv';
-    case '.json': return 'application/json';
-    case '.txt': return 'text/plain';
-    case '.png': return 'image/png';
-    case '.jpg': case '.jpeg': return 'image/jpeg';
-    case '.parquet': return 'application/octet-stream';
-    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    default: return 'application/octet-stream';
-  }
-}
-
-async function storeFileInServerStorage(
-  tempFilePath: string, 
-  originalFilename: string, 
-  sourceCode: string,
-  logger: Logger
-): Promise<{fileId: string, size: number}> {
-  try {
-    // Generate UUID for the file
-    const fileId = randomUUID();
-    
-    // Move file to uploads directory (same as storage API)
-    const uploadsDir = path.resolve(__dirname, '../../../../backend-mcp-client/uploads');
-    if (!fsSync.existsSync(uploadsDir)) {
-      fsSync.mkdirSync(uploadsDir, { recursive: true });
-    }
-    const permanentFilePath = path.join(uploadsDir, fileId);
-    await fs.rename(tempFilePath, permanentFilePath);
-    
-    // Create metadata (same format as storage API)
-    const stats = await fs.stat(permanentFilePath);
-    const metadata = {
-      description: originalFilename,
-      schema: {
-        type: 'tabular' as const,
-        format: getMimeType(originalFilename),
-        encoding: 'utf-8',
-        sampleData: ''
-      },
-      tags: ['python-output', 'auto-generated'],
-      originalFilename,
-      generatedBy: 'python-mcp',
-      generatedAt: new Date().toISOString(),
-      sourceCode,
-      size: stats.size
-    };
-    
-    // Store metadata (same as storage API)
-    const metadataDir = path.join(uploadsDir, 'metadata');
-    if (!fsSync.existsSync(metadataDir)) {
-      fsSync.mkdirSync(metadataDir, { recursive: true });
-    }
-    const metadataPath = path.join(metadataDir, `${fileId}.json`);
-    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
-    
-    logger.log(`Stored file in server storage: ${originalFilename} -> ${fileId}`);
-    return {fileId, size: stats.size}; // Return both fileId and size
-    
-  } catch (error) {
-    logger.log(`Error storing file in server storage: ${error}`);
-    throw error;
-  }
-}
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const execAsync = promisify(exec);
 
 // Docker configuration
 const DOCKER_IMAGE = 'my-python-mcp';
-const CONTAINER_TEMP_DIR = '/app/temp';
-const CONTAINER_LOGS_DIR = '/app/logs';
-const CONTAINER_UPLOADS_DIR = '/app/uploads';
-
-// Get uploads directory path (relative to project root)
-const UPLOADS_DIR = path.join(__dirname, '../../../../backend-mcp-client/uploads');
 
 // Ensure log directory exists
 try {
@@ -103,305 +27,6 @@ try {
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
-}
-
-// Logger type definition
-interface Logger {
-  log: (message: string) => void;
-  close: () => void;
-  isClosed: boolean;
-}
-
-function createRunLogger(): Logger {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const logFileName = `run_${timestamp}.log`;
-  const logFilePath = path.join(LOGS_DIR, logFileName);
-  
-  // Create write stream for logging
-  const logStream = fsSync.createWriteStream(logFilePath, { flags: 'a' });
-  let isClosed = false;
-  
-  // Log the paths being used
-  logStream.write(`Log file path: ${logFilePath}\n`);
-  logStream.write(`Temp directory path: ${TEMP_DIR}\n`);
-  
-  return {
-    log: (message: string) => {
-      if (!isClosed) {
-        const timestamp = new Date().toISOString();
-        const logMessage = `[${timestamp}] ${message}\n`;
-        logStream.write(logMessage);
-      }
-    },
-    close: () => {
-      if (!isClosed) {
-        isClosed = true;
-        logStream.end();
-      }
-    },
-    isClosed
-  };
-}
-
-function log(type: string, message: string, color: string, logFile: string) {
-  // Get timestamp in Central Time
-  const timestamp = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(new Date());
-  
-  const logMessage = `${timestamp} ${color}[PYTHON-MCP ${type}]\x1b[0m ${message}\n`;
-  const fileMessage = `${timestamp} [PYTHON-MCP ${type}] ${message}\n`;
-  
-  // Write to console with color
-  process.stderr.write(logMessage);
-  
-  // Write to run-specific log file without color
-  try {
-    fsSync.appendFileSync(logFile, fileMessage);
-  } catch (error) {
-    console.error('Error writing to log file:', error);
-  }
-}
-
-interface ExecuteArgs {
-  code: string;
-  dataFiles?: Record<string, string>;
-  timeout?: number;
-}
-
-interface ExecuteResult {
-  output: string;
-  code: string;
-  type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json';
-  metadata?: Record<string, any>;
-  binaryOutput?: {
-    data: string;  // base64 encoded
-    type: string;  // MIME type
-    metadata: {
-      filename: string;
-      size: number;
-      dimensions: {
-        width: number;
-        height: number;
-      };
-      sourceCode: string;  // Source code that generated the output
-    };
-  };
-  createdFiles?: CreatedFile[];
-}
-
-interface CreatedFile {
-  fileId: string;
-  originalFilename: string;
-  size: number; // Add this field
-}
-
-// File processing functions
-interface ProcessedFile {
-  varName: string;
-  filePath: string;
-  fileType: string;
-  originalName: string;
-}
-
-function isValidUUID(str: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
-}
-
-async function resolveFileId(fileReference: string): Promise<{ filePath: string; metadata: any } | null> {
-  try {
-    // First, try as a UUID (file ID)
-    if (isValidUUID(fileReference)) {
-      const filePath = path.join(UPLOADS_DIR, fileReference);
-      const metadataPath = path.join(UPLOADS_DIR, 'metadata', `${fileReference}.json`);
-      
-      // Check if file exists
-      await fs.access(filePath);
-      
-      // Try to read metadata
-      let metadata = {};
-      try {
-        const metadataContent = await fs.readFile(metadataPath, 'utf-8');
-        metadata = JSON.parse(metadataContent);
-      } catch (error) {
-        // Metadata not required, continue without it
-      }
-      
-      return { filePath, metadata };
-    }
-    
-    // If not a UUID, try to find by filename in the uploads directory
-    const metadataDir = path.join(UPLOADS_DIR, 'metadata');
-    const metadataFiles = await fs.readdir(metadataDir);
-    
-    for (const metadataFile of metadataFiles) {
-      if (metadataFile.endsWith('.json')) {
-        try {
-          const metadataPath = path.join(metadataDir, metadataFile);
-          const metadataContent = await fs.readFile(metadataPath, 'utf-8');
-          const metadata = JSON.parse(metadataContent);
-          
-          // Check if this file matches the requested filename
-          if (metadata.description === fileReference) {
-            const fileId = metadataFile.replace('.json', '');
-            const filePath = path.join(UPLOADS_DIR, fileId);
-            
-            // Verify the file exists
-            await fs.access(filePath);
-            
-            return { filePath, metadata };
-          }
-        } catch (error) {
-          // Skip this metadata file if it's invalid
-          continue;
-        }
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    return null;
-  }
-}
-
-function detectFileType(filePath: string, metadata: any): string {
-  const ext = path.extname(filePath).toLowerCase();
-  
-  // Use metadata if available
-  if (metadata.schema?.format) {
-    return metadata.schema.format;
-  }
-  
-  // Fall back to extension detection
-  switch (ext) {
-    case '.csv': return 'csv';
-    case '.json': return 'json';
-    case '.xlsx': case '.xls': return 'excel';
-    case '.txt': return 'text';
-    case '.parquet': return 'parquet';
-    default: return 'unknown';
-  }
-}
-
-async function processDataFiles(dataFiles: Record<string, string>, logger: Logger): Promise<ProcessedFile[]> {
-  const processedFiles: ProcessedFile[] = [];
-  
-  for (const [varName, fileReference] of Object.entries(dataFiles)) {
-    logger.log(`Processing dataFile: ${varName} -> ${fileReference}`);
-    
-    let sourceFilePath: string;
-    let metadata: any = {};
-    let originalName: string;
-    
-    // Try to resolve the file reference (either UUID or filename)
-    logger.log(`Resolving file reference: ${fileReference}`);
-    const resolved = await resolveFileId(fileReference);
-    
-    if (resolved) {
-      // Successfully resolved (either by UUID or filename)
-      sourceFilePath = resolved.filePath;
-      metadata = resolved.metadata;
-      originalName = metadata.description || fileReference;
-    } else {
-      // Fallback: treat as direct file path (backward compatibility)
-      logger.log(`File reference not found in uploads, treating as direct path: ${fileReference}`);
-      sourceFilePath = fileReference;
-      originalName = path.basename(fileReference);
-    }
-    
-    // Copy file to temp directory with original name
-    const tempFilePath = path.join(TEMP_DIR, originalName);
-    
-    logger.log(`Copying file from ${sourceFilePath} to ${tempFilePath}`);
-    await fs.copyFile(sourceFilePath, tempFilePath);
-    
-    // Set proper permissions for Docker
-    await fs.chmod(tempFilePath, 0o644);
-    
-    const fileType = detectFileType(sourceFilePath, metadata);
-    
-    processedFiles.push({
-      varName,
-      filePath: tempFilePath,
-      fileType,
-      originalName
-    });
-    
-    logger.log(`Processed file: ${varName} (${fileType}) -> ${tempFilePath}`);
-  }
-  
-  return processedFiles;
-}
-
-function generateFileLoadingCode(processedFiles: ProcessedFile[]): string {
-  if (processedFiles.length === 0) {
-    return '';
-  }
-  
-  let loadingCode = '# Auto-generated file loading code\n';
-  loadingCode += 'import os\n';
-  
-  const requiredImports = new Set<string>();
-  
-  for (const file of processedFiles) {
-    const containerPath = path.posix.join(CONTAINER_TEMP_DIR, path.basename(file.filePath));
-    
-    switch (file.fileType) {
-      case 'csv':
-        requiredImports.add('import pandas as pd');
-        loadingCode += `${file.varName} = pd.read_csv('${containerPath}')\n`;
-        loadingCode += `print(f"Loaded CSV file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
-        break;
-        
-      case 'json':
-        requiredImports.add('import json');
-        loadingCode += `with open('${containerPath}', 'r') as f:\n`;
-        loadingCode += `    ${file.varName} = json.load(f)\n`;
-        loadingCode += `print(f"Loaded JSON file '${file.originalName}' as '${file.varName}'")\n`;
-        break;
-        
-      case 'excel':
-        requiredImports.add('import pandas as pd');
-        loadingCode += `${file.varName} = pd.read_excel('${containerPath}')\n`;
-        loadingCode += `print(f"Loaded Excel file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
-        break;
-        
-      case 'text':
-        loadingCode += `with open('${containerPath}', 'r') as f:\n`;
-        loadingCode += `    ${file.varName} = f.read()\n`;
-        loadingCode += `print(f"Loaded text file '${file.originalName}' as '${file.varName}': {len(${file.varName})} characters")\n`;
-        break;
-        
-      case 'parquet':
-        requiredImports.add('import pandas as pd');
-        loadingCode += `${file.varName} = pd.read_parquet('${containerPath}')\n`;
-        loadingCode += `print(f"Loaded Parquet file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
-        break;
-        
-      default:
-        // For unknown file types, just make the path available
-        loadingCode += `${file.varName}_path = '${containerPath}'\n`;
-        loadingCode += `print(f"File '${file.originalName}' available at path: ${file.varName}_path")\n`;
-    }
-  }
-  
-  // Add required imports at the beginning
-  const imports = Array.from(requiredImports).join('\n');
-  if (imports) {
-    loadingCode = imports + '\n' + loadingCode;
-  }
-  
-  loadingCode += '# End of auto-generated file loading code\n\n';
-  
-  return loadingCode;
 }
 
 // Add helper function for code transformation
@@ -603,7 +228,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   const { code: originalCode, dataFiles, timeout = 30 } = args;
   
   // Create logger first
-  const logger = createRunLogger();
+  const logger = createRunLogger(LOGS_DIR, TEMP_DIR);
   let scriptPath = '';
   let processedFiles: ProcessedFile[] = [];
   
@@ -611,7 +236,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     // Process dataFiles first
     if (dataFiles && Object.keys(dataFiles).length > 0) {
       logger.log('Processing dataFiles...');
-      processedFiles = await processDataFiles(dataFiles, logger);
+      processedFiles = await processDataFiles(TEMP_DIR,dataFiles, logger);
       logger.log(`Processed ${processedFiles.length} files`);
     }
     
@@ -655,90 +280,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     // Run the code in Docker and collect output
     const output = await runInDocker(scriptPath, envConfig, logger);
 
-    // Detect new files created after execution
-    const postExecutionFiles = await fs.readdir(TEMP_DIR);
-    const newFiles = postExecutionFiles.filter(file => !Array.from(preExecutionFiles).includes(file));
-    logger.log(`New files created: ${newFiles.join(', ')}`);
-
-    // Process new files and store them in server-side storage
     const createdFiles: CreatedFile[] = [];
-
-    for (const filename of newFiles) {
-      const tempFilePath = path.join(TEMP_DIR, filename);
-      
-      try {
-        // Store file using server-side storage system
-        const result = await storeFileInServerStorage(tempFilePath, filename, code, logger);
-        createdFiles.push({
-          fileId: result.fileId, 
-          originalFilename: filename,
-          size: result.size
-        });
-        
-        logger.log(`Successfully stored new file: ${filename} -> ${result.fileId}`);
-        
-      } catch (error) {
-        logger.log(`Error processing new file ${filename}: ${error}`);
-      }
-    }
-
-    logger.log(`Created ${createdFiles.length} files in server storage: ${createdFiles.map(f => f.originalFilename).join(', ')}`);
-
-    let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
-
-    for (const file of postExecutionFiles) {
-      logger.log(`Processing file: ${file}`);
-      console.error(`PYTHON SERVER LOGS: Processing file: ${file}`);
-      
-      if (file.endsWith('.png')) {
-        logger.log(`Found PNG file: ${file}`);
-        console.error(`PYTHON SERVER LOGS: Found PNG file: ${file}`);
-        const filePath = path.join(TEMP_DIR, file);
-        logger.log(`Full file path: ${filePath}`);
-        console.error(`PYTHON SERVER LOGS: Full PNG path: ${filePath}`);
-        
-        try {
-          const fileContent = await fs.readFile(filePath);
-          logger.log(`File size: ${fileContent.length} bytes`);
-          console.error(`PYTHON SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
-          const base64Data = fileContent.toString('base64');
-          console.error(`PYTHON SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
-          
-          // Extract PNG dimensions from the IHDR chunk
-          const width = fileContent.readUInt32BE(16);
-          const height = fileContent.readUInt32BE(20);
-          logger.log(`Image dimensions: ${width}x${height}`);
-          console.error(`PYTHON SERVER LOGS: PNG dimensions: ${width}x${height}`);
-          
-          binaryOutput = {
-            data: base64Data,
-            type: 'image/png',
-            metadata: {
-              filename: file,
-              size: fileContent.length,
-              dimensions: {
-                width,
-                height
-              },
-              sourceCode: code  // Add the source code to metadata
-            }
-          };
-          
-          logger.log('Binary output prepared successfully');
-          console.error('PYTHON SERVER LOGS: Binary output prepared successfully');
-          
-          // Clean up the binary file
-          await fs.unlink(filePath).catch(error => {
-            logger.log(`Error cleaning up PNG file: ${error}`);
-            console.error(`PYTHON SERVER LOGS: Error cleaning up PNG file: ${error}`);
-          });
-          break;  // Only handle the first PNG for now
-        } catch (error) {
-          logger.log(`Error processing PNG file: ${error}`);
-          console.error(`PYTHON SERVER LOGS: ERROR processing PNG file: ${error}`);
-        }
-      }
-    }
+    const binaryOutput = await postExecution("Python",createdFiles, TEMP_DIR, preExecutionFiles, logger, code);
 
     // Clean up after execution
     await cleanupPythonEnvironment();
@@ -768,7 +311,6 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       }
     }
 
-    // Return output with type information and binary data if present
     const result: ExecuteResult = { 
       output, 
       code,
