@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import * as fsSync from 'fs';
 import { randomUUID } from 'crypto';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,7 +14,6 @@ export const CONTAINER_UPLOADS_DIR = '/app/uploads';
 
 // Get uploads directory path (relative to project root)
 export const UPLOADS_DIR = path.join(__dirname, '../../../../backend-mcp-client/uploads');
-
 
 export function getMimeType(filename: string): string {
     const ext = path.extname(filename).toLowerCase();
@@ -40,7 +40,7 @@ export function getMimeType(filename: string): string {
       const fileId = randomUUID();
       
       // Move file to uploads directory (same as storage API)
-      const uploadsDir = path.resolve(__dirname, '../../../../backend-mcp-client/uploads');
+      const uploadsDir = UPLOADS_DIR;
       if (!fsSync.existsSync(uploadsDir)) {
         fsSync.mkdirSync(uploadsDir, { recursive: true });
       }

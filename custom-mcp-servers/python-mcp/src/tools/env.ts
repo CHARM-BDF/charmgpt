@@ -6,8 +6,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define separate paths for logs and temp files
-export const LOGS_DIR = path.join(__dirname, '../../../../logs/python-mcp');
+export const LOGS_DIR = path.join(__dirname, '../../../../logs/racket-mcp');
 export const TEMP_DIR = path.join(__dirname, '../../temp');  // Keep temp files close to the server
+
 
 // Comprehensive list of allowed Python packages
 const ALLOWED_PACKAGES = new Set([
