@@ -493,6 +493,14 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
       };
   }
 
+  function shouldSkipFile(filename: string): boolean {
+    // Skip Racket cache files
+    if (filename.includes('.cache-')) {
+      return true;
+    }
+    return false;
+  }
+
   export async function postExecution(lang: string, createdFiles: CreatedFile[], TEMP_DIR: string, preExecutionFiles: Set<string>, logger: Logger, code: string) {
         // Detect new files created after execution
         const postExecutionFiles = await fs.readdir(TEMP_DIR);
@@ -500,6 +508,10 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
         logger.log(`New files created: ${newFiles.join(', ')}`);
     
         for (const filename of newFiles) {
+          if (shouldSkipFile(filename)) {
+            logger.log(`Skipping file: ${filename}`);
+            continue;
+          }
           const tempFilePath = path.join(TEMP_DIR, filename);
           
           try {
