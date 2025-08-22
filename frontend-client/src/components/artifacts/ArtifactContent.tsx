@@ -749,15 +749,12 @@ export const ArtifactContent: React.FC<{
           )}
           {canToggleView && !supportsEditorView && (
             <div className="flex items-center space-x-1">
-              (
-                // Two-way toggle for other artifacts
                 <button
                   onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
                   className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
                 >
                   {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
                 </button>
-              )
             </div>
           )}
         </div>
