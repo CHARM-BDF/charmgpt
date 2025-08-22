@@ -6,13 +6,13 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
-import { getMimeType, canViewAsArtifact, getArtifactTypeForFile, getLanguageForFile, getResponse, ExecuteResult, ProcessedFile, CreatedFile, ExecuteArgs, Logger, makeLogger } from "./shared/mcpCodeUtils.js";
+import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
 import { validatePythonCode } from "./tools/env.js";
 import os from "os";
 import crypto from 'crypto';
 
 // Logger utility
-const logger: Logger = makeLogger({
+const logger = makeLogger({
   log_type: (type: string, message: string, ...args: any[]) => {
     console.error(`\x1b[36m[PYTHON-MCP ${type}]\x1b[0m ${message}`, ...args);
   }

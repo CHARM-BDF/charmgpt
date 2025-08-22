@@ -6,13 +6,12 @@ import { appendFileSync, mkdirSync } from 'fs';
 import { createWriteStream } from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
+import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR,  processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
 
 const execAsync = promisify(exec);
 
 // Docker configuration
 const DOCKER_IMAGE = 'my-racket-mcp';
-const CONTAINER_TEMP_DIR = '/app/temp';
-const CONTAINER_LOGS_DIR = '/app/logs';
 
 // Ensure log directory exists
 try {
@@ -28,97 +27,6 @@ try {
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
-}
-
-// Logger type definition
-interface Logger {
-  log: (message: string) => void;
-  close: () => void;
-  isClosed: boolean;
-}
-
-function createRunLogger(): Logger {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const logFileName = `run_${timestamp}.log`;
-  const logFilePath = path.join(LOGS_DIR, logFileName);
-  
-  // Create write stream for logging
-  const logStream = createWriteStream(logFilePath, { flags: 'a' });
-  let isClosed = false;
-  
-  // Log the paths being used
-  logStream.write(`Log file path: ${logFilePath}\n`);
-  logStream.write(`Temp directory path: ${TEMP_DIR}\n`);
-  
-  return {
-    log: (message: string) => {
-      if (!isClosed) {
-        const timestamp = new Date().toISOString();
-        const logMessage = `[${timestamp}] ${message}\n`;
-        logStream.write(logMessage);
-      }
-    },
-    close: () => {
-      if (!isClosed) {
-        isClosed = true;
-        logStream.end();
-      }
-    },
-    isClosed
-  };
-}
-
-function log(type: string, message: string, color: string, logFile: string) {
-  // Get timestamp in Central Time
-  const timestamp = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(new Date());
-  
-  const logMessage = `${timestamp} ${color}[RACKET-MCP ${type}]\x1b[0m ${message}\n`;
-  const fileMessage = `${timestamp} [RACKET-MCP ${type}] ${message}\n`;
-  
-  // Write to console with color
-  process.stderr.write(logMessage);
-  
-  // Write to run-specific log file without color
-  try {
-    appendFileSync(logFile, fileMessage);
-  } catch (error) {
-    console.error('Error writing to log file:', error);
-  }
-}
-
-interface ExecuteArgs {
-  code: string;
-  dataFiles?: Record<string, string>;
-  timeout?: number;
-}
-
-interface ExecuteResult {
-  output: string;
-  code: string;
-  type?: 'text' | 'racket.list' | 'racket.hash' | 'racket.plot' | 'binary' | 'json';
-  metadata?: Record<string, any>;
-  binaryOutput?: {
-    data: string;  // base64 encoded
-    type: string;  // MIME type
-    metadata: {
-      filename: string;
-      size: number;
-      dimensions: {
-        width: number;
-        height: number;
-      };
-      sourceCode: string;  // Source code that generated the output
-    };
-  };
 }
 
 // Add helper function for code transformation
@@ -306,122 +214,22 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
   }
 }
 
-interface ProcessedFile {
-  originalName: string;
-  varName: string;
-  path: string;
-}
-
-// File resolution helper functions (similar to Python MCP)
-function isValidUUID(str: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
-}
-
-async function resolveFileId(fileReference: string, uploadsDir: string): Promise<{ filePath: string; metadata: any } | null> {
-  try {
-    // First, try as a UUID (file ID)
-    if (isValidUUID(fileReference)) {
-      const filePath = path.join(uploadsDir, fileReference);
-      const metadataPath = path.join(uploadsDir, 'metadata', `${fileReference}.json`);
-      
-      // Check if file exists
-      await fs.access(filePath);
-      
-      // Try to read metadata
-      let metadata = {};
-      try {
-        const metadataContent = await fs.readFile(metadataPath, 'utf-8');
-        metadata = JSON.parse(metadataContent);
-      } catch (error) {
-        // Metadata not required, continue without it
-      }
-      
-      return { filePath, metadata };
-    }
-    
-    // If not a UUID, try to find by filename in the uploads directory
-    const metadataDir = path.join(uploadsDir, 'metadata');
-    const metadataFiles = await fs.readdir(metadataDir);
-    
-    for (const metadataFile of metadataFiles) {
-      if (metadataFile.endsWith('.json')) {
-        try {
-          const metadataPath = path.join(metadataDir, metadataFile);
-          const metadataContent = await fs.readFile(metadataPath, 'utf-8');
-          const metadata = JSON.parse(metadataContent);
-          
-          // Check if this file matches the requested filename
-          if (metadata.description === fileReference) {
-            const fileId = metadataFile.replace('.json', '');
-            const filePath = path.join(uploadsDir, fileId);
-            
-            // Verify the file exists
-            await fs.access(filePath);
-            
-            return { filePath, metadata };
-          }
-        } catch (error) {
-          // Skip this metadata file if it's invalid
-          continue;
-        }
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    return null;
-  }
-}
-
 export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   const { code: originalCode, dataFiles, timeout = 30 } = args;
   
   // Create logger first
-  const logger = createRunLogger();
+  const logger = createRunLogger(LOGS_DIR, TEMP_DIR);
   let scriptPath = '';
   let processedFiles: ProcessedFile[] = [];
   
   try {
     // Process dataFiles first
     if (dataFiles && Object.keys(dataFiles).length > 0) {
-      logger.log(`Processing ${Object.keys(dataFiles).length} data files`);
-      
-      const uploadsDir = path.resolve('/Users/namin/code/bdf/charm-mcp-pins/backend-mcp-client/uploads');
-      logger.log(`Looking for files in uploads directory: ${uploadsDir}`);
-      
-      for (const [varName, fileReference] of Object.entries(dataFiles)) {
-        logger.log(`Processing dataFile: ${varName} -> ${fileReference}`);
-        
-        // Try to resolve the file reference (either UUID or filename)
-        logger.log(`Resolving file reference: ${fileReference}`);
-        const resolved = await resolveFileId(fileReference, uploadsDir);
-        
-        if (resolved) {
-          // Successfully resolved
-          const originalName = resolved.metadata.description || fileReference;
-          const targetPath = path.join(TEMP_DIR, originalName);
-          
-          logger.log(`Copying file from ${resolved.filePath} to ${targetPath}`);
-          await fs.copyFile(resolved.filePath, targetPath);
-          
-          // Set proper permissions for Docker
-          await fs.chmod(targetPath, 0o644);
-          
-          processedFiles.push({
-            originalName,
-            varName,
-            path: targetPath
-          });
-          
-          logger.log(`Successfully processed file: ${varName} -> ${targetPath}`);
-        } else {
-          logger.log(`Warning: Could not find uploaded file for ${fileReference}`);
-        }
-      }
-      
-      logger.log(`Successfully processed ${processedFiles.length} files`);
+      logger.log('Processing dataFiles...');
+      processedFiles = await processDataFiles(TEMP_DIR,dataFiles, logger);
+      logger.log(`Processed ${processedFiles.length} files`);
     }
+    
     // Validate Racket code before transformation
     validateRacketCode(originalCode);
     logger.log('Racket code validation passed');
@@ -462,6 +270,11 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     await fs.writeFile(scriptPath, code, 'utf-8');
     logger.log('Racket code written to temporary file');
 
+    // Take pre-execution snapshot of files in temp directory
+    const preExecutionFiles = new Set(await fs.readdir(TEMP_DIR));
+    logger.log(`Pre-execution files: ${Array.from(preExecutionFiles).join(', ')}`);
+
+
     // Run the code in Docker and collect output
     const output = await runInDocker(scriptPath, envConfig, logger);
 
@@ -471,61 +284,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     logger.log(`Files in temp directory: ${files.join(', ')}`);
     console.error(`RACKET SERVER LOGS: Files found in temp directory: ${files.join(', ')}`);
     
-    let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
-
-    for (const file of files) {
-      logger.log(`Processing file: ${file}`);
-      console.error(`RACKET SERVER LOGS: Processing file: ${file}`);
-      
-      if (file.endsWith('.png')) {
-        logger.log(`Found PNG file: ${file}`);
-        console.error(`RACKET SERVER LOGS: Found PNG file: ${file}`);
-        const filePath = path.join(TEMP_DIR, file);
-        logger.log(`Full file path: ${filePath}`);
-        console.error(`RACKET SERVER LOGS: Full PNG path: ${filePath}`);
-        
-        try {
-          const fileContent = await fs.readFile(filePath);
-          logger.log(`File size: ${fileContent.length} bytes`);
-          console.error(`RACKET SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
-          const base64Data = fileContent.toString('base64');
-          console.error(`RACKET SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
-          
-          // Extract PNG dimensions from the IHDR chunk
-          const width = fileContent.readUInt32BE(16);
-          const height = fileContent.readUInt32BE(20);
-          logger.log(`Image dimensions: ${width}x${height}`);
-          console.error(`RACKET SERVER LOGS: PNG dimensions: ${width}x${height}`);
-          
-          binaryOutput = {
-            data: base64Data,
-            type: 'image/png',
-            metadata: {
-              filename: file,
-              size: fileContent.length,
-              dimensions: {
-                width,
-                height
-              },
-              sourceCode: code  // Add the source code to metadata
-            }
-          };
-          
-          logger.log('Binary output prepared successfully');
-          console.error('RACKET SERVER LOGS: Binary output prepared successfully');
-          
-          // Clean up the binary file
-          await fs.unlink(filePath).catch(error => {
-            logger.log(`Error cleaning up PNG file: ${error}`);
-            console.error(`RACKET SERVER LOGS: Error cleaning up PNG file: ${error}`);
-          });
-          break;  // Only handle the first PNG for now
-        } catch (error) {
-          logger.log(`Error processing PNG file: ${error}`);
-          console.error(`RACKET SERVER LOGS: ERROR processing PNG file: ${error}`);
-        }
-      }
-    }
+    const createdFiles: CreatedFile[] = [];
+    const binaryOutput = await postExecution("Racket", createdFiles, TEMP_DIR, preExecutionFiles, logger, code);
 
     // Clean up after execution
     await cleanupRacketEnvironment();
@@ -533,8 +293,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     // Clean up copied data files
     for (const file of processedFiles) {
       try {
-        logger.log(`Cleaning up data file: ${file.path}`);
-        await fs.unlink(file.path);
+        logger.log(`Cleaning up data file: ${file.filePath}`);
+        await fs.unlink(file.filePath);
       } catch (error) {
         if (error instanceof Error && !error.message.includes('ENOENT')) {
           logger.log(`Error cleaning up data file: ${error}`);
@@ -583,7 +343,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       
       // Clean up copied data files
       for (const file of processedFiles) {
-        await fs.unlink(file.path).catch(() => {}); // Ignore cleanup errors
+        await fs.unlink(file.filePath).catch(() => {}); // Ignore cleanup errors
       }
       
       if (scriptPath) {

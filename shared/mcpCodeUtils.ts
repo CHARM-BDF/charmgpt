@@ -30,11 +30,13 @@ export function getMimeType(filename: string): string {
   }
   
   export async function storeFileInServerStorage(
+    lang: string,
     tempFilePath: string, 
     originalFilename: string, 
     sourceCode: string,
     logger: Logger
   ): Promise<{fileId: string, size: number}> {
+    lang = lang.toLowerCase();
     try {
       // Generate UUID for the file
       const fileId = randomUUID();
@@ -57,9 +59,9 @@ export function getMimeType(filename: string): string {
           encoding: 'utf-8',
           sampleData: ''
         },
-        tags: ['python-output', 'auto-generated'],
+        tags: [lang+'-output', 'auto-generated'],
         originalFilename,
-        generatedBy: 'python-mcp',
+        generatedBy: lang+'-mcp',
         generatedAt: new Date().toISOString(),
         sourceCode,
         size: stats.size
@@ -199,7 +201,7 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
   export interface ExecuteResult {
     output: string;
     code: string;
-    type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json';
+    type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json' | 'racket.list' | 'racket.hash' | 'racket.plot';
     metadata?: Record<string, any>;
     binaryOutput?: {
       data: string;  // base64 encoded
@@ -379,11 +381,11 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
     })
     // Handle binary output if present
     if (result.binaryOutput) {
-        console.error("PYTHON SERVER LOGS: Binary output detected!");
-        console.error(`PYTHON SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
-        console.error(`PYTHON SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
-        console.error(`PYTHON SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
-        console.error(`PYTHON SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
+        console.error("CODE SERVER LOGS: Binary output detected!");
+        console.error(`CODE SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
+        console.error(`CODE SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
+        console.error(`CODE SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
+        console.error(`CODE SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
         
         logger.info("Binary output detected:");
         logger.info(`- Type: ${result.binaryOutput.type}`);
@@ -399,7 +401,7 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
         artifacts.push(
           {
             type: result.binaryOutput.type,
-            title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
+            title: lang+` Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
             content: result.binaryOutput.data,
             metadata: {
               ...result.binaryOutput.metadata,
@@ -412,13 +414,13 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
             binaryType: result.binaryOutput.type,
         }
       } else {
-        console.error("PYTHON SERVER LOGS: No binary output detected in execution result");
+        console.error("CODESERVER LOGS: No binary output detected in execution result");
       }
   
       // Log standard output result
-      console.error(`PYTHON SERVER LOGS: Standard output result (${result.output.length} chars):`);
-      console.error(`PYTHON SERVER LOGS: Output type: ${result.type || 'text'}`);
-      console.error(`PYTHON SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
+      console.error(`CODE SERVER LOGS: Standard output result (${result.output.length} chars):`);
+      console.error(`CODE SERVER LOGS: Output type: ${result.type || 'text'}`);
+      console.error(`CODE SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
       
       logger.info("Standard output result:");
       logger.info(`- Type: ${result.type || 'text'}`);
@@ -428,24 +430,24 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
       }
       
       if (result.output.length > 1 || result.output.includes('\n')) {
-        console.error("PYTHON SERVER LOGS: Creating text/markdown artifact for output");
+        console.error("CODE SERVER LOGS: Creating text/markdown artifact for output");
         artifacts.push({
           type: "text/markdown",
-          title: "Python Output",
+          title: lang+" Output",
           content: "```\n" + result.output + "\n```"
         });
-        console.error(`PYTHON SERVER LOGS: Created markdown artifact with length ${artifacts[artifacts.length - 1].content.length}`);
+        console.error(`CODE SERVER LOGS: Created markdown artifact with length ${artifacts[artifacts.length - 1].content.length}`);
       } else {
-        console.error("PYTHON SERVER LOGS: Output too short, not creating output artifact");
+        console.error("CODE SERVER LOGS: Output too short, not creating output artifact");
       }
   
       // Handle created files if present
       if (result.createdFiles && result.createdFiles.length > 0) {
-        console.error("PYTHON SERVER LOGS: Created files detected in result");
-        console.error(`PYTHON SERVER LOGS: Created ${result.createdFiles.length} files`);
+        console.error("CODE SERVER LOGS: Created files detected in result");
+        console.error(`CODE SERVER LOGS: Created ${result.createdFiles.length} files`);
         
         for (const createdFile of result.createdFiles) {
-          console.error(`PYTHON SERVER LOGS: Processing created file: ${createdFile.originalFilename} (${createdFile.fileId})`);
+          console.error(`CODE SERVER LOGS: Processing created file: ${createdFile.originalFilename} (${createdFile.fileId})`);
           
           // Determine MIME type from filename
           const mimeType = getMimeType(createdFile.originalFilename);
@@ -473,9 +475,9 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
               }
             });
             
-            console.error(`PYTHON SERVER LOGS: Created file reference artifact for: ${createdFile.originalFilename}`);
+            console.error(`CODE SERVER LOGS: Created file reference artifact for: ${createdFile.originalFilename}`);
           } else {
-            console.error(`PYTHON SERVER LOGS: File type not suitable for artifact viewing: ${createdFile.originalFilename}`);
+            console.error(`CODE SERVER LOGS: File type not suitable for artifact viewing: ${createdFile.originalFilename}`);
           }
         }
       }
@@ -490,3 +492,88 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
         isError: false,
       };
   }
+
+  export async function postExecution(lang: string, createdFiles: CreatedFile[], TEMP_DIR: string, preExecutionFiles: Set<string>, logger: Logger, code: string) {
+        // Detect new files created after execution
+        const postExecutionFiles = await fs.readdir(TEMP_DIR);
+        const newFiles = postExecutionFiles.filter(file => !Array.from(preExecutionFiles).includes(file));
+        logger.log(`New files created: ${newFiles.join(', ')}`);
+    
+        for (const filename of newFiles) {
+          const tempFilePath = path.join(TEMP_DIR, filename);
+          
+          try {
+            // Store file using server-side storage system
+            const result = await storeFileInServerStorage(lang, tempFilePath, filename, code, logger);
+            createdFiles.push({
+              fileId: result.fileId, 
+              originalFilename: filename,
+              size: result.size
+            });
+            
+            logger.log(`Successfully stored new file: ${filename} -> ${result.fileId}`);
+            
+          } catch (error) {
+            logger.log(`Error processing new file ${filename}: ${error}`);
+          }
+        }
+    
+        logger.log(`Created ${createdFiles.length} files in server storage: ${createdFiles.map(f => f.originalFilename).join(', ')}`);
+    
+        let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
+    
+        for (const file of postExecutionFiles) {
+          logger.log(`Processing file: ${file}`);
+          console.error(`PYTHON SERVER LOGS: Processing file: ${file}`);
+          
+          if (file.endsWith('.png')) {
+            logger.log(`Found PNG file: ${file}`);
+            console.error(`PYTHON SERVER LOGS: Found PNG file: ${file}`);
+            const filePath = path.join(TEMP_DIR, file);
+            logger.log(`Full file path: ${filePath}`);
+            console.error(`PYTHON SERVER LOGS: Full PNG path: ${filePath}`);
+            
+            try {
+              const fileContent = await fs.readFile(filePath);
+              logger.log(`File size: ${fileContent.length} bytes`);
+              console.error(`PYTHON SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
+              const base64Data = fileContent.toString('base64');
+              console.error(`PYTHON SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
+              
+              // Extract PNG dimensions from the IHDR chunk
+              const width = fileContent.readUInt32BE(16);
+              const height = fileContent.readUInt32BE(20);
+              logger.log(`Image dimensions: ${width}x${height}`);
+              console.error(`PYTHON SERVER LOGS: PNG dimensions: ${width}x${height}`);
+              
+              binaryOutput = {
+                data: base64Data,
+                type: 'image/png',
+                metadata: {
+                  filename: file,
+                  size: fileContent.length,
+                  dimensions: {
+                    width,
+                    height
+                  },
+                  sourceCode: code  // Add the source code to metadata
+                }
+              };
+              
+              logger.log('Binary output prepared successfully');
+              console.error('PYTHON SERVER LOGS: Binary output prepared successfully');
+              
+              // Clean up the binary file
+              await fs.unlink(filePath).catch(error => {
+                logger.log(`Error cleaning up PNG file: ${error}`);
+                console.error(`PYTHON SERVER LOGS: Error cleaning up PNG file: ${error}`);
+              });
+              break;  // Only handle the first PNG for now
+            } catch (error) {
+              logger.log(`Error processing PNG file: ${error}`);
+              console.error(`PYTHON SERVER LOGS: ERROR processing PNG file: ${error}`);
+            }
+          }
+        }
+        return binaryOutput;
+    }

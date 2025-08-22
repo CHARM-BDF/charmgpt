@@ -5,7 +5,7 @@ import * as fsSync from 'fs';
 import { setupPythonEnvironment, cleanupPythonEnvironment, validatePythonCode, TEMP_DIR, LOGS_DIR } from './env.js';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { createRunLogger, Logger, storeFileInServerStorage, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, CONTAINER_UPLOADS_DIR, UPLOADS_DIR, processDataFiles } from "../shared/mcpCodeUtils.js";
+import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
 
 
 const execAsync = promisify(exec);
@@ -27,96 +27,6 @@ try {
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
-}
-
-function log(type: string, message: string, color: string, logFile: string) {
-  // Get timestamp in Central Time
-  const timestamp = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(new Date());
-  
-  const logMessage = `${timestamp} ${color}[PYTHON-MCP ${type}]\x1b[0m ${message}\n`;
-  const fileMessage = `${timestamp} [PYTHON-MCP ${type}] ${message}\n`;
-  
-  // Write to console with color
-  process.stderr.write(logMessage);
-  
-  // Write to run-specific log file without color
-  try {
-    fsSync.appendFileSync(logFile, fileMessage);
-  } catch (error) {
-    console.error('Error writing to log file:', error);
-  }
-}
-
-function generateFileLoadingCode(processedFiles: ProcessedFile[]): string {
-  if (processedFiles.length === 0) {
-    return '';
-  }
-  
-  let loadingCode = '# Auto-generated file loading code\n';
-  loadingCode += 'import os\n';
-  
-  const requiredImports = new Set<string>();
-  
-  for (const file of processedFiles) {
-    const containerPath = path.posix.join(CONTAINER_TEMP_DIR, path.basename(file.filePath));
-    
-    switch (file.fileType) {
-      case 'csv':
-        requiredImports.add('import pandas as pd');
-        loadingCode += `${file.varName} = pd.read_csv('${containerPath}')\n`;
-        loadingCode += `print(f"Loaded CSV file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
-        break;
-        
-      case 'json':
-        requiredImports.add('import json');
-        loadingCode += `with open('${containerPath}', 'r') as f:\n`;
-        loadingCode += `    ${file.varName} = json.load(f)\n`;
-        loadingCode += `print(f"Loaded JSON file '${file.originalName}' as '${file.varName}'")\n`;
-        break;
-        
-      case 'excel':
-        requiredImports.add('import pandas as pd');
-        loadingCode += `${file.varName} = pd.read_excel('${containerPath}')\n`;
-        loadingCode += `print(f"Loaded Excel file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
-        break;
-        
-      case 'text':
-        loadingCode += `with open('${containerPath}', 'r') as f:\n`;
-        loadingCode += `    ${file.varName} = f.read()\n`;
-        loadingCode += `print(f"Loaded text file '${file.originalName}' as '${file.varName}': {len(${file.varName})} characters")\n`;
-        break;
-        
-      case 'parquet':
-        requiredImports.add('import pandas as pd');
-        loadingCode += `${file.varName} = pd.read_parquet('${containerPath}')\n`;
-        loadingCode += `print(f"Loaded Parquet file '${file.originalName}' as '${file.varName}': {${file.varName}.shape}")\n`;
-        break;
-        
-      default:
-        // For unknown file types, just make the path available
-        loadingCode += `${file.varName}_path = '${containerPath}'\n`;
-        loadingCode += `print(f"File '${file.originalName}' available at path: ${file.varName}_path")\n`;
-    }
-  }
-  
-  // Add required imports at the beginning
-  const imports = Array.from(requiredImports).join('\n');
-  if (imports) {
-    loadingCode = imports + '\n' + loadingCode;
-  }
-  
-  loadingCode += '# End of auto-generated file loading code\n\n';
-  
-  return loadingCode;
 }
 
 // Add helper function for code transformation
@@ -370,90 +280,8 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     // Run the code in Docker and collect output
     const output = await runInDocker(scriptPath, envConfig, logger);
 
-    // Detect new files created after execution
-    const postExecutionFiles = await fs.readdir(TEMP_DIR);
-    const newFiles = postExecutionFiles.filter(file => !Array.from(preExecutionFiles).includes(file));
-    logger.log(`New files created: ${newFiles.join(', ')}`);
-
-    // Process new files and store them in server-side storage
     const createdFiles: CreatedFile[] = [];
-
-    for (const filename of newFiles) {
-      const tempFilePath = path.join(TEMP_DIR, filename);
-      
-      try {
-        // Store file using server-side storage system
-        const result = await storeFileInServerStorage(tempFilePath, filename, code, logger);
-        createdFiles.push({
-          fileId: result.fileId, 
-          originalFilename: filename,
-          size: result.size
-        });
-        
-        logger.log(`Successfully stored new file: ${filename} -> ${result.fileId}`);
-        
-      } catch (error) {
-        logger.log(`Error processing new file ${filename}: ${error}`);
-      }
-    }
-
-    logger.log(`Created ${createdFiles.length} files in server storage: ${createdFiles.map(f => f.originalFilename).join(', ')}`);
-
-    let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
-
-    for (const file of postExecutionFiles) {
-      logger.log(`Processing file: ${file}`);
-      console.error(`PYTHON SERVER LOGS: Processing file: ${file}`);
-      
-      if (file.endsWith('.png')) {
-        logger.log(`Found PNG file: ${file}`);
-        console.error(`PYTHON SERVER LOGS: Found PNG file: ${file}`);
-        const filePath = path.join(TEMP_DIR, file);
-        logger.log(`Full file path: ${filePath}`);
-        console.error(`PYTHON SERVER LOGS: Full PNG path: ${filePath}`);
-        
-        try {
-          const fileContent = await fs.readFile(filePath);
-          logger.log(`File size: ${fileContent.length} bytes`);
-          console.error(`PYTHON SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
-          const base64Data = fileContent.toString('base64');
-          console.error(`PYTHON SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
-          
-          // Extract PNG dimensions from the IHDR chunk
-          const width = fileContent.readUInt32BE(16);
-          const height = fileContent.readUInt32BE(20);
-          logger.log(`Image dimensions: ${width}x${height}`);
-          console.error(`PYTHON SERVER LOGS: PNG dimensions: ${width}x${height}`);
-          
-          binaryOutput = {
-            data: base64Data,
-            type: 'image/png',
-            metadata: {
-              filename: file,
-              size: fileContent.length,
-              dimensions: {
-                width,
-                height
-              },
-              sourceCode: code  // Add the source code to metadata
-            }
-          };
-          
-          logger.log('Binary output prepared successfully');
-          console.error('PYTHON SERVER LOGS: Binary output prepared successfully');
-          
-          // Clean up the binary file
-          await fs.unlink(filePath).catch(error => {
-            logger.log(`Error cleaning up PNG file: ${error}`);
-            console.error(`PYTHON SERVER LOGS: Error cleaning up PNG file: ${error}`);
-          });
-          break;  // Only handle the first PNG for now
-        } catch (error) {
-          logger.log(`Error processing PNG file: ${error}`);
-          console.error(`PYTHON SERVER LOGS: ERROR processing PNG file: ${error}`);
-        }
-      }
-    }
+    const binaryOutput = await postExecution("Python",createdFiles, TEMP_DIR, preExecutionFiles, logger, code);
 
     // Clean up after execution
     await cleanupPythonEnvironment();
