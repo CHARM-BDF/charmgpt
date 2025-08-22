@@ -414,7 +414,7 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
             binaryType: result.binaryOutput.type,
         }
       } else {
-        console.error("CODESERVER LOGS: No binary output detected in execution result");
+        console.error("CODE SERVER LOGS: No binary output detected in execution result");
       }
   
       // Log standard output result
