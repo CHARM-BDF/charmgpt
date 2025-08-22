@@ -311,7 +311,6 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       }
     }
 
-    // Return output with type information and binary data if present
     const result: ExecuteResult = { 
       output, 
       code,
