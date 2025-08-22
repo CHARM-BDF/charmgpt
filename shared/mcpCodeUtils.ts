@@ -201,7 +201,7 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
   export interface ExecuteResult {
     output: string;
     code: string;
-    type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json' | 'racket.list' | 'racket.hash' | 'racket.plot';
+    type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json' | 'racket.list' | 'racket.hash' | 'racket.plot' | 'ggplot' | 'data.frame' | 'matrix';
     metadata?: Record<string, any>;
     binaryOutput?: {
       data: string;  // base64 encoded
