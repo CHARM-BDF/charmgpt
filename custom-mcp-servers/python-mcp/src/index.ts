@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
-import { getMimeType, canViewAsArtifact, getArtifactTypeForFile, getLanguageForFile, getResponse, ExecuteResult, ProcessedFile, CreatedFile, ExecuteArgs, Logger, makeLogger } from "./tools/lib.js";
+import { getMimeType, canViewAsArtifact, getArtifactTypeForFile, getLanguageForFile, getResponse, ExecuteResult, ProcessedFile, CreatedFile, ExecuteArgs, Logger, makeLogger } from "./shared/mcpCodeUtils.js";
 import { validatePythonCode } from "./tools/env.js";
 import os from "os";
 import crypto from 'crypto';
