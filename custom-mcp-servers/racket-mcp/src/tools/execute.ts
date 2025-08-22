@@ -313,13 +313,13 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       }
     }
 
-    // Return output with type information and binary data if present
     const result: ExecuteResult = { 
       output, 
       code,
       type: binaryOutput ? 'racket.plot' as const : 'text' as const,
       metadata: binaryOutput ? { hasBinaryOutput: true } : {},
-      binaryOutput
+      binaryOutput,
+      createdFiles
     };
     
     logger.log(`Execution completed successfully`);
