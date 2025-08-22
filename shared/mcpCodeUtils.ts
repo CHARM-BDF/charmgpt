@@ -524,27 +524,27 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
     
         for (const file of postExecutionFiles) {
           logger.log(`Processing file: ${file}`);
-          console.error(`PYTHON SERVER LOGS: Processing file: ${file}`);
+          console.error(`CODE SERVER LOGS: Processing file: ${file}`);
           
           if (file.endsWith('.png')) {
             logger.log(`Found PNG file: ${file}`);
-            console.error(`PYTHON SERVER LOGS: Found PNG file: ${file}`);
+            console.error(`CODE SERVER LOGS: Found PNG file: ${file}`);
             const filePath = path.join(TEMP_DIR, file);
             logger.log(`Full file path: ${filePath}`);
-            console.error(`PYTHON SERVER LOGS: Full PNG path: ${filePath}`);
+            console.error(`CODE SERVER LOGS: Full PNG path: ${filePath}`);
             
             try {
               const fileContent = await fs.readFile(filePath);
               logger.log(`File size: ${fileContent.length} bytes`);
-              console.error(`PYTHON SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
+              console.error(`CODE SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
               const base64Data = fileContent.toString('base64');
-              console.error(`PYTHON SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
+              console.error(`CODE SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
               
               // Extract PNG dimensions from the IHDR chunk
               const width = fileContent.readUInt32BE(16);
               const height = fileContent.readUInt32BE(20);
               logger.log(`Image dimensions: ${width}x${height}`);
-              console.error(`PYTHON SERVER LOGS: PNG dimensions: ${width}x${height}`);
+              console.error(`CODE SERVER LOGS: PNG dimensions: ${width}x${height}`);
               
               binaryOutput = {
                 data: base64Data,
@@ -561,17 +561,17 @@ export function getArtifactTypeForFile(fileName: string, mimeType: string): stri
               };
               
               logger.log('Binary output prepared successfully');
-              console.error('PYTHON SERVER LOGS: Binary output prepared successfully');
+              console.error('CODE SERVER LOGS: Binary output prepared successfully');
               
               // Clean up the binary file
               await fs.unlink(filePath).catch(error => {
                 logger.log(`Error cleaning up PNG file: ${error}`);
-                console.error(`PYTHON SERVER LOGS: Error cleaning up PNG file: ${error}`);
+                console.error(`CODE SERVER LOGS: Error cleaning up PNG file: ${error}`);
               });
               break;  // Only handle the first PNG for now
             } catch (error) {
               logger.log(`Error processing PNG file: ${error}`);
-              console.error(`PYTHON SERVER LOGS: ERROR processing PNG file: ${error}`);
+              console.error(`CODE SERVER LOGS: ERROR processing PNG file: ${error}`);
             }
           }
         }
