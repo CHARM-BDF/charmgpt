@@ -236,10 +236,12 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     
     const labels = new Map<string, number>();
     
-    parsedData.links.forEach(link => {
-      const label = link.label || 'No Label';
-      labels.set(label, (labels.get(label) || 0) + 1);
-    });
+    if (parsedData.links) {
+      parsedData.links.forEach(link => {
+        const label = link.label || 'No Label';
+        labels.set(label, (labels.get(label) || 0) + 1);
+      });
+    }
     
     // Convert to array and sort by count (descending)
     return Array.from(labels.entries())
@@ -300,7 +302,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Transform the data to reagraph format
   const graphData = useMemo(() => {
-    if (!parsedData) return { nodes: [], edges: [] };
+    if (!parsedData || !parsedData.nodes) return { nodes: [], edges: [] };
 
     // Convert nodes
     const nodes = parsedData.nodes.map((node: any) => ({
@@ -327,14 +329,17 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     }
 
     // Convert edges
-    const edges = parsedData.links.map((link: any, index: number) => ({
+    let edges = [];
+    if (parsedData.links) {
+      edges = parsedData.links.map((link: any, index: number) => ({
       id: `${link.source}-${link.target}-${index}`,
       source: link.source,
       target: link.target,
       label: link.label?.replace('biolink:', '') || '',
       color: '#888',
       size: Math.max(1, link.value || 1)
-    }));
+      }));
+    }
 
     return { nodes, edges };
   }, [parsedData]);
