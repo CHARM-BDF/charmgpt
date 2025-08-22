@@ -747,43 +747,9 @@ export const ArtifactContent: React.FC<{
               {savingToProject ? 'Saving...' : 'Save to Project'}
             </button>
           )}
-          {canToggleView && (
+          {canToggleView && !supportsEditorView && (
             <div className="flex items-center space-x-1">
-              {supportsEditorView ? (
-                // Three-way toggle for code artifacts with editor support
-                <>
-                  <button
-                    onClick={() => setViewMode('rendered')}
-                    className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md shadow-sm ${
-                      viewMode === 'rendered' 
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    Rendered
-                  </button>
-                  <button
-                    onClick={() => setViewMode('editor')}
-                    className={`px-3 py-1 text-sm border-t border-b border-gray-300 dark:border-gray-600 shadow-sm ${
-                      viewMode === 'editor' 
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    Editor
-                  </button>
-                  <button
-                    onClick={() => setViewMode('source')}
-                    className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-r-md shadow-sm ${
-                      viewMode === 'source' 
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                        : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    Source
-                  </button>
-                </>
-              ) : (
+              (
                 // Two-way toggle for other artifacts
                 <button
                   onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
@@ -791,7 +757,7 @@ export const ArtifactContent: React.FC<{
                 >
                   {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
                 </button>
-              )}
+              )
             </div>
           )}
         </div>
