@@ -187,7 +187,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Extract unique entity types from nodes
   const entityTypes = useMemo(() => {
-    if (!parsedData) return [];
+    if (!parsedData || !parsedData.nodes) return [];
     
     const types = new Map<string, { count: number; color: string }>();
     
@@ -215,7 +215,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Extract unique node names
   const nodeNames = useMemo(() => {
-    if (!parsedData) return [];
+    if (!parsedData || !parsedData.nodes) return [];
     
     const names = new Map<string, number>();
     
@@ -232,7 +232,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Extract unique edge labels
   const edgeLabels = useMemo(() => {
-    if (!parsedData) return [];
+    if (!parsedData || !parsedData.links) return [];
     
     const labels = new Map<string, number>();
     
@@ -346,7 +346,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Apply filters when selections change
   useEffect(() => {
-    if (!parsedData) return;
+    if (!parsedData || !parsedData.nodes) return;
     
     // Filter nodes based on selected entity types and node names
     const nodes = graphData.nodes.filter(node => {
