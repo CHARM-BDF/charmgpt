@@ -22,7 +22,7 @@ export const ArtifactContent: React.FC<{
 }> = ({ artifact, storageService }) => {
   const [viewMode, setViewMode] = useState<'rendered' | 'editor' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
-  const [useReagraph,] = useState(true);
+  const [useReagraph,] = useState(false); // Temporarily disabled due to reagraph initialization error
   const [savingToProject, setSavingToProject] = useState(false);
   
   // State for handling file reference artifacts
