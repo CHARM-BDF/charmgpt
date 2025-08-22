@@ -6,23 +6,16 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
+import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
 import { validateRacketCode } from "./tools/env.js";
 import os from "os";
 
 // Logger utility
-const logger = {
-  info: (message: string, ...args: any[]) => {
-    console.error(`\x1b[36m[RACKET-MCP INFO]\x1b[0m ${message}`, ...args);
-  },
-  error: (message: string, ...args: any[]) => {
-    console.error(`\x1b[31m[RACKET-MCP ERROR]\x1b[0m ${message}`, ...args);
-  },
-  debug: (message: string, ...args: any[]) => {
-    if (process.env.DEBUG) {
-      console.error(`\x1b[35m[RACKET-MCP DEBUG]\x1b[0m ${message}`, ...args);
-    }
+const logger = makeLogger({
+  log_type: (type: string,message: string, ...args: any[]) => {
+    console.error(`\x1b[36m[RACKET-MCP ${type}]\x1b[0m ${message}`, ...args);
   }
-};
+});
 
 // Define the Racket execution tool
 const RACKET_EXECUTION_TOOL = {
@@ -137,122 +130,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     logger.info("Code execution completed successfully");
     logger.debug("Raw execution result:", result);
 
-    // Handle binary output if present
-    if (result.binaryOutput) {
-      console.error("RACKET SERVER LOGS: Binary output detected!");
-      console.error(`RACKET SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
-      console.error(`RACKET SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
-      console.error(`RACKET SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
-      console.error(`RACKET SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
-      
-      logger.info("Binary output detected:");
-      logger.info(`- Type: ${result.binaryOutput.type}`);
-      logger.info(`- Size: ${result.binaryOutput.metadata.size} bytes`);
-      logger.info(`- Metadata: ${JSON.stringify(result.binaryOutput.metadata, null, 2)}`);
+    return getResponse("Racket", result, logger);
 
-      // Use standard artifacts array format instead of binaryOutput
-      const artifactResponse = {
-        content: [
-          {
-            type: "text",
-            text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
-          }
-        ],
-        artifacts: [
-          // Add code artifact first
-          {
-            type: "code",
-            title: "Racket Code",
-            content: result.code,
-            language: "racket",
-            metadata: {
-              editorView: true,
-              executable: true,
-              sourceCode: result.code
-            }
-          },
-          // Then add the binary output artifact
-          {
-            type: result.binaryOutput.type,
-            title: `Racket Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
-            content: result.binaryOutput.data,
-            metadata: {
-              ...result.binaryOutput.metadata,
-              sourceCode: result.code
-            }
-          }
-        ],
-        metadata: {
-          hasBinaryOutput: true,
-          binaryType: result.binaryOutput.type,
-        },
-        isError: false,
-      };
-      
-      console.error("RACKET SERVER LOGS: Returning artifact with following structure:");
-      console.error(`RACKET SERVER LOGS: - Content items: ${artifactResponse.content.length}`);
-      console.error(`RACKET SERVER LOGS: - Artifacts items: ${artifactResponse.artifacts.length}`);
-      console.error(`RACKET SERVER LOGS: - First artifact type: ${artifactResponse.artifacts[0].type}`);
-      console.error(`RACKET SERVER LOGS: - First artifact title: ${artifactResponse.artifacts[0].title}`);
-      console.error(`RACKET SERVER LOGS: - Content data length: ${artifactResponse.artifacts[0].content.length} characters`);
-      
-      return artifactResponse;
-    } else {
-      console.error("RACKET SERVER LOGS: No binary output detected in execution result");
-    }
-
-    // Log standard output result
-    console.error(`RACKET SERVER LOGS: Standard output result (${result.output.length} chars):`);
-    console.error(`RACKET SERVER LOGS: Output type: ${result.type || 'text'}`);
-    console.error(`RACKET SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
-    
-    logger.info("Standard output result:");
-    logger.info(`- Type: ${result.type || 'text'}`);
-    logger.info(`- Output length: ${result.output.length} characters`);
-    if (result.metadata) {
-      logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
-    }
-
-    // For text output, create artifacts for both code and output
-    let artifacts = [];
-    
-    // Always create a code artifact for the executed code
-    console.error("RACKET SERVER LOGS: Creating code artifact for executed Racket code");
-    artifacts.push({
-      type: "code",
-      title: "Racket Code",
-      content: result.code,
-      language: "racket",
-      metadata: {
-        editorView: true,
-        executable: true,
-        sourceCode: result.code
-      }
-    });
-    
-    // Create output artifact if substantial
-    if (result.output.length > 200 || result.output.includes('\n')) {
-      console.error("RACKET SERVER LOGS: Creating text/markdown artifact for long output");
-      artifacts.push({
-        type: "text/markdown",
-        title: "Racket Output",
-        content: "```\n" + result.output + "\n```"
-      });
-      console.error(`RACKET SERVER LOGS: Created markdown artifact with length ${artifacts[artifacts.length - 1].content.length}`);
-    } else {
-      console.error("RACKET SERVER LOGS: Output too short, not creating output artifact");
-    }
-
-    // Default response for non-binary output
-    return {
-      content: [{
-        type: "text",
-        text: result.output || "Code executed successfully with no text output.",
-      }],
-      artifacts,
-      metadata: result.metadata,
-      isError: false,
-    };
   } catch (error) {
     logger.error("Error during tool execution:", error);
     return {

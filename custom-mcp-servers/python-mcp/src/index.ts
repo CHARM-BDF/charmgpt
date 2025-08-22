@@ -5,68 +5,18 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { getMimeType, execute } from "./tools/execute.js";
+import { execute } from "./tools/execute.js";
+import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
 import { validatePythonCode } from "./tools/env.js";
 import os from "os";
 import crypto from 'crypto';
 
-// import { getArtifactTypeForFile, canViewAsArtifact, getLanguageForFile } from '../../../frontend-client/src/utils/fileArtifactMapping.js';
-// Add these local functions instead:
-function getArtifactTypeForFile(fileName: string, mimeType: string): string {
-  const extension = fileName.toLowerCase().split('.').pop() || '';
-  
-  // Direct MIME type mappings
-  if (mimeType.startsWith('image/svg')) return 'image/svg+xml';
-  if (mimeType.startsWith('image/png')) return 'image/png';
-  if (mimeType === 'text/html') return 'html';
-  if (mimeType === 'application/json') return 'application/json';
-  if (mimeType === 'text/markdown') return 'text/markdown';
-  
-  // Extension-based mappings
-  switch (extension) {
-    case 'json': return 'application/json';
-    case 'md': case 'markdown': return 'text/markdown';
-    case 'html': case 'htm': return 'html';
-    case 'png': return 'image/png';
-    case 'py': return 'application/python';
-    case 'csv': case 'tsv': return 'text/markdown'; // CSV displayed as table
-    case 'txt': case 'log': return 'text';
-    default: return 'text';
-  }
-}
-
-function canViewAsArtifact(fileName: string, mimeType: string): boolean {
-  const extension = fileName.toLowerCase().split('.').pop() || '';
-  const unsupportedExtensions = ['exe', 'bin', 'dll', 'so', 'zip', 'rar', '7z'];
-  return !unsupportedExtensions.includes(extension);
-}
-
-function getLanguageForFile(fileName: string, mimeType: string): string | undefined {
-  const extension = fileName.toLowerCase().split('.').pop() || '';
-  switch (extension) {
-    case 'py': return 'python';
-    case 'js': return 'javascript';
-    case 'json': return 'json';
-    case 'html': return 'html';
-    case 'md': return 'markdown';
-    default: return undefined;
-  }
-}
-
 // Logger utility
-const logger = {
-  info: (message: string, ...args: any[]) => {
-    console.error(`\x1b[36m[PYTHON-MCP INFO]\x1b[0m ${message}`, ...args);
-  },
-  error: (message: string, ...args: any[]) => {
-    console.error(`\x1b[31m[PYTHON-MCP ERROR]\x1b[0m ${message}`, ...args);
-  },
-  debug: (message: string, ...args: any[]) => {
-    if (process.env.DEBUG) {
-      console.error(`\x1b[35m[PYTHON-MCP DEBUG]\x1b[0m ${message}`, ...args);
-    }
+const logger = makeLogger({
+  log_type: (type: string, message: string, ...args: any[]) => {
+    console.error(`\x1b[36m[PYTHON-MCP ${type}]\x1b[0m ${message}`, ...args);
   }
-};
+});
 
 // Define the Python execution tool
 const PYTHON_EXECUTION_TOOL = {
@@ -183,134 +133,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     logger.info("Code execution completed successfully");
     logger.debug("Raw execution result:", result);
 
-    const artifacts = [];
-    const content = [];
-    let metadata = null;
-
-    artifacts.push({
-      type: "code",
-      title: "Python Code",
-      content: result.code,
-      language: "python",
-      metadata: {
-        editorView: true,
-        executable: true,
-        sourceCode: result.code
-      }
-    })
+    return getResponse("Python", result, logger);
   
-    // Handle binary output if present
-    if (result.binaryOutput) {
-      console.error("PYTHON SERVER LOGS: Binary output detected!");
-      console.error(`PYTHON SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
-      console.error(`PYTHON SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
-      console.error(`PYTHON SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
-      console.error(`PYTHON SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
-      
-      logger.info("Binary output detected:");
-      logger.info(`- Type: ${result.binaryOutput.type}`);
-      logger.info(`- Size: ${result.binaryOutput.metadata.size} bytes`);
-      logger.info(`- Metadata: ${JSON.stringify(result.binaryOutput.metadata, null, 2)}`);
-
-      content.push(
-        {
-          type: "text",
-          text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
-        }
-      );
-      artifacts.push(
-        {
-          type: result.binaryOutput.type,
-          title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
-          content: result.binaryOutput.data,
-          metadata: {
-            ...result.binaryOutput.metadata,
-            sourceCode: result.code
-          }
-        }
-      );
-      metadata = {
-          hasBinaryOutput: true,
-          binaryType: result.binaryOutput.type,
-      }
-    } else {
-      console.error("PYTHON SERVER LOGS: No binary output detected in execution result");
-    }
-
-    // Log standard output result
-    console.error(`PYTHON SERVER LOGS: Standard output result (${result.output.length} chars):`);
-    console.error(`PYTHON SERVER LOGS: Output type: ${result.type || 'text'}`);
-    console.error(`PYTHON SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
-    
-    logger.info("Standard output result:");
-    logger.info(`- Type: ${result.type || 'text'}`);
-    logger.info(`- Output length: ${result.output.length} characters`);
-    if (result.metadata) {
-      logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
-    }
-    
-    if (result.output.length > 1 || result.output.includes('\n')) {
-      console.error("PYTHON SERVER LOGS: Creating text/markdown artifact for output");
-      artifacts.push({
-        type: "text/markdown",
-        title: "Python Output",
-        content: "```\n" + result.output + "\n```"
-      });
-      console.error(`PYTHON SERVER LOGS: Created markdown artifact with length ${artifacts[artifacts.length - 1].content.length}`);
-    } else {
-      console.error("PYTHON SERVER LOGS: Output too short, not creating output artifact");
-    }
-
-    // Handle created files if present
-    if (result.createdFiles && result.createdFiles.length > 0) {
-      console.error("PYTHON SERVER LOGS: Created files detected in result");
-      console.error(`PYTHON SERVER LOGS: Created ${result.createdFiles.length} files`);
-      
-      for (const createdFile of result.createdFiles) {
-        console.error(`PYTHON SERVER LOGS: Processing created file: ${createdFile.originalFilename} (${createdFile.fileId})`);
-        
-        // Determine MIME type from filename
-        const mimeType = getMimeType(createdFile.originalFilename);
-        
-        // Check if file can be viewed as artifact
-        if (canViewAsArtifact(createdFile.originalFilename, mimeType)) {
-          const artifactType = getArtifactTypeForFile(createdFile.originalFilename, mimeType);
-          
-          artifacts.push({
-            id: crypto.randomUUID(),
-            artifactId: crypto.randomUUID(),
-            type: artifactType,
-            title: `Generated: ${createdFile.originalFilename}`,
-            content: '', // Empty content - will be loaded dynamically
-            timestamp: new Date(),
-            position: artifacts.length,
-            language: getLanguageForFile(createdFile.originalFilename, mimeType),
-            metadata: {
-              fileReference: {
-                fileId: createdFile.fileId,
-                fileName: createdFile.originalFilename,
-                fileType: mimeType,
-                fileSize: createdFile.size
-              }
-            }
-          });
-          
-          console.error(`PYTHON SERVER LOGS: Created file reference artifact for: ${createdFile.originalFilename}`);
-        } else {
-          console.error(`PYTHON SERVER LOGS: File type not suitable for artifact viewing: ${createdFile.originalFilename}`);
-        }
-      }
-    }
-
-    return {
-      content: [{
-        type: "text",
-        text: result.output || "Code executed successfully with no text output.",
-      }],
-      artifacts,
-      metadata: metadata || result.metadata,
-      isError: false,
-    };
   } catch (error) {
     logger.error("Error during tool execution:", error);
     return {
