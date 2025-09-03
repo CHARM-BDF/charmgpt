@@ -768,6 +768,32 @@ export class ChatService {
         role: 'system',
         content: `Note: The following uploaded files are available in the current directory: ${fileList}`
       });
+      for (const att of options.attachments) {
+        const lowerName = att.name.toLowerCase();
+        const shouldPrevew = lowerName.endsWith('.csv') || lowerName.endsWith('.tsv');
+        if (shouldPrevew) {
+          let preview = undefined;
+          try {
+            const filePath = path.join(process.cwd(), 'uploads', att.id);
+            const file = await fs.promises.open(filePath, 'r');
+            const buffer = Buffer.alloc(1024);
+            const { bytesRead } = await file.read(buffer, 0, 1024, 0);
+            await file.close();
+            
+            const content = buffer.toString('utf-8', 0, bytesRead);
+            const lines = content.split(/\r?\n/).slice(0, 3);
+            preview = lines.filter(line => line.trim()).join('\n');          
+          } catch (error) {
+            console.error(`Failed to read preview for ${att.name}:`, error);
+          }
+          if (preview) {
+            workingMessages.push({
+              role: 'system',
+              content: `Preview of ${att.name}:\n\`\`\`\n${preview}\n\`\`\``
+            });
+          }
+        }
+      }
     }
 
     // Add pinned artifacts to the conversation context BEFORE the user message
