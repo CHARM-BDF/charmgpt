@@ -7,7 +7,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
 import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
-import { validateRCode } from "./tools/env.js";
 
 // Logger utility
 const logger = makeLogger({
@@ -117,10 +116,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       logger.error("Missing or invalid code parameter");
       throw new Error("Code parameter is required and must be a string");
     }
-
-    logger.info("Validating R code...");
-    validateRCode(code);
-    logger.info("Code validation successful");
 
     logger.info("Executing R code...");
     const result = await execute({

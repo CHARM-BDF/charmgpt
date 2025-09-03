@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import * as fsSync from 'fs';
-import { setupPythonEnvironment, cleanupPythonEnvironment, validatePythonCode, TEMP_DIR, LOGS_DIR } from './env.js';
+import { setupPythonEnvironment, cleanupPythonEnvironment, TEMP_DIR, LOGS_DIR } from './env.js';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
@@ -239,12 +239,6 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       processedFiles = await processDataFiles(TEMP_DIR,dataFiles, logger);
       logger.log(`Processed ${processedFiles.length} files`);
     }
-    
-    // Validate Python code before transformation
-    // Allow file operations if we have processed files
-    const allowFileOperations = processedFiles.length > 0;
-    validatePythonCode(originalCode, allowFileOperations);
-    logger.log('Python code validation passed');
     
     // Transform code to handle file operations
     const code = transformPythonCode(originalCode, logger);

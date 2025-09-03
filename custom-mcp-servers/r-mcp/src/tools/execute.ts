@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import { setupREnvironment, cleanupREnvironment, validateRCode, TEMP_DIR, LOGS_DIR } from './env.js';
+import { setupREnvironment, cleanupREnvironment, TEMP_DIR, LOGS_DIR } from './env.js';
 import { appendFileSync, mkdirSync } from 'fs';
 import { createWriteStream } from 'fs';
 import { promisify } from 'util';
@@ -246,10 +246,6 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       processedFiles = await processDataFiles(TEMP_DIR,dataFiles, logger);
       logger.log(`Processed ${processedFiles.length} files`);
     }
-
-    // Validate R code before transformation
-    validateRCode(originalCode);
-    logger.log('R code validation passed');
     
     // Add file context if files were processed
     let codeWithContext = originalCode;
