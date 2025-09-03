@@ -7,7 +7,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
 import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
-import { validatePythonCode } from "./tools/env.js";
 import os from "os";
 import crypto from 'crypto';
 
@@ -117,12 +116,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       logger.error("Missing or invalid code parameter");
       throw new Error("Code parameter is required and must be a string");
     }
-
-    logger.info("Validating Python code...");
-    // Allow file operations if we have dataFiles
-    const hasDataFiles = dataFiles && Object.keys(dataFiles).length > 0;
-    validatePythonCode(code, hasDataFiles);
-    logger.info("Code validation successful");
 
     logger.info("Executing Python code...");
     const result = await execute({
