@@ -7,7 +7,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
 import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
-import { validateRacketCode } from "./tools/env.js";
 import os from "os";
 
 // Logger utility
@@ -116,10 +115,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       logger.error("Missing or invalid code parameter");
       throw new Error("Code parameter is required and must be a string");
     }
-
-    logger.info("Validating Racket code...");
-    validateRacketCode(code);
-    logger.info("Code validation successful");
 
     logger.info("Executing Racket code...");
     const result = await execute({
