@@ -7,6 +7,7 @@ import { r } from '@codemirror/legacy-modes/mode/r';
 import { scheme } from '@codemirror/legacy-modes/mode/scheme';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
+import { Play } from 'lucide-react';
 
 interface CodeEditorViewProps {
   code: string;
@@ -14,6 +15,8 @@ interface CodeEditorViewProps {
   title?: string;
   isDarkMode?: boolean;
   readOnly?: boolean;
+  onChange?: (value: string) => void;
+  onExecute?: (code: string, language: string) => void;
 }
 
 export const CodeEditorView: React.FC<CodeEditorViewProps> = ({
@@ -21,7 +24,9 @@ export const CodeEditorView: React.FC<CodeEditorViewProps> = ({
   language,
   title,
   isDarkMode = false,
-  readOnly = true
+  readOnly = true,
+  onChange,
+  onExecute
 }) => {
   const extensions = useMemo(() => {
     const baseExtensions = [
@@ -74,19 +79,35 @@ export const CodeEditorView: React.FC<CodeEditorViewProps> = ({
     return baseExtensions;
   }, [language]);
 
+  // Check if language supports execution
+  const supportsExecution = ['python', 'py', 'r', 'racket', 'scheme'].includes(language.toLowerCase());
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
       {title && (
         <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-mono text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
           <span>{title}</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-            {language === 'racket' ? 'scheme' : language}
-          </span>
+          <div className="flex items-center gap-2">
+            {!readOnly && supportsExecution && onExecute && (
+              <button
+                onClick={() => onExecute(code, language)}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                title={`Execute ${language} code`}
+              >
+                <Play size={12} />
+                Run
+              </button>
+            )}
+            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+              {language}
+            </span>
+          </div>
         </div>
       )}
       <div className="relative">
         <CodeMirror
           value={code}
+          onChange={onChange}
           extensions={extensions}
           theme={isDarkMode ? oneDark : undefined}
           editable={!readOnly}
