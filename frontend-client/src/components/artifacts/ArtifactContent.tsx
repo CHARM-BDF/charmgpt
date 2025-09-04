@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Artifact } from '../../../../shared/artifacts';
+import { Artifact, ArtifactType } from '../../../../shared/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -34,6 +34,9 @@ export const ArtifactContent: React.FC<{
   // Use selector functions to only subscribe to the specific state we need
   const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
   const toggleArtifactPin = useChatStore(state => state.toggleArtifactPin);
+  const addArtifact = useChatStore(state => state.addArtifact);
+  const addMessage = useChatStore(state => state.addMessage);
+  const getPinnedArtifacts = useChatStore(state => state.getPinnedArtifacts);
   // Keep legacy support for knowledge graph components
   const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
   const getPinnedGraphId = useChatStore(state => state.getPinnedGraphId);
@@ -201,6 +204,15 @@ export const ArtifactContent: React.FC<{
           throw new Error(`Execution not supported for language: ${language}`);
       }
 
+      // Get pinned artifacts to pass as context
+      const pinnedArtifacts = getPinnedArtifacts().map(artifact => ({
+        id: artifact.id,
+        type: artifact.type,
+        title: artifact.title,
+        content: artifact.content,
+        metadata: artifact.metadata
+      }));
+
       // Make direct API call to MCP execution endpoint
       const response = await fetch('/api/mcp-execute', {
         method: 'POST',
@@ -210,7 +222,9 @@ export const ArtifactContent: React.FC<{
         body: JSON.stringify({
           serverName,
           toolName,
-          arguments: { code }
+          arguments: { code },
+          attachments: [], // TODO: Get current attachments if available
+          pinnedArtifacts
         }),
       });
 
@@ -221,8 +235,95 @@ export const ArtifactContent: React.FC<{
       const result = await response.json();
       console.log('Code execution result:', result);
       
-      if (result.success) {
-        alert('Code executed successfully! Check console for results.');
+      if (result.success && result.result) {
+        // Create a message for the code execution
+        const artifactIds: string[] = [];
+        let messageContent = `Executed ${language} code\n\n`;
+        
+        // Helper function to create artifact button HTML
+        const createArtifactButton = (id: string, type: string, title: string): string => {
+          return `<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${id}" data-artifact-type="${type}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 ${title}</button>`;
+        };
+        
+        // 1. Create artifact for the execution output/text
+        if (result.result.content && Array.isArray(result.result.content)) {
+          const textContent = result.result.content
+            .filter((item: any) => item.type === 'text')
+            .map((item: any) => item.text)
+            .join('\n');
+            
+          if (textContent.trim()) {
+            const artifactId = addArtifact({
+              id: crypto.randomUUID(),
+              artifactId: crypto.randomUUID(),
+              type: 'text/markdown' as ArtifactType,
+              title: `${language} Execution Output`,
+              content: textContent,
+              position: artifactIds.length
+            });
+            artifactIds.push(artifactId);
+            messageContent += `**Output:**\n${createArtifactButton(artifactId, 'text/markdown', `${language} Execution Output`)}\n\n`;
+          }
+        }
+        
+        // 2. Handle binary outputs (plots, images, etc.)
+        if (result.result.binaryOutput) {
+          const binaryOutput = result.result.binaryOutput;
+          const title = binaryOutput.title || `Generated ${binaryOutput.type.split('/')[1]}`;
+          const artifactId = addArtifact({
+            id: crypto.randomUUID(),
+            artifactId: crypto.randomUUID(),
+            type: binaryOutput.type as ArtifactType,
+            title: title,
+            content: binaryOutput.data,
+            position: artifactIds.length
+          });
+          artifactIds.push(artifactId);
+          messageContent += `**Generated:**\n${createArtifactButton(artifactId, binaryOutput.type, title)}\n\n`;
+        }
+        
+        // 3. Handle artifacts array from MCP response
+        if (result.result.artifacts && Array.isArray(result.result.artifacts)) {
+          console.log('MCP artifacts found:', result.result.artifacts.length);
+          result.result.artifacts.forEach((mcpArtifact: any, index: number) => {
+            console.log(`MCP artifact ${index}:`, {
+              type: mcpArtifact.type,
+              title: mcpArtifact.title,
+              hasContent: !!mcpArtifact.content,
+              contentLength: mcpArtifact.content?.length,
+              hasMetadata: !!mcpArtifact.metadata,
+              hasFileReference: !!mcpArtifact.metadata?.fileReference,
+              fileId: mcpArtifact.metadata?.fileReference?.fileId
+            });
+            
+            const artifactId = addArtifact({
+              id: crypto.randomUUID(),
+              artifactId: crypto.randomUUID(),
+              type: mcpArtifact.type as ArtifactType,
+              title: mcpArtifact.title,
+              content: mcpArtifact.content,
+              position: artifactIds.length,
+              language: mcpArtifact.language,
+              metadata: mcpArtifact.metadata // This includes fileReference for server-side storage artifacts
+            });
+            artifactIds.push(artifactId);
+            messageContent += `**Created:**\n${createArtifactButton(artifactId, mcpArtifact.type, mcpArtifact.title)}\n\n`;
+          });
+        }
+        
+        // Add the execution message to the chat transcript
+        addMessage({
+          role: 'assistant',
+          content: messageContent.trim(),
+          artifactId: artifactIds[0], // Primary artifact for backward compatibility
+          artifactIds: artifactIds
+        } as any);
+        
+        if (artifactIds.length > 0) {
+          alert(`Code executed successfully! Created ${artifactIds.length} artifact(s) and added to chat.`);
+        } else {
+          alert('Code executed successfully! Check console for results.');
+        }
       } else {
         alert(`Code execution failed: ${result.error}`);
       }

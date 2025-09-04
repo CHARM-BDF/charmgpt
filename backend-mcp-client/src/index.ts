@@ -166,7 +166,7 @@ app.post('/api/mcp-execute', async (req, res) => {
       return res.status(500).json({ error: 'MCP service not initialized' });
     }
     
-    const { serverName, toolName, arguments: args } = req.body;
+    const { serverName, toolName, arguments: args, attachments, pinnedArtifacts } = req.body;
     
     if (!serverName || !toolName) {
       return res.status(400).json({ error: 'serverName and toolName are required' });
@@ -175,8 +175,46 @@ app.post('/api/mcp-execute', async (req, res) => {
     loggingService.log('info', `Direct MCP execution: ${serverName}:${toolName}`);
     console.log(`[MCP-EXECUTE] Calling ${serverName}:${toolName} with args:`, args);
     
+    // Enhance arguments with dataFiles if the tool supports it
+    let enhancedArgs = { ...args };
+    
+    // Check if tool supports dataFiles (similar to chat service logic)
+    const availableTools = await mcpService.getAllAvailableTools([]);
+    const tool = availableTools.find(t => t.name === `${serverName}-${toolName}`);
+    const supportsDataFiles = tool?.input_schema?.properties?.dataFiles;
+    
+    if (supportsDataFiles) {
+      const dataFiles: Record<string, string> = {};
+      
+      // Process attachments
+      if (attachments && Array.isArray(attachments)) {
+        for (const attachment of attachments) {
+          const varName = attachment.varName || attachment.name.split('.')[0];
+          dataFiles[varName] = attachment.name;
+          console.log(`[MCP-EXECUTE] Adding attachment: ${varName} -> ${attachment.name}`);
+        }
+      }
+      
+      // Process pinned artifacts with file references
+      if (pinnedArtifacts && Array.isArray(pinnedArtifacts)) {
+        for (const artifact of pinnedArtifacts) {
+          if (artifact.metadata?.fileReference) {
+            const fileRef = artifact.metadata.fileReference;
+            const varName = fileRef.fileName.split('.')[0];
+            dataFiles[varName] = fileRef.fileName;
+            console.log(`[MCP-EXECUTE] Adding pinned artifact: ${varName} -> ${fileRef.fileName}`);
+          }
+        }
+      }
+      
+      if (Object.keys(dataFiles).length > 0) {
+        enhancedArgs.dataFiles = dataFiles;
+        console.log(`[MCP-EXECUTE] Enhanced args with dataFiles:`, dataFiles);
+      }
+    }
+    
     // Execute the tool directly
-    const result = await mcpService.callTool(serverName, toolName, args || {});
+    const result = await mcpService.callTool(serverName, toolName, enhancedArgs);
     
     loggingService.log('info', 'Direct MCP execution completed successfully');
     console.log(`[MCP-EXECUTE] Result:`, result);
