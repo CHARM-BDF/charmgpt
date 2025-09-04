@@ -210,7 +210,7 @@ export class ChatService {
     }
     
     // Create structured prompt for formatter using sequential thinking data
-    const structuredPrompt = this.formatSequentialThinkingData(
+    const structuredPrompt = await this.formatSequentialThinkingData(
       message, // Original query
       processedHistory, // All processed messages
       toolExecutions, // Tool execution history
@@ -760,41 +760,6 @@ export class ChatService {
     const workingMessages: any[] = [
       ...this.formatMessageHistory(history, modelProvider)
     ];
-
-    // Add file context if attachments are present
-    if (options.attachments && options.attachments.length > 0) {
-      const fileList = options.attachments.map(att => att.name).join(', ');
-      workingMessages.push({
-        role: 'system',
-        content: `Note: The following uploaded files are available in the current directory: ${fileList}`
-      });
-      for (const att of options.attachments) {
-        const lowerName = att.name.toLowerCase();
-        const shouldPrevew = lowerName.endsWith('.csv') || lowerName.endsWith('.tsv');
-        if (shouldPrevew) {
-          let preview = undefined;
-          try {
-            const filePath = path.join(process.cwd(), 'uploads', att.id);
-            const file = await fs.promises.open(filePath, 'r');
-            const buffer = Buffer.alloc(1024);
-            const { bytesRead } = await file.read(buffer, 0, 1024, 0);
-            await file.close();
-            
-            const content = buffer.toString('utf-8', 0, bytesRead);
-            const lines = content.split(/\r?\n/).slice(0, 3);
-            preview = lines.filter(line => line.trim()).join('\n');          
-          } catch (error) {
-            console.error(`Failed to read preview for ${att.name}:`, error);
-          }
-          if (preview) {
-            workingMessages.push({
-              role: 'system',
-              content: `Preview of ${att.name}:\n\`\`\`\n${preview}\n\`\`\``
-            });
-          }
-        }
-      }
-    }
 
     // Add pinned artifacts to the conversation context BEFORE the user message
     if (options.pinnedArtifacts && options.pinnedArtifacts.length > 0) {
@@ -2030,15 +1995,51 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     });
   }
 
+  private async formatAttachments(
+    attachments?: FileAttachment[]
+  ): Promise<string> {
+    let msg = '';
+    // Add file context if attachments are present
+    if (attachments && attachments.length > 0) {
+      msg = `The following files are available as attachments:\n${attachments.map(att => `- ${att.name} (${att.type})`).join('\n')}`
+      for (const att of attachments) {
+        const lowerName = att.name.toLowerCase();
+        const shouldPrevew = lowerName.endsWith('.csv') || lowerName.endsWith('.tsv');
+        if (shouldPrevew) {
+          let preview = undefined;
+          try {
+            const filePath = path.join(process.cwd(), 'uploads', att.id);
+            const file = await fs.promises.open(filePath, 'r');
+            const buffer = Buffer.alloc(1024);
+            const { bytesRead } = await file.read(buffer, 0, 1024, 0);
+            await file.close();
+            
+            const content = buffer.toString('utf-8', 0, bytesRead);
+            const lines = content.split(/\r?\n/).slice(0, 3);
+            preview = lines.filter(line => line.trim()).join('\n');          
+          } catch (error) {
+            console.error(`Failed to read preview for ${att.name}:`, error);
+          }
+          if (preview) {
+            msg += `Preview of ${att.name}:\n\`\`\`\n${preview}\n\`\`\``
+          }
+        }
+      }
+    } else {
+      msg ='No file attachments are available.'
+    }
+    return msg;
+  }
+
   /**
    * Format sequential thinking data into a structured prompt for the formatter
    */
-  private formatSequentialThinkingData(
+  private async formatSequentialThinkingData(
     originalQuery: string,
     processedMessages: any[],
     toolExecutions: any[] = [],
     attachments?: FileAttachment[]
-  ): string {
+  ): Promise<string> {
     let prompt = `<SYSTEM>
 You are an AI assistant tasked with creating comprehensive, accurate responses based on information gathered through tools. The information below has already been collected in response to the user's query. Your job is to synthesize this information into a helpful response.
 </SYSTEM>
@@ -2053,9 +2054,7 @@ ${toolExecutions.map((tool, index) => `${index + 1}. ${tool.name}: ${tool.descri
 </TOOL_EXECUTION_SUMMARY>
 
 <AVAILABLE_ATTACHMENTS>
-${attachments && attachments.length > 0 
-  ? `The following files are available as attachments:\n${attachments.map(att => `- ${att.name} (${att.type})`).join('\n')}`
-  : 'No file attachments are available.'}
+${await this.formatAttachments(attachments)}
 </AVAILABLE_ATTACHMENTS>
 
 <GATHERED_DATA>
