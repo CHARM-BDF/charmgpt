@@ -156,6 +156,48 @@ app.get('/api/server-names', (req, res) => {
   }
 });
 
+// Add direct MCP execution endpoint
+app.post('/api/mcp-execute', async (req, res) => {
+  try {
+    const mcpService = app.locals.mcpService as MCPService;
+    const loggingService = app.locals.loggingService as LoggingService;
+    
+    if (!mcpService) {
+      return res.status(500).json({ error: 'MCP service not initialized' });
+    }
+    
+    const { serverName, toolName, arguments: args } = req.body;
+    
+    if (!serverName || !toolName) {
+      return res.status(400).json({ error: 'serverName and toolName are required' });
+    }
+    
+    loggingService.log('info', `Direct MCP execution: ${serverName}:${toolName}`);
+    console.log(`[MCP-EXECUTE] Calling ${serverName}:${toolName} with args:`, args);
+    
+    // Execute the tool directly
+    const result = await mcpService.callTool(serverName, toolName, args || {});
+    
+    loggingService.log('info', 'Direct MCP execution completed successfully');
+    console.log(`[MCP-EXECUTE] Result:`, result);
+    
+    res.json({
+      success: true,
+      result
+    });
+    
+  } catch (error) {
+    const loggingService = app.locals.loggingService as LoggingService;
+    loggingService.logError(error as Error);
+    
+    console.error('[MCP-EXECUTE] Failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Add cleanup handlers for graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n[SERVER] Received SIGINT signal, shutting down gracefully...');

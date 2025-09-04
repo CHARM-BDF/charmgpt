@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Artifact } from '../../../../shared/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
@@ -20,10 +20,11 @@ export const ArtifactContent: React.FC<{
   artifact: Artifact;
   storageService?: any;
 }> = ({ artifact, storageService }) => {
-  const [viewMode, setViewMode] = useState<'rendered' | 'editor' | 'source'>('rendered');
+  const [viewMode, setViewMode] = useState<'rendered' | 'editor'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph,] = useState(false); // Temporarily disabled due to reagraph initialization error
   const [savingToProject, setSavingToProject] = useState(false);
+  const [editedCode, setEditedCode] = useState<string>('');
   
   // State for handling file reference artifacts
   const [fileContent, setFileContent] = useState<string>('');
@@ -42,11 +43,8 @@ export const ArtifactContent: React.FC<{
   const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
   
-  // Check if artifact supports editor view (code artifacts with editorView metadata)
-  const supportsEditorView = (
-    ['code', 'application/python', 'application/vnd.ant.python', 'application/javascript', 'application/vnd.react'].includes(artifact.type) &&
-    artifact.metadata?.editorView === true
-  ) || false;
+  // Check if artifact supports editor view (code artifacts)
+  const supportsEditorView = ['code', 'application/python', 'application/vnd.ant.python', 'application/javascript', 'application/vnd.react'].includes(artifact.type);
 
   // Check if this is a file reference artifact
   const isFileReference = !!(artifact.metadata?.fileReference);
@@ -108,7 +106,8 @@ export const ArtifactContent: React.FC<{
   useEffect(() => {
     setFileContent('');
     setFileLoadError(null);
-  }, [artifact.id]);
+    setEditedCode(artifact.content); // Initialize edited code
+  }, [artifact.id, artifact.content]);
 
   const handleSaveToProject = async () => {
     if (!storageService || !selectedProjectId || !isMarkdown) return;
@@ -176,6 +175,64 @@ export const ArtifactContent: React.FC<{
     }
   };
 
+  const handleCodeExecution = async (code: string, language: string) => {
+    console.log(`Executing ${language} code:`, code);
+    
+    try {
+      // Map language to appropriate MCP server and tool
+      let serverName = '';
+      let toolName = '';
+      switch (language.toLowerCase()) {
+        case 'python':
+        case 'py':
+          serverName = 'python';
+          toolName = 'execute_python';
+          break;
+        case 'r':
+          serverName = 'r';
+          toolName = 'execute_r';
+          break;
+        case 'racket':
+        case 'scheme':
+          serverName = 'racket';
+          toolName = 'execute_racket';
+          break;
+        default:
+          throw new Error(`Execution not supported for language: ${language}`);
+      }
+
+      // Make direct API call to MCP execution endpoint
+      const response = await fetch('/api/mcp-execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          serverName,
+          toolName,
+          arguments: { code }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Code execution result:', result);
+      
+      if (result.success) {
+        alert('Code executed successfully! Check console for results.');
+      } else {
+        alert(`Code execution failed: ${result.error}`);
+      }
+
+    } catch (error) {
+      console.error('Code execution failed:', error);
+      alert(`Code execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const renderContent = () => {
     // Handle file reference artifacts
     if (isFileReference) {
@@ -211,47 +268,6 @@ export const ArtifactContent: React.FC<{
     // Get the content to display
     const displayContent = isFileReference ? fileContent : artifact.content;
     
-    if (viewMode === 'source') {
-      // For knowledge graph artifacts, format as JSON with syntax highlighting
-      if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
-        try {
-          // Parse and pretty-print the JSON
-          const jsonObj = typeof displayContent === 'string' 
-            ? JSON.parse(displayContent) 
-            : displayContent;
-          
-          const prettyJson = JSON.stringify(jsonObj, null, 2);
-          
-          return (
-            <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
-              <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
-                Knowledge Graph JSON
-              </div>
-              <div className="p-4">
-                <SyntaxHighlighter
-                  language="json"
-                  style={oneLight}
-                  customStyle={{ margin: 0, background: 'transparent' }}
-                >
-                  {prettyJson}
-                </SyntaxHighlighter>
-              </div>
-            </div>
-          );
-        } catch (error) {
-          console.error('Failed to parse knowledge graph JSON:', error);
-        }
-      }
-      
-      // Default source view for other types
-      return (
-        <div className="relative w-full min-w-0 overflow-x-auto">
-          <pre className="w-max bg-gray-50 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-md">
-            <code className="whitespace-pre">{displayContent}</code>
-          </pre>
-        </div>
-      );
-    }
 
     switch (artifact.type) {
       case 'code':
@@ -259,20 +275,23 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.ant.python':
       case 'application/javascript':
       case 'application/vnd.react':
-        // If this artifact supports editor view and we're in editor mode, use CodeEditorView
-        if (supportsEditorView && viewMode === 'editor') {
+        // Handle different view modes for code artifacts
+        if (viewMode === 'editor') {
           return (
             <CodeEditorView
-              code={displayContent}
+              code={editedCode}
               language={artifact.language || getLanguage(artifact.type, artifact.language)}
               title={artifact.language || artifact.type.replace('application/', '')}
               isDarkMode={false} // TODO: Get from theme context
-              readOnly={true}
+              readOnly={false}
+              onChange={setEditedCode}
+              onExecute={handleCodeExecution}
             />
           );
         }
         
-        // Default syntax highlighting view
+        
+        // Default rendered view with syntax highlighting
         return (
           <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -750,11 +769,35 @@ export const ArtifactContent: React.FC<{
           {canToggleView && !supportsEditorView && (
             <div className="flex items-center space-x-1">
                 <button
-                  onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
+                  onClick={() => setViewMode(mode => mode === 'rendered' ? 'editor' : 'rendered')}
                   className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
                 >
                   {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
                 </button>
+            </div>
+          )}
+          {supportsEditorView && (
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => setViewMode('rendered')}
+                className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm ${
+                  viewMode === 'rendered' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                View
+              </button>
+              <button
+                onClick={() => setViewMode('editor')}
+                className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm ${
+                  viewMode === 'editor' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                Edit
+              </button>
             </div>
           )}
         </div>
