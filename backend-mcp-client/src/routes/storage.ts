@@ -242,6 +242,47 @@ router.get('/files/:id/content', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/storage/files/:id/download - Download a file with proper headers
+router.get('/files/:id/download', async (req: Request, res: Response) => {
+  try {
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    const { id } = req.params;
+    const filePath = path.join(process.cwd(), 'uploads', id);
+    const metadataPath = path.join(process.cwd(), 'uploads', 'metadata', `${id}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      loggingService.log('error', `File not found: ${id}`);
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Get metadata to determine original filename and content type
+    let filename = id; // fallback to file ID
+    let contentType = 'application/octet-stream'; // fallback content type
+    
+    if (fs.existsSync(metadataPath)) {
+      try {
+        const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
+        filename = metadata.originalFilename || metadata.description || id;
+        contentType = metadata.schema?.format || contentType;
+      } catch (error) {
+        // Ignore metadata read errors, use defaults
+      }
+    }
+
+    // Set download headers
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', contentType);
+    
+    const content = await fs.promises.readFile(filePath);
+    loggingService.log('info', `File downloaded: ${id} as ${filename}`);
+    res.send(content);
+  } catch (error) {
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    loggingService.logError(error as Error);
+    res.status(500).json({ error: 'Failed to download file' });
+  }
+});
+
 // POST /api/storage/files/:id/extract - Extract text from a file
 /*
 router.post('/files/:id/extract', async (req: Request, res: Response) => {
