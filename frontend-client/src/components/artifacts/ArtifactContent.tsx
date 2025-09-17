@@ -867,6 +867,30 @@ export const ArtifactContent: React.FC<{
               {savingToProject ? 'Saving...' : 'Save to Project'}
             </button>
           )}
+          
+          {isFileReference && artifact.metadata?.fileReference && (
+            <button
+              onClick={() => {
+                const fileId = artifact.metadata!.fileReference!.fileId;
+                const fileName = artifact.metadata!.fileReference!.fileName;
+                
+                // Create download link and trigger download
+                const downloadUrl = `/api/storage/files/${fileId}/download`;
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 
+                       border border-gray-300 dark:border-gray-600 rounded-md shadow-sm flex items-center gap-1"
+            >
+              <DocumentArrowDownIcon className="w-4 h-4" />
+              Download
+            </button>
+          )}
+          
           {canToggleView && !supportsEditorView && (
             <div className="flex items-center space-x-1">
                 <button
