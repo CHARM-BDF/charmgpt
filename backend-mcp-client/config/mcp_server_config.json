@@ -153,6 +153,12 @@
         "../custom-mcp-servers/chembl-mcp/dist/index.js"
       ],
       "timeout": 60000
+    },
+    "remote-test-server": {
+      "type": "remote",
+      "transport": "sse",
+      "url": "https://remote-mcp-server.metareflective.app/sse",
+      "timeout": 30000
     }
   }
 }
