@@ -57,7 +57,7 @@ Add remote servers to your `mcp_server_config.json`:
 {
   "server-name": {
     "type": "remote",
-    "transport": "sse",  // or "websocket"
+    "transport": "sse",  // "sse", "websocket", or "http"
     "url": "https://remote-server.com/sse",
     "timeout": 30000,    // Optional, defaults to 30s for remote
     "auth": {            // Optional authentication
@@ -113,6 +113,12 @@ Add remote servers to your `mcp_server_config.json`:
 - **URL Format**: `wss://server.com/ws` or `ws://server.com/ws`
 - **Protocol**: WebSocket with MCP subprotocol
 
+### HTTP (Streamable HTTP)
+- **Best for**: Standard HTTP-based MCP servers with streaming support
+- **URL Format**: `https://server.com/mcp`
+- **Protocol**: HTTP POST for requests, HTTP GET with SSE for responses
+- **Features**: Supports authentication, resumable streams, and standard HTTP semantics
+
 ## Implementation Details
 
 ### Transport Factory
@@ -121,6 +127,7 @@ The `TransportFactory` class automatically selects the appropriate transport:
 - **Local**: Uses `StdioClientTransport` for spawned processes
 - **Remote SSE**: Uses `SSEClientTransport` for Server-Sent Events
 - **Remote WebSocket**: Uses `WebSocketClientTransport` for WebSocket connections
+- **Remote HTTP**: Uses `StreamableHTTPClientTransport` for HTTP-based MCP servers
 
 ### Error Handling
 - Connection timeouts (configurable per server)
@@ -136,8 +143,8 @@ Remote server connections are logged with clear indicators:
 
 ## Testing
 
-### Test Remote Server
-The configuration includes a test remote server:
+### Test Remote Servers
+The configuration includes test remote servers:
 
 ```json
 {
@@ -145,6 +152,18 @@ The configuration includes a test remote server:
     "type": "remote",
     "transport": "sse",
     "url": "https://remote-mcp-server.metareflective.app/sse",
+    "timeout": 30000
+  },
+  "biothings-core": {
+    "type": "remote",
+    "transport": "http",
+    "url": "https://biothings.ncats.io/mcp/biothings_core",
+    "timeout": 30000
+  },
+  "biothings": {
+    "type": "remote",
+    "transport": "http",
+    "url": "https://biothings.ncats.io/mcp/biothings",
     "timeout": 30000
   }
 }
@@ -223,6 +242,11 @@ You can run both local and remote servers simultaneously:
       "type": "remote",
       "transport": "websocket",
       "url": "wss://finance-mcp.example.com/ws"
+    },
+    "remote-biodata": {
+      "type": "remote",
+      "transport": "http",
+      "url": "https://biodata-mcp.example.com/mcp"
     }
   }
 }
