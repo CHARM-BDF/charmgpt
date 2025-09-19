@@ -259,16 +259,18 @@ export class MCPService {
     console.log(`\n[SETUP] ✅ MCP Server initialization complete. Active log handlers: ${this.logHandlers.size}`);
   }
 
-  async getAllAvailableTools(blockedServers: string[] = []): Promise<AnthropicTool[]> {
+  async getAllAvailableTools(blockedServers: string[] = [], enabledTools: Record<string, string[]> = {}): Promise<AnthropicTool[]> {
     let mcpTools: AnthropicTool[] = [];
     
     console.log('\n=== Tool Selection Process ===');
     console.log('Checking available servers and their tools...');
     
-    // Enhanced debugging for blockedServers
+    // Enhanced debugging for blockedServers and enabledTools
     console.log('💡 [MCP TRACE] Blocked servers list (raw):', blockedServers);
     console.log('💡 [MCP TRACE] Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
     console.log('💡 [MCP TRACE] blockedServers.length:', blockedServers.length);
+    console.log('💡 [MCP TRACE] Enabled tools:', enabledTools);
+    console.log('💡 [MCP TRACE] Enabled tools servers:', Object.keys(enabledTools));
     
     if (Array.isArray(blockedServers)) {
       console.log('💡 [MCP TRACE] Individual blocked servers:');
@@ -343,7 +345,22 @@ export class MCPService {
         
         if (toolsResult.tools) {
           console.log(`Available tools: ${toolsResult.tools.length}`);
-          const toolsWithPrefix = toolsResult.tools.map(tool => {
+          
+          // Filter tools based on enabledTools if specified for this server
+          let filteredTools = toolsResult.tools;
+          if (enabledTools[serverName]) {
+            const enabledToolNames = enabledTools[serverName];
+            filteredTools = toolsResult.tools.filter(tool => 
+              enabledToolNames.includes(tool.name)
+            );
+            console.log(`💡 [MCP TRACE] Tool filtering for "${serverName}": ${toolsResult.tools.length} → ${filteredTools.length} tools`);
+            console.log(`💡 [MCP TRACE] Enabled tools for "${serverName}":`, enabledToolNames);
+            console.log(`💡 [MCP TRACE] Filtered tool names:`, filteredTools.map(t => t.name));
+          } else {
+            console.log(`💡 [MCP TRACE] No tool filtering for "${serverName}" - using all ${toolsResult.tools.length} tools`);
+          }
+          
+          const toolsWithPrefix = filteredTools.map(tool => {
             console.log(`- ${tool.name}: ${tool.description || 'No description'}`);
             
             // Create Anthropic-friendly tool name and store mapping

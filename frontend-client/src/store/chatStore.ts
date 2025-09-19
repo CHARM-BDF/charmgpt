@@ -515,13 +515,15 @@ export const useChatStore = create<ChatState>()(
             };
           });
           
-          // Block the graph name list from being sent to the MCP server
+          // Get MCP server and tool filtering data
           // Lazy import to avoid circular dependency
           let sanitizedBlockedServers: string[] = [];
+          let enabledTools: Record<string, string[]> = {};
           try {
             const { useMCPStore } = await import('./mcpStore');
             const mcpStore = useMCPStore.getState();
             const blockedServers = mcpStore.getBlockedServers();
+            enabledTools = mcpStore.getEnabledTools();
             
             // console.log('\n=== BLOCKED SERVERS DEBUG ===');
             // console.log('Blocked servers from MCPStore:', blockedServers);
@@ -581,6 +583,7 @@ export const useChatStore = create<ChatState>()(
             message: content,
             history: messageHistory,
             blockedServers: sanitizedBlockedServers,
+            enabledTools: enabledTools,
             pinnedArtifacts: pinnedArtifacts,
             modelProvider: selectedModel,
             attachments: attachments || undefined

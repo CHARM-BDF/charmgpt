@@ -11,9 +11,9 @@ interface MCPStatusModalProps {
 }
 
 export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose }) => {
-    const { servers, lastChecked, isLoading, fetchStatus, toggleServerBlock, migrateLocalStorageKeys } = useMCPStore();
+    const { servers, lastChecked, isLoading, fetchStatus, toggleServerBlock, migrateLocalStorageKeys, setEnabledTools: setStoreEnabledTools } = useMCPStore();
     
-    // State to track enabled tools for each server
+    // Local state to track enabled tools for each server
     const [enabledTools, setEnabledTools] = useState<Record<string, Record<string, boolean>>>({});
 
     useEffect(() => {
@@ -38,8 +38,13 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
         });
     }, [servers]);
 
+    // Sync local enabled tools state to the store whenever it changes
+    useEffect(() => {
+        setStoreEnabledTools(enabledTools);
+    }, [enabledTools, setStoreEnabledTools]);
+
     // Helper to get the current three-state value for server tools
-    const getServerToolsState = (serverName: string, tools: any[], serverStatus: string) => {
+    const getServerToolsState = (serverName: string, tools: { name: string }[], serverStatus: string) => {
         // If server is blocked, no tools are effectively enabled
         if (serverStatus === 'blocked') {
             return false;
@@ -60,15 +65,9 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
         return server.status === 'blocked' ? 'Inactive' : 'Active';
     };
 
-    const handleResetServerBlocks = () => {
-        if (window.confirm('Are you sure you want to clear ALL server block settings? This cannot be undone.')) {
-            clearAllServerBlocks();
-            fetchStatus(); // Refresh the UI
-        }
-    };
 
     // Helper function to get tool counts for a server
-    const getToolCounts = (serverName: string, tools: any[]) => {
+    const getToolCounts = (serverName: string, tools: { name: string }[]) => {
         if (!enabledTools[serverName]) return { enabled: tools.length, total: tools.length };
         
         const enabled = tools.filter(tool => enabledTools[serverName][tool.name] !== false).length;
@@ -76,7 +75,7 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
     };
 
     // Helper function to toggle all tools for a server
-    const toggleAllTools = (serverName: string, tools: any[]) => {
+    const toggleAllTools = (serverName: string, tools: { name: string }[]) => {
         const { enabled, total } = getToolCounts(serverName, tools);
         const newState = enabled < total; // If not all enabled, enable all; otherwise disable all
         
@@ -143,7 +142,7 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                                             el.indeterminate = activeServers.length > 0 && activeServers.length < runningServers.length;
                                         }
                                     }}
-                                    onChange={(e) => {
+                                    onChange={() => {
                                         const runningServers = servers.filter(s => s.isRunning);
                                         const activeServers = runningServers.filter(s => s.status !== 'blocked');
                                         
