@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import { useMCPStore } from '../../store/mcpStore';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -12,12 +12,30 @@ interface MCPStatusModalProps {
 
 export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose }) => {
     const { servers, lastChecked, isLoading, fetchStatus, toggleServerBlock, migrateLocalStorageKeys } = useMCPStore();
+    
+    // State to track enabled tools for each server
+    const [enabledTools, setEnabledTools] = useState<Record<string, Record<string, boolean>>>({});
 
     useEffect(() => {
         if (isOpen) {
             fetchStatus();
         }
     }, [isOpen, fetchStatus]);
+
+    // Initialize enabled tools when servers change
+    useEffect(() => {
+        const newEnabledTools: Record<string, Record<string, boolean>> = {};
+        servers.forEach(server => {
+            if (server.tools) {
+                newEnabledTools[server.name] = {};
+                server.tools.forEach(tool => {
+                    // Initialize all tools as enabled by default
+                    newEnabledTools[server.name][tool.name] = true;
+                });
+            }
+        });
+        setEnabledTools(newEnabledTools);
+    }, [servers]);
 
     const getStatusColor = (server: { isRunning: boolean; status: string }) => {
         if (!server.isRunning) return 'bg-red-500'; // Inactive
@@ -34,6 +52,28 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
             clearAllServerBlocks();
             fetchStatus(); // Refresh the UI
         }
+    };
+
+    // Helper function to get tool counts for a server
+    const getToolCounts = (serverName: string, tools: any[]) => {
+        if (!enabledTools[serverName]) return { enabled: tools.length, total: tools.length };
+        
+        const enabled = tools.filter(tool => enabledTools[serverName][tool.name] !== false).length;
+        return { enabled, total: tools.length };
+    };
+
+    // Helper function to toggle all tools for a server
+    const toggleAllTools = (serverName: string, tools: any[]) => {
+        const { enabled, total } = getToolCounts(serverName, tools);
+        const newState = enabled < total; // If not all enabled, enable all; otherwise disable all
+        
+        setEnabledTools(prev => ({
+            ...prev,
+            [serverName]: {
+                ...prev[serverName],
+                ...Object.fromEntries(tools.map(tool => [tool.name, newState]))
+            }
+        }));
     };
 
     return (
@@ -129,47 +169,102 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                                                 {getStatusText(server)}
                                             </span>
                                         </div>
-                                        <Switch
-                                            data-test="mcp-server-button"
-                                            checked={server.status !== 'blocked'}
-                                            onChange={() => {
-                                                if (server.isRunning) {
-                                                    console.log(`\n=== DEBUG: UI TOGGLE SERVER BLOCK ===`);
-                                                    console.log(`Toggling block state for server "${server.name}"`);
-                                                    console.log(`Current status: ${server.status}`);
-                                                    console.log(`Will change to: ${server.status === 'blocked' ? 'active' : 'blocked'}`);
-                                                    toggleServerBlock(server.name);
-                                                    console.log(`=== END DEBUG: UI TOGGLE SERVER BLOCK ===\n`);
-                                                }
-                                            }}
-                                            disabled={!server.isRunning}
-                                            className={`${
-                                                server.isRunning ? (
-                                                    server.status === 'blocked' 
-                                                        ? 'bg-blue-500' 
-                                                        : 'bg-green-500'
-                                                ) : 'bg-gray-200'
-                                            } relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-                                        >
-                                            <span
+                                        
+                                        {/* Replace Switch with three-state checkbox for tools */}
+                                        {server.isRunning && server.tools && server.tools.length > 0 ? (
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    ref={(el) => {
+                                                        if (el && server.tools) {
+                                                            const { enabled, total } = getToolCounts(server.name, server.tools);
+                                                            
+                                                            if (enabled === 0) {
+                                                                el.checked = false;
+                                                                el.indeterminate = false;
+                                                            } else if (enabled === total) {
+                                                                el.checked = true;
+                                                                el.indeterminate = false;
+                                                            } else {
+                                                                el.checked = false;
+                                                                el.indeterminate = true;
+                                                            }
+                                                        }
+                                                    }}
+                                                    onChange={() => {
+                                                        if (server.tools) {
+                                                            toggleAllTools(server.name, server.tools);
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4"
+                                                    disabled={!server.isRunning}
+                                                />
+                                                <span className="text-sm text-gray-600">
+                                                    {(() => {
+                                                        const { enabled, total } = getToolCounts(server.name, server.tools);
+                                                        return `${enabled} of ${total} tools`;
+                                                    })()}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <Switch
+                                                data-test="mcp-server-button"
+                                                checked={server.status !== 'blocked'}
+                                                onChange={() => {
+                                                    if (server.isRunning) {
+                                                        console.log(`\n=== DEBUG: UI TOGGLE SERVER BLOCK ===`);
+                                                        console.log(`Toggling block state for server "${server.name}"`);
+                                                        console.log(`Current status: ${server.status}`);
+                                                        console.log(`Will change to: ${server.status === 'blocked' ? 'active' : 'blocked'}`);
+                                                        toggleServerBlock(server.name);
+                                                        console.log(`=== END DEBUG: UI TOGGLE SERVER BLOCK ===\n`);
+                                                    }
+                                                }}
+                                                disabled={!server.isRunning}
                                                 className={`${
-                                                    server.status !== 'blocked' ? 'translate-x-4' : 'translate-x-1'
-                                                } inline-block h-3 w-3 transform rounded-full bg-white transition-transform`}
-                                            />
-                                        </Switch>
+                                                    server.isRunning ? (
+                                                        server.status === 'blocked' 
+                                                            ? 'bg-blue-500' 
+                                                            : 'bg-green-500'
+                                                    ) : 'bg-gray-200'
+                                                } relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
+                                            >
+                                                <span
+                                                    className={`${
+                                                        server.status !== 'blocked' ? 'translate-x-4' : 'translate-x-1'
+                                                    } inline-block h-3 w-3 transform rounded-full bg-white transition-transform`}
+                                                />
+                                            </Switch>
+                                        )}
                                     </div>
                                 </div>
                                 
                                 {server.isRunning && server.tools && server.tools.length > 0 && (
                                     <div className="mt-2 pl-4 border-l-2 border-gray-200">
-                                        <div className="text-sm font-medium text-gray-500 mb-1">Available Tools:</div>
-                                        <div className="space-y-1">
+                                        <div className="text-sm font-medium text-gray-500 mb-2">Tools:</div>
+                                        <div className="space-y-2">
                                             {server.tools.map((tool, index) => (
-                                                <div key={index} className="text-sm">
-                                                    <span className="font-medium text-gray-700">{tool.name}</span>
-                                                    {tool.description && (
-                                                        <p className="text-gray-500 text-xs mt-0.5">{tool.description}</p>
-                                                    )}
+                                                <div key={index} className="flex items-start space-x-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={enabledTools[server.name]?.[tool.name] !== false}
+                                                        onChange={(e) => {
+                                                            setEnabledTools(prev => ({
+                                                                ...prev,
+                                                                [server.name]: {
+                                                                    ...prev[server.name],
+                                                                    [tool.name]: e.target.checked
+                                                                }
+                                                            }));
+                                                        }}
+                                                        className="w-4 h-4 mt-0.5 flex-shrink-0"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-medium text-gray-700 text-sm">{tool.name}</div>
+                                                        {tool.description && (
+                                                            <p className="text-gray-500 text-xs mt-0.5">{tool.description}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
