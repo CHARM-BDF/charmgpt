@@ -138,6 +138,7 @@ export class ChatService {
     options: {
       modelProvider: ModelType;
       blockedServers?: string[];
+      enabledTools?: Record<string, string[]>;
       pinnedArtifacts?: Array<{
         id: string;
         type: string;
@@ -171,7 +172,7 @@ export class ChatService {
         ...(options.blockedServers || []),
         'server-sequential-thinking' // Prevent LLM from calling this directly
       ];
-      mcpTools = await this.mcpService.getAllAvailableTools(blockedServers);
+      mcpTools = await this.mcpService.getAllAvailableTools(blockedServers, options.enabledTools);
     }
     
     // Run sequential thinking with tools if needed
@@ -592,6 +593,7 @@ export class ChatService {
     options: {
       modelProvider: ModelType;
       blockedServers?: string[];
+      enabledTools?: Record<string, string[]>;
       temperature?: number;
       maxTokens?: number;
     },
@@ -614,7 +616,7 @@ export class ChatService {
     
     // Get available tools from MCP
     statusHandler?.('Retrieving available tools...');
-    const mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
+    const mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers, options.enabledTools);
     
     // Get the appropriate tool adapter
     const toolAdapter = getToolCallAdapter(options.modelProvider);
@@ -695,7 +697,7 @@ export class ChatService {
     
     // Get available tools from MCP
     statusHandler?.('Retrieving available tools...');
-    const mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers);
+    const mcpTools = await this.mcpService.getAllAvailableTools(options.blockedServers, options.enabledTools);
     
     // Get the appropriate tool adapter
     const toolAdapter = getToolCallAdapter(options.modelProvider);

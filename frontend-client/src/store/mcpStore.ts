@@ -73,9 +73,12 @@ interface MCPStoreState {
     servers: MCPServerState[];
     lastChecked: Date | null;
     isLoading: boolean;
+    enabledTools: Record<string, Record<string, boolean>>;
     fetchStatus: () => Promise<void>;
     toggleServerBlock: (serverName: string) => void;
     getBlockedServers: () => string[];
+    getEnabledTools: () => Record<string, string[]>;
+    setEnabledTools: (enabledTools: Record<string, Record<string, boolean>>) => void;
     handleGraphCommand: (command: GraphCommand) => Promise<boolean>;
     migrateLocalStorageKeys: () => void; // Added new function for manual migration
 }
@@ -86,6 +89,7 @@ export const useMCPStore = create<MCPStoreState>()(
             servers: [],
             lastChecked: null,
             isLoading: false,
+            enabledTools: {},
             // Add a public function to trigger migration manually if needed
             migrateLocalStorageKeys: () => {
                 migrateLocalStorage();
@@ -229,6 +233,26 @@ export const useMCPStore = create<MCPStoreState>()(
                 // console.log('=== END DEBUG: GET BLOCKED SERVERS ===\n');
                 
                 return blockedServers;
+            },
+            getEnabledTools: () => {
+                const state = get();
+                const result: Record<string, string[]> = {};
+                
+                // Convert enabledTools format to server -> tool names array
+                Object.entries(state.enabledTools).forEach(([serverName, tools]) => {
+                    const enabledToolNames = Object.entries(tools)
+                        .filter(([toolName, isEnabled]) => isEnabled)
+                        .map(([toolName, isEnabled]) => toolName);
+                    
+                    if (enabledToolNames.length > 0) {
+                        result[serverName] = enabledToolNames;
+                    }
+                });
+                
+                return result;
+            },
+            setEnabledTools: (enabledTools: Record<string, Record<string, boolean>>) => {
+                set({ enabledTools });
             },
             handleGraphCommand: async (command: GraphCommand) => {
                 const chatStore = useChatStore.getState();

@@ -98,6 +98,7 @@ router.post('/', async (req: Request<{}, {}, {
   message: string; 
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
   blockedServers?: string[];
+  enabledTools?: Record<string, string[]>;
   modelProvider?: string;
   pinnedGraph?: {
     id: string;
@@ -171,7 +172,7 @@ router.post('/', async (req: Request<{}, {}, {
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
-    const { message, history, blockedServers = [], modelProvider = 'claude', pinnedGraph, pinnedArtifacts } = req.body;
+    const { message, history, blockedServers = [], enabledTools = {}, modelProvider = 'claude', pinnedGraph, pinnedArtifacts } = req.body;
     
     // Test the logging system
     logToolCall('SESSION_START', {
@@ -313,7 +314,7 @@ router.post('/', async (req: Request<{}, {}, {
       // Get MCP tools if available
       let tools = [];
       if (req.app.locals.mcpService) {
-        tools = await req.app.locals.mcpService.getAllAvailableTools(blockedServers);
+        tools = await req.app.locals.mcpService.getAllAvailableTools(blockedServers, enabledTools);
         logToolCall('TOOLS_AVAILABLE', {
           toolCount: tools.length,
           toolNames: tools.map((t: any) => t.name),
