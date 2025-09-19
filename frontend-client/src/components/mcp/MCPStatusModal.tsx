@@ -24,17 +24,26 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
 
     // Initialize enabled tools when servers change
     useEffect(() => {
-        const newEnabledTools: Record<string, Record<string, boolean>> = {};
-        servers.forEach(server => {
-            if (server.tools) {
-                newEnabledTools[server.name] = {};
-                server.tools.forEach(tool => {
-                    // Initialize all tools as enabled by default
-                    newEnabledTools[server.name][tool.name] = true;
-                });
-            }
+        console.log('Initializing enabled tools, servers:', servers.map(s => ({ name: s.name, status: s.status })));
+        setEnabledTools(prev => {
+            const newEnabledTools: Record<string, Record<string, boolean>> = { ...prev };
+            servers.forEach(server => {
+                if (server.tools) {
+                    // Only initialize if this server doesn't exist in state yet
+                    if (!newEnabledTools[server.name]) {
+                        newEnabledTools[server.name] = {};
+                        server.tools.forEach(tool => {
+                            // If server is blocked, initialize tools as disabled; otherwise enabled
+                            newEnabledTools[server.name][tool.name] = server.status !== 'blocked';
+                        });
+                        console.log(`Initialized tools for NEW server ${server.name}:`, newEnabledTools[server.name]);
+                    } else {
+                        console.log(`Skipping initialization for existing server ${server.name}`);
+                    }
+                }
+            });
+            return newEnabledTools;
         });
-        setEnabledTools(newEnabledTools);
     }, [servers]);
 
     // Helper to get the current three-state value for server tools
@@ -86,6 +95,14 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                 ...Object.fromEntries(tools.map(tool => [tool.name, newState]))
             }
         }));
+        
+        // If disabling all tools, block the server
+        if (!newState) {
+            const server = servers.find(s => s.name === serverName);
+            if (server && server.status !== 'blocked') {
+                setTimeout(() => toggleServerBlock(serverName), 0);
+            }
+        }
     };
 
     return (
@@ -288,24 +305,51 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                                                         onChange={(e) => {
                                                             // If checking a tool and server is blocked, unblock it first
                                                             if (e.target.checked && server.status === 'blocked') {
-                                                                toggleServerBlock(server.name);
-                                                                // When unblocking, set all tools to false first, then enable just this one
-                                                                setEnabledTools(prev => ({
-                                                                    ...prev,
-                                                                    [server.name]: {
-                                                                        ...Object.fromEntries(server.tools?.map(t => [t.name, false]) || []),
-                                                                        [tool.name]: true
-                                                                    }
-                                                                }));
+                                                                console.log(`Enabling tool ${tool.name} on blocked server ${server.name}`);
+                                                                
+                                                                // First set the tools state with only this tool enabled
+                                                                setEnabledTools(prev => {
+                                                                    const newState = {
+                                                                        ...prev,
+                                                                        [server.name]: {
+                                                                            ...Object.fromEntries(server.tools?.map(t => [t.name, false]) || []),
+                                                                            [tool.name]: true
+                                                                        }
+                                                                    };
+                                                                    console.log('Setting tools state:', newState[server.name]);
+                                                                    return newState;
+                                                                });
+                                                                
+                                                                // Then unblock the server
+                                                                setTimeout(() => {
+                                                                    console.log(`Unblocking server ${server.name}`);
+                                                                    toggleServerBlock(server.name);
+                                                                }, 0);
                                                             } else {
                                                                 // Normal toggle
-                                                                setEnabledTools(prev => ({
-                                                                    ...prev,
-                                                                    [server.name]: {
-                                                                        ...prev[server.name],
-                                                                        [tool.name]: e.target.checked
+                                                                setEnabledTools(prev => {
+                                                                    const newState = {
+                                                                        ...prev,
+                                                                        [server.name]: {
+                                                                            ...prev[server.name],
+                                                                            [tool.name]: e.target.checked
+                                                                        }
+                                                                    };
+                                                                    
+                                                                    // If unchecking and this results in no tools enabled, block the server
+                                                                    // Only do this when user is actively disabling a tool (not when enabling from blocked state)
+                                                                    if (!e.target.checked && server.status !== 'blocked' && server.tools) {
+                                                                        const enabledCount = server.tools.filter(t => 
+                                                                            t.name === tool.name ? false : newState[server.name]?.[t.name] !== false
+                                                                        ).length;
+                                                                        
+                                                                        if (enabledCount === 0) {
+                                                                            setTimeout(() => toggleServerBlock(server.name), 0);
+                                                                        }
                                                                     }
-                                                                }));
+                                                                    
+                                                                    return newState;
+                                                                });
                                                             }
                                                         }}
                                                     className="w-4 h-4 mt-0.5 flex-shrink-0"
