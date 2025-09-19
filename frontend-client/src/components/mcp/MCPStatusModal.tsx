@@ -66,13 +66,52 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                             >
                                 Fix Names
                             </button>
-                            <button
-                                onClick={handleResetServerBlocks}
-                                className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                title="Clear all server block settings"
-                            >
-                                Reset All
-                            </button>
+                            {/* Replace Reset All button with three-state checkbox */}
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    ref={(el) => {
+                                        if (el) {
+                                            const runningServers = servers.filter(s => s.isRunning);
+                                            const activeServers = runningServers.filter(s => s.status !== 'blocked');
+                                            
+                                            if (activeServers.length === 0) {
+                                                el.checked = false;
+                                                el.indeterminate = false;
+                                            } else if (activeServers.length === runningServers.length) {
+                                                el.checked = true;
+                                                el.indeterminate = false;
+                                            } else {
+                                                el.checked = false;
+                                                el.indeterminate = true;
+                                            }
+                                        }
+                                    }}
+                                    onChange={(e) => {
+                                        const runningServers = servers.filter(s => s.isRunning);
+                                        const activeServers = runningServers.filter(s => s.status !== 'blocked');
+                                        
+                                        if (activeServers.length === runningServers.length) {
+                                            // All on -> turn all off
+                                            runningServers.forEach(server => {
+                                                if (server.status !== 'blocked') {
+                                                    toggleServerBlock(server.name);
+                                                }
+                                            });
+                                        } else {
+                                            // All off or mixed -> turn all on
+                                            runningServers.forEach(server => {
+                                                if (server.status === 'blocked') {
+                                                    toggleServerBlock(server.name);
+                                                }
+                                            });
+                                        }
+                                    }}
+                                    className="w-4 h-4"
+                                    title="Toggle all servers"
+                                />
+                                <span className="text-sm text-gray-600">All</span>
+                            </div>
                         </div>
                     </div>
 
