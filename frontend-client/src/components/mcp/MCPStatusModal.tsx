@@ -289,14 +289,24 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                                                             // If checking a tool and server is blocked, unblock it first
                                                             if (e.target.checked && server.status === 'blocked') {
                                                                 toggleServerBlock(server.name);
+                                                                // When unblocking, set all tools to false first, then enable just this one
+                                                                setEnabledTools(prev => ({
+                                                                    ...prev,
+                                                                    [server.name]: {
+                                                                        ...Object.fromEntries(server.tools?.map(t => [t.name, false]) || []),
+                                                                        [tool.name]: true
+                                                                    }
+                                                                }));
+                                                            } else {
+                                                                // Normal toggle
+                                                                setEnabledTools(prev => ({
+                                                                    ...prev,
+                                                                    [server.name]: {
+                                                                        ...prev[server.name],
+                                                                        [tool.name]: e.target.checked
+                                                                    }
+                                                                }));
                                                             }
-                                                            setEnabledTools(prev => ({
-                                                                ...prev,
-                                                                [server.name]: {
-                                                                    ...prev[server.name],
-                                                                    [tool.name]: e.target.checked
-                                                                }
-                                                            }));
                                                         }}
                                                     className="w-4 h-4 mt-0.5 flex-shrink-0"
                                                     />
