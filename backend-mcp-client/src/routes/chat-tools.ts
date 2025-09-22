@@ -18,6 +18,7 @@ router.post('/', async (req: Request<{}, {}, {
   temperature?: number;
   maxTokens?: number;
   blockedServers?: string[];
+  enabledTools?: Record<string, string[]>;
 }>, res: Response) => {
   // Set headers for streaming
   res.setHeader('Content-Type', 'application/json');
@@ -52,7 +53,8 @@ router.post('/', async (req: Request<{}, {}, {
       modelProvider = 'anthropic',
       temperature = 0.2,
       maxTokens = 4000,
-      blockedServers = []
+      blockedServers = [],
+      enabledTools = {}
     } = req.body;
     
     // Initial status update
@@ -67,7 +69,8 @@ router.post('/', async (req: Request<{}, {}, {
         modelProvider,
         temperature,
         maxTokens,
-        blockedServers
+        blockedServers,
+        enabledTools
       },
       // Pass the status handler to get updates
       sendStatusUpdate
