@@ -430,10 +430,10 @@ router.post('/', async (req: Request, res: Response) => {
       throw new Error(`Failed to connect to Ollama server: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
-    const { message, history = [], blockedServers = [] } = req.body;
+    const { message, history = [], blockedServers = [], enabledTools = {} } = req.body;
 
     // Retrieve available MCP tools using the SDK
-    const availableTools = await mcpService.getAllAvailableTools(blockedServers);
+    const availableTools = await mcpService.getAllAvailableTools(blockedServers, enabledTools);
     const mcpToolsResponse: MCPToolResponse = {
       tools: availableTools.map(tool => ({
         name: tool.name,

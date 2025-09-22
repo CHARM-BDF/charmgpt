@@ -153,6 +153,24 @@
         "../custom-mcp-servers/chembl-mcp/dist/index.js"
       ],
       "timeout": 60000
+    },
+    "remote-test-server": {
+      "type": "remote",
+      "transport": "sse",
+      "url": "https://remote-mcp-server.metareflective.app/sse",
+      "timeout": 30000
+    },
+    "biothings-core": {
+      "type": "remote",
+      "transport": "http",
+      "url": "https://biothings.ncats.io/mcp/biothings_core",
+      "timeout": 30000
+    },
+    "biothings": {
+      "type": "remote",
+      "transport": "http",
+      "url": "https://biothings.ncats.io/mcp/biothings",
+      "timeout": 30000
     }
   }
 }

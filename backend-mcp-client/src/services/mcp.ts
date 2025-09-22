@@ -1,33 +1,10 @@
 import { Client as McpClient } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { randomUUID } from 'crypto';
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess } from 'child_process';
+import { TransportFactory } from './transportFactory.js';
+import { MCPServersConfig, MCPLogMessage, AnthropicTool } from '../types/mcp.js';
 
 const DEBUG = false;  // Debug flag for controlling verbose logging
-
-export interface MCPLogMessage {
-  level: 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
-  logger?: string;
-  data?: Record<string, unknown>;
-}
-
-export interface MCPServersConfig {
-  mcpServers: Record<string, {
-    command: string;
-    args: string[];
-    env?: Record<string, string>;
-  }>;
-}
-
-export interface AnthropicTool {
-  name: string;
-  description: string;
-  input_schema: {
-    type: "object";
-    properties: Record<string, unknown>;
-    required?: string[];
-  };
-}
 
 export class MCPService {
   private mcpClients: Map<string, McpClient>;
@@ -176,6 +153,9 @@ export class MCPService {
       try {
         if (DEBUG) console.log(`\n=== [SETUP] Creating client for: ${serverName} ===`);
         
+        // Validate server configuration
+        TransportFactory.validateConfig(serverName, serverConfig);
+        
         const client = new McpClient(
           { name: serverName, version: '1.0.0' },
           { 
@@ -194,30 +174,43 @@ export class MCPService {
           notifications: { "notifications/message": true }
         });
 
-        const modifiedArgs = serverConfig.args.map(arg => {
-          if (arg.startsWith('./node_modules/')) {
-            return arg.replace('./', '');
-          }
-          return arg;
-        });
-
         if (DEBUG) console.log(`[SETUP] Attempting to connect client for ${serverName}`);
         
-        // Create transport and connect
-        const transport = new StdioClientTransport({ 
-          command: serverConfig.command,
-          args: modifiedArgs,
-          env: {
-            ...serverConfig.env,
-            ...Object.fromEntries(
-              Object.entries(process.env).filter(([_, v]) => v !== undefined)
-            ) as Record<string, string>
+        // Create appropriate transport (local or remote)
+        const transportInfo = TransportFactory.createTransport(serverName, serverConfig);
+        const { transport, isRemote } = transportInfo;
+        
+        // Set timeout for remote connections
+        const connectionTimeout = serverConfig.timeout || (isRemote ? 30000 : 10000);
+        
+        // Connect with timeout and proper error handling
+        try {
+          await Promise.race([
+            client.connect(transport),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error(`Connection timeout after ${connectionTimeout}ms`)), connectionTimeout)
+            )
+          ]);
+          
+          const connectionType = isRemote ? 'remote' : 'local';
+          console.log(`[SETUP] ✅ Connected to ${serverName} (${connectionType}) with official MCP logging support`);
+        } catch (connectionError) {
+          const connectionType = isRemote ? 'remote' : 'local';
+          const errorMessage = connectionError instanceof Error ? connectionError.message : 'Unknown connection error';
+          
+          console.error(`[SETUP] ❌ Failed to connect to ${connectionType} server ${serverName}: ${errorMessage}`);
+          
+          if (isRemote) {
+            console.error(`[SETUP] Remote server details:`, {
+              url: (serverConfig as { url?: string }).url,
+              transport: (serverConfig as { transport?: string }).transport
+            });
           }
-        });
-        
-        await client.connect(transport);
-        
-        console.log(`[SETUP] ✅ Connected to ${serverName} with official MCP logging support`);
+          
+          // Mark server as failed but continue with other servers
+          this.serverStatuses[serverName] = false;
+          continue;
+        }
         
         // ✅ SET NOTIFICATION HANDLER ONCE AFTER CONNECTION
         if ('notification' in client) {
@@ -266,16 +259,18 @@ export class MCPService {
     console.log(`\n[SETUP] ✅ MCP Server initialization complete. Active log handlers: ${this.logHandlers.size}`);
   }
 
-  async getAllAvailableTools(blockedServers: string[] = []): Promise<AnthropicTool[]> {
+  async getAllAvailableTools(blockedServers: string[] = [], enabledTools: Record<string, string[]> = {}): Promise<AnthropicTool[]> {
     let mcpTools: AnthropicTool[] = [];
     
     console.log('\n=== Tool Selection Process ===');
     console.log('Checking available servers and their tools...');
     
-    // Enhanced debugging for blockedServers
+    // Enhanced debugging for blockedServers and enabledTools
     console.log('💡 [MCP TRACE] Blocked servers list (raw):', blockedServers);
     console.log('💡 [MCP TRACE] Type of blockedServers:', Array.isArray(blockedServers) ? 'Array' : typeof blockedServers);
     console.log('💡 [MCP TRACE] blockedServers.length:', blockedServers.length);
+    console.log('💡 [MCP TRACE] Enabled tools:', enabledTools);
+    console.log('💡 [MCP TRACE] Enabled tools servers:', Object.keys(enabledTools));
     
     if (Array.isArray(blockedServers)) {
       console.log('💡 [MCP TRACE] Individual blocked servers:');
@@ -350,7 +345,22 @@ export class MCPService {
         
         if (toolsResult.tools) {
           console.log(`Available tools: ${toolsResult.tools.length}`);
-          const toolsWithPrefix = toolsResult.tools.map(tool => {
+          
+          // Filter tools based on enabledTools if specified for this server
+          let filteredTools = toolsResult.tools;
+          if (enabledTools[serverName]) {
+            const enabledToolNames = enabledTools[serverName];
+            filteredTools = toolsResult.tools.filter(tool => 
+              enabledToolNames.includes(tool.name)
+            );
+            console.log(`💡 [MCP TRACE] Tool filtering for "${serverName}": ${toolsResult.tools.length} → ${filteredTools.length} tools`);
+            console.log(`💡 [MCP TRACE] Enabled tools for "${serverName}":`, enabledToolNames);
+            console.log(`💡 [MCP TRACE] Filtered tool names:`, filteredTools.map(t => t.name));
+          } else {
+            console.log(`💡 [MCP TRACE] No tool filtering for "${serverName}" - using all ${toolsResult.tools.length} tools`);
+          }
+          
+          const toolsWithPrefix = filteredTools.map(tool => {
             console.log(`- ${tool.name}: ${tool.description || 'No description'}`);
             
             // Create Anthropic-friendly tool name and store mapping

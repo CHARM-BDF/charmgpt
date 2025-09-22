@@ -18,6 +18,7 @@ router.post('/', async (req: Request<{}, {}, {
   history: Array<{ role: 'user' | 'assistant' | 'system'; content: string | any[] }>;
   modelProvider?: 'anthropic' | 'ollama' | 'openai' | 'gemini';
   blockedServers?: string[];
+  enabledTools?: Record<string, string[]>;
   pinnedArtifacts?: Array<{
     id: string;
     type: string;
@@ -90,6 +91,7 @@ router.post('/', async (req: Request<{}, {}, {
       history, 
       modelProvider = 'anthropic',
       blockedServers = [],
+      enabledTools = {},
       pinnedArtifacts,
       attachments,
       temperature = 0.2,
@@ -219,6 +221,7 @@ router.post('/', async (req: Request<{}, {}, {
       {
         modelProvider,
         blockedServers,
+        enabledTools,
         pinnedArtifacts,
         attachments,
         temperature,
