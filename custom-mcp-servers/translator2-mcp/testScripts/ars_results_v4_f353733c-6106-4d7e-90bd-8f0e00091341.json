@@ -1,0 +1,78 @@
+{
+  "model": "tr_ars.message",
+  "pk": "f353733c-6106-4d7e-90bd-8f0e00091341",
+  "fields": {
+    "name": "ars-default-agent",
+    "code": 200,
+    "status": "Done",
+    "actor": 19,
+    "timestamp": "2025-09-08T17:52:58.689Z",
+    "updated_at": "2025-09-08T17:57:27.531Z",
+    "data": {
+      "message": {
+        "query_graph": {
+          "edges": {
+            "e0": {
+              "subject": "n0",
+              "object": "n1"
+            }
+          },
+          "nodes": {
+            "n0": {
+              "ids": [
+                "NCBIGENE:283635"
+              ],
+              "categories": [
+                "biolink:Gene"
+              ],
+              "is_set": false,
+              "name": "FAM177A1"
+            },
+            "n1": {
+              "is_set": false,
+              "categories": [
+                "biolink:BiologicalProcess",
+                "biolink:BiologicalProcessOrActivity",
+                "biolink:ChemicalMixture",
+                "biolink:DiseaseOrPhenotypicFeature",
+                "biolink:Drug",
+                "biolink:Gene",
+                "biolink:GenomicEntity",
+                "biolink:MolecularMixture",
+                "biolink:Pathway",
+                "biolink:Protein",
+                "biolink:ProteinFamily",
+                "biolink:SmallMolecule"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "url": null,
+    "ref": null,
+    "result_count": null,
+    "result_stat": null,
+    "retain": false,
+    "merge_semaphore": false,
+    "merged_version": "05d63324-e4d4-49ce-96b7-d405680a38f9",
+    "merged_versions_list": [
+      [
+        "6da168c3-ea36-4041-a4cd-3d01e6158e18",
+        "ara-improving"
+      ],
+      [
+        "da0c6f63-1356-4f06-a770-88ba92968f2f",
+        "ara-arax"
+      ],
+      [
+        "de7f571c-d6d8-4d92-89d8-a7f34a91315b",
+        "ara-aragorn"
+      ],
+      [
+        "05d63324-e4d4-49ce-96b7-d405680a38f9",
+        "ara-bte"
+      ]
+    ]
+  }
+}

@@ -1,17 +1,18 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import { setupREnvironment, cleanupREnvironment, TEMP_DIR, LOGS_DIR } from './env.js';
+import { setupREnvironment, cleanupREnvironment, validateRCode, TEMP_DIR, LOGS_DIR } from './env.js';
 import { appendFileSync, mkdirSync } from 'fs';
 import { createWriteStream } from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR,  processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
 
 const execAsync = promisify(exec);
 
 // Docker configuration
 const DOCKER_IMAGE = 'my-r-mcp';
+const CONTAINER_TEMP_DIR = '/app/temp';
+const CONTAINER_LOGS_DIR = '/app/logs';
 
 // Ensure log directory exists
 try {
@@ -27,6 +28,97 @@ try {
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
+}
+
+// Logger type definition
+interface Logger {
+  log: (message: string) => void;
+  close: () => void;
+  isClosed: boolean;
+}
+
+function createRunLogger(): Logger {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const logFileName = `run_${timestamp}.log`;
+  const logFilePath = path.join(LOGS_DIR, logFileName);
+  
+  // Create write stream for logging
+  const logStream = createWriteStream(logFilePath, { flags: 'a' });
+  let isClosed = false;
+  
+  // Log the paths being used
+  logStream.write(`Log file path: ${logFilePath}\n`);
+  logStream.write(`Temp directory path: ${TEMP_DIR}\n`);
+  
+  return {
+    log: (message: string) => {
+      if (!isClosed) {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[${timestamp}] ${message}\n`;
+        logStream.write(logMessage);
+      }
+    },
+    close: () => {
+      if (!isClosed) {
+        isClosed = true;
+        logStream.end();
+      }
+    },
+    isClosed
+  };
+}
+
+function log(type: string, message: string, color: string, logFile: string) {
+  // Get timestamp in Central Time
+  const timestamp = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(new Date());
+  
+  const logMessage = `${timestamp} ${color}[R-MCP ${type}]\x1b[0m ${message}\n`;
+  const fileMessage = `${timestamp} [R-MCP ${type}] ${message}\n`;
+  
+  // Write to console with color
+  process.stderr.write(logMessage);
+  
+  // Write to run-specific log file without color
+  try {
+    appendFileSync(logFile, fileMessage);
+  } catch (error) {
+    console.error('Error writing to log file:', error);
+  }
+}
+
+interface ExecuteArgs {
+  code: string;
+  dataFiles?: Record<string, string>;
+  timeout?: number;
+}
+
+interface ExecuteResult {
+  output: string;
+  code: string;
+  type?: 'text' | 'ggplot' | 'data.frame' | 'matrix' | 'binary' | 'json';
+  metadata?: Record<string, unknown>;
+  binaryOutput?: {
+    data: string;  // base64 encoded
+    type: string;  // MIME type
+    metadata: {
+      filename: string;
+      size: number;
+      dimensions: {
+        width: number;
+        height: number;
+      };
+      sourceCode: string;  // Source code that generated the output
+    };
+  };
 }
 
 // Add helper function for code transformation
@@ -232,35 +324,22 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
 }
 
 export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
-  const { code: originalCode, dataFiles, timeout = 30 } = args;
+  const { code: originalCode, timeout = 30 } = args;
   
   // Create logger first
-  const logger = createRunLogger(LOGS_DIR, TEMP_DIR);
+  const logger = createRunLogger();
   let scriptPath = '';
-  let processedFiles: ProcessedFile[] = [];
   
   try {
-    // Process dataFiles first
-    if (dataFiles && Object.keys(dataFiles).length > 0) {
-      logger.log('Processing dataFiles...');
-      processedFiles = await processDataFiles(TEMP_DIR,dataFiles, logger);
-      logger.log(`Processed ${processedFiles.length} files`);
-    }
-    
-    // Add file context if files were processed
-    let codeWithContext = originalCode;
-    if (processedFiles.length > 0) {
-      const fileList = processedFiles.map(f => f.originalName).join(', ');
-      const fileContext = `# The following uploaded files are available in the current directory: ${fileList}\n# You can read them directly using their original names (e.g., read.csv("${processedFiles[0].originalName}"))\n\n`;
-      codeWithContext = fileContext + originalCode;
-      logger.log(`Added file context for ${processedFiles.length} files: ${fileList}`);
-    }
+    // Validate R code before transformation
+    validateRCode(originalCode);
+    logger.log('R code validation passed');
     
     // Transform code to handle file operations
-    const code = transformRCode(codeWithContext, logger);
+    const code = transformRCode(originalCode, logger);
     
     // Log if code was transformed
-    if (code !== codeWithContext) {
+    if (code !== originalCode) {
       logger.log('Code was transformed to use OUTPUT_DIR for file operations');
       logger.log(`Original code: ${originalCode}`);
       logger.log(`Transformed code: ${code}`);
@@ -283,10 +362,6 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     await fs.writeFile(scriptPath, code, 'utf-8');
     logger.log('R code written to temporary file');
 
-    // Take pre-execution snapshot of files in temp directory
-    const preExecutionFiles = new Set(await fs.readdir(TEMP_DIR));
-    logger.log(`Pre-execution files: ${Array.from(preExecutionFiles).join(', ')}`);
-
     // Run the code in Docker and collect output
     const output = await runInDocker(scriptPath, envConfig, logger);
 
@@ -294,27 +369,77 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     logger.log('Checking temp directory for files...');
     const files = await fs.readdir(TEMP_DIR);
     logger.log(`Files in temp directory: ${files.join(', ')}`);
-    console.error(`RACKET SERVER LOGS: Files found in temp directory: ${files.join(', ')}`);
+    console.error(`R SERVER LOGS: Files found in temp directory: ${files.join(', ')}`);
     
-    const createdFiles: CreatedFile[] = [];
-    const binaryOutput = await postExecution("R", createdFiles, TEMP_DIR, preExecutionFiles, logger, code);
+    let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
 
-
-    // Clean up after execution
-    await cleanupREnvironment();
-    
-    // Clean up copied data files
-    for (const file of processedFiles) {
-      try {
-        logger.log(`Cleaning up data file: ${file.filePath}`);
-        await fs.unlink(file.filePath);
-      } catch (error) {
-        if (error instanceof Error && !error.message.includes('ENOENT')) {
-          logger.log(`Error cleaning up data file: ${error}`);
+    for (const file of files) {
+      logger.log(`Processing file: ${file}`);
+      console.error(`R SERVER LOGS: Processing file: ${file}`);
+      
+      if (/\.(png|jpe?g|pdf|svg)$/i.test(file)) {
+        logger.log(`Found image file: ${file}`);
+        console.error(`R SERVER LOGS: Found image file: ${file}`);
+        const filePath = path.join(TEMP_DIR, file);
+        logger.log(`Full file path: ${filePath}`);
+        console.error(`R SERVER LOGS: Full image path: ${filePath}`);
+        
+        try {
+          const fileContent = await fs.readFile(filePath);
+          logger.log(`File size: ${fileContent.length} bytes`);
+          console.error(`R SERVER LOGS: Image file size: ${fileContent.length} bytes`);
+          const base64Data = fileContent.toString('base64');
+          console.error(`R SERVER LOGS: Converted image to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
+          
+          // For PNG files, extract dimensions from the IHDR chunk
+          let width = 0;
+          let height = 0;
+          if (file.endsWith('.png')) {
+            width = fileContent.readUInt32BE(16);
+            height = fileContent.readUInt32BE(20);
+          }
+          
+          const fileType = path.extname(file).toLowerCase();
+          const mimeType = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.pdf': 'application/pdf',
+            '.svg': 'image/svg+xml'
+          }[fileType] || 'application/octet-stream';
+          
+          binaryOutput = {
+            data: base64Data,
+            type: mimeType,
+            metadata: {
+              filename: file,
+              size: fileContent.length,
+              dimensions: {
+                width,
+                height
+              },
+              sourceCode: code
+            }
+          };
+          
+          logger.log('Binary output prepared successfully');
+          console.error(`R SERVER LOGS: Binary output prepared successfully`);
+          
+          // Clean up the binary file
+          await fs.unlink(filePath).catch(error => {
+            logger.log(`Error cleaning up image file: ${error}`);
+            console.error(`R SERVER LOGS: Error cleaning up image file: ${error}`);
+          });
+          break;  // Only handle the first image file
+        } catch (error) {
+          logger.log(`Error processing image file: ${error}`);
+          console.error(`R SERVER LOGS: ERROR processing image file: ${error}`);
         }
       }
     }
-    
+
+    // Clean up after execution
+    await cleanupREnvironment();
     try {
       logger.log(`Cleaning up script file: ${scriptPath}`);
       await fs.unlink(scriptPath);
@@ -332,8 +457,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       code,
       type: binaryOutput ? 'ggplot' as const : 'text' as const,
       metadata: binaryOutput ? { hasBinaryOutput: true } : {},
-      binaryOutput,
-      createdFiles
+      binaryOutput
     };
     
     logger.log(`Execution completed successfully`);
@@ -354,12 +478,6 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     logger.log(`Execution error: ${error}`);
     try {
       await cleanupREnvironment();
-      
-      // Clean up copied data files
-      for (const file of processedFiles) {
-        await fs.unlink(file.filePath).catch(() => {}); // Ignore cleanup errors
-      }
-      
       if (scriptPath) {
         await fs.unlink(scriptPath).catch(() => {}); // Ignore cleanup errors
       }

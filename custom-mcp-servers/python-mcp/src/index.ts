@@ -6,16 +6,23 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
-import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
+import { validatePythonCode } from "./tools/env.js";
 import os from "os";
-import crypto from 'crypto';
 
 // Logger utility
-const logger = makeLogger({
-  log_type: (type: string, message: string, ...args: any[]) => {
-    console.error(`\x1b[36m[PYTHON-MCP ${type}]\x1b[0m ${message}`, ...args);
+const logger = {
+  info: (message: string, ...args: any[]) => {
+    console.error(`\x1b[36m[PYTHON-MCP INFO]\x1b[0m ${message}`, ...args);
+  },
+  error: (message: string, ...args: any[]) => {
+    console.error(`\x1b[31m[PYTHON-MCP ERROR]\x1b[0m ${message}`, ...args);
+  },
+  debug: (message: string, ...args: any[]) => {
+    if (process.env.DEBUG) {
+      console.error(`\x1b[35m[PYTHON-MCP DEBUG]\x1b[0m ${message}`, ...args);
+    }
   }
-});
+};
 
 // Define the Python execution tool
 const PYTHON_EXECUTION_TOOL = {
@@ -47,12 +54,12 @@ const PYTHON_EXECUTION_TOOL = {
       },
       dataFiles: {
         type: "object",
-        description: "Map of variable names to file IDs or file paths. File IDs are UUIDs from uploaded files. Files will be automatically loaded as Python variables with the specified names. Supports CSV (pandas DataFrame), JSON (dict), Excel (pandas DataFrame), text files (string), and Parquet (pandas DataFrame)."
+        description: "Map of variable names to file paths"
       },
       timeout: {
         type: "number",
-        description: "Execution timeout in seconds (max 60)",
-        default: 60
+        description: "Execution timeout in seconds (max 30)",
+        default: 30
       }
     },
     required: ["code"]
@@ -117,6 +124,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       throw new Error("Code parameter is required and must be a string");
     }
 
+    logger.info("Validating Python code...");
+    validatePythonCode(code);
+    logger.info("Code validation successful");
+
     logger.info("Executing Python code...");
     const result = await execute({
       code,
@@ -126,8 +137,95 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     logger.info("Code execution completed successfully");
     logger.debug("Raw execution result:", result);
 
-    return getResponse("Python", result, logger);
-  
+    // Handle binary output if present
+    if (result.binaryOutput) {
+      console.error("PYTHON SERVER LOGS: Binary output detected!");
+      console.error(`PYTHON SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
+      console.error(`PYTHON SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
+      console.error(`PYTHON SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
+      console.error(`PYTHON SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
+      
+      logger.info("Binary output detected:");
+      logger.info(`- Type: ${result.binaryOutput.type}`);
+      logger.info(`- Size: ${result.binaryOutput.metadata.size} bytes`);
+      logger.info(`- Metadata: ${JSON.stringify(result.binaryOutput.metadata, null, 2)}`);
+
+      // Use standard artifacts array format instead of binaryOutput
+      const artifactResponse = {
+        content: [
+          {
+            type: "text",
+            text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
+          }
+        ],
+        artifacts: [
+          {
+            type: result.binaryOutput.type,
+            title: `Python Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
+            content: result.binaryOutput.data,
+            metadata: {
+              ...result.binaryOutput.metadata,
+              sourceCode: result.code
+            }
+          }
+        ],
+        metadata: {
+          hasBinaryOutput: true,
+          binaryType: result.binaryOutput.type,
+        },
+        isError: false,
+      };
+      
+      console.error("PYTHON SERVER LOGS: Returning artifact with following structure:");
+      console.error(`PYTHON SERVER LOGS: - Content items: ${artifactResponse.content.length}`);
+      console.error(`PYTHON SERVER LOGS: - Artifacts items: ${artifactResponse.artifacts.length}`);
+      console.error(`PYTHON SERVER LOGS: - First artifact type: ${artifactResponse.artifacts[0].type}`);
+      console.error(`PYTHON SERVER LOGS: - First artifact title: ${artifactResponse.artifacts[0].title}`);
+      console.error(`PYTHON SERVER LOGS: - Content data length: ${artifactResponse.artifacts[0].content.length} characters`);
+      
+      return artifactResponse;
+    } else {
+      console.error("PYTHON SERVER LOGS: No binary output detected in execution result");
+    }
+
+    // Log standard output result
+    console.error(`PYTHON SERVER LOGS: Standard output result (${result.output.length} chars):`);
+    console.error(`PYTHON SERVER LOGS: Output type: ${result.type || 'text'}`);
+    console.error(`PYTHON SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
+    
+    logger.info("Standard output result:");
+    logger.info(`- Type: ${result.type || 'text'}`);
+    logger.info(`- Output length: ${result.output.length} characters`);
+    if (result.metadata) {
+      logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
+    }
+
+    // For text output, create an artifact if it's rich enough to deserve one
+    let artifacts = undefined;
+    if (result.output.length > 200 || result.output.includes('\n')) {
+      console.error("PYTHON SERVER LOGS: Creating text/markdown artifact for long output");
+      artifacts = [
+        {
+          type: "text/markdown",
+          title: "Python Output",
+          content: "```\n" + result.output + "\n```"
+        }
+      ];
+      console.error(`PYTHON SERVER LOGS: Created markdown artifact with length ${artifacts[0].content.length}`);
+    } else {
+      console.error("PYTHON SERVER LOGS: Output too short, not creating artifact");
+    }
+
+    // Default response for non-binary output
+    return {
+      content: [{
+        type: "text",
+        text: result.output || "Code executed successfully with no text output.",
+      }],
+      artifacts,
+      metadata: result.metadata,
+      isError: false,
+    };
   } catch (error) {
     logger.error("Error during tool execution:", error);
     return {

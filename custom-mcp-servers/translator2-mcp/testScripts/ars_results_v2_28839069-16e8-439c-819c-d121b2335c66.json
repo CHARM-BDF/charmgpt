@@ -1,0 +1,64 @@
+{
+  "model": "tr_ars.message",
+  "pk": "28839069-16e8-439c-819c-d121b2335c66",
+  "fields": {
+    "name": "ars-default-agent",
+    "code": 200,
+    "status": "Done",
+    "actor": 19,
+    "timestamp": "2025-09-08T17:21:17.098Z",
+    "updated_at": "2025-09-08T17:24:07.510Z",
+    "data": {
+      "message": {
+        "query_graph": {
+          "edges": {
+            "e0": {
+              "subject": "n0",
+              "object": "n1"
+            }
+          },
+          "nodes": {
+            "n0": {
+              "ids": [
+                "NCBIGENE:283635"
+              ],
+              "categories": [
+                "biolink:Gene"
+              ],
+              "is_set": false,
+              "name": "FAM177A1"
+            },
+            "n1": {
+              "is_set": false
+            }
+          }
+        }
+      }
+    },
+    "url": null,
+    "ref": null,
+    "result_count": null,
+    "result_stat": null,
+    "retain": false,
+    "merge_semaphore": false,
+    "merged_version": "198adf23-033a-4f81-97e8-e22ca47dbec6",
+    "merged_versions_list": [
+      [
+        "e5baba84-ca2c-4c83-a0d6-103e61905fb6",
+        "ara-improving"
+      ],
+      [
+        "07bff4a3-a5e5-4be1-b29a-5720104e55f9",
+        "ara-arax"
+      ],
+      [
+        "14f03e5e-130a-4474-93dd-9b35e53868ae",
+        "ara-aragorn"
+      ],
+      [
+        "198adf23-033a-4f81-97e8-e22ca47dbec6",
+        "ara-bte"
+      ]
+    ]
+  }
+}

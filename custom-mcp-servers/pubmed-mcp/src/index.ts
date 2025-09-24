@@ -358,11 +358,22 @@ ${abstract}
 
       console.log('\n[DEBUG] First bibliography entry:', JSON.stringify(bibliographyData[0], null, 2));
 
+      // Build instructions section with PubMed IDs for downstream tools
+      const pmidInstructions = [
+        "---",
+        "## 📑 PubMed ID List",
+        "Below is the list of PubMed IDs returned in this batch. To fetch the next batch without duplicates, pass these IDs in `exclude_pmids` (array of strings) when you call the **pubmed-search** tool again.",
+        "",
+        ...pmids.map(id => `- ${id}`)
+      ].join("\n");
+
+      const fullMarkdown = `# Search Results for: ${formattedQuery}\n\n${markdownArticles.join("\n\n")}\n\n${pmidInstructions}`;
+
       return {
         content: [
           {
             type: "text",
-            text: `# Search Results for: ${formattedQuery}\n\n${markdownArticles.join("\n\n")}`,
+            text: fullMarkdown,
             forModel: true
           }
         ],

@@ -6,9 +6,111 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define separate paths for logs and temp files
-export const LOGS_DIR = path.join(__dirname, '../../../../logs/racket-mcp');
+export const LOGS_DIR = path.join(__dirname, '../../../../logs/python-mcp');
 export const TEMP_DIR = path.join(__dirname, '../../temp');  // Keep temp files close to the server
 
+// Comprehensive list of allowed Python packages
+const ALLOWED_PACKAGES = new Set([
+  // Core data science
+  'numpy',
+  'pandas',
+  'scipy',
+  'sklearn',
+  'statsmodels',
+  
+  // Visualization
+  'matplotlib',
+  'seaborn',
+  'plotly',
+  'bokeh',
+  
+  // Machine Learning
+  'tensorflow',
+  'torch',
+  'keras',
+  'xgboost',
+  'lightgbm',
+  
+  // Data Processing
+  'nltk',
+  'spacy',
+  'gensim',
+  'beautifulsoup4',
+  'requests',
+  
+  // Utilities
+  'datetime',
+  'json',
+  'csv',
+  'math',
+  'random',
+  'collections',
+  're',
+  'itertools',
+  'functools',
+  'resource',  // For memory management
+  'memory_profiler',  // For memory profiling
+  'psutil',  // For process and system utilities
+  'gc',  // For garbage collection
+  'threading',  // For thread management
+  'time',  // For time operations
+  'os'  // Limited usage for process management
+]);
+
+// List of dangerous patterns to check for
+const DANGEROUS_PATTERNS = [
+  'import sys',
+  'import subprocess',
+  '__import__',
+  'eval(',
+  'exec(',
+  'open(',
+  'file(',
+  'system(',
+  'popen(',
+  'subprocess',
+  'import socket',
+  'import shutil',
+  'os.system',  // Block dangerous os operations
+  'os.popen',
+  'os.spawn',
+  'os.exec'
+];
+
+export function validatePythonCode(code: string): void {
+  // Check for dangerous imports and operations
+  for (const pattern of DANGEROUS_PATTERNS) {
+    if (code.includes(pattern)) {
+      throw new Error(`Forbidden operation detected: ${pattern}`);
+    }
+  }
+
+  // Check imports against allowed packages
+  const importMatches = code.matchAll(/^import\s+(\w+)|^from\s+(\w+)/gm);
+  for (const match of importMatches) {
+    const package_name = match[1] || match[2];
+    if (!ALLOWED_PACKAGES.has(package_name)) {
+      throw new Error(`Package not allowed: ${package_name}. Please use standard data science packages: ${Array.from(ALLOWED_PACKAGES).join(', ')}`);
+    }
+  }
+
+  // Additional check for os module usage
+  if (code.includes('import os')) {
+    const osOperations = code.match(/os\.\w+/g) || [];
+    const allowedOsOperations = new Set([
+      'os.getpid',
+      'os._exit',
+      'os.environ',
+      'os.path',
+      'os.path.join'
+    ]);
+    for (const op of osOperations) {
+      if (!allowedOsOperations.has(op)) {
+        throw new Error(`Forbidden os operation: ${op}. Only process management operations and path operations are allowed.`);
+      }
+    }
+  }
+}
 
 export async function setupPythonEnvironment() {
   // Create temp directory if it doesn't exist
