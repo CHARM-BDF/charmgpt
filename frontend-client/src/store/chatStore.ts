@@ -22,6 +22,102 @@ import { useModelStore } from './modelStore';
 import { KnowledgeGraphNode, KnowledgeGraphLink, KnowledgeGraphData } from '@charm-mcp/shared';
 import { useProjectStore } from './projectStore';
 
+// Helper functions for workspace graph merging
+function mergeNodesIntoWorkspace(existingNodes: KnowledgeGraphNode[], newNodes: KnowledgeGraphNode[]): KnowledgeGraphNode[] {
+  const nodeMap = new Map<string, KnowledgeGraphNode>();
+  
+  // Add existing nodes
+  existingNodes.forEach(node => {
+    // Ensure numeric properties are valid
+    const sanitizedNode = {
+      ...node,
+      x: typeof node.x === 'number' && !isNaN(node.x) ? node.x : Math.random() * 1000 - 500,
+      y: typeof node.y === 'number' && !isNaN(node.y) ? node.y : Math.random() * 1000 - 500,
+      z: typeof node.z === 'number' && !isNaN(node.z) ? node.z : Math.random() * 100 - 50,
+      val: typeof node.val === 'number' && !isNaN(node.val) ? node.val : 1,
+      connections: typeof node.connections === 'number' && !isNaN(node.connections) ? node.connections : 0
+    };
+    nodeMap.set(node.id, sanitizedNode);
+  });
+  
+  // Merge new nodes
+  newNodes.forEach(node => {
+    if (nodeMap.has(node.id)) {
+      // Update existing node with new data
+      const existing = nodeMap.get(node.id)!;
+      nodeMap.set(node.id, { ...existing, ...node });
+    } else {
+      // Add new node with sanitized numeric properties
+      const sanitizedNode = {
+        ...node,
+        x: typeof node.x === 'number' && !isNaN(node.x) ? node.x : Math.random() * 1000 - 500,
+        y: typeof node.y === 'number' && !isNaN(node.y) ? node.y : Math.random() * 1000 - 500,
+        z: typeof node.z === 'number' && !isNaN(node.z) ? node.z : Math.random() * 100 - 50,
+        val: typeof node.val === 'number' && !isNaN(node.val) ? node.val : 1,
+        connections: typeof node.connections === 'number' && !isNaN(node.connections) ? node.connections : 0
+      };
+      nodeMap.set(node.id, sanitizedNode);
+    }
+  });
+  
+  return Array.from(nodeMap.values());
+}
+
+function mergeEdgesIntoWorkspace(existingEdges: KnowledgeGraphLink[], newEdges: KnowledgeGraphLink[]): KnowledgeGraphLink[] {
+  const edgeMap = new Map<string, KnowledgeGraphLink>();
+  
+  // Add existing edges
+  existingEdges.forEach(edge => {
+    const key = `${edge.source}-${edge.target}-${edge.label}`;
+    const sanitizedEdge = {
+      ...edge,
+      value: typeof edge.value === 'number' && !isNaN(edge.value) ? edge.value : 1
+    };
+    edgeMap.set(key, sanitizedEdge);
+  });
+  
+  // Merge new edges
+  newEdges.forEach(edge => {
+    const key = `${edge.source}-${edge.target}-${edge.label}`;
+    if (edgeMap.has(key)) {
+      // Update existing edge
+      const existing = edgeMap.get(key)!;
+      edgeMap.set(key, { ...existing, ...edge });
+    } else {
+      // Add new edge with sanitized numeric properties
+      const sanitizedEdge = {
+        ...edge,
+        value: typeof edge.value === 'number' && !isNaN(edge.value) ? edge.value : 1
+      };
+      edgeMap.set(key, sanitizedEdge);
+    }
+  });
+  
+  return Array.from(edgeMap.values());
+}
+
+function rebuildWorkspaceFromGraphs(graphs: Artifact[]): { nodes: KnowledgeGraphNode[], edges: KnowledgeGraphLink[] } {
+  let allNodes: KnowledgeGraphNode[] = [];
+  let allEdges: KnowledgeGraphLink[] = [];
+  
+  graphs.forEach(artifact => {
+    try {
+      const graphData = typeof artifact.content === 'string' 
+        ? JSON.parse(artifact.content) 
+        : artifact.content;
+      
+      if (graphData.nodes && graphData.links) {
+        allNodes = mergeNodesIntoWorkspace(allNodes, graphData.nodes);
+        allEdges = mergeEdgesIntoWorkspace(allEdges, graphData.links);
+      }
+    } catch (error) {
+      console.error('Failed to parse graph data:', error);
+    }
+  });
+  
+  return { nodes: allNodes, edges: allEdges };
+}
+
 /**
  * Core message interface extension
  * IMPORTANT: artifactId is used to link messages with their associated artifacts
@@ -46,6 +142,20 @@ export interface ChatState extends ConversationState {
   inProjectConversationFlow: boolean; // Flag to track if we're continuing a project conversation
   activeCompletionId?: string | null; // Optional ID of the active completion
   blockedServers?: string[]; // Optional list of blocked servers
+  
+  // Master Graph Workspace
+  masterGraphWorkspace: {
+    id: string;
+    conversationId: string;
+    isActive: boolean;
+    nodes: KnowledgeGraphNode[];
+    edges: KnowledgeGraphLink[];
+    includedGraphs: string[];
+    excludedGraphs: string[];
+    createdAt: string;
+    lastUpdated: string;
+    hideLeafNodes: boolean; // Add filter state to workspace
+  } | null;
   
   // Existing message functions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
@@ -107,6 +217,21 @@ export interface ChatState extends ConversationState {
   // Add new migration function
   migrateConversationsToProjects: () => void;
   
+  // Workspace actions
+  createMasterGraphWorkspace: () => void;
+  addGraphToWorkspace: (graphId: string, graphData: KnowledgeGraphData) => void;
+  removeGraphFromWorkspace: (graphId: string) => void;
+  setWorkspaceFilter: (hideLeafNodes: boolean) => void;
+  getWorkspaceStats: () => {
+    totalNodes: number;
+    totalEdges: number;
+    includedGraphs: number;
+    excludedGraphs: number;
+    lastUpdated: string;
+    nodeTypes: Record<string, number>;
+    edgeTypes: Record<string, number>;
+  };
+  
   // Add function to create artifact from file attachment
   createArtifactFromAttachment: (attachment: FileAttachment, storageService: any) => Promise<string | null>;
 }
@@ -140,6 +265,7 @@ export const useChatStore = create<ChatState>()(
         inProjectConversationFlow: false, // Initialize the project conversation flow flag
         activeCompletionId: null, // Initialize the active completion ID
         blockedServers: [], // Initialize the blocked servers
+        masterGraphWorkspace: null, // Initialize master graph workspace
         
         // New conversation state
         currentConversationId: null,
@@ -1414,6 +1540,141 @@ export const useChatStore = create<ChatState>()(
             return null;
           }
         },
+
+        // Master Graph Workspace functions
+        createMasterGraphWorkspace: () => {
+          const now = new Date().toISOString();
+          const workspaceId = `workspace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const conversationId = get().currentConversationId || 'default';
+          
+          set({
+            masterGraphWorkspace: {
+              id: workspaceId,
+              conversationId: conversationId,
+              isActive: true,
+              nodes: [],
+              edges: [],
+              includedGraphs: [],
+              excludedGraphs: [],
+              createdAt: now,
+              lastUpdated: now,
+              hideLeafNodes: false // Initialize filter state
+            }
+          });
+        },
+
+        addGraphToWorkspace: (graphId: string, graphData: KnowledgeGraphData) => {
+          const workspace = get().masterGraphWorkspace;
+          if (!workspace) return;
+          
+          // Remove from excluded if it was there
+          const updatedExcluded = workspace.excludedGraphs.filter(id => id !== graphId);
+          
+          // Add to included if not already there
+          const updatedIncluded = workspace.includedGraphs.includes(graphId)
+            ? workspace.includedGraphs
+            : [...workspace.includedGraphs, graphId];
+          
+          // Merge graph data into workspace
+          const mergedNodes = mergeNodesIntoWorkspace(workspace.nodes, graphData.nodes);
+          const mergedEdges = mergeEdgesIntoWorkspace(workspace.edges, graphData.links);
+          
+          set({
+            masterGraphWorkspace: {
+              ...workspace,
+              nodes: mergedNodes,
+              edges: mergedEdges,
+              includedGraphs: updatedIncluded,
+              excludedGraphs: updatedExcluded,
+              lastUpdated: new Date().toISOString()
+            }
+          });
+        },
+
+        removeGraphFromWorkspace: (graphId: string) => {
+          const workspace = get().masterGraphWorkspace;
+          if (!workspace) return;
+          
+          // Add to excluded
+          const updatedExcluded = workspace.excludedGraphs.includes(graphId)
+            ? workspace.excludedGraphs
+            : [...workspace.excludedGraphs, graphId];
+          
+          // Remove from included
+          const updatedIncluded = workspace.includedGraphs.filter(id => id !== graphId);
+          
+          // Rebuild workspace without this graph
+          const remainingGraphs = get().artifacts.filter(artifact => 
+            artifact.type === 'application/vnd.knowledge-graph' || 
+            artifact.type === 'application/vnd.knowledge-graph-v2'
+          ).filter(artifact => 
+            updatedIncluded.includes(artifact.id)
+          );
+          
+          // Rebuild workspace from remaining graphs
+          const rebuiltWorkspace = rebuildWorkspaceFromGraphs(remainingGraphs);
+          
+          set({
+            masterGraphWorkspace: {
+              ...workspace,
+              nodes: rebuiltWorkspace.nodes,
+              edges: rebuiltWorkspace.edges,
+              includedGraphs: updatedIncluded,
+              excludedGraphs: updatedExcluded,
+              lastUpdated: new Date().toISOString()
+            }
+          });
+        },
+
+        setWorkspaceFilter: (hideLeafNodes: boolean) => {
+          const workspace = get().masterGraphWorkspace;
+          if (!workspace) return;
+          
+          set({
+            masterGraphWorkspace: {
+              ...workspace,
+              hideLeafNodes: hideLeafNodes,
+              lastUpdated: new Date().toISOString()
+            }
+          });
+        },
+
+        getWorkspaceStats: () => {
+          const workspace = get().masterGraphWorkspace;
+          if (!workspace) {
+            return {
+              totalNodes: 0,
+              totalEdges: 0,
+              includedGraphs: 0,
+              excludedGraphs: 0,
+              lastUpdated: '',
+              nodeTypes: {},
+              edgeTypes: {}
+            };
+          }
+          
+          // Calculate node type distribution
+          const nodeTypes = workspace.nodes.reduce((acc, node) => {
+            acc[node.entityType] = (acc[node.entityType] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          
+          // Calculate edge type distribution
+          const edgeTypes = workspace.edges.reduce((acc, edge) => {
+            acc[edge.label] = (acc[edge.label] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          
+          return {
+            totalNodes: workspace.nodes.length,
+            totalEdges: workspace.edges.length,
+            includedGraphs: workspace.includedGraphs.length,
+            excludedGraphs: workspace.excludedGraphs.length,
+            lastUpdated: workspace.lastUpdated,
+            nodeTypes,
+            edgeTypes
+          };
+        },
       };
     },
     {
@@ -1423,7 +1684,8 @@ export const useChatStore = create<ChatState>()(
         currentConversationId: state.currentConversationId,
         messages: state.messages,
         artifacts: state.artifacts,
-        pinnedArtifactIds: state.pinnedArtifactIds // Add pinned artifacts to persisted state
+        pinnedArtifactIds: state.pinnedArtifactIds, // Add pinned artifacts to persisted state
+        masterGraphWorkspace: state.masterGraphWorkspace // Add workspace to persisted state
       })
     }
   )
