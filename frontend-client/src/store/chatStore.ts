@@ -438,17 +438,13 @@ export const useChatStore = create<ChatState>()(
          */
         processMessage: async (content: string, attachments?: FileAttachment[]) => {
           const { conversations, currentConversationId, activeCompletionId } = get();
-          console.log('[DEBUG] Starting processMessage');
-          
           if (activeCompletionId) {
             console.warn('ChatStore: Cannot process a new message while a completion is already in progress');
             return;
           }
           
           // Set loading state to true at the start
-          console.log('[DEBUG] Before setting isLoading to true:', get().isLoading);
           set({ isLoading: true });
-          console.log('[DEBUG] After setting isLoading to true:', get().isLoading);
           
           // Get the selected model from the model store
           const selectedModel = useModelStore.getState().selectedModel;
@@ -627,23 +623,17 @@ export const useChatStore = create<ChatState>()(
               
               // Decode the chunk and add to buffer
               const newText = decoder.decode(value, { stream: true });
-              console.log('[STREAM DEBUG] Raw chunk received:', newText);
               buffer += newText;
               
               // Process complete JSON objects
               const lines = buffer.split('\n');
               buffer = lines.pop() || ''; // Keep the last potentially incomplete line in the buffer
               
-              console.log('[STREAM DEBUG] Processing lines:', lines.length);
-              console.log('[STREAM DEBUG] Remaining buffer:', buffer);
-              
               for (const line of lines) {
                 if (!line.trim()) continue;
                 
                 try {
-                  console.log('[STREAM DEBUG] Processing line:', line);
                   const data = JSON.parse(line);
-                  console.log(`[STREAM DEBUG] Received chunk type:`, data.type);
                   
                   if (data.type === 'status') {
                     // console.log('[STATE UPDATE 3 - Status] Processing status update:', {
@@ -932,14 +922,11 @@ export const useChatStore = create<ChatState>()(
               });
 
               // Separate state update specifically for isLoading
-              console.log('[DEBUG] Explicitly resetting isLoading state');
               set({ isLoading: false });
-              console.log('[DEBUG] isLoading state after explicit reset:', get().isLoading);
             }
 
           } catch (error) {
             console.error('ChatStore: Error processing message:', error);
-            console.log('[DEBUG] Error occurred, isLoading before set:', get().isLoading);
             // Get the current project conversation flow state to preserve it
             const currentInProjectConversationFlow = get().inProjectConversationFlow;
             
@@ -951,7 +938,6 @@ export const useChatStore = create<ChatState>()(
               streamingComplete: true,
               inProjectConversationFlow: currentInProjectConversationFlow
             });
-            console.log('[DEBUG] After error handling, isLoading:', get().isLoading);
             
             // Update the message to show the error
             const errorMessageId = get().streamingMessageId;
@@ -966,9 +952,6 @@ export const useChatStore = create<ChatState>()(
               }));
             }
           }
-          
-          console.log('[DEBUG] Final state at end of processMessage');
-          console.log('[DEBUG] Final isLoading state:', get().isLoading);
         },
 
         clearChat: () => set(_state => ({
