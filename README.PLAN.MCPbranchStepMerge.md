@@ -4,7 +4,25 @@
 
 **📅 Created:** $(date)  
 **🔄 Status:** [ ] Planning | [ ] In Progress | [ ] Completed  
-**👤 Maintainer:** [Your Name]  
+**👤 Maintainer:** [Your Name]
+
+**🏗️ Important Note:** The current codebase has been reorganized into a monorepo structure:
+- `frontend-client/` - React frontend application
+- `backend-mcp-client/` - Backend MCP services  
+- `shared/` - Shared utilities
+- `custom-mcp-servers/` - MCP server implementations (unchanged)
+- `system-tests/` - E2E testing workspace
+
+The source branch (`origin/new_MCP_for_casework`) still uses the old structure with everything in `src/`. This plan accounts for the path differences and includes manual file movement steps.
+
+**🐛 Debugging Reference:** If you encounter issues during or after the merge, consider these recent major changes that could be related:
+- **Console Logging Reduction:** Removed verbose `[STREAM DEBUG]` and `[DEBUG]` logging from `frontend-client/src/store/chatStore.ts` to reduce console noise
+- **Graph Data Sanitization:** Added comprehensive NaN value prevention and position data validation in `ReagraphKnowledgeGraphViewer.tsx` 
+- **MCP Configuration Updates:** Added new MCP servers (pubtator, dgidb, gene-enrich, ttd, etc.) to `backend-mcp-client/config/mcp_server_config.json`
+- **Three.js Version Conflicts:** Added package.json resolutions to force consistent Three.js version across dependencies
+- **UI Component Enhancements:** Made artifact buttons wrap properly and reduced console spam from graph rendering
+
+These changes were made to improve performance, reduce console noise, and fix rendering issues. If problems arise, check if they're related to these modifications.  
 
 ---
 
@@ -17,10 +35,11 @@
 - **Risk Assessment:** MEDIUM-HIGH - Requires careful incremental approach
 
 ### **Key Conflicts Identified**
-- Directory structure changes (`src/` → `frontend-client/src/`)
+- Directory structure changes (`src/` → `frontend-client/src/` and `backend-mcp-client/src/`)
 - Configuration file conflicts (`mcp_server_config.json`, `package.json`)
 - Core service conflicts (`mcp.ts`, `chatStore.ts`)
 - Build system conflicts (`tsconfig.app.tsbuildinfo`)
+- **RESOLVED:** Monorepo structure already implemented (frontend-client/, backend-mcp-client/, shared/)
 
 ---
 
@@ -152,60 +171,77 @@ Update dependencies and MCP server configurations.
 package.json
 package-lock.json
 
-# Configuration
-src/config/mcp_server_config.json
-src/config/mcp_server_config.example.json
+# Configuration (SKIP - MCP config already working)
+# backend-mcp-client/config/mcp_server_config.json - ALREADY CONFIGURED
+# backend-mcp-client/config/mcp_server_config.example.json - NOT NEEDED
 ```
 
 ### **Commands**
 ```bash
-# Backup current config
-cp src/config/mcp_server_config.json src/config/mcp_server_config.json.backup
+# SKIP MCP config - already working with new MCPs added
+# Current config in backend-mcp-client/config/mcp_server_config.json is correct
 
-# Merge package.json (manual merge required)
-git checkout origin/new_MCP_for_casework -- package.json
-# Resolve conflicts manually, keeping both old and new dependencies
+# SKIP package.json merge - packages already split between workspaces
+# Most packages from source branch are already present in frontend-client/ and backend-mcp-client/
+# Missing packages were analyzed and found to be unused in main application code
 
-# Merge MCP config
-git checkout origin/new_MCP_for_casework -- src/config/mcp_server_config.json
-# Review and adapt paths for current directory structure
+# Only need to check for version updates if any packages are newer in source branch
+# No new packages need to be added based on thorough codebase analysis
 
-# Install new dependencies
+# Install dependencies (if any version updates were made)
 npm install
 ```
+
+### **Package Analysis Results**
+**✅ COMPLETED:** Thorough analysis of missing packages from source branch:
+
+**❌ NOT USED (Can Skip):**
+- `@modelcontextprotocol/server-brave-search` - Not found in codebase
+- `@modelcontextprotocol/server-puppeteer` - Only in pubmed-mcp package files
+- `openapi-mcp-server` - Only in config examples and docs
+- `fast-xml-parser` - Only in MCP server package files
+- `python-shell` - Only in python-mcp and r-mcp package files
+- `ajv` - Only in package-lock.json files
+
+**✅ ALREADY PRESENT:**
+- All major packages (AI SDKs, UI components, graph visualization) already in workspaces
+- Many packages are newer versions than source branch
+- Packages properly split between frontend-client/ and backend-mcp-client/
+
+**📋 CONCLUSION:** Phase 2 can skip package merging entirely - no new packages needed.
 
 ### **Testing Checklist**
 - [ ] `npm install` completes without errors
 - [ ] Build process works (`npm run build`)
-- [ ] MCP server configurations are valid
+- [ ] MCP server configurations are valid (already working)
 - [ ] No dependency conflicts
 
 ### **Rollback Procedure**
 ```bash
-git checkout HEAD~1 -- package.json package-lock.json
-cp src/config/mcp_server_config.json.backup src/config/mcp_server_config.json
-npm install
+# No rollback needed - no package.json changes made
+# MCP config is already working and doesn't need rollback
+# If any version updates were made, they can be reverted individually
 ```
 
 ---
 
 ## 🔄 **Phase 3: New Components**
-**Status:** [ ] Not Started | [ ] In Progress | [ ] Completed | [ ] Failed
+**Status:** [x] Not Started | [x] In Progress | [x] Completed | [ ] Failed
 
 ### **Objective**
 Add new React components for enhanced functionality.
 
 ### **Components to Merge**
 ```bash
-# New Components
-src/components/artifacts/MasterGraphWorkspaceViewer.tsx
-src/components/artifacts/ProteinVisualizationViewer.tsx
+# New Components (Updated paths for monorepo structure)
+frontend-client/src/components/artifacts/MasterGraphWorkspaceViewer.tsx
+frontend-client/src/components/artifacts/ProteinVisualizationViewer.tsx
 
-# Enhanced Components (manual merge required)
-src/components/artifacts/ReagraphKnowledgeGraphViewer.tsx
-src/components/artifacts/ArtifactContent.tsx
-src/components/chat/ChatInterface.tsx
-src/components/chat/AssistantMarkdown.tsx
+# Enhanced Components (manual merge required, updated paths)
+frontend-client/src/components/artifacts/ReagraphKnowledgeGraphViewer.tsx
+frontend-client/src/components/artifacts/ArtifactContent.tsx
+frontend-client/src/components/chat/ChatInterface.tsx
+frontend-client/src/components/chat/AssistantMarkdown.tsx
 ```
 
 ### **Commands**
@@ -213,16 +249,23 @@ src/components/chat/AssistantMarkdown.tsx
 # Create feature branch
 git checkout -b feature/merge-new-components
 
-# Add new components
+# Add new components (source branch has old structure)
 git checkout origin/new_MCP_for_casework -- src/components/artifacts/MasterGraphWorkspaceViewer.tsx
 git checkout origin/new_MCP_for_casework -- src/components/artifacts/ProteinVisualizationViewer.tsx
 
+# Move to new monorepo structure
+mkdir -p frontend-client/src/components/artifacts
+mv src/components/artifacts/MasterGraphWorkspaceViewer.tsx frontend-client/src/components/artifacts/
+mv src/components/artifacts/ProteinVisualizationViewer.tsx frontend-client/src/components/artifacts/
+
 # Manual merge for enhanced components (resolve conflicts)
 git checkout origin/new_MCP_for_casework -- src/components/artifacts/ReagraphKnowledgeGraphViewer.tsx
+# Move to new location
+mv src/components/artifacts/ReagraphKnowledgeGraphViewer.tsx frontend-client/src/components/artifacts/
 # Resolve conflicts manually, keeping both old and new functionality
 
-# Update imports and paths for current directory structure
-# src/ → frontend-client/src/
+# Update imports and paths for monorepo structure
+# All imports need to be updated for new paths
 ```
 
 ### **Testing Checklist**
@@ -234,7 +277,7 @@ git checkout origin/new_MCP_for_casework -- src/components/artifacts/ReagraphKno
 ### **Rollback Procedure**
 ```bash
 git reset --hard HEAD~1
-git clean -fd src/components/artifacts/
+git clean -fd frontend-client/src/components/artifacts/
 ```
 
 ---
@@ -247,13 +290,13 @@ Update core state management with enhanced workspace functionality.
 
 ### **Components to Merge**
 ```bash
-# Core State Management
-src/store/chatStore.ts
+# Core State Management (Updated paths for monorepo structure)
+frontend-client/src/store/chatStore.ts
 
-# Supporting Files
-src/types/artifacts.ts
-src/types/nightingale.d.ts
-src/mcp/types.ts
+# Supporting Files (Updated paths)
+frontend-client/src/types/artifacts.ts
+frontend-client/src/types/nightingale.d.ts
+frontend-client/src/mcp/types.ts
 ```
 
 ### **Commands**
@@ -262,15 +305,20 @@ src/mcp/types.ts
 git checkout -b feature/merge-state-management
 
 # Backup current store
-cp src/store/chatStore.ts src/store/chatStore.ts.backup
+cp frontend-client/src/store/chatStore.ts frontend-client/src/store/chatStore.ts.backup
 
-# Manual merge (high conflict potential)
+# Manual merge (high conflict potential, source branch has old structure)
 git checkout origin/new_MCP_for_casework -- src/store/chatStore.ts
+# Move to new location
+mv src/store/chatStore.ts frontend-client/src/store/chatStore.ts
 # Resolve conflicts carefully, preserving existing functionality
 
-# Update type definitions
+# Update type definitions (source branch has old structure)
 git checkout origin/new_MCP_for_casework -- src/types/artifacts.ts
 git checkout origin/new_MCP_for_casework -- src/types/nightingale.d.ts
+# Move to new location
+mv src/types/artifacts.ts frontend-client/src/types/artifacts.ts
+mv src/types/nightingale.d.ts frontend-client/src/types/nightingale.d.ts
 ```
 
 ### **Testing Checklist**
@@ -282,8 +330,8 @@ git checkout origin/new_MCP_for_casework -- src/types/nightingale.d.ts
 
 ### **Rollback Procedure**
 ```bash
-cp src/store/chatStore.ts.backup src/store/chatStore.ts
-git checkout HEAD~1 -- src/types/artifacts.ts src/types/nightingale.d.ts
+cp frontend-client/src/store/chatStore.ts.backup frontend-client/src/store/chatStore.ts
+git checkout HEAD~1 -- frontend-client/src/types/artifacts.ts frontend-client/src/types/nightingale.d.ts
 ```
 
 ---
