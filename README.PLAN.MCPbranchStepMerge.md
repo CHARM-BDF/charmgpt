@@ -21,7 +21,7 @@ The source branch (`origin/new_MCP_for_casework`) still uses the old structure w
 - **MCP Configuration Updates:** Added new MCP servers (pubtator, dgidb, gene-enrich, ttd, etc.) to `backend-mcp-client/config/mcp_server_config.json`
 - **Three.js Version Conflicts:** Added package.json resolutions to force consistent Three.js version across dependencies
 - **UI Component Enhancements:** Made artifact buttons wrap properly and reduced console spam from graph rendering
-- **React Version Conflict Fix:** Updated React from 18.3.1 to 19.1.1 to resolve reagraph compatibility issues (fixed "Cannot read properties of undefined (reading 'S')" error)
+- **React Version Rollback:** Rolled back to React 18.3.1 + Reagraph 4.21.2 to match the working combination from source branch (avoided React 19 upgrade to prevent codebase-wide impacts)
 
 These changes were made to improve performance, reduce console noise, and fix rendering issues. If problems arise, check if they're related to these modifications.  
 
