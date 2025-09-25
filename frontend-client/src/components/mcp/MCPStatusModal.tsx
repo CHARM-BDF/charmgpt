@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import { useMCPStore } from '../../store/mcpStore';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Switch } from '@headlessui/react';
 import { clearAllServerBlocks } from '../../utils/serverBlockUtils';
 
@@ -15,6 +15,9 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
     
     // Local state to track enabled tools for each server
     const [enabledTools, setEnabledTools] = useState<Record<string, Record<string, boolean>>>({});
+    
+    // Local state to track which servers have their tools collapsed
+    const [collapsedServers, setCollapsedServers] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (isOpen) {
@@ -96,6 +99,28 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
         }
     };
 
+    // Helper function to toggle collapse state for a server
+    const toggleServerCollapse = (serverName: string) => {
+        setCollapsedServers(prev => ({
+            ...prev,
+            [serverName]: !prev[serverName]
+        }));
+    };
+
+    // Helper function to toggle collapse state for all servers
+    const toggleAllServersCollapse = () => {
+        const serversWithTools = servers.filter(server => server.isRunning && server.tools && server.tools.length > 0);
+        const allCollapsed = serversWithTools.every(server => collapsedServers[server.name]);
+        
+        setCollapsedServers(prev => {
+            const newState = { ...prev };
+            serversWithTools.forEach(server => {
+                newState[server.name] = !allCollapsed; // If all are collapsed, expand all; otherwise collapse all
+            });
+            return newState;
+        });
+    };
+
     return (
         <Dialog
             open={isOpen}
@@ -118,6 +143,17 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                                 title="Refresh server status"
                             >
                                 <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                            </button>
+                            <button
+                                onClick={toggleAllServersCollapse}
+                                className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                                title="Collapse/Expand all server tools"
+                            >
+                                {(() => {
+                                    const serversWithTools = servers.filter(server => server.isRunning && server.tools && server.tools.length > 0);
+                                    const allCollapsed = serversWithTools.length > 0 && serversWithTools.every(server => collapsedServers[server.name]);
+                                    return allCollapsed ? 'Expand All' : 'Collapse All';
+                                })()}
                             </button>
                             <button
                                 onClick={() => migrateLocalStorageKeys()}
@@ -208,7 +244,22 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                         {servers.map(server => (
                             <div key={server.name} className="flex flex-col p-4 bg-gray-50 rounded-lg">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="font-medium">{server.name}</span>
+                                    <div className="flex items-center space-x-2">
+                                        {server.isRunning && server.tools && server.tools.length > 0 && (
+                                            <button
+                                                onClick={() => toggleServerCollapse(server.name)}
+                                                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                                title={collapsedServers[server.name] ? "Expand tools" : "Collapse tools"}
+                                            >
+                                                {collapsedServers[server.name] ? (
+                                                    <ChevronRightIcon className="w-4 h-4 text-gray-500" />
+                                                ) : (
+                                                    <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                                                )}
+                                            </button>
+                                        )}
+                                        <span className="font-medium">{server.name}</span>
+                                    </div>
                                     <div className="flex items-center space-x-4">
                                         <div className="flex items-center">
                                             <div 
@@ -282,7 +333,7 @@ export const MCPStatusModal: React.FC<MCPStatusModalProps> = ({ isOpen, onClose 
                                     </div>
                                 </div>
                                 
-                                {server.isRunning && server.tools && server.tools.length > 0 && (
+                                {server.isRunning && server.tools && server.tools.length > 0 && !collapsedServers[server.name] && (
                                     <div className="mt-2 pl-4 border-l-2 border-gray-200">
                                         <div className="text-sm font-medium text-gray-500 mb-2">Tools:</div>
                                         <div className="space-y-2">

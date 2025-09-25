@@ -234,6 +234,13 @@
       "transport": "http",
       "url": "https://biothings.ncats.io/mcp/biothings",
       "timeout": 30000
+    },
+    "smart-api": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/smart-api-mcp/dist/index.js"
+      ],
+      "timeout": 30000
     }
   }
 }
