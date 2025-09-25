@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { GraphCanvas } from 'reagraph';
-import { KnowledgeGraphData } from '@charm-mcp/shared';
+import { KnowledgeGraphData } from '../../types/knowledgeGraph';
 import { useChatStore } from '../../store/chatStore';
 import {  ChevronDown, ChevronUp, Filter, Save, Pin, PinOff } from 'lucide-react';
 import { useMCPStore } from '../../store/mcpStore';
@@ -94,7 +94,18 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const updateGraphArtifact = useChatStore(state => state.updateGraphArtifact);
   const updateChatInput = useChatStore(state => state.updateChatInput);
   
+  // Workspace state and functions
+  const masterGraphWorkspace = useChatStore(state => state.masterGraphWorkspace);
+  const createMasterGraphWorkspace = useChatStore(state => state.createMasterGraphWorkspace);
+  const addGraphToWorkspace = useChatStore(state => state.addGraphToWorkspace);
+  const removeGraphFromWorkspace = useChatStore(state => state.removeGraphFromWorkspace);
+  
   const isPinned = artifactId ? getPinnedGraphId() === artifactId : false;
+  
+  // Workspace button states
+  const isWorkspaceActive = masterGraphWorkspace?.isActive || false;
+  const isGraphIncluded = isWorkspaceActive && artifactId && masterGraphWorkspace?.includedGraphs.includes(artifactId);
+  const isGraphExcluded = isWorkspaceActive && artifactId && masterGraphWorkspace?.excludedGraphs.includes(artifactId);
   
   // New state for notification popup
   const [notification, setNotification] = useState<{ show: boolean; message: string }>({ 
@@ -124,8 +135,6 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const edgeSearchInput = useSearchInput();
   const edgeFilterRef = useRef<HTMLDivElement>(null);
   
-  const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
-  const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
 
   // Helper function to get color based on entity group
   const getColorForGroup = (group: number): string => {
@@ -187,7 +196,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Extract unique entity types from nodes
   const entityTypes = useMemo(() => {
-    if (!parsedData || !parsedData.nodes) return [];
+    if (!parsedData) return [];
     
     const types = new Map<string, { count: number; color: string }>();
     
@@ -215,7 +224,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Extract unique node names
   const nodeNames = useMemo(() => {
-    if (!parsedData || !parsedData.nodes) return [];
+    if (!parsedData) return [];
     
     const names = new Map<string, number>();
     
@@ -232,16 +241,14 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Extract unique edge labels
   const edgeLabels = useMemo(() => {
-    if (!parsedData || !parsedData.links) return [];
+    if (!parsedData) return [];
     
     const labels = new Map<string, number>();
     
-    if (parsedData.links) {
-      parsedData.links.forEach(link => {
-        const label = link.label || 'No Label';
-        labels.set(label, (labels.get(label) || 0) + 1);
-      });
-    }
+    parsedData.links.forEach(link => {
+      const label = link.label || 'No Label';
+      labels.set(label, (labels.get(label) || 0) + 1);
+    });
     
     // Convert to array and sort by count (descending)
     return Array.from(labels.entries())
@@ -300,16 +307,125 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     }
   }, [edgeLabels]);
 
-  // Transform the data to reagraph format
-  const graphData = useMemo(() => {
-    if (!parsedData || !parsedData.nodes) return { nodes: [], edges: [] };
+  // Helper function to count edges for each node
+  const calculateNodeSizes = (nodes: any[], edges: any[]): Map<string, number> => {
+    const edgeCounts = new Map<string, number>();
+    
+    // Count edges for each node
+    edges.forEach(edge => {
+      edgeCounts.set(edge.source, (edgeCounts.get(edge.source) || 0) + 1);
+      edgeCounts.set(edge.target, (edgeCounts.get(edge.target) || 0) + 1);
+    });
+    
+    return edgeCounts;
+  };
 
-    // Convert nodes
-    const nodes = parsedData.nodes.map((node: any) => ({
+  // Helper function to calculate node size based on edge count
+  const getNodeSizeFromEdgeCount = (edgeCount: number): number => {
+    // Bucket-based sizing similar to edge width scaling
+    if (edgeCount >= 20) return 25;      // Highly connected nodes
+    else if (edgeCount >= 15) return 20; // Well connected nodes
+    else if (edgeCount >= 10) return 15; // Moderately connected nodes
+    else if (edgeCount >= 5) return 12;  // Somewhat connected nodes
+    else if (edgeCount >= 2) return 10;  // Few connections
+    else return 8;                       // Minimal connections (including isolated nodes)
+  };
+
+  // Transform the data to reagraph format with filtering and dynamic sizing
+  const graphData = useMemo(() => {
+    if (!parsedData) return { nodes: [], edges: [] };
+
+    // Sanitize and validate all node data to prevent NaN values
+    const sanitizedNodes = parsedData.nodes.map(node => {
+      // Most knowledge graph nodes don't have position data - this is normal
+      const hasValidPosition = typeof node.x === 'number' && !isNaN(node.x) && 
+                              typeof node.y === 'number' && !isNaN(node.y);
+      
+      return {
+        ...node,
+        // Generate random positions for nodes that don't have position data (most nodes)
+        x: hasValidPosition ? node.x : Math.random() * 1000 - 500,
+        y: hasValidPosition ? node.y : Math.random() * 1000 - 500,
+        z: typeof node.z === 'number' && !isNaN(node.z) ? node.z : 0,
+        // Ensure other numeric properties are valid
+        val: typeof node.val === 'number' && !isNaN(node.val) ? node.val : 1,
+        connections: typeof node.connections === 'number' && !isNaN(node.connections) ? node.connections : 0,
+        // Ensure fx and fy are either undefined or valid numbers
+        fx: node.fx !== undefined && typeof node.fx === 'number' && !isNaN(node.fx) ? node.fx : undefined,
+        fy: node.fy !== undefined && typeof node.fy === 'number' && !isNaN(node.fy) ? node.fy : undefined,
+      };
+    });
+
+    // Sanitize edge data
+    const sanitizedEdges = parsedData.links.map(edge => ({
+      ...edge,
+      // Ensure edge value is valid
+      value: typeof edge.value === 'number' && !isNaN(edge.value) ? edge.value : 1,
+    }));
+
+    // Debug: Log summary of sanitized data
+    if (sanitizedNodes.length > 0) {
+      const nodesWithPositions = sanitizedNodes.filter(node => 
+        typeof node.x === 'number' && !isNaN(node.x) && 
+        typeof node.y === 'number' && !isNaN(node.y)
+      ).length;
+      
+      console.log(`Graph data sanitized: ${sanitizedNodes.length} nodes, ${nodesWithPositions} had positions, ${sanitizedNodes.length - nodesWithPositions} got random positions`);
+    }
+
+    // Apply filters first
+    const filteredEdges = sanitizedEdges.filter(link => {
+      const sourceNode = sanitizedNodes.find(n => n.id === link.source);
+      const targetNode = sanitizedNodes.find(n => n.id === link.target);
+      
+      if (!sourceNode || !targetNode) return false;
+      
+      const sourceEntityType = sourceNode.entityType || 'Other';
+      const targetEntityType = targetNode.entityType || 'Other';
+      const sourceNodeName = sourceNode.name || sourceNode.id;
+      const targetNodeName = targetNode.name || targetNode.id;
+      const edgeLabel = link.label?.replace('biolink:', '') || 'No Label';
+      
+      return (
+        selectedEntityTypes[sourceEntityType] !== false &&
+        selectedEntityTypes[targetEntityType] !== false &&
+        selectedNodes[sourceNodeName] !== false &&
+        selectedNodes[targetNodeName] !== false &&
+        selectedEdgeLabels[edgeLabel] !== false
+      );
+    });
+
+    const filteredNodes = sanitizedNodes.filter(node => {
+      const entityType = node.entityType || 'Other';
+      const nodeName = node.name || node.id;
+      
+      return (
+        selectedEntityTypes[entityType] !== false &&
+        selectedNodes[nodeName] !== false
+      );
+    });
+
+    // Get the IDs of nodes that have edges after filtering
+    const connectedNodeIds = new Set<string>();
+    filteredEdges.forEach(edge => {
+      connectedNodeIds.add(edge.source);
+      connectedNodeIds.add(edge.target);
+    });
+
+    // Filter out nodes that have no edges (disconnected nodes)
+    const connectedNodes = filteredNodes.filter(node => 
+      connectedNodeIds.has(node.id)
+    );
+
+    // Calculate edge counts for filtered data
+    const edgeCounts = calculateNodeSizes(connectedNodes, filteredEdges);
+
+    // Convert nodes with dynamic sizing
+    const nodes = connectedNodes.map((node: any) => ({
       id: node.id,
       label: node.name || node.id,
       color: getColorForGroup(node.group),
-      size: node.val || 10,
+      size: getNodeSizeFromEdgeCount(edgeCounts.get(node.id) || 0),
       entityType: node.entityType,
       startingId: node.startingId,
       metadata: node.metadata,
@@ -329,55 +445,18 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     }
 
     // Convert edges
-    let edges = [];
-    if (parsedData.links) {
-      edges = parsedData.links.map((link: any, index: number) => ({
+    const edges = filteredEdges.map((link: any, index: number) => ({
       id: `${link.source}-${link.target}-${index}`,
       source: link.source,
       target: link.target,
       label: link.label?.replace('biolink:', '') || '',
       color: '#888',
       size: Math.max(1, link.value || 1)
-      }));
-    }
+    }));
 
     return { nodes, edges };
-  }, [parsedData]);
+  }, [parsedData, selectedEntityTypes, selectedNodes, selectedEdgeLabels]);
 
-  // Apply filters when selections change
-  useEffect(() => {
-    if (!parsedData || !parsedData.nodes) return;
-    
-    // Filter nodes based on selected entity types and node names
-    const nodes = graphData.nodes.filter(node => {
-      const entityType = node.entityType || 'Other';
-      const nodeName = node.label;
-      
-      // Check if both entity type and node name are selected
-      return (
-        (selectedEntityTypes[entityType] || false) && 
-        (selectedNodes[nodeName] || false)
-      );
-    });
-    
-    // Get the IDs of filtered nodes
-    const nodeIds = new Set(nodes.map(node => node.id));
-    
-    // Filter edges based on selected edge labels and filtered nodes
-    const edges = graphData.edges.filter(edge => {
-      const edgeLabel = edge.label || 'No Label';
-      
-      // Check if edge label is selected and both source and target nodes are in the filtered nodes
-      return (
-        (selectedEdgeLabels[edgeLabel] || false) &&
-        nodeIds.has(edge.source) && 
-        nodeIds.has(edge.target)
-      );
-    });
-    
-    setFilteredNodes(nodes);
-    setFilteredEdges(edges);
-  }, [parsedData, graphData, selectedEntityTypes, selectedNodes, selectedEdgeLabels]);
 
   // Toggle all entity types
   const toggleAllEntityTypes = (value: boolean) => {
@@ -457,9 +536,38 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     setSelectedEdgeLabels(updatedLabels);
   };
 
+  // Workspace button handlers
+  const handleMakeWorkspace = () => {
+    createMasterGraphWorkspace();
+    // Automatically add current graph to workspace
+    if (artifactId && parsedData) {
+      try {
+        addGraphToWorkspace(artifactId, parsedData);
+      } catch (error) {
+        console.error('Failed to add graph to workspace:', error);
+      }
+    }
+  };
+
+  const handleAddToWorkspace = () => {
+    if (artifactId && parsedData) {
+      try {
+        addGraphToWorkspace(artifactId, parsedData);
+      } catch (error) {
+        console.error('Failed to add graph to workspace:', error);
+      }
+    }
+  };
+
+  const handleRemoveFromWorkspace = () => {
+    if (artifactId) {
+      removeGraphFromWorkspace(artifactId);
+    }
+  };
+
   // Save filtered view as a new version
   const saveFilteredView = () => {
-    if (!artifactId || !filteredNodes.length) return;
+    if (!artifactId || !graphData.nodes.length) return;
     
     try {
       console.log('Saving filtered view for artifact:', artifactId);
@@ -476,7 +584,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       console.log('Using latest version ID:', latestArtifactId);
       
       // Convert Reagraph nodes back to KnowledgeGraph nodes
-      const nodes = filteredNodes.map(node => ({
+      const nodes = graphData.nodes.map(node => ({
         id: node.id,
         name: node.label,
         ...node.data,
@@ -484,7 +592,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       }));
       
       // Convert Reagraph edges back to KnowledgeGraph links
-      const links = filteredEdges.map(edge => ({
+      const links = graphData.edges.map(edge => ({
         source: edge.source,
         target: edge.target,
         label: edge.label,
@@ -1080,7 +1188,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           )}
           
           {/* Save Filtered View button */}
-          {artifactId && filteredNodes.length > 0 && filteredNodes.length !== graphData.nodes.length && (
+          {artifactId && graphData.nodes.length > 0 && (
             <button
               onClick={saveFilteredView}
               className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
@@ -1088,6 +1196,51 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
             >
               <Save size={16} />
               <span className="text-sm">Save Filtered View</span>
+            </button>
+          )}
+          
+          {/* View Source button */}
+          <button
+            onClick={() => {
+              // TODO: Implement view source functionality
+              console.log('View Source clicked');
+            }}
+            className="flex items-center space-x-1 px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow-sm transition-colors"
+            title="View source data"
+          >
+            <span className="text-sm">View Source</span>
+          </button>
+          
+          {/* Make Workspace Button - only show when no workspace exists */}
+          {!isWorkspaceActive && (
+            <button
+              onClick={handleMakeWorkspace}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm transition-colors"
+              title="Create a master graph workspace from this graph"
+            >
+              <span className="text-sm">Make Workspace</span>
+            </button>
+          )}
+          
+          {/* Add to Workspace Button - only show when workspace exists and graph not included */}
+          {isWorkspaceActive && !isGraphIncluded && (
+            <button
+              onClick={handleAddToWorkspace}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
+              title="Add this graph to the master workspace"
+            >
+              <span className="text-sm">Add to Workspace</span>
+            </button>
+          )}
+          
+          {/* Remove from Workspace Button - only show when workspace exists and graph is included */}
+          {isWorkspaceActive && isGraphIncluded && (
+            <button
+              onClick={handleRemoveFromWorkspace}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-md shadow-sm transition-colors"
+              title="Remove this graph from the master workspace"
+            >
+              <span className="text-sm">Remove from Workspace</span>
             </button>
           )}
         </div>
@@ -1098,14 +1251,26 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
           Ctrl/Cmd + Click on a node to add it to chat
         </div>
-        {/* <GraphCanvas
-          nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
-          edges={filteredEdges.length ? filteredEdges : graphData.edges}
+        <GraphCanvas
+          nodes={graphData.nodes.map(node => ({
+            ...node,
+            // Final validation to ensure no NaN values reach GraphCanvas
+            x: typeof node.x === 'number' && !isNaN(node.x) ? node.x : 0,
+            y: typeof node.y === 'number' && !isNaN(node.y) ? node.y : 0,
+            z: typeof node.z === 'number' && !isNaN(node.z) ? node.z : 0,
+            val: typeof node.val === 'number' && !isNaN(node.val) ? node.val : 1,
+            connections: typeof node.connections === 'number' && !isNaN(node.connections) ? node.connections : 0,
+          }))}
+          edges={graphData.edges.map(edge => ({
+            ...edge,
+            // Final validation for edge values
+            value: typeof edge.value === 'number' && !isNaN(edge.value) ? edge.value : 1,
+          }))}
           layoutType="forceDirected2d"
           draggable
           labelType="all"
           onNodeClick={handleNodeClick}
-        /> */}
+        />
       </div>
     </div>
   );

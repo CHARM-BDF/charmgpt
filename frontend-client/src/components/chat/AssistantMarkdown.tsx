@@ -67,6 +67,12 @@ const ArtifactButton: React.FC<{
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         );
+      case 'application/vnd.snippet-view':
+        return (
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        );
       case 'application/vnd.ant.code':
         return (
           <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -115,10 +121,11 @@ const ArtifactButton: React.FC<{
                 rounded-lg border border-slate-300
                 shadow-[0_2px_4px_rgba(148,163,184,0.1)] hover:shadow-[0_4px_6px_rgba(148,163,184,0.15)]
                 transition-all duration-200
-                min-w-[50%] max-w-full"
+                max-w-xs flex-shrink mr-2 mb-2"
       onClick={handleClick}
       data-artifact-id={id}
       data-artifact-type={type}
+      title={title}
     >
       <div className="flex-shrink-0 p-2 border-r border-slate-300">
         {getIcon()}

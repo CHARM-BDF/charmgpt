@@ -20,6 +20,7 @@ import { ProjectListView } from '../projects/ProjectListView';
 import { ProjectView } from '../projects/ProjectView';
 import { GrantReviewListView } from '../projects/GrantReviewListView';
 import { useModelStore } from '../../store/modelStore';
+import { MasterGraphWorkspaceViewer } from '../artifacts/MasterGraphWorkspaceViewer';
 
 // Add this new component for the editable conversation title
 const ConversationTitle: React.FC = () => {
@@ -87,17 +88,22 @@ const ConversationTitle: React.FC = () => {
 };
 
 export const ChatInterface: React.FC = () => {
-  const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
+  const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming, masterGraphWorkspace } = useChatStore();
+  const getWorkspaceStats = useChatStore(state => state.getWorkspaceStats);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
   const [showProjectList, setShowProjectList] = useState(false);
   const [showProjectView, setShowProjectView] = useState(false);
   const [showGrantReviewList, setShowGrantReviewList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMasterWorkspace, setShowMasterWorkspace] = useState(false);
   const storageService = useMemo(() => new APIStorageService('/api/storage'), []);
   const { setMode, currentMode } = useModeStore();
   const { projects, selectedProjectId, selectProject } = useProjectStore();
   const { selectedModel } = useModelStore();
+  
+  // Get workspace stats - memoized to prevent infinite re-renders
+  const workspaceStats = useMemo(() => getWorkspaceStats(), [getWorkspaceStats, masterGraphWorkspace]);
   
   // Get current conversation ID only - avoid excessive re-renders from other conversation data
   const currentConversationId = useChatStore(state => state.currentConversationId);
@@ -200,6 +206,23 @@ export const ChatInterface: React.FC = () => {
                   <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">MCP Server</span>
                 </div>
 
+                {/* Master Workspace Section - Only show when workspace exists */}
+                {masterGraphWorkspace && (
+                  <div className="flex flex-col items-center whitespace-nowrap">
+                    <button
+                      onClick={() => setShowMasterWorkspace(true)}
+                      className="flex items-center space-x-1 px-2 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded text-xs transition-colors"
+                      title="View Master Graph Workspace"
+                    >
+                      <span>Workspace</span>
+                      <span className="bg-purple-600 px-1 rounded text-[10px]">
+                        {workspaceStats.totalNodes}
+                      </span>
+                    </button>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Master Graph</span>
+                  </div>
+                )}
+
                 {/* Selected Model Display */}
                 <div className="flex flex-col items-center whitespace-nowrap">
                   <div className="p-2">
@@ -220,7 +243,7 @@ export const ChatInterface: React.FC = () => {
                   showSettings ? 'w-[512px] opacity-100' : 'w-0 opacity-0'
                 }`}>
                   {/* Model Selection with dividers */}
-                  <div className="flex items-center px-3 border-x border-gray-200 dark:border-gray-700" data-test="model-selection">
+                  <div className="flex items-center px-3 border-x border-gray-200 dark:border-gray-700">
                     <ModelSelector />
                   </div>
 
@@ -349,7 +372,7 @@ export const ChatInterface: React.FC = () => {
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
               <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
-                <ChatMessages messages={messages} storageService={storageService} />
+                <ChatMessages messages={messages} />
               </div>
             </div>
             <ChatInput storageService={storageService} />
@@ -388,6 +411,15 @@ export const ChatInterface: React.FC = () => {
           onClose={() => setShowGrantReviewList(false)}
           showGrantReviewList={showGrantReviewList}
         />
+      )}
+
+      {/* Master Graph Workspace Modal */}
+      {showMasterWorkspace && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg w-11/12 h-5/6 max-w-7xl">
+            <MasterGraphWorkspaceViewer onClose={() => setShowMasterWorkspace(false)} />
+          </div>
+        </div>
       )}
     </div>
   );

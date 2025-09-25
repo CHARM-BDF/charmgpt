@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Artifact, ArtifactType } from '../../../../shared/artifacts';
+import React, { useState } from 'react';
+import { Artifact } from '../../types/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -9,34 +9,158 @@ import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
 import { ProteinVisualizationViewer } from './ProteinVisualizationViewer';
-import { CodeEditorView } from './CodeEditorView';
 import { useChatStore } from '../../store/chatStore';
-import { Pin, PinOff } from 'lucide-react';
+import { useMCPStore } from '../../store/mcpStore';
+import { Pin, PinOff, Info } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+
+// Helper function to parse snippet text with clickable entities
+function parseSnippetWithClickables(snippet: string, onEntityClick: (entity: string) => void) {
+  // Find all @@@ markers and work backwards from the end
+  const atAtAtMatches = [...snippet.matchAll(/@@@([^@]+)@@@/g)];
+  
+  // Create a map of bold text to their associated terms
+  const boldTextToTerms = new Map();
+  
+  // Work backwards through the @@@ markers
+  for (let i = atAtAtMatches.length - 1; i >= 0; i--) {
+    const currentMatch = atAtAtMatches[i];
+    const boldText = currentMatch[1]; // The text between @@@ markers
+    const currentStart = currentMatch.index;
+    
+    // Find the next @@@ marker (going backwards)
+    let nextAtAtAtStart = -1;
+    if (i > 0) {
+      nextAtAtAtStart = atAtAtMatches[i - 1].index;
+    }
+    
+    // Extract the text between the current @@@ and the next @@@ (or start of string)
+    // But exclude the previous @@@ marker itself
+    const searchStart = nextAtAtAtStart === -1 ? 0 : nextAtAtAtStart + 3; // +3 to skip past @@@
+    const searchText = snippet.substring(searchStart, currentStart);
+    
+    // Find all @ symbols in this section
+    const entityMatches = [...searchText.matchAll(/@<m>([^<]+)<\/m>/g)];
+    const simpleMatches = [...searchText.matchAll(/@[A-Z_]+[A-Z0-9_:]*/g)];
+    
+    // Combine and sort by position
+    const allMatches = [
+      ...entityMatches.map(m => ({ match: m[0], pos: m.index + searchStart })),
+      ...simpleMatches.map(m => ({ match: m[0], pos: m.index + searchStart }))
+    ].sort((a, b) => a.pos - b.pos);
+    
+    // Clean up the terms by removing @<m> and </m> wrappers
+    const cleanedTerms = allMatches.map(match => {
+      let term = match.match; // e.g., "@<m>GENE_FAM177A1</m>" or "@GENE_100126028"
+      
+      // Remove @<m> and </m> wrappers
+      term = term.replace(/@<m>([^<]+)<\/m>/, '$1');
+      
+      // Remove the leading @ if it's still there
+      term = term.replace(/^@/, '');
+      
+      return term;
+    });
+    
+    const finalSearchText = cleanedTerms.join(' ');
+    boldTextToTerms.set(boldText, finalSearchText);
+  }
+  
+  // Create a clean display version by removing @<m> and @ symbols that appear before @@@ markers
+  let cleanSnippet = snippet;
+  
+  // Remove @<m>...</m> and @ symbols that appear before @@@ markers
+  // We'll do this by working backwards through @@@ markers and removing the @ symbols in their search range
+  for (let i = atAtAtMatches.length - 1; i >= 0; i--) {
+    const currentMatch = atAtAtMatches[i];
+    const currentStart = currentMatch.index;
+    
+    // Find the next @@@ marker (going backwards)
+    let nextAtAtAtStart = -1;
+    if (i > 0) {
+      nextAtAtAtStart = atAtAtMatches[i - 1].index;
+    }
+    
+    // Extract the text between the current @@@ and the next @@@ (or start of string)
+    const searchStart = nextAtAtAtStart === -1 ? 0 : nextAtAtAtStart + 3; // +3 to skip past @@@
+    const searchText = snippet.substring(searchStart, currentStart);
+    
+    // Find all @ symbols in this section and replace them with empty strings
+    const entityMatches = [...searchText.matchAll(/@<m>([^<]+)<\/m>/g)];
+    const simpleMatches = [...searchText.matchAll(/@[A-Z_]+[A-Z0-9_:]*/g)];
+    
+    // Replace these matches with empty strings in the clean snippet
+    let cleanSearchText = searchText;
+    entityMatches.forEach(match => {
+      cleanSearchText = cleanSearchText.replace(match[0], '');
+    });
+    simpleMatches.forEach(match => {
+      cleanSearchText = cleanSearchText.replace(match[0], '');
+    });
+    
+    // Replace the original search text with the cleaned version
+    cleanSnippet = cleanSnippet.substring(0, searchStart) + cleanSearchText + cleanSnippet.substring(currentStart);
+  }
+  
+  // Now process the clean snippet and replace @@@ markers with buttons
+  const parts = cleanSnippet.split(/(@@@[^@]+@@@)/);
+  
+  return (
+    <span className="inline-block">
+      {parts.map((part, index) => {
+        const clickableMatch = part.match(/@@@([^@]+)@@@/);
+        
+        if (clickableMatch) {
+          const boldText = clickableMatch[1];
+          const searchText = boldTextToTerms.get(boldText) || '';
+          
+          return (
+            <button
+              key={index}
+              onClick={() => onEntityClick(searchText)}
+              className="inline px-1 py-0.5 mx-0.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded hover:bg-blue-200 hover:text-blue-800 transition-colors duration-200 cursor-pointer font-bold align-baseline"
+              title={`Click to add "${searchText}" to the context for further exploration of PubTator`}
+              style={{ display: 'inline', verticalAlign: 'baseline' }}
+            >
+              {boldText}
+            </button>
+          );
+        }
+        
+        // Render markdown for regular text - ensure it's inline
+        return (
+          <span key={index} className="inline" style={{ display: 'inline' }}>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ children }) => <span className="inline">{children}</span>,
+                div: ({ children }) => <span className="inline">{children}</span>
+              }}
+            >
+              {part}
+            </ReactMarkdown>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 export const ArtifactContent: React.FC<{
   artifact: Artifact;
   storageService?: any;
 }> = ({ artifact, storageService }) => {
-  const [viewMode, setViewMode] = useState<'rendered' | 'editor'>('rendered');
+  const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
   const [copySuccess, setCopySuccess] = useState(false);
-  const [useReagraph,] = useState(false); // Temporarily disabled due to reagraph initialization error
+  const [useReagraph, setUseReagraph] = useState(true);
   const [savingToProject, setSavingToProject] = useState(false);
-  const [editedCode, setEditedCode] = useState<string>('');
-  
-  // State for handling file reference artifacts
-  const [fileContent, setFileContent] = useState<string>('');
-  const [isLoadingFile, setIsLoadingFile] = useState(false);
-  const [fileLoadError, setFileLoadError] = useState<string | null>(null);
   
   // Use selector functions to only subscribe to the specific state we need
   const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
   const toggleArtifactPin = useChatStore(state => state.toggleArtifactPin);
-  const addArtifact = useChatStore(state => state.addArtifact);
-  const addMessage = useChatStore(state => state.addMessage);
-  const getPinnedArtifacts = useChatStore(state => state.getPinnedArtifacts);
+  const updateChatInput = useChatStore(state => state.updateChatInput);
   // Keep legacy support for knowledge graph components
   const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
   const getPinnedGraphId = useChatStore(state => state.getPinnedGraphId);
@@ -45,72 +169,6 @@ export const ArtifactContent: React.FC<{
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
   const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
-  
-  // Check if artifact supports editor view (code artifacts)
-  const supportsEditorView = ['code', 'application/python', 'application/vnd.ant.python', 'application/javascript', 'application/vnd.react'].includes(artifact.type);
-
-  // Check if this is a file reference artifact
-  const isFileReference = !!(artifact.metadata?.fileReference);
-  
-  useEffect(() => {
-    if (isFileReference && storageService && !isLoadingFile) {
-      setIsLoadingFile(true);
-      setFileLoadError(null);
-      
-      storageService.readContent(artifact.metadata.fileReference.fileId)
-        .then((content: any) => {
-          const fileRef = artifact.metadata!.fileReference!;
-          let textContent: string;
-          
-          if (content instanceof Uint8Array) {
-            const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
-            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
-              // For images, convert to base64 using a more reliable method
-              let binary = '';
-              const len = content.byteLength;
-              for (let i = 0; i < len; i++) {
-                binary += String.fromCharCode(content[i]);
-              }
-              const base64String = btoa(binary);
-              textContent = base64String;
-            } else {
-              // For text files, decode as UTF-8
-              textContent = new TextDecoder('utf-8').decode(content);
-            }
-          } else {
-            textContent = content as string;
-          }
-          
-          // Process content based on file type
-          const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
-          if (extension === 'csv') {
-            import('../../utils/csvToMarkdown').then(({ csvToMarkdown }) => {
-              setFileContent(csvToMarkdown(textContent));
-            });
-          } else if (extension === 'tsv') {
-            import('../../utils/csvToMarkdown').then(({ tsvToMarkdown }) => {
-              setFileContent(tsvToMarkdown(textContent));
-            });
-          } else {
-            setFileContent(textContent);
-          }
-          setFileContent(textContent);
-          setIsLoadingFile(false);
-        })
-        .catch((error: any) => {
-          console.error('Failed to load file content:', error);
-          setFileLoadError('Failed to load file content');
-          setIsLoadingFile(false);
-        });
-    }
-  }, [artifact.id]);
-  
-  // Clear content when artifact changes
-  useEffect(() => {
-    setFileContent('');
-    setFileLoadError(null);
-    setEditedCode(artifact.content); // Initialize edited code
-  }, [artifact.id, artifact.content]);
 
   const handleSaveToProject = async () => {
     if (!storageService || !selectedProjectId || !isMarkdown) return;
@@ -119,8 +177,7 @@ export const ArtifactContent: React.FC<{
       setSavingToProject(true);
       const fileName = `${artifact.title || 'document'}.md`;
       
-      const contentToSave = isFileReference ? fileContent : artifact.content;
-      await storageService.createFile(contentToSave, {
+      await storageService.createFile(artifact.content, {
         description: fileName,
         tags: [`project:${selectedProjectId}`],
         schema: {
@@ -169,8 +226,7 @@ export const ArtifactContent: React.FC<{
 
   const handleCopy = async () => {
     try {
-      const contentToCopy = isFileReference ? fileContent : artifact.content;
-      await navigator.clipboard.writeText(contentToCopy);
+      await navigator.clipboard.writeText(artifact.content);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
@@ -178,197 +234,48 @@ export const ArtifactContent: React.FC<{
     }
   };
 
-  const handleCodeExecution = async (code: string, language: string) => {
-    console.log(`Executing ${language} code:`, code);
-    
-    try {
-      // Map language to appropriate MCP server and tool
-      let serverName = '';
-      let toolName = '';
-      switch (language.toLowerCase()) {
-        case 'python':
-        case 'py':
-          serverName = 'python';
-          toolName = 'execute_python';
-          break;
-        case 'r':
-          serverName = 'r';
-          toolName = 'execute_r';
-          break;
-        case 'racket':
-        case 'scheme':
-          serverName = 'racket';
-          toolName = 'execute_racket';
-          break;
-        default:
-          throw new Error(`Execution not supported for language: ${language}`);
-      }
-
-      // Get pinned artifacts to pass as context
-      const pinnedArtifacts = getPinnedArtifacts().map(artifact => ({
-        id: artifact.id,
-        type: artifact.type,
-        title: artifact.title,
-        content: artifact.content,
-        metadata: artifact.metadata
-      }));
-
-      // Make direct API call to MCP execution endpoint
-      const response = await fetch('/api/mcp-execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          serverName,
-          toolName,
-          arguments: { code },
-          attachments: [], // TODO: Get current attachments if available
-          pinnedArtifacts
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('Code execution result:', result);
-      
-      if (result.success && result.result) {
-        // Create a message for the code execution
-        const artifactIds: string[] = [];
-        let messageContent = `Executed ${language} code\n\n`;
-        
-        // Helper function to create artifact button HTML
-        const createArtifactButton = (id: string, type: string, title: string): string => {
-          return `<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${id}" data-artifact-type="${type}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 ${title}</button>`;
-        };
-        
-        // 1. Create artifact for the execution output/text
-        if (result.result.content && Array.isArray(result.result.content)) {
-          const textContent = result.result.content
-            .filter((item: any) => item.type === 'text')
-            .map((item: any) => item.text)
-            .join('\n');
-            
-          if (textContent.trim()) {
-            const artifactId = addArtifact({
-              id: crypto.randomUUID(),
-              artifactId: crypto.randomUUID(),
-              type: 'text/markdown' as ArtifactType,
-              title: `${language} Execution Output`,
-              content: textContent,
-              position: artifactIds.length
-            });
-            artifactIds.push(artifactId);
-            messageContent += `**Output:**\n${createArtifactButton(artifactId, 'text/markdown', `${language} Execution Output`)}\n\n`;
-          }
-        }
-        
-        // 2. Handle binary outputs (plots, images, etc.)
-        if (result.result.binaryOutput) {
-          const binaryOutput = result.result.binaryOutput;
-          const title = binaryOutput.title || `Generated ${binaryOutput.type.split('/')[1]}`;
-          const artifactId = addArtifact({
-            id: crypto.randomUUID(),
-            artifactId: crypto.randomUUID(),
-            type: binaryOutput.type as ArtifactType,
-            title: title,
-            content: binaryOutput.data,
-            position: artifactIds.length
-          });
-          artifactIds.push(artifactId);
-          messageContent += `**Generated:**\n${createArtifactButton(artifactId, binaryOutput.type, title)}\n\n`;
-        }
-        
-        // 3. Handle artifacts array from MCP response
-        if (result.result.artifacts && Array.isArray(result.result.artifacts)) {
-          console.log('MCP artifacts found:', result.result.artifacts.length);
-          result.result.artifacts.forEach((mcpArtifact: any, index: number) => {
-            console.log(`MCP artifact ${index}:`, {
-              type: mcpArtifact.type,
-              title: mcpArtifact.title,
-              hasContent: !!mcpArtifact.content,
-              contentLength: mcpArtifact.content?.length,
-              hasMetadata: !!mcpArtifact.metadata,
-              hasFileReference: !!mcpArtifact.metadata?.fileReference,
-              fileId: mcpArtifact.metadata?.fileReference?.fileId
-            });
-            
-            const artifactId = addArtifact({
-              id: crypto.randomUUID(),
-              artifactId: crypto.randomUUID(),
-              type: mcpArtifact.type as ArtifactType,
-              title: mcpArtifact.title,
-              content: mcpArtifact.content,
-              position: artifactIds.length,
-              language: mcpArtifact.language,
-              metadata: mcpArtifact.metadata // This includes fileReference for server-side storage artifacts
-            });
-            artifactIds.push(artifactId);
-            messageContent += `**Created:**\n${createArtifactButton(artifactId, mcpArtifact.type, mcpArtifact.title)}\n\n`;
-          });
-        }
-        
-        // Add the execution message to the chat transcript
-        addMessage({
-          role: 'assistant',
-          content: messageContent.trim(),
-          artifactId: artifactIds[0], // Primary artifact for backward compatibility
-          artifactIds: artifactIds
-        } as any);
-        
-        if (artifactIds.length > 0) {
-          alert(`Code executed successfully! Created ${artifactIds.length} artifact(s) and added to chat.`);
-        } else {
-          alert('Code executed successfully! Check console for results.');
-        }
-      } else {
-        alert(`Code execution failed: ${result.error}`);
-      }
-
-    } catch (error) {
-      console.error('Code execution failed:', error);
-      alert(`Code execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-
   const renderContent = () => {
-    // Handle file reference artifacts
-    if (isFileReference) {
-      if (isLoadingFile) {
-        return (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            <span className="ml-2">Loading file content...</span>
-          </div>
-        );
+    if (viewMode === 'source') {
+      // For knowledge graph artifacts, format as JSON with syntax highlighting
+      if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
+        try {
+          // Parse and pretty-print the JSON
+          const jsonObj = typeof artifact.content === 'string' 
+            ? JSON.parse(artifact.content) 
+            : artifact.content;
+          
+          const prettyJson = JSON.stringify(jsonObj, null, 2);
+          
+          return (
+            <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
+              <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
+                Knowledge Graph JSON
+              </div>
+              <div className="p-4">
+                <SyntaxHighlighter
+                  language="json"
+                  style={oneLight}
+                  customStyle={{ margin: 0, background: 'transparent' }}
+                >
+                  {prettyJson}
+                </SyntaxHighlighter>
+              </div>
+            </div>
+          );
+        } catch (error) {
+          console.error('Failed to parse knowledge graph JSON:', error);
+        }
       }
       
-      if (fileLoadError) {
-        return (
-          <div className="text-red-500 p-4">
-            <p>Error loading file: {fileLoadError}</p>
-            <p className="text-sm text-gray-500 mt-2">
-              File: {artifact.metadata?.fileReference?.fileName}
-            </p>
-          </div>
-        );
-      }
-      
-      if (!fileContent) {
-        return (
-          <div className="text-gray-500 p-4">
-            <p>No content available</p>
-          </div>
-        );
-      }
+      // Default source view for other types
+      return (
+        <div className="relative w-full min-w-0 overflow-x-auto">
+          <pre className="w-max bg-gray-50 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <code className="whitespace-pre">{artifact.content}</code>
+          </pre>
+        </div>
+      );
     }
-    
-    // Get the content to display
-    const displayContent = isFileReference ? fileContent : artifact.content;
-    
 
     switch (artifact.type) {
       case 'code':
@@ -376,23 +283,6 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.ant.python':
       case 'application/javascript':
       case 'application/vnd.react':
-        // Handle different view modes for code artifacts
-        if (viewMode === 'editor') {
-          return (
-            <CodeEditorView
-              code={editedCode}
-              language={artifact.language || getLanguage(artifact.type, artifact.language)}
-              title={artifact.language || artifact.type.replace('application/', '')}
-              isDarkMode={false} // TODO: Get from theme context
-              readOnly={false}
-              onChange={setEditedCode}
-              onExecute={handleCodeExecution}
-            />
-          );
-        }
-        
-        
-        // Default rendered view with syntax highlighting
         return (
           <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -404,7 +294,7 @@ export const ArtifactContent: React.FC<{
                 style={oneLight}
                 customStyle={{ margin: 0, background: 'transparent' }}
               >
-                {displayContent}
+                {artifact.content}
               </SyntaxHighlighter>
             </div>
           </div>
@@ -428,13 +318,13 @@ export const ArtifactContent: React.FC<{
             {useReagraph ? (
               <div className="w-full h-full overflow-hidden">
                 <ReagraphKnowledgeGraphViewer 
-                  data={displayContent} 
+                  data={artifact.content} 
                   artifactId={artifact.id}
                 />
               </div>
             ) : (
               <KnowledgeGraphViewer 
-                data={displayContent} 
+                data={artifact.content} 
                 artifactId={artifact.id}
                 showVersionControls={true}
               />
@@ -446,7 +336,7 @@ export const ArtifactContent: React.FC<{
         return (
           <div className="w-full h-full min-h-[500px] flex flex-col">
             <ProteinVisualizationViewer 
-              data={displayContent}
+              data={artifact.content}
             />
           </div>
         );
@@ -455,7 +345,7 @@ export const ArtifactContent: React.FC<{
         return (
           <div 
             className="border rounded-lg p-4 bg-white"
-            dangerouslySetInnerHTML={{ __html: sanitizeHTML(displayContent) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(artifact.content) }}
           />
         );
       
@@ -464,7 +354,7 @@ export const ArtifactContent: React.FC<{
           <div className="flex flex-col items-center gap-4">
             <div className="flex justify-center items-center">
               <img 
-                src={`data:image/png;base64,${displayContent}`}
+                src={`data:image/png;base64,${artifact.content}`}
                 alt={artifact.title}
                 className="max-w-full h-auto"
               />
@@ -495,33 +385,33 @@ export const ArtifactContent: React.FC<{
           <div 
             className="border rounded-lg p-4 bg-white flex justify-center items-center"
             dangerouslySetInnerHTML={{ 
-              __html: sanitizeHTML(displayContent.trim()) 
+              __html: sanitizeHTML(artifact.content.trim()) 
             }}
           />
         );
       
       case 'application/vnd.ant.mermaid':
-        return <div className="mermaid">{displayContent}</div>;
+        return <div className="mermaid">{artifact.content}</div>;
       
       case 'text/markdown':
         const trimmedContent = (() => {
           // Check if we have a JSON string with nested content
-          if (displayContent.trim().startsWith('{')) {
+          if (artifact.content.trim().startsWith('{')) {
             try {
-              const parsed = JSON.parse(displayContent);
+              const parsed = JSON.parse(artifact.content);
               // If it has a content property, use that instead
               if (parsed.content) {
                 console.log('Found nested content in artifact, extracting inner content');
                 return typeof parsed.content === 'string' 
                   ? parsed.content.split('\n').map((line: string) => line.trimStart()).join('\n')
-                  : displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
+                  : artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
               }
             } catch (e) {
               console.log('Content looks like JSON but failed to parse:', e);
             }
           }
           // Default trimming for normal content
-          return displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
+          return artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
         })();
 
         // Debug logging
@@ -570,12 +460,8 @@ export const ArtifactContent: React.FC<{
                   // });
                   
                   // Remove all non-HTML attributes
-
-                  const excludedProps = ['ordered', 'checked', 'node', 'className'];
-                  const cleanProps = Object.fromEntries(
-                    Object.entries(props).filter(([key]) => !excludedProps.includes(key))
-                  );
-                                    
+                  const { ordered: _, checked: __, node: ___, className: ____, ...cleanProps } = props;
+                  
                   return (
                     <li className="font-sans text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed" {...cleanProps}>
                       {children}
@@ -696,14 +582,14 @@ export const ArtifactContent: React.FC<{
         );
 
       case 'text':
-        return <div className="prose max-w-none whitespace-pre-wrap">{displayContent}</div>;
+        return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
 
       case 'application/vnd.bibliography':
         try {
           // Check if content is already an object or a string that needs parsing
-          const bibliography = typeof displayContent === 'string' 
-            ? JSON.parse(displayContent) 
-            : displayContent;
+          const bibliography = typeof artifact.content === 'string' 
+            ? JSON.parse(artifact.content) 
+            : artifact.content;
           
           return (
             <div className="prose max-w-none dark:prose-invert">
@@ -750,16 +636,106 @@ export const ArtifactContent: React.FC<{
           );
         } catch (error) {
           console.error('Failed to parse bibliography:', error);
-          return <div className="prose max-w-none whitespace-pre-wrap">{typeof displayContent === 'string' ? displayContent : 'Invalid bibliography format'}</div>;
+          return <div className="prose max-w-none whitespace-pre-wrap">{typeof artifact.content === 'string' ? artifact.content : 'Invalid bibliography format'}</div>;
+        }
+
+      case 'application/vnd.snippet-view':
+        try {
+          // Check if content is already an object or a string that needs parsing
+          const snippetData = typeof artifact.content === 'string' 
+            ? JSON.parse(artifact.content) 
+            : artifact.content;
+          
+          const snippets = snippetData.snippets || [];
+          
+          const handleEntityClick = (entityMarkup: string) => {
+            // Add entity to user's text input
+            updateChatInput(entityMarkup, true);
+          };
+          
+    return (
+      <div className="prose max-w-none dark:prose-invert">
+        <h2 className="flex items-center gap-2">
+          Snippet View Results
+          <span 
+            className="inline-block cursor-pointer"
+            title="Click on the blue highlighted terms to add their associated entity IDs to your search context for further PubTator exploration"
+            onClick={() => {
+              // Show a temporary message that fades out
+              const message = document.createElement('div');
+              message.textContent = 'Click on the blue highlighted terms to add their associated entity IDs to your search context for further PubTator exploration';
+              message.className = 'fixed top-4 right-4 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg shadow-lg z-50 max-w-md text-sm';
+              document.body.appendChild(message);
+              
+              // Remove after 3 seconds
+              setTimeout(() => {
+                message.remove();
+              }, 3000);
+            }}
+          >
+            <Info className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+          </span>
+        </h2>
+              {snippets.map((entry: any, index: number) => {
+                const displayAuthors = entry.authors && entry.authors.length > 5 
+                  ? entry.authors.slice(0, 5)
+                  : entry.authors || [];
+                
+                const hasMoreAuthors = entry.authors && entry.authors.length > 5;
+                const allAuthors = entry.authors ? entry.authors.join(', ') : '';
+
+                return (
+                  <div key={entry.pmid || index} className="mb-6 border-l-4 border-blue-200 pl-4">
+                    {/* Snippet Text with Clickable Entities */}
+                    <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                      <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {parseSnippetWithClickables(entry.snippet, handleEntityClick)}
+                      </div>
+                    </div>
+                    
+                    {/* Bibliography Entry */}
+                    <p className="[text-indent:-1em] [padding-left:1em] text-sm">
+                      {index + 1}. {displayAuthors.join(', ')}
+                      {hasMoreAuthors && (
+                        <span 
+                          title={allAuthors}
+                          className="cursor-help"
+                        >, et al.</span>
+                      )} ({entry.year || 'n.d.'}). {entry.title || 'Untitled'}. <em>{entry.journal || ''}</em>.{' '}
+                      {entry.pmid && (
+                        <a
+                          href={`https://pubmed.ncbi.nlm.nih.gov/${entry.pmid}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative inline-block ml-2 text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded no-underline"
+                          style={{ 
+                            padding: '2px 8px',
+                            textIndent: 0,
+                            lineHeight: 'normal',
+                            verticalAlign: 'middle'
+                          }}
+                        >
+                          Link to paper
+                        </a>
+                      )}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        } catch (error) {
+          console.error('Failed to parse snippet view:', error);
+          return <div className="prose max-w-none whitespace-pre-wrap">{typeof artifact.content === 'string' ? artifact.content : 'Invalid snippet view format'}</div>;
         }
 
       case 'application/json':
       case 'application/vnd.ant.json':
         try {
           // Try to parse and pretty-print the JSON
-          const jsonObj = typeof displayContent === 'string' 
-            ? JSON.parse(displayContent) 
-            : displayContent;
+          const jsonObj = typeof artifact.content === 'string' 
+            ? JSON.parse(artifact.content) 
+            : artifact.content;
           
           const prettyJson = JSON.stringify(jsonObj, null, 2);
           
@@ -782,11 +758,11 @@ export const ArtifactContent: React.FC<{
         } catch (error) {
           console.error('Failed to parse JSON:', error);
           // If JSON parsing fails, try to render as markdown or plain text
-          return renderFallbackContent(displayContent);
+          return renderFallbackContent(artifact.content);
         }
 
       default:
-        return renderFallbackContent(displayContent);
+        return renderFallbackContent(artifact.content);
     }
   };
 
@@ -830,7 +806,7 @@ export const ArtifactContent: React.FC<{
     }
   };
 
-  const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type) || supportsEditorView;
+  const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type);
 
   return (
     <div className="h-full mx-auto w-[95%] flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
@@ -867,63 +843,13 @@ export const ArtifactContent: React.FC<{
               {savingToProject ? 'Saving...' : 'Save to Project'}
             </button>
           )}
-          
-          {isFileReference && artifact.metadata?.fileReference && (
+          {canToggleView && (
             <button
-              onClick={() => {
-                const fileId = artifact.metadata!.fileReference!.fileId;
-                const fileName = artifact.metadata!.fileReference!.fileName;
-                
-                // Create download link and trigger download
-                const downloadUrl = `/api/storage/files/${fileId}/download`;
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }}
-              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 
-                       border border-gray-300 dark:border-gray-600 rounded-md shadow-sm flex items-center gap-1"
+              onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
+              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
             >
-              <DocumentArrowDownIcon className="w-4 h-4" />
-              Download
+              {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
             </button>
-          )}
-          
-          {canToggleView && !supportsEditorView && (
-            <div className="flex items-center space-x-1">
-                <button
-                  onClick={() => setViewMode(mode => mode === 'rendered' ? 'editor' : 'rendered')}
-                  className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
-                >
-                  {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
-                </button>
-            </div>
-          )}
-          {supportsEditorView && (
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setViewMode('rendered')}
-                className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm ${
-                  viewMode === 'rendered' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                View
-              </button>
-              <button
-                onClick={() => setViewMode('editor')}
-                className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm ${
-                  viewMode === 'editor' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                Edit
-              </button>
-            </div>
           )}
         </div>
       </div>

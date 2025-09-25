@@ -1,0 +1,75 @@
+{
+  "model": "tr_ars.message",
+  "pk": "e2e86efa-d9c4-4d5c-b0ef-a895b2bb62ce",
+  "fields": {
+    "name": "ars-default-agent",
+    "code": 200,
+    "status": "Done",
+    "actor": 19,
+    "timestamp": "2025-09-08T18:06:05.838Z",
+    "updated_at": "2025-09-08T18:10:29.357Z",
+    "data": {
+      "message": {
+        "query_graph": {
+          "edges": {
+            "e0": {
+              "subject": "n0",
+              "object": "n1"
+            }
+          },
+          "nodes": {
+            "n0": {
+              "ids": [
+                "NCBIGENE:283635"
+              ],
+              "categories": [
+                "biolink:Gene"
+              ],
+              "is_set": false,
+              "name": "FAM177A1"
+            },
+            "n1": {
+              "is_set": false,
+              "categories": [
+                "biolink:ChemicalMixture",
+                "biolink:DiseaseOrPhenotypicFeature",
+                "biolink:Drug",
+                "biolink:Gene",
+                "biolink:MolecularMixture",
+                "biolink:Pathway",
+                "biolink:Protein",
+                "biolink:ProteinFamily",
+                "biolink:SmallMolecule"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "url": null,
+    "ref": null,
+    "result_count": null,
+    "result_stat": null,
+    "retain": false,
+    "merge_semaphore": false,
+    "merged_version": "ad040906-4bb6-479b-b8a9-62548df2a976",
+    "merged_versions_list": [
+      [
+        "bd6ba28e-a36b-4614-aae2-2087df140aa8",
+        "ara-improving"
+      ],
+      [
+        "98f8c4a4-f857-4930-a10a-7120baae746e",
+        "ara-arax"
+      ],
+      [
+        "293beacf-9ec4-4fe0-bfef-1a220daa33d6",
+        "ara-aragorn"
+      ],
+      [
+        "ad040906-4bb6-479b-b8a9-62548df2a976",
+        "ara-bte"
+      ]
+    ]
+  }
+}

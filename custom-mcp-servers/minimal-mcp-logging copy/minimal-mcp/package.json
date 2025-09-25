@@ -1,0 +1,17 @@
+{
+  "name": "minimal-mcp",
+  "version": "1.0.0",
+  "description": "Minimal MCP server for testing logging functionality",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+} 

@@ -1,0 +1,24 @@
+{
+  "name": "ars-test-scripts",
+  "version": "1.0.0",
+  "description": "Test scripts for ARS (Autonomous Relay System) API",
+  "main": "test_ars_query.js",
+  "scripts": {
+    "test": "node test_ars_query.js",
+    "test:quick": "node test_ars_query.js --quick",
+    "summarize": "node summarize_results.js"
+  },
+  "keywords": [
+    "ars",
+    "translator",
+    "ncats",
+    "biomedical",
+    "api",
+    "test"
+  ],
+  "author": "Grant Reviewer Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

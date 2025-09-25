@@ -1,0 +1,79 @@
+{
+  "model": "tr_ars.message",
+  "pk": "4cac51a6-7f04-49ef-bc54-4dc467123df8",
+  "fields": {
+    "name": "ars-default-agent",
+    "code": 200,
+    "status": "Done",
+    "actor": 19,
+    "timestamp": "2025-09-08T17:30:21.864Z",
+    "updated_at": "2025-09-08T17:34:58.362Z",
+    "data": {
+      "message": {
+        "query_graph": {
+          "edges": {
+            "e0": {
+              "subject": "n0",
+              "object": "n1"
+            }
+          },
+          "nodes": {
+            "n0": {
+              "ids": [
+                "NCBIGENE:283635"
+              ],
+              "categories": [
+                "biolink:Gene"
+              ],
+              "is_set": false,
+              "name": "FAM177A1"
+            },
+            "n1": {
+              "is_set": false,
+              "categories": [
+                "biolink:BiologicalEntity",
+                "biolink:BiologicalProcess",
+                "biolink:BiologicalProcessOrActivity",
+                "biolink:ChemicalMixture",
+                "biolink:DiseaseOrPhenotypicFeature",
+                "biolink:Drug",
+                "biolink:Gene",
+                "biolink:GenomicEntity",
+                "biolink:MolecularMixture",
+                "biolink:Pathway",
+                "biolink:Protein",
+                "biolink:ProteinFamily",
+                "biolink:SmallMolecule"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "url": null,
+    "ref": null,
+    "result_count": null,
+    "result_stat": null,
+    "retain": false,
+    "merge_semaphore": false,
+    "merged_version": "5a091fe7-2790-457e-9346-1e43d826aa57",
+    "merged_versions_list": [
+      [
+        "dbadc719-6884-4d37-a4d3-f8efbe5ff0c5",
+        "ara-improving"
+      ],
+      [
+        "5b54284e-df82-4481-90ed-5b54f6d25538",
+        "ara-aragorn"
+      ],
+      [
+        "dd0663ac-df27-4e7a-aaf8-c206eb2b34a0",
+        "ara-arax"
+      ],
+      [
+        "5a091fe7-2790-457e-9346-1e43d826aa57",
+        "ara-bte"
+      ]
+    ]
+  }
+}

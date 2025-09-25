@@ -1,21 +1,22 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import * as fsSync from 'fs';
-import { setupPythonEnvironment, cleanupPythonEnvironment, TEMP_DIR, LOGS_DIR } from './env.js';
+import { setupPythonEnvironment, cleanupPythonEnvironment, validatePythonCode, TEMP_DIR, LOGS_DIR } from './env.js';
+import { appendFileSync, mkdirSync } from 'fs';
+import { createWriteStream } from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
-
 
 const execAsync = promisify(exec);
 
 // Docker configuration
 const DOCKER_IMAGE = 'my-python-mcp';
+const CONTAINER_TEMP_DIR = '/app/temp';
+const CONTAINER_LOGS_DIR = '/app/logs';
 
 // Ensure log directory exists
 try {
-  fsSync.mkdirSync(LOGS_DIR, { recursive: true });
+  mkdirSync(LOGS_DIR, { recursive: true });
   console.error('Created/verified log directory:', LOGS_DIR); // Debug log
 } catch (error) {
   console.error('Error creating log directory:', error);
@@ -23,10 +24,101 @@ try {
 
 // Ensure temp directory exists (for PNG files and scripts)
 try {
-  fsSync.mkdirSync(TEMP_DIR, { recursive: true });
+  mkdirSync(TEMP_DIR, { recursive: true });
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
+}
+
+// Logger type definition
+interface Logger {
+  log: (message: string) => void;
+  close: () => void;
+  isClosed: boolean;
+}
+
+function createRunLogger(): Logger {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const logFileName = `run_${timestamp}.log`;
+  const logFilePath = path.join(LOGS_DIR, logFileName);
+  
+  // Create write stream for logging
+  const logStream = createWriteStream(logFilePath, { flags: 'a' });
+  let isClosed = false;
+  
+  // Log the paths being used
+  logStream.write(`Log file path: ${logFilePath}\n`);
+  logStream.write(`Temp directory path: ${TEMP_DIR}\n`);
+  
+  return {
+    log: (message: string) => {
+      if (!isClosed) {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[${timestamp}] ${message}\n`;
+        logStream.write(logMessage);
+      }
+    },
+    close: () => {
+      if (!isClosed) {
+        isClosed = true;
+        logStream.end();
+      }
+    },
+    isClosed
+  };
+}
+
+function log(type: string, message: string, color: string, logFile: string) {
+  // Get timestamp in Central Time
+  const timestamp = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(new Date());
+  
+  const logMessage = `${timestamp} ${color}[PYTHON-MCP ${type}]\x1b[0m ${message}\n`;
+  const fileMessage = `${timestamp} [PYTHON-MCP ${type}] ${message}\n`;
+  
+  // Write to console with color
+  process.stderr.write(logMessage);
+  
+  // Write to run-specific log file without color
+  try {
+    appendFileSync(logFile, fileMessage);
+  } catch (error) {
+    console.error('Error writing to log file:', error);
+  }
+}
+
+interface ExecuteArgs {
+  code: string;
+  dataFiles?: Record<string, string>;
+  timeout?: number;
+}
+
+interface ExecuteResult {
+  output: string;
+  code: string;
+  type?: 'text' | 'numpy.array' | 'pandas.dataframe' | 'matplotlib.figure' | 'binary' | 'json';
+  metadata?: Record<string, any>;
+  binaryOutput?: {
+    data: string;  // base64 encoded
+    type: string;  // MIME type
+    metadata: {
+      filename: string;
+      size: number;
+      dimensions: {
+        width: number;
+        height: number;
+      };
+      sourceCode: string;  // Source code that generated the output
+    };
+  };
 }
 
 // Add helper function for code transformation
@@ -225,29 +317,25 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
 }
 
 export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
-  const { code: originalCode, dataFiles, timeout = 30 } = args;
+  const { code: originalCode, timeout = 30 } = args;
   
   // Create logger first
-  const logger = createRunLogger(LOGS_DIR, TEMP_DIR);
+  const logger = createRunLogger();
   let scriptPath = '';
-  let processedFiles: ProcessedFile[] = [];
   
   try {
-    // Process dataFiles first
-    if (dataFiles && Object.keys(dataFiles).length > 0) {
-      logger.log('Processing dataFiles...');
-      processedFiles = await processDataFiles(TEMP_DIR,dataFiles, logger);
-      logger.log(`Processed ${processedFiles.length} files`);
-    }
+    // Validate Python code before transformation
+    validatePythonCode(originalCode);
+    logger.log('Python code validation passed');
     
     // Transform code to handle file operations
     const code = transformPythonCode(originalCode, logger);
     
-    // Log if code was transformed or files were added
+    // Log if code was transformed
     if (code !== originalCode) {
-      logger.log('Code was enhanced with file loading and/or transformations');
+      logger.log('Code was transformed to use OUTPUT_DIR for file operations');
       logger.log(`Original code: ${originalCode}`);
-      logger.log(`Final code: ${code}`);
+      logger.log(`Transformed code: ${code}`);
     }
 
     // Log the Python code being executed
@@ -267,20 +355,73 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     await fs.writeFile(scriptPath, code, 'utf-8');
     logger.log('Python code written to temporary file');
 
-    // Take pre-execution snapshot of files in temp directory
-    const preExecutionFiles = new Set(await fs.readdir(TEMP_DIR));
-    logger.log(`Pre-execution files: ${Array.from(preExecutionFiles).join(', ')}`);
-
     // Run the code in Docker and collect output
     const output = await runInDocker(scriptPath, envConfig, logger);
 
-    const createdFiles: CreatedFile[] = [];
-    const binaryOutput = await postExecution("Python",createdFiles, TEMP_DIR, preExecutionFiles, logger, code);
+    // Check for binary output files in the temp directory
+    logger.log('Checking temp directory for files...');
+    const files = await fs.readdir(TEMP_DIR);
+    logger.log(`Files in temp directory: ${files.join(', ')}`);
+    console.error(`PYTHON SERVER LOGS: Files found in temp directory: ${files.join(', ')}`);
+    
+    let binaryOutput: ExecuteResult['binaryOutput'] | undefined;
+
+    for (const file of files) {
+      logger.log(`Processing file: ${file}`);
+      console.error(`PYTHON SERVER LOGS: Processing file: ${file}`);
+      
+      if (file.endsWith('.png')) {
+        logger.log(`Found PNG file: ${file}`);
+        console.error(`PYTHON SERVER LOGS: Found PNG file: ${file}`);
+        const filePath = path.join(TEMP_DIR, file);
+        logger.log(`Full file path: ${filePath}`);
+        console.error(`PYTHON SERVER LOGS: Full PNG path: ${filePath}`);
+        
+        try {
+          const fileContent = await fs.readFile(filePath);
+          logger.log(`File size: ${fileContent.length} bytes`);
+          console.error(`PYTHON SERVER LOGS: PNG file size: ${fileContent.length} bytes`);
+          const base64Data = fileContent.toString('base64');
+          console.error(`PYTHON SERVER LOGS: Converted PNG to base64 (starts with: ${base64Data.substring(0, 30)}...)`);
+          
+          // Extract PNG dimensions from the IHDR chunk
+          const width = fileContent.readUInt32BE(16);
+          const height = fileContent.readUInt32BE(20);
+          logger.log(`Image dimensions: ${width}x${height}`);
+          console.error(`PYTHON SERVER LOGS: PNG dimensions: ${width}x${height}`);
+          
+          binaryOutput = {
+            data: base64Data,
+            type: 'image/png',
+            metadata: {
+              filename: file,
+              size: fileContent.length,
+              dimensions: {
+                width,
+                height
+              },
+              sourceCode: code  // Add the source code to metadata
+            }
+          };
+          
+          logger.log('Binary output prepared successfully');
+          console.error('PYTHON SERVER LOGS: Binary output prepared successfully');
+          
+          // Clean up the binary file
+          await fs.unlink(filePath).catch(error => {
+            logger.log(`Error cleaning up PNG file: ${error}`);
+            console.error(`PYTHON SERVER LOGS: Error cleaning up PNG file: ${error}`);
+          });
+          break;  // Only handle the first PNG for now
+        } catch (error) {
+          logger.log(`Error processing PNG file: ${error}`);
+          console.error(`PYTHON SERVER LOGS: ERROR processing PNG file: ${error}`);
+        }
+      }
+    }
 
     // Clean up after execution
     await cleanupPythonEnvironment();
-    
-    // Clean up script file
     try {
       logger.log(`Cleaning up script file: ${scriptPath}`);
       await fs.unlink(scriptPath);
@@ -291,27 +432,14 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
         console.error(`PYTHON SERVER LOGS: Error cleaning up temp file: ${error}`);
       }
     }
-    
-    // Clean up processed data files
-    for (const file of processedFiles) {
-      try {
-        logger.log(`Cleaning up processed file: ${file.filePath}`);
-        await fs.unlink(file.filePath);
-      } catch (error) {
-        // Ignore file not found errors during cleanup
-        if (error instanceof Error && !error.message.includes('ENOENT')) {
-          logger.log(`Error cleaning up processed file: ${error}`);
-        }
-      }
-    }
 
+    // Return output with type information and binary data if present
     const result: ExecuteResult = { 
       output, 
       code,
       type: binaryOutput ? 'matplotlib.figure' as const : 'text' as const,
       metadata: binaryOutput ? { hasBinaryOutput: true } : {},
-      binaryOutput,
-      createdFiles
+      binaryOutput
     };
     
     logger.log(`Execution completed successfully`);
@@ -334,10 +462,6 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       await cleanupPythonEnvironment();
       if (scriptPath) {
         await fs.unlink(scriptPath).catch(() => {}); // Ignore cleanup errors
-      }
-      // Clean up processed files on error
-      for (const file of processedFiles) {
-        await fs.unlink(file.filePath).catch(() => {}); // Ignore cleanup errors
       }
     } catch (cleanupError) {
       logger.log(`Cleanup error: ${cleanupError}`);

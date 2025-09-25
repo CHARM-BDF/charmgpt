@@ -1,0 +1,49 @@
+{
+  "model": "tr_ars.message",
+  "pk": "be3d9b1b-8811-4274-9429-90610bc5aa01",
+  "fields": {
+    "name": "ars-default-agent",
+    "code": 200,
+    "status": "Done",
+    "actor": 19,
+    "timestamp": "2025-09-08T17:11:35.768Z",
+    "updated_at": "2025-09-08T17:11:43.350Z",
+    "data": {
+      "message": {
+        "query_graph": {
+          "nodes": {
+            "n0": {
+              "id": "NCBIGENE:283635",
+              "category": "biolink:Gene"
+            },
+            "n1": {
+              "category": "biolink:ChemicalSubstance"
+            }
+          },
+          "edges": {
+            "e01": {
+              "subject": "n0",
+              "object": "n1",
+              "predicates": [
+                "biolink:related_to"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "url": null,
+    "ref": null,
+    "result_count": null,
+    "result_stat": null,
+    "retain": false,
+    "merge_semaphore": false,
+    "merged_version": "b5558d98-5447-40d3-88ec-64856973f5bf",
+    "merged_versions_list": [
+      [
+        "b5558d98-5447-40d3-88ec-64856973f5bf",
+        "ara-improving"
+      ]
+    ]
+  }
+}

@@ -6,14 +6,22 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execute } from "./tools/execute.js";
-import { getResponse, makeLogger } from "./shared/mcpCodeUtils.js";
+import { validateRCode } from "./tools/env.js";
 
 // Logger utility
-const logger = makeLogger({
-  log_type: (type: string,message: string, ...args: any[]) => {
-    console.error(`\x1b[36m[R-MCP ${type}]\x1b[0m ${message}`, ...args);
+const logger = {
+  info: (message: string, ...args: any[]) => {
+    console.error(`\x1b[36m[R-MCP INFO]\x1b[0m ${message}`, ...args);
+  },
+  error: (message: string, ...args: any[]) => {
+    console.error(`\x1b[31m[R-MCP ERROR]\x1b[0m ${message}`, ...args);
+  },
+  debug: (message: string, ...args: any[]) => {
+    if (process.env.DEBUG) {
+      console.error(`\x1b[35m[R-MCP DEBUG]\x1b[0m ${message}`, ...args);
+    }
   }
-});
+};
 
 // Define the R execution tool
 const R_EXECUTION_TOOL = {
@@ -117,6 +125,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       throw new Error("Code parameter is required and must be a string");
     }
 
+    logger.info("Validating R code...");
+    validateRCode(code);
+    logger.info("Code validation successful");
+
     logger.info("Executing R code...");
     const result = await execute({
       code,
@@ -126,8 +138,95 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     logger.info("Code execution completed successfully");
     logger.debug("Raw execution result:", result);
 
-    return getResponse("R", result, logger);
+    // Handle binary output if present
+    if (result.binaryOutput) {
+      console.error("R SERVER LOGS: Binary output detected!");
+      console.error(`R SERVER LOGS: Binary type: ${result.binaryOutput.type}`);
+      console.error(`R SERVER LOGS: Binary size: ${result.binaryOutput.metadata.size} bytes`);
+      console.error(`R SERVER LOGS: Binary dimensions: ${result.binaryOutput.metadata.dimensions.width}x${result.binaryOutput.metadata.dimensions.height}`);
+      console.error(`R SERVER LOGS: Binary content starts with: ${result.binaryOutput.data.substring(0, 50)}...`);
+      
+      logger.info("Binary output detected:");
+      logger.info(`- Type: ${result.binaryOutput.type}`);
+      logger.info(`- Size: ${result.binaryOutput.metadata.size} bytes`);
+      logger.info(`- Metadata: ${JSON.stringify(result.binaryOutput.metadata, null, 2)}`);
 
+      // Use standard artifacts array format instead of binaryOutput
+      const artifactResponse = {
+        content: [
+          {
+            type: "text",
+            text: `Generated ${result.binaryOutput.type} output (${result.binaryOutput.metadata.size} bytes)`,
+          }
+        ],
+        artifacts: [
+          {
+            type: result.binaryOutput.type,
+            title: `R Generated ${result.binaryOutput.type.split('/')[1].toUpperCase()}`,
+            content: result.binaryOutput.data,
+            metadata: {
+              ...result.binaryOutput.metadata,
+              sourceCode: result.code
+            }
+          }
+        ],
+        metadata: {
+          hasBinaryOutput: true,
+          binaryType: result.binaryOutput.type,
+        },
+        isError: false,
+      };
+      
+      console.error("R SERVER LOGS: Returning artifact with following structure:");
+      console.error(`R SERVER LOGS: - Content items: ${artifactResponse.content.length}`);
+      console.error(`R SERVER LOGS: - Artifacts items: ${artifactResponse.artifacts.length}`);
+      console.error(`R SERVER LOGS: - First artifact type: ${artifactResponse.artifacts[0].type}`);
+      console.error(`R SERVER LOGS: - First artifact title: ${artifactResponse.artifacts[0].title}`);
+      console.error(`R SERVER LOGS: - Content data length: ${artifactResponse.artifacts[0].content.length} characters`);
+      
+      return artifactResponse;
+    } else {
+      console.error("R SERVER LOGS: No binary output detected in execution result");
+    }
+
+    // Log standard output result
+    console.error(`R SERVER LOGS: Standard output result (${result.output.length} chars):`);
+    console.error(`R SERVER LOGS: Output type: ${result.type || 'text'}`);
+    console.error(`R SERVER LOGS: Output preview: ${result.output.substring(0, 100)}...`);
+    
+    logger.info("Standard output result:");
+    logger.info(`- Type: ${result.type || 'text'}`);
+    logger.info(`- Output length: ${result.output.length} characters`);
+    if (result.metadata) {
+      logger.info(`- Metadata: ${JSON.stringify(result.metadata, null, 2)}`);
+    }
+
+    // For text output, create an artifact if it's rich enough to deserve one
+    let artifacts = undefined;
+    if (result.output.length > 200 || result.output.includes('\n')) {
+      console.error("R SERVER LOGS: Creating text/markdown artifact for long output");
+      artifacts = [
+        {
+          type: "text/markdown",
+          title: "R Output",
+          content: "```\n" + result.output + "\n```"
+        }
+      ];
+      console.error(`R SERVER LOGS: Created markdown artifact with length ${artifacts[0].content.length}`);
+    } else {
+      console.error("R SERVER LOGS: Output too short, not creating artifact");
+    }
+
+    // Default response for non-binary output
+    return {
+      content: [{
+        type: "text",
+        text: result.output || "Code executed successfully with no text output.",
+      }],
+      artifacts,
+      metadata: result.metadata,
+      isError: false,
+    };
   } catch (error) {
     logger.error("Error during tool execution:", error);
     return {

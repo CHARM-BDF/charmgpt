@@ -1,5 +1,68 @@
 {
   "mcpServers": {
+    "pubtator": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/pubtator-mcp/dist/index.js"
+      ],
+      "timeout": 60000
+    },
+    "dgidb": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/dgidb-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "gene-enrich": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/gene-enrich-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "ttd": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/ttd-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "annotation": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/annotation-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "microbiome": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/microbiome-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "drugcentral": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/drugcentral-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "grant-fetch": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/grant-fetch-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "translator3": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/translator3-mcp/dist/index.js"
+      ],
+      "timeout": 60000
+    },
     "pubmed": {
       "command": "node",
       "args": [
@@ -170,6 +233,13 @@
       "type": "remote",
       "transport": "http",
       "url": "https://biothings.ncats.io/mcp/biothings",
+      "timeout": 30000
+    },
+    "smart-api": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/smart-api-mcp/dist/index.js"
+      ],
       "timeout": 30000
     }
   }
