@@ -5,6 +5,10 @@ import Papa from 'papaparse';
  */
 export function csvToMarkdown(csvContent: string, maxRows: number = 100): string {
   try {
+    // Quick line count (much faster than parsing) to get total rows
+    const totalLines = (csvContent.match(/\n/g) || []).length + 1;
+    const estimatedDataRows = Math.max(0, totalLines - 1); // -1 for header
+    
     // Parse CSV using PapaParse - handles all edge cases properly
     // Use preview to only parse the rows we need for performance
     const parseResult = Papa.parse(csvContent, {
@@ -28,10 +32,9 @@ export function csvToMarkdown(csvContent: string, maxRows: number = 100): string
     // Build markdown table
     let markdown = '# CSV Data\n\n';
     
-    // Note: With preview mode, we only parse what we need, so if we got maxRows worth of data,
-    // there might be more rows in the file
-    if (dataRows.length === maxRows) {
-      markdown += `*Showing first ${maxRows} rows (file may contain more)*\n\n`;
+    // Show row count info
+    if (dataRows.length === maxRows && estimatedDataRows > maxRows) {
+      markdown += `*Showing first ${maxRows} of ~${estimatedDataRows.toLocaleString()} rows*\n\n`;
     } else if (dataRows.length > 0) {
       markdown += `*Showing all ${dataRows.length} rows*\n\n`;
     }
@@ -68,6 +71,10 @@ export function csvToMarkdown(csvContent: string, maxRows: number = 100): string
  */
 export function tsvToMarkdown(tsvContent: string, maxRows: number = 100): string {
   try {
+    // Quick line count (much faster than parsing) to get total rows
+    const totalLines = (tsvContent.match(/\n/g) || []).length + 1;
+    const estimatedDataRows = Math.max(0, totalLines - 1); // -1 for header
+    
     // Parse TSV using PapaParse with tab delimiter
     // Use preview to only parse the rows we need for performance
     const parseResult = Papa.parse(tsvContent, {
@@ -92,10 +99,9 @@ export function tsvToMarkdown(tsvContent: string, maxRows: number = 100): string
     // Build markdown table
     let markdown = '# TSV Data\n\n';
     
-    // Note: With preview mode, we only parse what we need, so if we got maxRows worth of data,
-    // there might be more rows in the file
-    if (dataRows.length === maxRows) {
-      markdown += `*Showing first ${maxRows} rows (file may contain more)*\n\n`;
+    // Show row count info
+    if (dataRows.length === maxRows && estimatedDataRows > maxRows) {
+      markdown += `*Showing first ${maxRows} of ~${estimatedDataRows.toLocaleString()} rows*\n\n`;
     } else if (dataRows.length > 0) {
       markdown += `*Showing all ${dataRows.length} rows*\n\n`;
     }
