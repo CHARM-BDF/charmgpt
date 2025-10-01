@@ -86,16 +86,17 @@ export const ArtifactContent: React.FC<{
           if (extension === 'csv') {
             import('../../utils/csvToMarkdown').then(({ csvToMarkdown }) => {
               setFileContent(csvToMarkdown(textContent));
+              setIsLoadingFile(false);
             });
           } else if (extension === 'tsv') {
             import('../../utils/csvToMarkdown').then(({ tsvToMarkdown }) => {
               setFileContent(tsvToMarkdown(textContent));
+              setIsLoadingFile(false);
             });
           } else {
             setFileContent(textContent);
+            setIsLoadingFile(false);
           }
-          setFileContent(textContent);
-          setIsLoadingFile(false);
         })
         .catch((error: any) => {
           console.error('Failed to load file content:', error);
