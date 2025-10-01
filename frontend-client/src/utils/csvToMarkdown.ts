@@ -6,9 +6,11 @@ import Papa from 'papaparse';
 export function csvToMarkdown(csvContent: string, maxRows: number = 100): string {
   try {
     // Parse CSV using PapaParse - handles all edge cases properly
+    // Use preview to only parse the rows we need for performance
     const parseResult = Papa.parse(csvContent, {
       header: false,
       skipEmptyLines: true,
+      preview: maxRows + 1, // +1 for header row
       transformHeader: (header: string) => header.trim(),
       transform: (value: string) => value.trim()
     });
@@ -21,13 +23,17 @@ export function csvToMarkdown(csvContent: string, maxRows: number = 100): string
     if (rows.length === 0) return 'Empty CSV file';
     
     const headers = rows[0];
-    const dataRows = rows.slice(1, maxRows + 1); // Limit rows for performance
+    const dataRows = rows.slice(1); // All parsed data rows (limited by preview)
     
     // Build markdown table
     let markdown = '# CSV Data\n\n';
     
-    if (rows.length > maxRows + 1) {
-      markdown += `*Showing first ${maxRows} rows of ${rows.length - 1} total data rows*\n\n`;
+    // Note: With preview mode, we only parse what we need, so if we got maxRows worth of data,
+    // there might be more rows in the file
+    if (dataRows.length === maxRows) {
+      markdown += `*Showing first ${maxRows} rows (file may contain more)*\n\n`;
+    } else if (dataRows.length > 0) {
+      markdown += `*Showing all ${dataRows.length} rows*\n\n`;
     }
     
     // Header row
@@ -49,10 +55,6 @@ export function csvToMarkdown(csvContent: string, maxRows: number = 100): string
       );
       markdown += '| ' + escapedRow.join(' | ') + ' |\n';
     });
-    
-    if (rows.length > maxRows + 1) {
-      markdown += `\n*... and ${rows.length - maxRows - 1} more rows*`;
-    }
     
     return markdown;
   } catch (error) {
@@ -67,10 +69,12 @@ export function csvToMarkdown(csvContent: string, maxRows: number = 100): string
 export function tsvToMarkdown(tsvContent: string, maxRows: number = 100): string {
   try {
     // Parse TSV using PapaParse with tab delimiter
+    // Use preview to only parse the rows we need for performance
     const parseResult = Papa.parse(tsvContent, {
       header: false,
       delimiter: '\t',
       skipEmptyLines: true,
+      preview: maxRows + 1, // +1 for header row
       transformHeader: (header: string) => header.trim(),
       transform: (value: string) => value.trim()
     });
@@ -83,13 +87,17 @@ export function tsvToMarkdown(tsvContent: string, maxRows: number = 100): string
     if (rows.length === 0) return 'Empty TSV file';
     
     const headers = rows[0];
-    const dataRows = rows.slice(1, maxRows + 1);
+    const dataRows = rows.slice(1); // All parsed data rows (limited by preview)
     
     // Build markdown table
     let markdown = '# TSV Data\n\n';
     
-    if (rows.length > maxRows + 1) {
-      markdown += `*Showing first ${maxRows} rows of ${rows.length - 1} total data rows*\n\n`;
+    // Note: With preview mode, we only parse what we need, so if we got maxRows worth of data,
+    // there might be more rows in the file
+    if (dataRows.length === maxRows) {
+      markdown += `*Showing first ${maxRows} rows (file may contain more)*\n\n`;
+    } else if (dataRows.length > 0) {
+      markdown += `*Showing all ${dataRows.length} rows*\n\n`;
     }
     
     // Header row
@@ -111,10 +119,6 @@ export function tsvToMarkdown(tsvContent: string, maxRows: number = 100): string
       );
       markdown += '| ' + escapedRow.join(' | ') + ' |\n';
     });
-    
-    if (rows.length > maxRows + 1) {
-      markdown += `\n*... and ${rows.length - maxRows - 1} more rows*`;
-    }
     
     return markdown;
   } catch (error) {
