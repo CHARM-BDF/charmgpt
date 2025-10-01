@@ -1,0 +1,123 @@
+{
+  "nodes": [
+    {
+      "id": "283635",
+      "name": "FAM177A1",
+      "entityType": "Gene",
+      "group": 2,
+      "isStartingNode": false,
+      "val": 14,
+      "connections": 9
+    },
+    {
+      "id": "9606",
+      "name": "human",
+      "entityType": "Species",
+      "group": 4,
+      "isStartingNode": false,
+      "val": 8,
+      "connections": 3
+    },
+    {
+      "id": "7955",
+      "name": "zebrafish",
+      "entityType": "Species",
+      "group": 4,
+      "isStartingNode": false,
+      "val": 8,
+      "connections": 3
+    },
+    {
+      "id": "100126028",
+      "name": "FAM177A1",
+      "entityType": "Gene",
+      "group": 2,
+      "isStartingNode": false,
+      "val": 6,
+      "connections": 1
+    },
+    {
+      "id": "Golgi",
+      "name": "Golgi",
+      "entityType": "Gene",
+      "group": 2,
+      "isStartingNode": false,
+      "val": 6,
+      "connections": 1
+    }
+  ],
+  "links": [
+    {
+      "source": "283635",
+      "target": "9606",
+      "label": "co-occurs with",
+      "value": 27,
+      "evidence": [38767059]
+    },
+    {
+      "source": "283635",
+      "target": "7955",
+      "label": "co-occurs with",
+      "value": 27,
+      "evidence": [38767059]
+    },
+    {
+      "source": "283635",
+      "target": "100126028",
+      "label": "co-occurs with",
+      "value": 9,
+      "evidence": [38767059]
+    },
+    {
+      "source": "283635",
+      "target": "Golgi",
+      "label": "co-occurs with",
+      "value": 9,
+      "evidence": [38767059]
+    },
+    {
+      "source": "9606",
+      "target": "7955",
+      "label": "co-occurs with",
+      "value": 9,
+      "evidence": [38767059]
+    },
+    {
+      "source": "9606",
+      "target": "100126028",
+      "label": "co-occurs with",
+      "value": 3,
+      "evidence": [38767059]
+    },
+    {
+      "source": "9606",
+      "target": "Golgi",
+      "label": "co-occurs with",
+      "value": 3,
+      "evidence": [38767059]
+    },
+    {
+      "source": "7955",
+      "target": "100126028",
+      "label": "co-occurs with",
+      "value": 3,
+      "evidence": [38767059]
+    },
+    {
+      "source": "7955",
+      "target": "Golgi",
+      "label": "co-occurs with",
+      "value": 3,
+      "evidence": [38767059]
+    },
+    {
+      "source": "100126028",
+      "target": "Golgi",
+      "label": "co-occurs with",
+      "value": 1,
+      "evidence": [38767059]
+    }
+  ],
+  "filteredCount": 0,
+  "filteredNodeCount": 0
+}

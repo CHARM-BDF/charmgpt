@@ -1,0 +1,331 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "contact": {
+      "email": "help@biothings.io",
+      "name": "BioThings Team",
+      "x-id": "https://github.com/biothings",
+      "x-role": "responsible organization"
+    },
+    "description": "Documentation of the BioThings API for [DGIdb](https://dgidb.org/)  drug-gene interaction data.",
+    "termsOfService": "https://biothings.io/about",
+    "title": "BioThings DGIdb API",
+    "version": "4.2.0",
+    "x-translator": {
+      "infores": "infores:biothings-dgidb",
+      "component": "KP",
+      "team": [
+        "Service Provider"
+      ],
+      "biolink-version": "4.2.2"
+    }
+  },
+  "servers": [
+    {
+      "description": "Encrypted Production server",
+      "url": "https://biothings.ncats.io/dgidb",
+      "x-maturity": "production"
+    },
+    {
+      "url": "https://biothings.test.transltr.io/dgidb",
+      "description": "ITRB Test server",
+      "x-maturity": "testing"
+    },
+    {
+      "url": "https://biothings.ci.transltr.io/dgidb",
+      "description": "ITRB CI server",
+      "x-maturity": "staging"
+    }
+  ],
+  "tags": [
+    {
+      "name": "gene"
+    },
+    {
+      "name": "chemical"
+    },
+    {
+      "name": "association"
+    },
+    {
+      "name": "annotation"
+    },
+    {
+      "name": "query"
+    },
+    {
+      "name": "translator"
+    },
+    {
+      "name": "biothings"
+    },
+    {
+      "name": "biothings_graph"
+    }
+  ],
+  "paths": {
+    "/association/{id}": {
+      "get": {
+        "description": "By default, this will return the complete association in JSON format. If the input is not valid, 404 (NOT FOUND) will be returned.\n\nOptionally, you can pass a \"fields\" parameter to return only the annotation you want  (by filtering returned object fields). \"fields\" accepts any attributes (a.k.a fields) available  from the association. Multiple attributes should be separated by commas. If an attribute is not  available for a specific association, it will be ignored. Note that the attribute names are  case-sensitive.\n\nJust like the query service, you can also pass a \"callback\" parameter to make a JSONP call.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "example": "1fb7c7f0ef333cd2",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/fields"
+          },
+          {
+            "$ref": "#/components/parameters/callback"
+          },
+          {
+            "$ref": "#/components/parameters/email"
+          },
+          {
+            "$ref": "#/components/parameters/size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+          }
+        },
+        "tags": [
+          "association"
+        ]
+      }
+    },
+    "/association": {
+      "post": {
+        "description": "Although making simple GET requests above to our service is sufficient in most use cases,  there are some times you might find it easier to batch query (e.g., retrieving multiple associations).  Fortunately, you can also make batch queries via POST requests when you need to.",
+        "parameters": [
+          {
+            "name": "ids",
+            "description": "Accepts multiple association ids separated by commas. Note that currently we only take ids up to  1000 maximum, the rest will be omitted.\n\nThe request body can also be used to provide these ids.",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/fields"
+          },
+          {
+            "$ref": "#/components/parameters/email"
+          },
+          {
+            "$ref": "#/components/parameters/size"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "ids": [
+                  "1fb7c7f0ef333cd2",
+                  "f91c68378f89f4c8"
+                ]
+              },
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "description": "Accepts multiple association ids. Note that currently we only take the input ids  up to 1000 maximum, the rest will be omitted.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+          }
+        },
+        "tags": [
+          "association"
+        ]
+      }
+    },
+    "/metadata": {
+      "get": {
+        "description": "Get metadata about the data available from the API",
+        "responses": {
+          "200": {
+            "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+          }
+        },
+        "tags": [
+          "metadata"
+        ]
+      }
+    },
+    "/metadata/fields": {
+      "get": {
+        "description": "Get metadata about the data fields available from the API",
+        "responses": {
+          "200": {
+            "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+          }
+        },
+        "tags": [
+          "metadata"
+        ]
+      }
+    },
+    "/query": {
+      "get": {
+        "description": "Query service. In the output, \"total\" in the output gives the total number  of matching hits, while the actual hits are returned under \"hits\" field.",
+        "parameters": [
+          {
+            "name": "q",
+            "description": "Required, passing user query. The detailed query syntax for parameter is explained  [here for a core BioThings  API](https://docs.mychem.info/en/latest/doc/chem_query_service.html#query-syntax).",
+            "in": "query",
+            "required": true,
+            "example": "subject.CHEMBL_COMPOUND:CHEMBL1017",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/fields"
+          },
+          {
+            "$ref": "#/components/parameters/size"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/fetch_all"
+          },
+          {
+            "$ref": "#/components/parameters/scroll_id"
+          },
+          {
+            "$ref": "#/components/parameters/sort"
+          },
+          {
+            "$ref": "#/components/parameters/facets"
+          },
+          {
+            "$ref": "#/components/parameters/facet_size"
+          },
+          {
+            "$ref": "#/components/parameters/callback"
+          },
+          {
+            "$ref": "#/components/parameters/dotfield"
+          },
+          {
+            "$ref": "#/components/parameters/email"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+          }
+        },
+        "tags": [
+          "query"
+        ]
+      },
+      "post": {
+        "description": "Although making simple GET requests above to our query service is sufficient for most use cases,  there are times you might find it more efficient to make batch queries (e.g., retrieving data  for multiple inputs). Fortunately, you can also make batch queries via POST requests when you need to.\n\nThe \"query\" field in the returned object indicates the matching query term. If a query term has no match,  it will return with a \"notfound\" field with the value \"true\".",
+        "parameters": [
+          {
+            "name": "q",
+            "description": "Accepts multiple values separated by commas. Note that currently we only take the input values up to 1000  maximum, the rest will be omitted.\n\nThe request body can also be used to provide these ids.",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "scopes",
+            "description": "Optional, specify one or more fields (separated by commas) to search. Default: _id\n\nThe request body can also be used to provide this information.",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/fields"
+          },
+          {
+            "$ref": "#/components/parameters/email"
+          },
+          {
+            "$ref": "#/components/parameters/size"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/fetch_all"
+          },
+          {
+            "$ref": "#/components/parameters/scroll_id"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "q": [
+                  "CHEMBL266510",
+                  "CHEMBL1200833"
+                ],
+                "scopes": [
+                  "subject.CHEMBL_COMPOUND"
+                ]
+              },
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "q": {
+                    "description": "Accepts multiple values separated by commas. Note that currently we only take the input values  up to 1000 maximum, the rest will be omitted.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "scopes": {
+                    "description": "Specify one or more fields (separated by commas) to search. Default: _id",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+          }
+        },
+        "tags": [
+          "query"
+        ]
+      }
+    }
+  }
+}

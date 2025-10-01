@@ -1,0 +1,33 @@
+[pubtator] Starting PubTator MCP Server...
+[pubtator] API Base URL: https://www.ncbi.nlm.nih.gov/research/pubtator3-api
+[pubtator] API Key configured: No
+[pubtator] User Email: Not set
+[pubtator] PubTator MCP Server running on stdio
+[pubtator] Annotating PMIDs: 38767059
+[pubtator] Making PubTator request to: https://www.ncbi.nlm.nih.gov/research/pubtator3-api/publications/export/biocjson?pmids=38767059
+[pubtator] Base URL: https://www.ncbi.nlm.nih.gov/research/pubtator3-api
+[pubtator] Endpoint: /publications/export/biocjson
+[pubtator] Method: GET
+[pubtator] Params: { pmids: '38767059' }
+[pubtator] Response status: 200 OK
+[pubtator] Response headers: {
+  allow: 'GET, POST, HEAD, OPTIONS',
+  connection: 'Keep-Alive',
+  'content-encoding': 'gzip',
+  'content-security-policy': 'upgrade-insecure-requests',
+  'content-type': 'application/json',
+  'cross-origin-opener-policy': 'same-origin',
+  date: 'Thu, 11 Sep 2025 21:45:50 GMT',
+  'keep-alive': 'timeout=1, max=10',
+  'referrer-policy': 'origin-when-cross-origin, same-origin',
+  server: 'nginx',
+  'set-cookie': 'ncbi_sid=1F4D97FB8C33F2B3_0922SID; Domain=.nih.gov; expires=Fri, 11 Sep 2026 21:45:50 GMT; Max-Age=31536000; Path=/',
+  'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+  'transfer-encoding': 'chunked',
+  vary: 'Accept,origin',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'x-ua-compatible': 'IE=Edge',
+  'x-xss-protection': '1; mode=block'
+}
+{"result":{"content":[{"type":"text","text":"**PubTator PMID Annotation Results**\n**Query:** {\"pmids\":[\"38767059\"],\"concepts\":[\"gene\",\"disease\",\"chemical\"],\"format\":\"biocjson\"}\n**Format:** biocjson\n\n## Found 1 Document(s)\n### Document 1\n**PMID:** 38767059\n**Title:** Loss of function of FAM177A1, a Golgi complex localized protein, causes a novel neurodevelopmental disorder.\n**Journal:** Genet Med\n**Date:** 2024-05-16T00:00:00Z\n**Abstract:** PURPOSE: The function of FAM177A1 and its relationship to human disease is largely unknown. Recent studies have demonstrated FAM177A1 to be a critical immune-associated gene. One previous case study h...\n**Annotations:** 17 entities found\n#### GENE (11)\n- **FAM177A1** (FAM177A1, ID: 283635)\n- **FAM177A1** (FAM177A1, ID: 283635)\n- **FAM177A1** (FAM177A1, ID: 283635)\n- **FAM177A1** (FAM177A1, ID: 283635)\n- **FAM177A1** (FAM177A1, ID: 283635)\n  ... and 6 more\n#### SPECIES (6)\n- **human** (9606, ID: 9606)\n- **zebrafish** (7955, ID: 7955)\n- **human** (9606, ID: 9606)\n- **zebrafish** (7955, ID: 7955)\n- **human** (9606, ID: 9606)\n  ... and 1 more\n"}],"artifacts":[{"type":"application/vnd.knowledge-graph","title":"PubTator Knowledge Graph - PMID Annotations","content":"{\"nodes\":[{\"id\":\"283635\",\"name\":\"FAM177A1\",\"entityType\":\"Gene\",\"group\":2,\"isStartingNode\":false,\"val\":14,\"connections\":9},{\"id\":\"9606\",\"name\":\"human\",\"entityType\":\"Species\",\"group\":4,\"isStartingNode\":false,\"val\":8,\"connections\":3},{\"id\":\"7955\",\"name\":\"zebrafish\",\"entityType\":\"Species\",\"group\":4,\"isStartingNode\":false,\"val\":8,\"connections\":3},{\"id\":\"100126028\",\"name\":\"FAM177A1\",\"entityType\":\"Gene\",\"group\":2,\"isStartingNode\":false,\"val\":6,\"connections\":1},{\"id\":\"Golgi\",\"name\":\"Golgi\",\"entityType\":\"Gene\",\"group\":2,\"isStartingNode\":false,\"val\":6,\"connections\":1}],\"links\":[{\"source\":\"283635\",\"target\":\"9606\",\"label\":\"co-occurs with\",\"value\":27,\"evidence\":[38767059]},{\"source\":\"283635\",\"target\":\"7955\",\"label\":\"co-occurs with\",\"value\":27,\"evidence\":[38767059]},{\"source\":\"283635\",\"target\":\"100126028\",\"label\":\"co-occurs with\",\"value\":9,\"evidence\":[38767059]},{\"source\":\"283635\",\"target\":\"Golgi\",\"label\":\"co-occurs with\",\"value\":9,\"evidence\":[38767059]},{\"source\":\"9606\",\"target\":\"7955\",\"label\":\"co-occurs with\",\"value\":9,\"evidence\":[38767059]},{\"source\":\"9606\",\"target\":\"100126028\",\"label\":\"co-occurs with\",\"value\":3,\"evidence\":[38767059]},{\"source\":\"9606\",\"target\":\"Golgi\",\"label\":\"co-occurs with\",\"value\":3,\"evidence\":[38767059]},{\"source\":\"7955\",\"target\":\"100126028\",\"label\":\"co-occurs with\",\"value\":3,\"evidence\":[38767059]},{\"source\":\"7955\",\"target\":\"Golgi\",\"label\":\"co-occurs with\",\"value\":3,\"evidence\":[38767059]},{\"source\":\"100126028\",\"target\":\"Golgi\",\"label\":\"co-occurs with\",\"value\":1,\"evidence\":[38767059]}],\"filteredCount\":0,\"filteredNodeCount\":0}"}]},"jsonrpc":"2.0","id":5}
