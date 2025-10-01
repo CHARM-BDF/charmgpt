@@ -1,5 +1,11 @@
 {
   "mcpServers": {
+    "kappa-mcp": {
+      "type": "remote",
+      "transport": "sse",
+      "url": "https://kappa-remote-mcp-server.metareflective.app/sse",
+      "timeout": 30000
+    },
     "pubmed": {
       "command": "node",
       "args": [
