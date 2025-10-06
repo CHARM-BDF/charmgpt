@@ -31,7 +31,8 @@ export class ArtifactService {
     'application/javascript',
     'application/vnd.react',
     'application/vnd.bibliography',
-    'application/vnd.ant.python'
+    'application/vnd.ant.python',
+    'pfocr'
   ];
 
   /**

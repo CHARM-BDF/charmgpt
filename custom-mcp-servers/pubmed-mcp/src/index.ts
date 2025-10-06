@@ -22,6 +22,7 @@ const SearchArgumentsSchema = z.object({
     operator: z.enum(['AND', 'OR', 'NOT']).optional().default('AND')
   })),
   max_results: z.number().min(1).max(100).optional().default(10),
+  sort_by: z.enum(['relevance', 'pub_date', 'first_author', 'journal', 'title']).optional().default('relevance'),
 });
 
 const GetDetailsArgumentsSchema = z.object({
@@ -151,6 +152,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           '- Query: "papers with TP53 or apoptosis" → terms: [{"term": "TP53"}, {"term": "apoptosis", "operator": "OR"}]\n' +
           '- Query: "PTEN but not breast cancer" → terms: [{"term": "PTEN"}, {"term": "breast cancer", "operator": "NOT"}]\n' +
           'Uppercase terms are treated as gene symbols. Multi-word terms are treated as phrases.\n' +
+          'Use "sort_by": "pub_date" to get the latest publications first, or "relevance" for default sorting.\n' +
           "If this tool is used, the NO Bibliography is needed, because it will be generated in other code.",
         inputSchema: {
           type: "object",
@@ -177,6 +179,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             max_results: {
               type: "number",
               description: "Maximum number of results to return (1-100)",
+            },
+            sort_by: {
+              type: "string",
+              enum: ["relevance", "pub_date", "first_author", "journal", "title"],
+              description: "Sort results by: 'relevance' (default), 'pub_date' (latest first), 'first_author', 'journal', or 'title'",
             },
           },
           required: ["terms"],
@@ -226,15 +233,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     if (name === "search") {
-      const { terms, max_results } = SearchArgumentsSchema.parse(args);
+      const { terms, max_results, sort_by } = SearchArgumentsSchema.parse(args);
       
       // Format the query from terms
       const formattedQuery = formatPubMedQuery(terms);
       console.error(`Search terms: ${JSON.stringify(terms)}`);
       console.error(`Formatted query: ${formattedQuery}`);
+      console.error(`Sort by: ${sort_by}`);
       
-      // Perform PubMed search
-      const searchUrl = `${NCBI_API_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(formattedQuery)}&retmax=${max_results}`;
+      // Perform PubMed search with sorting
+      const searchUrl = `${NCBI_API_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(formattedQuery)}&retmax=${max_results}&sort=${sort_by}`;
       console.log('\n[DEBUG] PubMed search URL:', searchUrl);
       const searchData = await makeNCBIRequest(searchUrl);
       
@@ -358,11 +366,58 @@ ${abstract}
 
       console.log('\n[DEBUG] First bibliography entry:', JSON.stringify(bibliographyData[0], null, 2));
 
+      // Build instructions section with PubMed IDs for downstream tools
+      const pmidInstructions = [
+        "---",
+        "## 📑 PubMed ID List",
+        "Below is the list of PubMed IDs returned in this batch. To fetch the next batch without duplicates, pass these IDs in `exclude_pmids` (array of strings) when you call the **pubmed-search** tool again.",
+        "",
+        ...pmids.map(id => `- ${id}`)
+      ].join("\n");
+
+      // Add summarization instructions
+      const summarizationInstructions = [
+        "# Summarization Instructions",
+        "",
+        "Summarize the information from the publications. ",
+        "Where possible include the following sections:",
+        "",
+        "1. **Clinical/Preclinical**: Here you should call out and describe in more details if there are any preclinical studies, direct human disease relevance, animal models, case studies.",
+        "",
+        "2. **Molecular mechanisms**: Here you should call out and describe in more details when gene or protein interactions are mentioned, protein structure, protein function, pathways, gene families.",
+        "",
+        "3. **Target gene regulation**: Here you should call out and describe in more details when a gene is a search term any information about how it is regulated and what it regulates.",
+        "",
+        "4. **Disease related information**: Here you should call out and describe in more details when a disease or phenotype is a search term include disease-phenotype information, natural history, prognosis, treatment and care.",
+        "",
+        "## **IMPORTANT: Include PubMed ID References**",
+        "",
+        "**For every statement you make in your summary, you MUST include the corresponding PubMed ID (PMID) as a reference.**",
+        "",
+        "**Format**: Use `(PMID: 12345678)` at the end of sentences that reference specific findings.",
+        "",
+        "**Examples**:",
+        "- \"BRCA1 mutations are associated with increased cancer risk (PMID: 12345678).\"",
+        "- \"The protein structure of BRCA1 was determined using X-ray crystallography (PMID: 87654321).\"",
+        "- \"Animal models showed that BRCA1 knockout mice develop tumors (PMID: 11223344).\"",
+        "",
+        "**Requirements**:",
+        "- Every factual statement must have a PMID reference",
+        "- Use the exact PMID from the publication that supports the statement",
+        "- If multiple papers support the same finding, list all relevant PMIDs: `(PMID: 12345678, 87654321)`",
+        "- Do not make statements without supporting PMID references",
+        "",
+        "---",
+        ""
+      ].join("\n");
+
+      const fullMarkdown = `${summarizationInstructions}# Search Results for: ${formattedQuery}\n\n${markdownArticles.join("\n\n")}\n\n${pmidInstructions}`;
+
       return {
         content: [
           {
             type: "text",
-            text: `# Search Results for: ${formattedQuery}\n\n${markdownArticles.join("\n\n")}`,
+            text: fullMarkdown,
             forModel: true
           }
         ],

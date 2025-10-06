@@ -1,11 +1,5 @@
 {
   "mcpServers": {
-    "kappa-mcp": {
-      "type": "remote",
-      "transport": "sse",
-      "url": "https://kappa-remote-mcp-server.metareflective.app/sse",
-      "timeout": 30000
-    },
     "pubtator": {
       "command": "node",
       "args": [
@@ -239,6 +233,20 @@
       "type": "remote",
       "transport": "http",
       "url": "https://biothings.ncats.io/mcp/biothings",
+      "timeout": 30000
+    },
+    "smart-api": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/smart-api-mcp/dist/index.js"
+      ],
+      "timeout": 30000
+    },
+    "pfocr": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/pfocr-mcp/dist/index.js"
+      ],
       "timeout": 30000
     }
   }

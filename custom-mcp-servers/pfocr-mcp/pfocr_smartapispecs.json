@@ -1,0 +1,1205 @@
+{
+    "_id": "edeb26858bd27d0322af93e7a9e08761",
+    "_version": 555,
+    "_ignored": [
+      "paths.pathitem.get.description.raw"
+    ],
+    "_status": {
+      "uptime_status": "pass",
+      "uptime_msg": [
+        "🟢 200: (/geneset/{id}) All good!",
+        "🟢 200: (/geneset) All good!",
+        "🟢 200: (/metadata) All good!",
+        "🟢 200: (/metadata/fields) All good!",
+        "🟢 200: (/query) All good!"
+      ],
+      "uptime_ts": "2025-10-03T07:11:33.939600+00:00",
+      "refresh_status": 200,
+      "refresh_ts": "2025-10-03T07:01:09+00:00"
+    },
+    "_meta": {
+      "url": "https://raw.githubusercontent.com/NCATS-Tangerine/translator-api-registry/master/pfocr/smartapi.yaml",
+      "username": "colleenXu",
+      "date_created": "2022-07-06T22:32:35.809614+00:00",
+      "last_updated": "2025-03-31T22:10:08.373864+00:00",
+      "has_metakg": true
+    },
+    "openapi": "3.0.3",
+    "info": {
+      "contact": {
+        "email": "help@biothings.io",
+        "name": "BioThings Team",
+        "x-id": "https://github.com/biothings",
+        "x-role": "responsible organization"
+      },
+      "description": "Documentation of the BioThings API for [Pathway Figure OCR (pfocr)](https://pfocr.wikipathways.org/)  data.",
+      "termsOfService": "https://biothings.io/about",
+      "title": "BioThings PFOCR API",
+      "version": "2024-09-01",
+      "x-translator": {
+        "infores": "infores:biothings-pfocr",
+        "component": "KP",
+        "team": [
+          "Service Provider"
+        ],
+        "biolink-version": "4.2.2"
+      }
+    },
+    "servers": [
+      {
+        "description": "Encrypted Production server",
+        "url": "https://biothings.ncats.io/pfocr",
+        "x-maturity": "production"
+      },
+      {
+        "url": "https://biothings.test.transltr.io/pfocr",
+        "description": "ITRB Test server",
+        "x-maturity": "testing"
+      },
+      {
+        "url": "https://biothings.ci.transltr.io/pfocr",
+        "description": "ITRB CI server",
+        "x-maturity": "staging"
+      }
+    ],
+    "tags": [
+      {
+        "name": "geneset"
+      },
+      {
+        "name": "gene"
+      },
+      {
+        "name": "annotation"
+      },
+      {
+        "name": "query"
+      },
+      {
+        "name": "translator"
+      },
+      {
+        "name": "biothings"
+      }
+    ],
+    "paths": {
+      "/geneset/{id}": {
+        "get": {
+          "description": "By default, this will return the complete figure record in JSON format. If the input is not valid, 404 (NOT FOUND) will be returned.\n\nOptionally, you can pass a \"fields\" parameter to return only the annotation you want  (by filtering returned object fields). \"fields\" accepts any attributes (a.k.a fields) available  from the association. Multiple attributes should be separated by commas. If an attribute is not  available for a specific figure, it will be ignored. Note that the attribute names are  case-sensitive.\n\nJust like the query service, you can also pass a \"callback\" parameter to make a JSONP call.",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "example": "PMC9278000__gr2_lrg",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "$ref": "#/components/parameters/fields"
+            },
+            {
+              "$ref": "#/components/parameters/callback"
+            },
+            {
+              "$ref": "#/components/parameters/email"
+            },
+            {
+              "$ref": "#/components/parameters/size"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+            }
+          },
+          "tags": [
+            "geneset"
+          ]
+        }
+      },
+      "/geneset": {
+        "post": {
+          "description": "Although making simple GET requests above to our service is sufficient in most use cases,  there are some times you might find it easier to batch query (e.g., retrieving multiple figures).  Fortunately, you can also make batch queries via POST requests when you need to.",
+          "parameters": [
+            {
+              "name": "ids",
+              "description": "Accepts multiple figure ids separated by commas. Note that currently we only take ids up to  1000 maximum, the rest will be omitted.\n\nThe request body can also be used to provide these ids.",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "$ref": "#/components/parameters/fields"
+            },
+            {
+              "$ref": "#/components/parameters/email"
+            },
+            {
+              "$ref": "#/components/parameters/size"
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "ids": [
+                    "PMC9278000__gr2_lrg",
+                    "PMC7835522__fcell-08-624216-g001"
+                  ]
+                },
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ids": {
+                      "description": "Accepts multiple figure ids. Note that currently we only take the input ids  up to 1000 maximum, the rest will be omitted.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+            }
+          },
+          "tags": [
+            "geneset"
+          ]
+        }
+      },
+      "/metadata": {
+        "get": {
+          "description": "Get metadata about the data available from the API",
+          "responses": {
+            "200": {
+              "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+            }
+          },
+          "tags": [
+            "metadata"
+          ]
+        }
+      },
+      "/metadata/fields": {
+        "get": {
+          "description": "Get metadata about the data fields available from the API",
+          "responses": {
+            "200": {
+              "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+            }
+          },
+          "tags": [
+            "metadata"
+          ]
+        }
+      },
+      "/query": {
+        "get": {
+          "description": "Query service. In the output, \"total\" in the output gives the total number  of matching hits, while the actual hits are returned under \"hits\" field.",
+          "parameters": [
+            {
+              "name": "q",
+              "description": "Required, passing user query. The detailed query syntax for parameter is explained  [here for a core BioThings  API](https://docs.mychem.info/en/latest/doc/chem_query_service.html#query-syntax).",
+              "in": "query",
+              "required": true,
+              "example": "associatedWith.mentions.diseases.mesh:D045169",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "$ref": "#/components/parameters/fields"
+            },
+            {
+              "$ref": "#/components/parameters/size"
+            },
+            {
+              "$ref": "#/components/parameters/from"
+            },
+            {
+              "$ref": "#/components/parameters/fetch_all"
+            },
+            {
+              "$ref": "#/components/parameters/scroll_id"
+            },
+            {
+              "$ref": "#/components/parameters/sort"
+            },
+            {
+              "$ref": "#/components/parameters/facets"
+            },
+            {
+              "$ref": "#/components/parameters/facet_size"
+            },
+            {
+              "$ref": "#/components/parameters/callback"
+            },
+            {
+              "$ref": "#/components/parameters/dotfield"
+            },
+            {
+              "$ref": "#/components/parameters/email"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+            }
+          },
+          "tags": [
+            "query"
+          ]
+        },
+        "post": {
+          "description": "Although making simple GET requests above to our query service is sufficient for most use cases,  there are times you might find it more efficient to make batch queries (e.g., retrieving data  for multiple inputs). Fortunately, you can also make batch queries via POST requests when you need to.\n\nThe \"query” field in the returned object indicates the matching query term. If a query term has no match,  it will return with a “notfound” field with the value “true”.",
+          "parameters": [
+            {
+              "name": "q",
+              "description": "Accepts multiple values separated by commas. Note that currently we only take the input values up to 1000  maximum, the rest will be omitted.\n\nThe request body can also be used to provide these ids.",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "scopes",
+              "description": "Optional, specify one or more fields (separated by commas) to search. Default: _id\n\nThe request body can also be used to provide this information.",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "$ref": "#/components/parameters/fields"
+            },
+            {
+              "$ref": "#/components/parameters/email"
+            },
+            {
+              "$ref": "#/components/parameters/size"
+            },
+            {
+              "$ref": "#/components/parameters/from"
+            },
+            {
+              "$ref": "#/components/parameters/fetch_all"
+            },
+            {
+              "$ref": "#/components/parameters/scroll_id"
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "q": [
+                    "D045169",
+                    "D005355"
+                  ],
+                  "scopes": [
+                    "associatedWith.mentions.diseases.mesh"
+                  ]
+                },
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "q": {
+                      "description": "Accepts multiple values separated by commas. Note that currently we only take the input values  up to 1000 maximum, the rest will be omitted.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "scopes": {
+                      "description": "Specify one or more fields (separated by commas) to search. Default: _id",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "A 200 status code indicates a successful query, and is accompanied by the query response payload."
+            }
+          },
+          "tags": [
+            "query"
+          ],
+          "x-bte-kgs-operations": [
+            {
+              "$ref": "#/components/x-bte-kgs-operations/gene-chemMesh"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/chemMesh-gene"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/gene-chemChebi"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/chemChebi-gene"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/diseaseMesh-chemMesh"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/chemMesh-diseaseMesh"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/diseaseMesh-chemChebi"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/chemChebi-diseaseMesh"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/diseaseDoid-chemMesh"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/chemMesh-diseaseDoid"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/diseaseDoid-chemChebi"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/chemChebi-diseaseDoid"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/diseaseMesh-gene"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/gene-diseaseMesh"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/diseaseDoid-gene"
+            },
+            {
+              "$ref": "#/components/x-bte-kgs-operations/gene-diseaseDoid"
+            }
+          ]
+        }
+      }
+    },
+    "components": {
+      "parameters": {
+        "callback": {
+          "name": "callback",
+          "description": "Optional, you can pass a \"callback\" parameter to make a JSONP call.",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        "dotfield": {
+          "name": "dotfield",
+          "description": "Optional, can be used to control the format of the returned object.  If \"dotfield\" is true, the returned data object is returned flattened (no nested objects)  using dotfield notation for key names. Default: false.",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "email": {
+          "name": "email",
+          "description": "Optional, if you are regular users of our services, we encourage you to provide us an email,  so that we can better track the usage or follow up with you.",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        "facet_size": {
+          "name": "facet_size",
+          "description": "Optional, an integer (1 \u003C= facet_size \u003C= 1000) that specifies how many buckets to return in a  [faceted query](https://docs.mychem.info/en/latest/doc/chem_query_service.html?highlight=from#faceted-queries).",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 10
+          }
+        },
+        "facets": {
+          "name": "facets",
+          "description": "Optional, a single field or comma-separated fields to return facets, can only be used on non-free text fields.  E.g. “facets=chembl.molecule_properties.full_mwt”. See [examples of faceted queries for a core BioThings  API](https://docs.mychem.info/en/latest/doc/chem_query_service.html?highlight=from#faceted-queries).",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "fetch_all": {
+          "name": "fetch_all",
+          "description": "Optional, a boolean, which when TRUE, allows fast retrieval of all unsorted query hits.  The return object contains a _scroll_id field, which when passed as a parameter to the query endpoint  (see the scroll_id parameter), returns the next 1000 query results. Setting fetch_all = TRUE causes  the results to be inherently unsorted, therefore the sort parameter is ignored. For more information,  see [examples using fetch_all for a core BioThings  API](https://docs.mychem.info/en/latest/doc/chem_query_service.html?highlight=from#scrolling-queries).  Default: FALSE.",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "fields": {
+          "name": "fields",
+          "description": "Optional, can be a comma-separated list to limit the fields returned from the object.  If \"fields=all\", all available fields will be returned.\n\nNote that it supports dot notation as well, e.g., you can pass \"chebi.name\".  Default: \"fields=all\".  The parameter \"filter\" is an alias for this parameter.",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "all"
+          }
+        },
+        "from": {
+          "name": "from",
+          "description": "Optional, the number of matching hits to skip, starting from 0. Default: 0. ",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 0
+          }
+        },
+        "scroll_id": {
+          "name": "scroll_id",
+          "description": "Optional, a string containing the _scroll_id returned from a query request with fetch_all = TRUE.  Supplying a valid scroll_id will return the next 1000 unordered results. If the next results are  not obtained within 1 minute of the previous set of results, the scroll_id becomes stale, and a  new one must be obtained with another query request with fetch_all = TRUE. All other parameters are  ignored when the scroll_id parameter is supplied. For more information see [examples using scroll_id  for a core BioThings  API](https://docs.mychem.info/en/latest/doc/chem_query_service.html?highlight=from#scrolling-queries).",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        "size": {
+          "name": "size",
+          "description": "Optional, the maximum number of matching hits to return (with a cap of 1000 at the moment). Default: 10. The combination of \"size\" and \"from\" parameters can be used to get paging for a large query.",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "default": 10
+          }
+        },
+        "sort": {
+          "name": "sort",
+          "description": "Optional, the comma-separated fields to sort on. Prefix with \"-\" for descending order, otherwise in ascending order.  Default: sort by matching scores in descending order.",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "x-bte-kgs-operations": {
+        "gene-chemMesh": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.genes.ncbigene"
+              }
+            },
+            "outputs": [
+              {
+                "id": "MESH",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.chemicals.mesh, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/chemMesh"
+            },
+            "testExamples": [
+              {
+                "qInput": "NCBIGene:9839",
+                "oneOutput": "MESH:C024755"
+              }
+            ]
+          }
+        ],
+        "chemMesh-gene": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "MESH",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.chemicals.mesh"
+              }
+            },
+            "outputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.genes.ncbigene, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/gene"
+            },
+            "testExamples": [
+              {
+                "qInput": "MESH:C065632",
+                "oneOutput": "NCBIGene:652"
+              }
+            ]
+          }
+        ],
+        "gene-chemChebi": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.genes.ncbigene"
+              }
+            },
+            "outputs": [
+              {
+                "id": "CHEBI",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.chemicals.chebi, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/chemChebi"
+            },
+            "testExamples": [
+              {
+                "qInput": "NCBIGene:5194",
+                "oneOutput": "CHEBI:61293"
+              }
+            ]
+          }
+        ],
+        "chemChebi-gene": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "CHEBI",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs | rmPrefix() }}",
+                "scopes": "associatedWith.mentions.chemicals.chebi"
+              }
+            },
+            "outputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.genes.ncbigene, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/gene"
+            },
+            "testExamples": [
+              {
+                "qInput": "CHEBI:4305",
+                "oneOutput": "NCBIGene:10657"
+              }
+            ]
+          }
+        ],
+        "diseaseMesh-chemMesh": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "MESH",
+                "semantic": "Disease"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.diseases.mesh"
+              }
+            },
+            "outputs": [
+              {
+                "id": "MESH",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.chemicals.mesh, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/chemMesh"
+            },
+            "testExamples": [
+              {
+                "qInput": "MESH:D056735",
+                "oneOutput": "MESH:D017260"
+              }
+            ]
+          }
+        ],
+        "chemMesh-diseaseMesh": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "MESH",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.chemicals.mesh"
+              }
+            },
+            "outputs": [
+              {
+                "id": "MESH",
+                "semantic": "Disease"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.diseases.mesh, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/diseaseMesh"
+            },
+            "testExamples": [
+              {
+                "qInput": "MESH:C051905",
+                "oneOutput": "MESH:C538445"
+              }
+            ]
+          }
+        ],
+        "diseaseMesh-chemChebi": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "MESH",
+                "semantic": "Disease"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.diseases.mesh"
+              }
+            },
+            "outputs": [
+              {
+                "id": "CHEBI",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.chemicals.chebi, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/chemChebi"
+            },
+            "testExamples": [
+              {
+                "qInput": "MESH:D007239",
+                "oneOutput": "CHEBI:18186"
+              }
+            ]
+          }
+        ],
+        "chemChebi-diseaseMesh": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "CHEBI",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs | rmPrefix() }}",
+                "scopes": "associatedWith.mentions.chemicals.chebi"
+              }
+            },
+            "outputs": [
+              {
+                "id": "MESH",
+                "semantic": "Disease"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.diseases.mesh, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/diseaseMesh"
+            },
+            "testExamples": [
+              {
+                "qInput": "CHEBI:29987",
+                "oneOutput": "MESH:D020388"
+              }
+            ]
+          }
+        ],
+        "diseaseDoid-chemMesh": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "DOID",
+                "semantic": "Disease"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs | rmPrefix() }}",
+                "scopes": "associatedWith.mentions.diseases.doid"
+              }
+            },
+            "outputs": [
+              {
+                "id": "MESH",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.chemicals.mesh, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/chemMesh"
+            },
+            "testExamples": [
+              {
+                "qInput": "DOID:3490",
+                "oneOutput": "MESH:D043169"
+              }
+            ]
+          }
+        ],
+        "chemMesh-diseaseDoid": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "MESH",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.chemicals.mesh"
+              }
+            },
+            "outputs": [
+              {
+                "id": "DOID",
+                "semantic": "Disease"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.diseases.doid, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/diseaseDoid"
+            },
+            "testExamples": [
+              {
+                "qInput": "MESH:C544831",
+                "oneOutput": "DOID:1324"
+              }
+            ]
+          }
+        ],
+        "diseaseDoid-chemChebi": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "DOID",
+                "semantic": "Disease"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs | rmPrefix() }}",
+                "scopes": "associatedWith.mentions.diseases.doid"
+              }
+            },
+            "outputs": [
+              {
+                "id": "CHEBI",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.chemicals.chebi, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/chemChebi"
+            },
+            "testExamples": [
+              {
+                "qInput": "DOID:576",
+                "oneOutput": "CHEBI:26523"
+              }
+            ]
+          }
+        ],
+        "chemChebi-diseaseDoid": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "CHEBI",
+                "semantic": "SmallMolecule"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs | rmPrefix() }}",
+                "scopes": "associatedWith.mentions.chemicals.chebi"
+              }
+            },
+            "outputs": [
+              {
+                "id": "DOID",
+                "semantic": "Disease"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.diseases.doid, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/diseaseDoid"
+            },
+            "testExamples": [
+              {
+                "qInput": "CHEBI:50903",
+                "oneOutput": "DOID:10283"
+              }
+            ]
+          }
+        ],
+        "diseaseMesh-gene": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "MESH",
+                "semantic": "Disease"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.diseases.mesh"
+              }
+            },
+            "outputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.genes.ncbigene, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/gene"
+            },
+            "testExamples": [
+              {
+                "qInput": "MESH:D000860",
+                "oneOutput": "NCBIGene:27035"
+              }
+            ]
+          }
+        ],
+        "gene-diseaseMesh": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.genes.ncbigene"
+              }
+            },
+            "outputs": [
+              {
+                "id": "MESH",
+                "semantic": "Disease"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.diseases.mesh, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/diseaseMesh"
+            },
+            "testExamples": [
+              {
+                "qInput": "NCBIGene:940",
+                "oneOutput": "MESH:D056735"
+              }
+            ]
+          }
+        ],
+        "diseaseDoid-gene": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "DOID",
+                "semantic": "Disease"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs | rmPrefix() }}",
+                "scopes": "associatedWith.mentions.diseases.doid"
+              }
+            },
+            "outputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.genes.ncbigene, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/gene"
+            },
+            "testExamples": [
+              {
+                "qInput": "DOID:8398",
+                "oneOutput": "NCBIGene:3553"
+              }
+            ]
+          }
+        ],
+        "gene-diseaseDoid": [
+          {
+            "supportBatch": true,
+            "useTemplating": true,
+            "inputs": [
+              {
+                "id": "NCBIGene",
+                "semantic": "Gene"
+              }
+            ],
+            "requestBody": {
+              "body": {
+                "q": "{{ queryInputs }}",
+                "scopes": "associatedWith.mentions.genes.ncbigene"
+              }
+            },
+            "outputs": [
+              {
+                "id": "DOID",
+                "semantic": "Disease"
+              }
+            ],
+            "parameters": {
+              "fields": "associatedWith.mentions.diseases.doid, associatedWith.figureUrl,associatedWith.pmc,associatedWith.pfocrUrl",
+              "size": 1000
+            },
+            "predicate": "occurs_together_in_literature_with",
+            "source": "infores:pfocr",
+            "knowledge_level": "not_provided",
+            "agent_type": "image_processing_agent",
+            "response_mapping": {
+              "$ref": "#/components/x-bte-response-mapping/diseaseDoid"
+            },
+            "testExamples": [
+              {
+                "qInput": "NCBIGene:2048",
+                "oneOutput": "DOID:10283"
+              }
+            ]
+          }
+        ]
+      },
+      "x-bte-response-mapping": {
+        "chemMesh": {
+          "MESH": "associatedWith.mentions.chemicals.mesh",
+          "ref_url": "associatedWith.figureUrl",
+          "ref_pmcid": "associatedWith.pmc",
+          "source_url": "associatedWith.pfocrUrl"
+        },
+        "chemChebi": {
+          "CHEBI": "associatedWith.mentions.chemicals.chebi",
+          "ref_url": "associatedWith.figureUrl",
+          "ref_pmcid": "associatedWith.pmc",
+          "source_url": "associatedWith.pfocrUrl"
+        },
+        "gene": {
+          "NCBIGene": "associatedWith.mentions.genes.ncbigene",
+          "ref_url": "associatedWith.figureUrl",
+          "ref_pmcid": "associatedWith.pmc",
+          "source_url": "associatedWith.pfocrUrl"
+        },
+        "diseaseMesh": {
+          "MESH": "associatedWith.mentions.diseases.mesh",
+          "ref_url": "associatedWith.figureUrl",
+          "ref_pmcid": "associatedWith.pmc",
+          "source_url": "associatedWith.pfocrUrl"
+        },
+        "diseaseDoid": {
+          "DOID": "associatedWith.mentions.diseases.doid",
+          "ref_url": "associatedWith.figureUrl",
+          "ref_pmcid": "associatedWith.pmc",
+          "source_url": "associatedWith.pfocrUrl"
+        }
+      }
+    }
+  }

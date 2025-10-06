@@ -48,7 +48,8 @@ Here is the schema:
                                             "application/vnd.mermaid",
                                             "text/html",
                                             "application/vnd.react",
-                                            "application/vnd.bibliography"
+                                            "application/vnd.bibliography",
+                                            "pfocr"
                                         ]
                                     },
                                     "id": {
@@ -125,6 +126,11 @@ Here is the schema:
 10. application/vnd.knowledge-graph
    - Knowledge graph
    - JSON-formatted knowledge graph data
+
+11. pfocr
+   - PFOCR pathway figures
+   - Biomedical pathway analysis data
+   - JSON-formatted pathway figures with images
 
 
 # Example Response Structure

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PFOCR Pathway Figures</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .summary {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .summary h2 {
+            color: #333;
+            margin-top: 0;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .genesets {
+            display: grid;
+            gap: 30px;
+        }
+        
+        .geneset-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .geneset-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .geneset-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .geneset-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin: 0 0 10px 0;
+        }
+        
+        .geneset-id {
+            font-family: 'Monaco', 'Menlo', monospace;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            display: inline-block;
+        }
+        
+        .figure-container {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .figure-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .figure-image:hover {
+            transform: scale(1.02);
+        }
+        
+        .figure-links {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .link-button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .link-button:hover {
+            background: #5a6fd8;
+        }
+        
+        .annotations {
+            background: #f8f9fa;
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .annotation-section {
+            margin-bottom: 20px;
+        }
+        
+        .annotation-section h4 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .annotation-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .annotation-tag {
+            background: white;
+            border: 1px solid #dee2e6;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            color: #495057;
+        }
+        
+        .genes { border-left: 4px solid #28a745; }
+        .chemicals { border-left: 4px solid #fd7e14; }
+        .diseases { border-left: 4px solid #dc3545; }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .figure-links {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧬 PFOCR Pathway Figures</h1>
+            <p>Biomedical pathway analysis from scientific literature</p>
+        </div>
+        
+        <div id="loading" class="loading">
+            <h2>Loading pathway figures...</h2>
+            <p>Please wait while we fetch the data.</p>
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div class="summary">
+                <h2>📊 Analysis Summary</h2>
+                <div class="stats" id="stats">
+                    <!-- Stats will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="genesets" id="genesets">
+                <!-- Genesets will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <div id="error" class="error" style="display: none;">
+            <h3>❌ Error Loading Data</h3>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        // Function to load and display PFOCR data
+        function loadPFOCRData() {
+            try {
+                // Get the PFOCR data from the artifact
+                const pfocrData = window.pfocrData || {};
+                
+                if (!pfocrData.genesets || pfocrData.genesets.length === 0) {
+                    showError('No pathway figures found in the data.');
+                    return;
+                }
+                
+                // Hide loading, show content
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                // Display summary stats
+                displaySummary(pfocrData.summary);
+                
+                // Display genesets
+                displayGenesets(pfocrData.genesets);
+                
+            } catch (error) {
+                showError('Failed to load PFOCR data: ' + error.message);
+            }
+        }
+        
+        function displaySummary(summary) {
+            const statsContainer = document.getElementById('stats');
+            
+            const stats = [
+                { number: summary.total_genesets, label: 'Total Pathway Figures' },
+                { number: summary.genesets_with_genes, label: 'With Gene Annotations' },
+                { number: summary.genesets_with_chemicals, label: 'With Chemical Annotations' },
+                { number: summary.genesets_with_diseases, label: 'With Disease Annotations' }
+            ];
+            
+            statsContainer.innerHTML = stats.map(stat => `
+                <div class="stat-card">
+                    <div class="stat-number">${stat.number}</div>
+                    <div class="stat-label">${stat.label}</div>
+                </div>
+            `).join('');
+        }
+        
+        function displayGenesets(genesets) {
+            const container = document.getElementById('genesets');
+            
+            container.innerHTML = genesets.map(geneset => {
+                const title = geneset.title || 'Untitled Pathway Figure';
+                const id = geneset.id || 'Unknown ID';
+                const figureUrl = geneset.associatedWith?.figureUrl || geneset.figureUrl;
+                const pfocrUrl = geneset.associatedWith?.pfocrUrl || geneset.pfocrUrl;
+                const pmc = geneset.associatedWith?.pmc || geneset.pmc;
+                
+                // Extract annotations
+                const mentions = geneset.associatedWith?.mentions || geneset.mentions || {};
+                const genes = mentions.genes?.ncbigene || [];
+                const meshChemicals = mentions.chemicals?.mesh || [];
+                const chebiChemicals = mentions.chemicals?.chebi || [];
+                const meshDiseases = mentions.diseases?.mesh || [];
+                const doidDiseases = mentions.diseases?.doid || [];
+                
+                return `
+                    <div class="geneset-card">
+                        <div class="geneset-header">
+                            <h3 class="geneset-title">${title}</h3>
+                            <div class="geneset-id">${id}</div>
+                        </div>
+                        
+                        <div class="figure-container">
+                            ${figureUrl ? `
+                                <img src="${figureUrl}" alt="${title}" class="figure-image" 
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <div style="display: none; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                                    <p>📷 Figure image could not be loaded</p>
+                                    <p>PMC ID: ${pmc || 'N/A'}</p>
+                                </div>
+                            ` : `
+                                <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                                    <p>📷 No figure image available</p>
+                                    <p>PMC ID: ${pmc || 'N/A'}</p>
+                                </div>
+                            `}
+                            
+                            <div class="figure-links">
+                                ${pfocrUrl ? `<a href="${pfocrUrl}" target="_blank" class="link-button">🔗 PFOCR View</a>` : ''}
+                                ${pmc ? `<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/${pmc}/" target="_blank" class="link-button">📄 PMC Article</a>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="annotations">
+                            ${genes.length > 0 ? `
+                                <div class="annotation-section genes">
+                                    <h4>🧬 Genes (${genes.length})</h4>
+                                    <div class="annotation-tags">
+                                        ${genes.slice(0, 10).map(gene => `<span class="annotation-tag">NCBIGene:${gene}</span>`).join('')}
+                                        ${genes.length > 10 ? `<span class="annotation-tag">+${genes.length - 10} more</span>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${meshChemicals.length > 0 || chebiChemicals.length > 0 ? `
+                                <div class="annotation-section chemicals">
+                                    <h4>🧪 Chemicals (${meshChemicals.length + chebiChemicals.length})</h4>
+                                    <div class="annotation-tags">
+                                        ${meshChemicals.slice(0, 5).map(chem => `<span class="annotation-tag">MeSH:${chem}</span>`).join('')}
+                                        ${chebiChemicals.slice(0, 5).map(chem => `<span class="annotation-tag">ChEBI:${chem}</span>`).join('')}
+                                        ${(meshChemicals.length + chebiChemicals.length) > 10 ? `<span class="annotation-tag">+${(meshChemicals.length + chebiChemicals.length) - 10} more</span>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${meshDiseases.length > 0 || doidDiseases.length > 0 ? `
+                                <div class="annotation-section diseases">
+                                    <h4>🦠 Diseases (${meshDiseases.length + doidDiseases.length})</h4>
+                                    <div class="annotation-tags">
+                                        ${meshDiseases.slice(0, 5).map(disease => `<span class="annotation-tag">MeSH:${disease}</span>`).join('')}
+                                        ${doidDiseases.slice(0, 5).map(disease => `<span class="annotation-tag">DOID:${disease}</span>`).join('')}
+                                        ${(meshDiseases.length + doidDiseases.length) > 10 ? `<span class="annotation-tag">+${(meshDiseases.length + doidDiseases.length) - 10} more</span>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = message;
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Try to get data from window object (set by the MCP client)
+            if (window.pfocrData) {
+                loadPFOCRData();
+            } else {
+                // If no data available, show error
+                showError('No PFOCR data available. Please ensure the artifact contains valid PFOCR data.');
+            }
+        });
+    </script>
+</body>
+</html>
