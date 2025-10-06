@@ -70,7 +70,10 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
       className={`p-3 rounded-lg cursor-pointer transition-colors duration-200
                   ${isActive 
                     ? 'bg-blue-50 dark:bg-blue-900/20' 
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}
+                  ${conversation.metadata.mode === 'graph_mode' 
+                    ? 'border-l-4 border-l-purple-500 bg-purple-50/30 dark:bg-purple-900/10' 
+                    : ''}`}
       onClick={isBulkEditMode ? undefined : onSelect}
     >
       <div className="flex justify-between items-center">
@@ -84,6 +87,15 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                        focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 
                        focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
               onClick={(e) => e.stopPropagation()}
+            />
+          )}
+          
+          {/* Graph Mode indicator */}
+          {conversation.metadata.mode === 'graph_mode' && (
+            <img 
+              src="/logos/graph_network_icon.svg" 
+              alt="Graph Mode"
+              className="w-4 h-4 opacity-70 flex-shrink-0" 
             />
           )}
           
@@ -101,11 +113,18 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
               autoFocus
             />
           ) : (
-            <span 
-              className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate flex-1"
-            >
-              {conversation.metadata.name}
-            </span>
+            <div className="flex-1 flex items-center gap-2">
+              <span 
+                className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
+              >
+                {conversation.metadata.name}
+              </span>
+              {conversation.metadata.mode === 'graph_mode' && (
+                <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                  Graph
+                </span>
+              )}
+            </div>
           )}
         </div>
         

@@ -194,6 +194,32 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             Grant Reviews
           </span>
         </button>
+
+        {/* Graph Mode button */}
+        <button
+          onClick={() => {
+            console.log('Graph Mode button clicked');
+            const { startNewGraphModeConversation } = useChatStore.getState();
+            const newConversationId = startNewGraphModeConversation();
+            useChatStore.getState().switchConversation(newConversationId);
+            setIsExpanded(false);
+          }}
+          className="p-2.5 rounded-full text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100
+                   hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
+                   relative group"
+          title="Graph Mode"
+          aria-label="Create Graph Mode Conversation"
+        >
+          <img 
+            src="/logos/graph_network_icon.svg" 
+            alt="Graph Mode"
+            className="w-8 h-8 opacity-80 group-hover:opacity-100 group-hover:[filter:invert(48%)_sepia(95%)_saturate(1000%)_hue-rotate(195deg)_brightness(102%)_contrast(101%)] transition-all" 
+          />
+          {/* Tooltip */}
+          <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 whitespace-nowrap">
+            Graph Mode
+          </span>
+        </button>
       </div>
 
       {/* Expanded sidebar content */}
@@ -336,6 +362,48 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                        hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
                        flex items-center gap-1"
                 title="New Grant Review"
+              >
+                <span className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
+                  <span className="text-sm font-semibold leading-none">+</span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Graph Mode section */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <div 
+                className="flex items-center gap-2 cursor-pointer group/title hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                onClick={() => {
+                  console.log('Graph Mode section clicked');
+                  const { startNewGraphModeConversation } = useChatStore.getState();
+                  const newConversationId = startNewGraphModeConversation();
+                  useChatStore.getState().switchConversation(newConversationId);
+                  setIsExpanded(false);
+                }}
+              >
+                <img 
+                  src="/logos/graph_network_icon.svg" 
+                  alt="Graph Mode"
+                  className="w-6 h-6 opacity-80 group-hover/title:opacity-100 group-hover/title:[filter:invert(48%)_sepia(95%)_saturate(1000%)_hue-rotate(195deg)_brightness(102%)_contrast(101%)] transition-all" 
+                />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover/title:text-blue-600 dark:group-hover/title:text-blue-400 transition-colors">
+                  Graph Mode
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  console.log("ConversationDrawer: New Graph Mode button clicked");
+                  const { startNewGraphModeConversation } = useChatStore.getState();
+                  const newConversationId = startNewGraphModeConversation();
+                  useChatStore.getState().switchConversation(newConversationId);
+                  setIsExpanded(false);
+                }}
+                className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100
+                       hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors
+                       flex items-center gap-1"
+                title="New Graph Mode"
               >
                 <span className="w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-full">
                   <span className="text-sm font-semibold leading-none">+</span>

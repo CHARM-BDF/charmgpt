@@ -123,7 +123,9 @@ export const ChatInterface: React.FC = () => {
   // Effect to log artifact window visibility changes
   useEffect(() => {
     console.log('ChatInterface: showArtifactWindow changed to:', showArtifactWindow);
-  }, [showArtifactWindow]);
+    console.log('ChatInterface: artifacts count:', artifacts.length);
+    console.log('ChatInterface: selectedArtifactId:', useChatStore.getState().selectedArtifactId);
+  }, [showArtifactWindow, artifacts.length]);
   
   // Handle showing project view - ensure we select the project from the conversation
   const handleShowProjectView = useCallback(() => {

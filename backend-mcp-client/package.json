@@ -14,7 +14,11 @@
     "server:dev": "nodemon --watch src/ -e ts,js --exec tsx src/index.ts",
     "test:unit": "vitest",
     "lint": "eslint .",
-    "lint:auto": "eslint --fix ."
+    "lint:auto": "eslint --fix .",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.57.0",
@@ -30,7 +34,9 @@
     "multer": "^1.4.5-lts.2",
     "ollama": "^0.5.16",
     "openai": "^5.11.0",
-    "undici": "^7.12.0"
+    "undici": "^7.12.0",
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

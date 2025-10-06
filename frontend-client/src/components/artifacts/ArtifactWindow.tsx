@@ -17,7 +17,8 @@ export const ArtifactWindow: React.FC<ArtifactWindowProps> = ({ storageService }
   // Only log when selectedArtifactId changes
   React.useEffect(() => {
     console.log('ArtifactWindow: Selected artifact ID changed:', selectedArtifactId);
-  }, [selectedArtifactId]);
+    console.log('ArtifactWindow: Available artifacts:', artifacts.map(a => ({ id: a.id, title: a.title, type: a.type })));
+  }, [selectedArtifactId, artifacts]);
 
   const selectedArtifact = artifacts.find(a => a.id === selectedArtifactId);
 

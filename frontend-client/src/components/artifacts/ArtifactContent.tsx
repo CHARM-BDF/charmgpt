@@ -8,6 +8,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { KnowledgeGraphViewer } from './KnowledgeGraphViewer';
 import { ReagraphKnowledgeGraphViewer } from './ReagraphKnowledgeGraphViewer';
+import { GraphModeViewer } from './GraphModeViewer';
 import { ProteinVisualizationViewer } from './ProteinVisualizationViewer';
 import { PFOCRViewer } from './PFOCRViewer';
 import { useChatStore } from '../../store/chatStore';
@@ -213,6 +214,12 @@ export const ArtifactContent: React.FC<{
   const getPinnedGraphId = useChatStore(state => state.getPinnedGraphId);
   const { selectedProjectId } = useProjectStore();
   
+  // Get current conversation to check if it's Graph Mode
+  const currentConversationId = useChatStore(state => state.currentConversationId);
+  const conversations = useChatStore(state => state.conversations);
+  const currentConversation = currentConversationId ? conversations[currentConversationId] : null;
+  const isGraphModeConversation = currentConversation?.metadata.mode === 'graph_mode';
+  
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
   const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
@@ -359,6 +366,19 @@ export const ArtifactContent: React.FC<{
         //     nextVersionId: artifact.nextVersionId
         //   });
         // }
+        
+        // Check if this is a Graph Mode conversation
+        if (isGraphModeConversation) {
+          return (
+            <GraphModeViewer
+              data={artifact.content}
+              width={800}
+              height={600}
+              artifactId={artifact.id}
+              showVersionControls={true}
+            />
+          );
+        }
         
         return (
           <div className="w-full h-full min-h-[400px] flex flex-col">

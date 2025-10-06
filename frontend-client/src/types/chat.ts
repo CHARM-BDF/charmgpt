@@ -75,6 +75,7 @@ export interface ConversationMetadata {
   created: Date;
   messageCount: number;
   projectId?: string; // Optional - not all conversations belong to projects
+  mode?: 'normal' | 'graph_mode'; // Optional - conversation mode for Graph Mode
 }
 
 export interface Conversation {

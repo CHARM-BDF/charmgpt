@@ -79,6 +79,7 @@ export interface ChatState extends ConversationState {
   
   // New conversation management functions
   startNewConversation: (name?: string) => string;
+  startNewGraphModeConversation: (name?: string) => string;
   switchConversation: (id: string) => void;
   renameConversation: (id: string, name: string) => void;
   deleteConversation: (id: string) => void;
@@ -1037,6 +1038,77 @@ export const useChatStore = create<ChatState>()(
             activeCompletionId: null, // Reset the active completion ID
             blockedServers: [] // Reset the blocked servers
           }));
+          
+          return id;
+        },
+
+        startNewGraphModeConversation: (name?: string) => {
+          const id = crypto.randomUUID();
+          const defaultName = `Graph Mode ${Object.keys(get().conversations).length + 1}`;
+          
+          // Create a blank knowledge graph artifact for Graph Mode
+          const blankGraphArtifact = {
+            id: crypto.randomUUID(),
+            type: 'application/vnd.knowledge-graph' as const,
+            title: 'Graph Mode Canvas',
+            content: {
+              nodes: [],
+              links: []
+            },
+            timestamp: new Date()
+          };
+          
+          // Create a welcome message with the artifact link
+          const welcomeMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant' as const,
+            content: `Welcome to Graph Mode! I've created a blank canvas for you to build your knowledge graph.\n\n[Open Graph Canvas](artifact:${blankGraphArtifact.id})`,
+            timestamp: new Date(),
+            artifactId: blankGraphArtifact.id
+          };
+          
+          console.log('Graph Mode: Creating blank graph artifact:', blankGraphArtifact);
+          console.log('Graph Mode: Creating welcome message:', welcomeMessage);
+          
+          set(state => ({
+            conversations: {
+              ...state.conversations,
+              [id]: {
+                metadata: {
+                  id,
+                  name: name || defaultName,
+                  created: new Date(),
+                  lastUpdated: new Date(),
+                  messageCount: 0,
+                  mode: 'graph_mode' // Set Graph Mode
+                },
+                messages: [welcomeMessage], // Start with welcome message
+                artifacts: [blankGraphArtifact] // Start with blank graph artifact
+              }
+            },
+            currentConversationId: id,
+            // Set the blank graph artifact as the current artifact
+            artifacts: [blankGraphArtifact],
+            messages: [welcomeMessage], // Add welcome message to global messages
+            selectedArtifactId: blankGraphArtifact.id,
+            showArtifactWindow: true, // Show the artifact window immediately
+            inProjectConversationFlow: false, // Reset project conversation flow when starting a new conversation
+            activeCompletionId: null, // Reset the active completion ID
+            blockedServers: [] // Reset the blocked servers
+          }));
+          
+          console.log('Graph Mode: State updated, artifact should be visible now');
+          console.log('Graph Mode: showArtifactWindow should be true, selectedArtifactId:', blankGraphArtifact.id);
+          
+          // Check the actual state after setting
+          setTimeout(() => {
+            const currentState = get();
+            console.log('Graph Mode: Actual state after update:', {
+              showArtifactWindow: currentState.showArtifactWindow,
+              selectedArtifactId: currentState.selectedArtifactId,
+              artifactsCount: currentState.artifacts.length
+            });
+          }, 100);
           
           return id;
         },
