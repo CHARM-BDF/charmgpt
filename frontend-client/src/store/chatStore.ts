@@ -124,6 +124,24 @@ export const useChatStore = create<ChatState>()(
         }
       }, 0);
 
+      // Post-hydration effect to restore graph mode artifact visibility
+      setTimeout(() => {
+        const state = get();
+        if (state.currentConversationId && state.conversations[state.currentConversationId]) {
+          const conversation = state.conversations[state.currentConversationId];
+          const isGraphMode = conversation.metadata.mode === 'graph_mode';
+          
+          if (isGraphMode && conversation.artifacts && conversation.artifacts.length > 0) {
+            console.log('Post-hydration: Restoring graph mode artifact visibility');
+            const graphArtifact = conversation.artifacts[0];
+            set({
+              selectedArtifactId: graphArtifact.id,
+              showArtifactWindow: true
+            });
+          }
+        }
+      }, 100); // Small delay to ensure hydration is complete
+
       return {
         messages: [],
         artifacts: [],
@@ -1162,12 +1180,30 @@ export const useChatStore = create<ChatState>()(
           //   projectId: conversation.metadata.projectId
           // });
 
+          // Check if this is a graph mode conversation
+          const isGraphMode = conversation.metadata.mode === 'graph_mode';
+
+          // For graph mode, always show the artifact
+          let artifactSettings = {
+            selectedArtifactId: null as string | null,
+            showArtifactWindow: false
+          };
+
+          if (isGraphMode && conversation.artifacts && conversation.artifacts.length > 0) {
+            // Graph mode has exactly one artifact - always show it
+            const graphArtifact = conversation.artifacts[0];
+            artifactSettings = {
+              selectedArtifactId: graphArtifact.id,
+              showArtifactWindow: true
+            };
+          }
+
           set({
             currentConversationId: id,
             messages: conversation.messages,
             artifacts: conversation.artifacts || [],
-            selectedArtifactId: null,
-            showArtifactWindow: false,
+            selectedArtifactId: artifactSettings.selectedArtifactId,
+            showArtifactWindow: artifactSettings.showArtifactWindow,
             inProjectConversationFlow: isProjectConversation
           });
 

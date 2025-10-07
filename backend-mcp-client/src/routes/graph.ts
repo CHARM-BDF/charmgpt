@@ -173,17 +173,24 @@ router.delete('/:conversationId/nodes/:nodeId', async (req: Request, res: Respon
     
     loggingService.log('info', `Deleting node ${nodeId} from conversation: ${conversationId}`);
     
-    await graphDb.deleteNode(nodeId);
+    // Get graph project to get graphId
+    const graphProject = await graphDb.getGraphProject(conversationId);
+    if (!graphProject) {
+      return res.status(404).json({
+        success: false,
+        error: 'Graph project not found for this conversation'
+      });
+    }
+    
+    // Delete node with correct parameters
+    await graphDb.deleteNode(nodeId, graphProject.id);
     
     // Save state for undo/redo
-    const graphProject = await graphDb.getGraphProject(conversationId);
-    if (graphProject) {
-      await graphDb.saveState(
-        graphProject.id,
-        `Deleted node: ${nodeId}`,
-        await graphDb.getCurrentGraphState(conversationId)
-      );
-    }
+    await graphDb.saveState(
+      graphProject.id,
+      `Deleted node: ${nodeId}`,
+      await graphDb.getCurrentGraphState(conversationId)
+    );
     
     res.json({
       success: true,
