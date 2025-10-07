@@ -1067,6 +1067,161 @@ case 'application/vnd.knowledge-graph':
 2. **Create Graph MCP** - Specialized MCP for Graph Mode conversations
 3. **Update artifact prevention** - Block new artifacts in Graph Mode conversations
 
+## Critical Debugging Insights: Conversation ID vs Artifact ID
+
+### **🚨 MAJOR ISSUE RESOLVED: Scope Bug in ChatService**
+
+During implementation, we discovered a critical scope bug that caused Graph Mode MCPs to receive the wrong conversation ID (artifact ID instead of conversation ID). This section documents the debugging process and solution for future reference.
+
+#### **The Problem**
+- **Symptom**: MCPs reported "graph is empty" despite data being visible in frontend
+- **Root Cause**: MCPs received artifact ID (`97d364c0-84fd-459d-a0a4-3e6eb067d0e8`) instead of conversation ID (`343ade85-013c-4522-bfd1-3c59df68d4a8`)
+- **Impact**: Database queries failed because they used wrong ID
+
+#### **The Scope Bug**
+```typescript
+// ❌ BROKEN: Scope issue in ChatService
+async executeToolCall(serverName: string, toolName: string, args: any) {
+  // options.conversationId is undefined here due to closure scope
+  if (options.conversationId) {  // This was always false!
+    // Database context injection never happened
+  }
+}
+
+// ✅ FIXED: Store conversationId as class property
+class ChatService {
+  private currentConversationId?: string;
+  
+  async processChat(options: { conversationId?: string }) {
+    this.currentConversationId = options.conversationId;  // Store in class
+  }
+  
+  async executeToolCall(serverName: string, toolName: string, args: any) {
+    if (this.currentConversationId) {  // Now works!
+      // Database context injection happens correctly
+    }
+  }
+}
+```
+
+#### **Why MCP Got Artifact ID**
+When the backend didn't provide `databaseContext` due to the scope bug:
+1. **MCP Schema Required It**: The tool schema required `databaseContext` parameter
+2. **AI Filled It In**: The AI model constructed the missing parameter
+3. **Wrong ID Used**: AI used artifact ID from `pinnedArtifacts` instead of conversation ID
+4. **Database Queries Failed**: MCP queried wrong conversation, found no data
+
+#### **Debugging Process**
+1. **Added Extensive Logging**: Frontend, backend routes, ChatService, and MCP
+2. **Traced ID Flow**: Found conversation ID was correct until ChatService
+3. **Discovered Scope Issue**: `options.conversationId` was undefined in closure
+4. **Fixed with Class Property**: Stored conversation ID as `this.currentConversationId`
+
+#### **Key Lessons for Future Development**
+
+##### **1. Always Add Comprehensive Logging**
+```typescript
+// Add logging at every layer for ID tracing
+console.error('🔍 FRONTEND: currentConversationId:', currentConversationId);
+console.error('🔍 ROUTE: conversationId from body:', conversationId);
+console.error('🔍 CHATSERVICE: options.conversationId:', options.conversationId);
+console.error('🔍 MCP: databaseContext received:', databaseContext);
+```
+
+##### **2. Watch for Scope Issues in Async Code**
+```typescript
+// ❌ Dangerous: Closure scope issues
+async someMethod() {
+  const id = this.getId();
+  setTimeout(() => {
+    console.log(id);  // Might be undefined due to scope
+  }, 1000);
+}
+
+// ✅ Safe: Store in class property
+class MyClass {
+  private currentId?: string;
+  
+  async someMethod() {
+    this.currentId = this.getId();
+    setTimeout(() => {
+      console.log(this.currentId);  // Always available
+    }, 1000);
+  }
+}
+```
+
+##### **3. MCP Schema Requirements**
+- **Required Parameters**: If MCP schema requires a parameter, backend MUST provide it
+- **AI Fallback**: If backend doesn't provide required parameters, AI will fill them in (often incorrectly)
+- **Validation**: Always validate that MCPs receive expected data structure
+
+##### **4. Database Context Injection Pattern**
+```typescript
+// ✅ Correct pattern for MCP database context injection
+if (this.currentConversationId && serverName.includes('graph')) {
+  args.databaseContext = {
+    conversationId: this.currentConversationId,
+    apiBaseUrl: process.env.API_BASE_URL,
+    accessToken: "mcp-access-token"
+  };
+}
+```
+
+##### **5. ID Mismatch Debugging Checklist**
+- [ ] Frontend sends correct conversation ID
+- [ ] Backend route extracts conversation ID correctly
+- [ ] ChatService stores conversation ID in class property
+- [ ] Database context injection uses stored conversation ID
+- [ ] MCP receives correct database context
+- [ ] MCP uses conversation ID for database queries
+
+#### **Files Modified During Debugging**
+1. **`frontend-client/src/store/chatStore.ts`**: Added conversation ID to request body
+2. **`backend-mcp-client/src/routes/chat-artifacts.ts`**: Extract conversation ID from request
+3. **`backend-mcp-client/src/services/chat/index.ts`**: Fixed scope bug with class property
+4. **`custom-mcp-servers/graphModeMCPs/graphmodeBaseMCP/src/index.ts`**: Added extensive logging
+
+#### **Testing the Fix**
+```bash
+# Test conversation ID flow
+1. Create Graph Mode conversation
+2. Add test data to graph
+3. Ask "what is in the graph?"
+4. Check logs for correct conversation ID at each layer
+5. Verify MCP returns graph data (not empty)
+```
+
+### **Future Prevention Strategies**
+
+#### **1. Add ID Validation Middleware**
+```typescript
+// Add to ChatService
+private validateConversationId(id: string): boolean {
+  if (!id || id.length < 10) {
+    console.error('❌ Invalid conversation ID:', id);
+    return false;
+  }
+  return true;
+}
+```
+
+#### **2. MCP Response Validation**
+```typescript
+// Add to MCP tools
+if (!databaseContext?.conversationId) {
+  throw new Error('Missing conversation ID in database context');
+}
+```
+
+#### **3. Database Query Logging**
+```typescript
+// Add to all database operations
+console.error('🔍 DATABASE: Querying conversation:', conversationId);
+const result = await db.graphProject.findFirst({ where: { conversationId } });
+console.error('🔍 DATABASE: Found graph:', result ? 'YES' : 'NO');
+```
+
 ## Next Steps
 
 1. **Update Conversation System**: Add mode property and Graph Mode conversation creation
