@@ -30,11 +30,18 @@ router.post('/', async (req: Request<{}, {}, {
   temperature?: number;
   maxTokens?: number;
 }>, res: Response) => {
+  // CRITICAL: Use console.error to force logging to appear
+  console.error('=====================================================');
+  console.error('🔥🔥🔥 [CHAT-ARTIFACTS] ROUTE HIT! 🔥🔥🔥');
+  console.error('=====================================================');
+  
   // Extract or generate conversation ID
   const conversationId = req.body.conversationId || crypto.randomUUID();
-  console.log('🔥 [CHAT-ARTIFACTS] Request body conversationId:', req.body.conversationId);
-  console.log('🔥 [CHAT-ARTIFACTS] Using conversation ID:', conversationId);
-  console.log('🔥 [CHAT-ARTIFACTS] Was ID from request body?', !!req.body.conversationId);
+  console.error('🔥 [CHAT-ARTIFACTS] Request body conversationId:', req.body.conversationId);
+  console.error('🔥 [CHAT-ARTIFACTS] Using conversation ID:', conversationId);
+  console.error('🔥 [CHAT-ARTIFACTS] Was ID from request body?', !!req.body.conversationId);
+  console.error('🔥 [CHAT-ARTIFACTS] Request body keys:', Object.keys(req.body));
+  console.error('=====================================================');
   
   // Set headers for streaming
   res.setHeader('Content-Type', 'application/json');

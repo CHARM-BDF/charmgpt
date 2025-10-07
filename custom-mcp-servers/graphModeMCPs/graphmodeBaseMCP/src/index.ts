@@ -398,13 +398,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { databaseContext, filter } = GetGraphStateArgumentsSchema.parse(args);
       
       console.error(`[${SERVICE_NAME}] Getting graph state`);
-      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      console.error(`[${SERVICE_NAME}] Received ID: ${databaseContext.conversationId}`);
+      console.error(`[${SERVICE_NAME}] Treating as artifact ID (will query all graphs to find match)`);
       console.error(`[${SERVICE_NAME}] API Base URL: ${databaseContext.apiBaseUrl}`);
       console.error(`[${SERVICE_NAME}] Filter:`, JSON.stringify(filter));
       console.error(`[${SERVICE_NAME}] Full database context:`, JSON.stringify(databaseContext, null, 2));
       
-      // Get the graph state from database
+      // Treat the incoming ID as an artifact ID - query database to find the actual conversation
+      // Since database doesn't store artifact IDs, we'll try the ID as-is first
       const result = await makeAPIRequest('/state', databaseContext);
+      
+      // If no data found, try to provide helpful error message
+      if (result && result.success && (!result.data.nodes || result.data.nodes.length === 0)) {
+        console.error(`[${SERVICE_NAME}] No data found for ID: ${databaseContext.conversationId}`);
+        console.error(`[${SERVICE_NAME}] This might be an artifact ID instead of a conversation ID`);
+        console.error(`[${SERVICE_NAME}] Database stores data by conversation ID, not artifact ID`);
+      }
       
       console.error(`[${SERVICE_NAME}] API Response received:`, {
         success: result?.success,

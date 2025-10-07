@@ -101,6 +101,8 @@ export class ChatService {
   private messageService: MessageService;
   /** Artifact service for artifact processing */
   private artifactService: ArtifactService;
+  /** Current conversation ID for Graph Mode */
+  private currentConversationId?: string;
   
   /**
    * Create a new Chat Service
@@ -152,6 +154,17 @@ export class ChatService {
     },
     statusHandler?: (status: string) => void
   ): Promise<StoreFormat> {
+    // CRITICAL DEBUG: Entry point
+    console.error('=====================================================');
+    console.error('🎯 [CHAT-SERVICE] processChat CALLED');
+    console.error('🎯 [CHAT-SERVICE] options.conversationId:', options.conversationId);
+    console.error('🎯 [CHAT-SERVICE] options keys:', Object.keys(options));
+    console.error('=====================================================');
+    
+    // Store conversation ID for use in tool execution
+    this.currentConversationId = options.conversationId;
+    console.error('🎯 [CHAT-SERVICE] Stored conversationId in class property:', this.currentConversationId);
+    
     // Notify status if handler provided
     statusHandler?.('Initializing chat processing...');
     
@@ -1346,20 +1359,31 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
           }
         }
         
+        // DEBUG: Check what we have before Graph Mode detection
+        console.error('🔍 [CHAT-SERVICE] Before Graph Mode check:');
+        console.error('🔍 [CHAT-SERVICE] - serverName:', serverName);
+        console.error('🔍 [CHAT-SERVICE] - toolName:', toolName);
+        console.error('🔍 [CHAT-SERVICE] - this.currentConversationId:', this.currentConversationId);
+        console.error('🔍 [CHAT-SERVICE] - Check result:', serverName === 'graph-mode-mcp' && this.currentConversationId);
+        
         // Special handling for Graph Mode MCPs - add database context
-        if (serverName === 'graph-mode-mcp' && options.conversationId) {
-          console.log('🔧 [CHAT-SERVICE] Graph Mode MCP detected - adding database context');
-          console.log('🔧 [CHAT-SERVICE] Conversation ID:', options.conversationId);
+        // USE this.currentConversationId instead of options.conversationId (options is out of scope here!)
+        if (serverName === 'graph-mode-mcp' && this.currentConversationId) {
+          console.error('=====================================================');
+          console.error('🔧🔧🔧 [CHAT-SERVICE] GRAPH MODE MCP DETECTED! 🔧🔧🔧');
+          console.error('🔧 [CHAT-SERVICE] Conversation ID:', this.currentConversationId);
+          console.error('=====================================================');
           
           enhancedInput = {
             ...enhancedInput,
             databaseContext: {
-              conversationId: options.conversationId,
+              conversationId: this.currentConversationId,
               apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
               accessToken: process.env.ACCESS_TOKEN
             }
           };
-          console.log('🔧 [CHAT-SERVICE] Enhanced input with database context');
+          console.error('🔧 [CHAT-SERVICE] Enhanced input with database context:', enhancedInput);
+          console.error('=====================================================');
         }
         
         // Execute the tool call
@@ -1691,9 +1715,29 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     // Prepare tool input with potential database context for Graph Mode
     let toolInput = toolCall.input;
     
-    // Note: conversationId needs to be passed through the call chain
-    // This is for the Gemini-specific path - may need options parameter added
-    console.log('🔧 [CHAT-SERVICE-GEMINI] Tool call:', { serverName, toolName });
+    console.error('=====================================================');
+    console.error('🎯 [EXECUTETOOLS] executeToolCall called');
+    console.error('🎯 [EXECUTETOOLS] serverName:', serverName);
+    console.error('🎯 [EXECUTETOOLS] toolName:', toolName);
+    console.error('🎯 [EXECUTETOOLS] this.currentConversationId:', this.currentConversationId);
+    console.error('=====================================================');
+    
+    // Special handling for Graph Mode MCPs - add database context
+    if (serverName === 'graph-mode-mcp' && this.currentConversationId) {
+      console.error('=====================================================');
+      console.error('🔧🔧🔧 [EXECUTETOOLS] GRAPH MODE MCP DETECTED! 🔧🔧🔧');
+      console.error('🔧 [EXECUTETOOLS] Adding database context with conversationId:', this.currentConversationId);
+      console.error('=====================================================');
+      
+      toolInput = {
+        ...toolInput,
+        databaseContext: {
+          conversationId: this.currentConversationId,
+          apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
+          accessToken: process.env.ACCESS_TOKEN
+        }
+      };
+    }
     
     // Execute the tool call
     const result = await this.mcpService.callTool(
