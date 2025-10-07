@@ -95,12 +95,32 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     inputRef: textareaRef as React.RefObject<HTMLTextAreaElement>,
     conversationId: isGraphModeConversation ? currentConversationId : null,
     onItemSelect: (item: GraphItem, position: number) => {
-      const before = localInput.slice(0, position - graphRefState.query.length - 1);
-      const after = localInput.slice(position);
-      // Insert actual ID for nodes, name for categories
-      const insertText = item.type === 'node' ? item.id : item.name;
-      const newInput = `${before}@${insertText}${after}`;
-      handleInputChange(newInput);
+      // Get current cursor position
+      const cursorPosition = textareaRef.current?.selectionStart || localInput.length;
+      // Find the last @ symbol before cursor
+      const textBeforeCursor = localInput.slice(0, cursorPosition);
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+      
+      
+      if (lastAtIndex === -1) {
+        // No @ found, just insert at cursor
+        const before = localInput.slice(0, cursorPosition);
+        const after = localInput.slice(cursorPosition);
+        const insertText = item.type === 'node' 
+          ? `${item.name} (${item.id})` 
+          : `@${item.name}`;
+        const newInput = `${before}${insertText}${after}`;
+        handleInputChange(newInput);
+      } else {
+        // Replace from @ to cursor
+        const before = localInput.slice(0, lastAtIndex);
+        const after = localInput.slice(cursorPosition);
+        const insertText = item.type === 'node' 
+          ? `${item.name} (${item.id})` 
+          : `@${item.name}`;
+        const newInput = `${before}${insertText}${after}`;
+        handleInputChange(newInput);
+      }
     }
   });
 
@@ -245,7 +265,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Don't submit if graph reference popup is active
+    if (e.key === 'Enter' && !e.shiftKey && !graphRefState.isActive) {
       e.preventDefault();
       handleSubmit(e);
     }
