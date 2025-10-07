@@ -50,6 +50,9 @@ export function useGraphReference({
         
         if (result.success && result.data) {
           const nodes = result.data.nodes || [];
+          console.log('[DEBUG] Raw API response nodes:', nodes.slice(0, 2));
+          console.log('[DEBUG] Node structure:', nodes[0] ? Object.keys(nodes[0]) : 'No nodes');
+          
           const categories = [...new Set(nodes.map((n: any) => n.type))];
           setGraphData({ nodes, categories });
           console.log('[NEW] Graph data loaded:', { nodeCount: nodes.length, categories, nodes: nodes.slice(0, 3) });

@@ -53,6 +53,11 @@ export const GraphReferencePopup: React.FC<GraphReferencePopupProps> = ({
 }) => {
   console.log('[NEW] GraphReferencePopup rendered with:', { query, position, loading, error, nodeCount: graphData.nodes.length });
   console.log('[NEW] Popup position details:', { x: position.x, y: position.y, left: `${position.x}px`, top: `${position.y + 20}px` });
+  console.log('[DEBUG] GraphData received by popup:', { 
+    nodeCount: graphData.nodes.length, 
+    categories: graphData.categories,
+    firstNode: graphData.nodes[0] ? { id: graphData.nodes[0].id, label: graphData.nodes[0].label, type: graphData.nodes[0].type } : 'No nodes'
+  });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
 
