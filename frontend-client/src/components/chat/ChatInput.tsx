@@ -31,11 +31,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   // Graph Mode detection
   const currentConversation = currentConversationId ? conversations[currentConversationId] : null;
   const isGraphModeConversation = currentConversation?.metadata.mode === 'graph_mode';
-  console.log('[NEW] Graph Mode detection:', { 
-    currentConversationId, 
-    isGraphModeConversation, 
-    conversationMode: currentConversation?.metadata.mode 
-  });
 
   // ADDING THIS FOR TESTING
   useEffect(() => {
@@ -44,9 +39,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     setLocalInput(defaultText);
   }, []);
 
-  useEffect(() => {
-    console.log('Selected Project ID:', selectedProjectId);
-  }, [selectedProjectId]);
 
   const addConversationToProject = useProjectStore(state => state.addConversationToProject);
 
@@ -74,7 +66,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   } = useFileReference({
     inputRef: textareaRef as React.RefObject<HTMLTextAreaElement>,
     onFileSelect: (file: FileEntry, position: number) => {
-      console.log('File selected:', file, 'at position:', position);
       const before = localInput.slice(0, position - query.length - 1); // -1 for @
       const after = localInput.slice(position);
       const newInput = `${before}@${file.name}${after}`;
@@ -126,15 +117,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
   // Update the input handling to be immediate instead of debounced
   const handleInputChange = (value: string) => {
-    console.log('1. handleInputChange called with:', value);
     setLocalInput(value);
     
     // Handle graph references (only in Graph Mode) - takes precedence over file references
     if (isGraphModeConversation) {
-      console.log('[NEW] Calling handleGraphRefInputChange with:', value);
       handleGraphRefInputChange(value);
     } else {
-      console.log('2. About to call handleFileRefInputChange');
       handleFileRefInputChange(value);
     }
     
@@ -143,13 +131,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
   // File upload handlers
   const handleFilesUploaded = (newFiles: FileAttachment[]) => {
-    console.log('🔍 UPLOAD DEBUG: handleFilesUploaded called with:', newFiles);
     setAttachments(prev => {
       const updated = [...prev, ...newFiles];
-      console.log('🔍 UPLOAD DEBUG: Updated attachments state:', updated);
       return updated;
     });
-    console.log('Files uploaded:', newFiles);
   };
 
   const handleRemoveAttachment = (fileId: string) => {
@@ -171,9 +156,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         // Select the artifact and show the artifact window
         const selectArtifact = useChatStore.getState().selectArtifact;
         selectArtifact(artifactId);
-        console.log('Created artifact from attachment:', artifactId);
-      } else {
-        console.warn('Failed to create artifact from attachment');
       }
     } catch (error) {
       console.error('Error viewing attachment as artifact:', error);
@@ -202,11 +184,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     e.preventDefault();
     if (!localInput.trim()) return;
 
-    console.log('ChatInput: Submitting message:', localInput);
-
     // Get the project conversation flow state
     const inProjectConversationFlow = useChatStore.getState().inProjectConversationFlow;
-    console.log('ChatInput: inProjectConversationFlow:', inProjectConversationFlow);
 
     // Only create a new conversation if we have a project ID AND we're not continuing a flow
     if (selectedProjectId && !inProjectConversationFlow) {
@@ -225,10 +204,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         onBack?.();
 
         try {
-          console.log('🔍 CHATINPUT DEBUG: About to call processMessage with attachments:', attachments);
-          console.log('🔍 CHATINPUT DEBUG: Attachments length:', attachments.length);
           await processMessage(localInput, attachments.length > 0 ? attachments : undefined);
-          console.log('ChatInput: Message processed successfully');
         } catch (error) {
           console.error('ChatInput: Error processing message:', error);
         }
@@ -250,10 +226,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
       });
 
       try {
-        console.log('🔍 CHATINPUT DEBUG: About to call processMessage with attachments:', attachments);
-        console.log('🔍 CHATINPUT DEBUG: Attachments length:', attachments.length);
         await processMessage(localInput, attachments.length > 0 ? attachments : undefined);
-        console.log('ChatInput: Message processed successfully');
       } catch (error) {
         console.error('ChatInput: Error processing message:', error);
       }
@@ -277,9 +250,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     // No special handling needed
   };
 
-  useEffect(() => {
-    console.log('Popup condition values:', { isActive, position, selectedProjectId });
-  }, [isActive, position, selectedProjectId]);
 
   return (
     <div className="sticky bottom-0 bg-gray-200 dark:bg-gray-900 shadow-lg">
@@ -330,12 +300,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         {/* Graph Reference Popup (only in Graph Mode) */}
         {(() => {
           const shouldShow = isGraphModeConversation && graphRefState.isActive && graphRefState.position;
-          console.log('[NEW] Graph popup render condition:', { 
-            isGraphModeConversation, 
-            isActive: graphRefState.isActive, 
-            hasPosition: !!graphRefState.position,
-            shouldShow 
-          });
           return shouldShow && graphRefState.position ? (
             <GraphReferencePopup
               query={graphRefState.query}

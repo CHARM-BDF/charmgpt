@@ -415,6 +415,73 @@ User: "The graph is currently empty"  ← FALSE! Data exists under different ID
 
 ## 🚨 **Common Issues & Solutions**
 
+### **Issue: "Graph UI Not Updating After MCP Operations" - RESOLVED!**
+
+**Symptoms**:
+- MCP operations (like node deletion) work correctly in the database
+- Graph data is updated in the database (node count decreases)
+- Frontend GraphModeViewer doesn't show changes until manual page refresh
+- Console shows graph data is being reloaded but UI doesn't update
+
+**Root Cause**: **Timing Issues with Store Subscriptions**
+
+The GraphModeViewer component wasn't reloading at the right time to catch database updates. Multiple approaches were tried:
+
+#### **❌ Failed Approach 1: Watch Message Count**
+```typescript
+// This triggered too early - before MCP completed
+useEffect(() => {
+  loadGraphDataFromDatabase();
+}, [currentConversationId, messages.length]);
+```
+**Problem**: Reloaded when user message was added (message count 7→8), but MCP hadn't executed yet. Database still had old data.
+
+#### **❌ Failed Approach 2: Watch Message Changes with Role Check**
+```typescript
+// This still had timing issues
+if (currentMsgs.length > prevMsgs.length) {
+  const lastMessage = currentMsgs[currentMsgs.length - 1];
+  if (lastMessage?.role === 'assistant') {
+    loadGraphDataFromDatabase();
+  }
+}
+```
+**Problem**: Even when MCP response was added (message count 8→9), there were race conditions where the database update wasn't complete yet.
+
+#### **❌ Failed Approach 3: Fixed Delays**
+```typescript
+// Adding delays didn't solve the fundamental timing issue
+setTimeout(() => {
+  loadGraphDataFromDatabase();
+}, 1000);
+```
+**Problem**: Arbitrary delays are unreliable and don't guarantee the database update is complete.
+
+#### **✅ Successful Solution: Watch `isLoading` State**
+```typescript
+// Watch for loading state changes - triggers when MCP response is fully complete
+const unsubscribe = useChatStore.subscribe((state, prevState) => {
+  const currentLoading = state.isLoading;
+  const prevLoading = prevState.isLoading;
+  
+  // Only reload when loading changes from true to false (response complete)
+  if (prevLoading === true && currentLoading === false) {
+    console.log('🔄 MCP response complete, reloading graph data');
+    loadGraphDataFromDatabase();
+  }
+});
+```
+
+**Why This Works**:
+- ✅ **Perfect Timing**: `isLoading: false` means the entire MCP response is processed
+- ✅ **No Race Conditions**: Database update is definitely complete
+- ✅ **No Subscription Noise**: Only fires once per MCP operation
+- ✅ **Reliable**: Tied to the exact moment the MCP response finishes
+
+**Implementation Location**: `frontend-client/src/components/artifacts/GraphModeViewer.tsx`
+
+**Key Insight**: The `isLoading` state is the most reliable indicator that an MCP operation has fully completed, including all database updates. Other store properties (message count, message content) can change at different times during the streaming process, but `isLoading: false` is the definitive signal that everything is done.
+
 ### **Issue: "Graph is empty" (Most Common) - RESOLVED!**
 
 **Symptoms**:

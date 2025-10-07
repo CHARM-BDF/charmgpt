@@ -50,14 +50,9 @@ export function useGraphReference({
         
         if (result.success && result.data) {
           const nodes = result.data.nodes || [];
-          console.log('[DEBUG] Raw API response nodes:', nodes.slice(0, 2));
-          console.log('[DEBUG] Node structure:', nodes[0] ? Object.keys(nodes[0]) : 'No nodes');
-          
           const categories = [...new Set(nodes.map((n: any) => n.type))];
           setGraphData({ nodes, categories });
-          console.log('[NEW] Graph data loaded:', { nodeCount: nodes.length, categories, nodes: nodes.slice(0, 3) });
         } else {
-          console.log('[NEW] No graph data available for conversation:', conversationId);
           setGraphData({ nodes: [], categories: [] });
         }
       } catch (error) {
@@ -77,7 +72,6 @@ export function useGraphReference({
   // Detect @ references in text
   const detectGraphReference = useCallback((text: string): { isActive: boolean; query: string; position: number } => {
     const match = text.match(/@([^\s]*)$/);
-    console.log('[NEW] Regex match result:', { text, match });
     return {
       isActive: !!match,
       query: match ? match[1] : '',
@@ -88,7 +82,6 @@ export function useGraphReference({
   // Handle input changes and detect @ references
   const handleInputChange = useCallback((text: string) => {
     const { isActive, query, position } = detectGraphReference(text);
-    console.log('[NEW] Graph reference detection:', { isActive, query, position, text });
     
     if (isActive && inputRef.current) {
       // Calculate popup position
@@ -123,7 +116,6 @@ export function useGraphReference({
         y: textareaRect.top + paddingTop + (currentLineNumber * lineHeight)
       };
 
-      console.log('[NEW] Setting graph ref state active:', { query, popupPosition });
       setGraphRefState({
         isActive: true,
         query,
@@ -131,7 +123,6 @@ export function useGraphReference({
         selectedItem: null
       });
     } else {
-      console.log('[NEW] Setting graph ref state inactive');
       setGraphRefState(prev => ({
         ...prev,
         isActive: false,

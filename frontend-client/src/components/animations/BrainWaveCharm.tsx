@@ -31,10 +31,6 @@ const BrainWaveCharm: React.FC<BrainWaveCharmProps> = () => {
   // Get isLoading directly from store
   const isLoading = useChatStore(state => state.isLoading);
   
-  // Log when isLoading changes
-  useEffect(() => {
-    console.log('[BrainWaveCharm] isLoading changed:', isLoading);
-  }, [isLoading]);
   
   return (
     <div className="flex items-center">

@@ -106,6 +106,12 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const updateGraphArtifact = useChatStore(state => state.updateGraphArtifact);
   const updateChatInput = useChatStore(state => state.updateChatInput);
   
+  // Get current conversation ID and messages for auto-reload
+  const currentConversationId = useChatStore(state => state.currentConversationId);
+  const messages = useChatStore(state => 
+    currentConversationId ? state.conversations[currentConversationId]?.messages || [] : []
+  );
+  
   const isPinned = artifactId ? getPinnedGraphId() === artifactId : false;
   
   // New state for notification popup
@@ -183,68 +189,88 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   }, [data]);
 
   // Load graph data from database for Graph Mode conversations
-  useEffect(() => {
-    const loadGraphDataFromDatabase = async () => {
-      // Check if this is a Graph Mode conversation
-      const currentConversationId = useChatStore.getState().currentConversationId;
-      if (!currentConversationId) {
-        console.log('No conversation ID available, skipping database load');
-        return;
-      }
+  const loadGraphDataFromDatabase = useCallback(async () => {
+    // Check if this is a Graph Mode conversation
+    if (!currentConversationId) {
+      console.log('No conversation ID available, skipping database load');
+      return;
+    }
+    
+    console.log('Loading graph data for conversation:', currentConversationId);
+
+    try {
+      console.log('Loading graph data from database for conversation:', currentConversationId);
+      const response = await fetch(`/api/graph/${currentConversationId}/state`);
       
-      console.log('Loading graph data for conversation:', currentConversationId);
-
-      try {
-        console.log('Loading graph data from database for conversation:', currentConversationId);
-        const response = await fetch(`/api/graph/${currentConversationId}/state`);
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            console.log('Graph data loaded from database:', result.data);
-            
-            // Convert database format to knowledge graph format
-            const graphData = {
-              nodes: result.data.nodes.map((node: any) => {
-                const category = normalizeCategory(node.data?.category || node.type);
-                
-                return {
-                  id: node.id, // Use canonical ID as primary ID
-                  name: node.label,
-                  canonicalId: node.id, // Store canonical ID
-                  category,
-                  group: getGroupForCategory(category),
-                  val: 15,  // Slightly larger for better visibility
-                  entityType: node.type,
-                  data: node.data // Put data in data field, not metadata
-                };
-              }),
-              links: result.data.edges.map((edge: any) => ({
-                source: edge.source,
-                target: edge.target,
-                label: edge.label,
-                value: 1
-              }))
-            };
-            
-            console.log('Converted graph data:', graphData);
-            console.log('Node IDs in converted data:', graphData.nodes.map((n: any) => ({ id: n.id, name: n.name, fill: n.fill, color: n.color })));
-            console.log('Edge sources/targets:', graphData.links.map((e: any) => ({ source: e.source, target: e.target })));
-            console.log('🎨 First node with color:', graphData.nodes[0]);
-            setParsedData(graphData);
-          }
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          console.log('📊 Graph data loaded from database:', {
+            nodeCount: result.data.nodes?.length || 0,
+            edgeCount: result.data.edges?.length || 0,
+            nodeIds: result.data.nodes?.map((n: any) => n.id) || []
+          });
+          
+          // Convert database format to knowledge graph format
+          const graphData = {
+            nodes: result.data.nodes.map((node: any) => {
+              const category = normalizeCategory(node.data?.category || node.type);
+              
+              return {
+                id: node.id, // Use canonical ID as primary ID
+                name: node.label,
+                canonicalId: node.id, // Store canonical ID
+                category,
+                group: getGroupForCategory(category),
+                val: 15,  // Slightly larger for better visibility
+                entityType: node.type,
+                data: node.data // Put data in data field, not metadata
+              };
+            }),
+            links: result.data.edges.map((edge: any) => ({
+              source: edge.source,
+              target: edge.target,
+              label: edge.label,
+              value: 1
+            }))
+          };
+          
+          console.log('Converted graph data:', graphData);
+          console.log('Node IDs in converted data:', graphData.nodes.map((n: any) => ({ id: n.id, name: n.name, fill: n.fill, color: n.color })));
+          console.log('Edge sources/targets:', graphData.links.map((e: any) => ({ source: e.source, target: e.target })));
+          console.log('🎨 First node with color:', graphData.nodes[0]);
+          setParsedData(graphData);
         }
-      } catch (error) {
-        console.error('Error loading graph data from database:', error);
       }
-    };
+    } catch (error) {
+      console.error('Error loading graph data from database:', error);
+    }
+  }, [currentConversationId]);
 
-    // Only load from database if we have a conversation ID and the artifact is empty
-    const currentConversationId = useChatStore.getState().currentConversationId;
-    if (currentConversationId && (!parsedData || (parsedData.nodes && parsedData.nodes.length === 0))) {
+  useEffect(() => {
+    // Load from database when conversation changes
+    if (currentConversationId) {
       loadGraphDataFromDatabase();
     }
-  }, []);
+  }, [currentConversationId, loadGraphDataFromDatabase]);
+  
+  // Reload graph when new messages arrive (MCP responses) - Approach 2
+  useEffect(() => {
+    if (!currentConversationId) return;
+    
+    const unsubscribe = useChatStore.subscribe((state, prevState) => {
+      const currentLoading = state.isLoading;
+      const prevLoading = prevState.isLoading;
+      
+      // Only reload when loading changes from true to false (response complete)
+      if (prevLoading === true && currentLoading === false) {
+        console.log('🔄 MCP response complete, reloading graph data');
+        loadGraphDataFromDatabase();
+      }
+    });
+    
+    return unsubscribe;
+  }, [currentConversationId, loadGraphDataFromDatabase]);
 
   // Adjust dimensions based on container size
   useEffect(() => {

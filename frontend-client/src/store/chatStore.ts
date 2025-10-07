@@ -666,23 +666,17 @@ export const useChatStore = create<ChatState>()(
               
               // Decode the chunk and add to buffer
               const newText = decoder.decode(value, { stream: true });
-              console.log('[STREAM DEBUG] Raw chunk received:', newText);
               buffer += newText;
               
               // Process complete JSON objects
               const lines = buffer.split('\n');
               buffer = lines.pop() || ''; // Keep the last potentially incomplete line in the buffer
               
-              console.log('[STREAM DEBUG] Processing lines:', lines.length);
-              console.log('[STREAM DEBUG] Remaining buffer:', buffer);
-              
               for (const line of lines) {
                 if (!line.trim()) continue;
                 
                 try {
-                  console.log('[STREAM DEBUG] Processing line:', line);
                   const data = JSON.parse(line);
-                  console.log(`[STREAM DEBUG] Received chunk type:`, data.type);
                   
                   if (data.type === 'status') {
                     // console.log('[STATE UPDATE 3 - Status] Processing status update:', {
@@ -789,8 +783,6 @@ export const useChatStore = create<ChatState>()(
                   }
                   else if (data.type === 'artifact') {
                     // Process artifact - don't update UI immediately
-                    // console.log('[STREAM DEBUG] Received artifact:', data.artifact?.title);
-                    // console.log('[STATE UPDATE - Artifact] About to add artifact to state');
                     
                     // Add the artifact to the store immediately
                     if (data.artifact) {
@@ -830,9 +822,6 @@ export const useChatStore = create<ChatState>()(
                   }
                   else if (data.type === 'result') {
                     // Store the final response for processing after the loop
-                    // console.log('[STREAM DEBUG] Received final result data:', {
-                    //   hasResponse: !!data.response,
-                    //   responseType: typeof data.response,
                     //   responseKeys: data.response ? Object.keys(data.response) : [],
                     //   conversationType: data.response?.conversation ? typeof data.response.conversation : 'none',
                     //   thinkingPresent: !!data.response?.thinking
