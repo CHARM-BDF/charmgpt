@@ -154,6 +154,13 @@
         "../custom-mcp-servers/racket-mcp/dist/index.js"
       ]
     },
+    "graph": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphManipulate-mcp/dist/index.js"
+      ],
+      "timeout": 120000
+    },
     "id-finder": {
       "command": "node",
       "args": [
@@ -210,6 +217,24 @@
       ],
       "timeout": 60000
     },
+    // "remote-test-server": {
+    //   "type": "remote",
+    //   "transport": "sse",
+    //   "url": "https://remote-mcp-server.metareflective.app/sse",
+    //   "timeout": 30000
+    // },
+    // "biothings-core": {
+    //   "type": "remote",
+    //   "transport": "http",
+    //   "url": "https://biothings.ncats.io/mcp/biothings_core",
+    //   "timeout": 30000
+    // },
+    // "biothings": {
+    //   "type": "remote",
+    //   "transport": "http",
+    //   "url": "https://biothings.ncats.io/mcp/biothings",
+    //   "timeout": 30000
+    // },
     "smart-api": {
       "command": "node",
       "args": [
@@ -223,18 +248,6 @@
         "../custom-mcp-servers/pfocr-mcp/dist/index.js"
       ],
       "timeout": 30000
-    },
-    "graph-mode-mcp": {
-      "command": "node",
-      "args": [
-        "../custom-mcp-servers/graphModeMCPs/graphmodeBaseMCP/dist/index.js"
-      ],
-      "disabled": false,
-      "env": {
-        "API_BASE_URL": "http://localhost:3001",
-        "NODE_ENV": "development"
-      },
-      "description": "Graph Mode MCP - Handles removal and filtering operations for knowledge graphs"
     }
   }
 }

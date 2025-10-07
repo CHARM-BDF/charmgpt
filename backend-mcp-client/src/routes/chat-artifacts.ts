@@ -16,6 +16,7 @@ const router = express.Router();
 router.post('/', async (req: Request<{}, {}, { 
   message: string; 
   history: Array<{ role: 'user' | 'assistant' | 'system'; content: string | any[] }>;
+  conversationId?: string;
   modelProvider?: 'anthropic' | 'ollama' | 'openai' | 'gemini';
   blockedServers?: string[];
   enabledTools?: Record<string, string[]>;
@@ -29,6 +30,12 @@ router.post('/', async (req: Request<{}, {}, {
   temperature?: number;
   maxTokens?: number;
 }>, res: Response) => {
+  // Extract or generate conversation ID
+  const conversationId = req.body.conversationId || crypto.randomUUID();
+  console.log('🔥 [CHAT-ARTIFACTS] Request body conversationId:', req.body.conversationId);
+  console.log('🔥 [CHAT-ARTIFACTS] Using conversation ID:', conversationId);
+  console.log('🔥 [CHAT-ARTIFACTS] Was ID from request body?', !!req.body.conversationId);
+  
   // Set headers for streaming
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Transfer-Encoding', 'chunked');
@@ -219,6 +226,7 @@ router.post('/', async (req: Request<{}, {}, {
       message,
       history,
       {
+        conversationId,  // Pass conversation ID to ChatService for Graph Mode
         modelProvider,
         blockedServers,
         enabledTools,

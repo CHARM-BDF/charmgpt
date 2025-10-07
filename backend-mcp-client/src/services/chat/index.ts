@@ -136,6 +136,7 @@ export class ChatService {
     message: string,
     history: ChatMessage[],
     options: {
+      conversationId?: string;
       modelProvider: ModelType;
       blockedServers?: string[];
       enabledTools?: Record<string, string[]>;
@@ -1345,6 +1346,22 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
           }
         }
         
+        // Special handling for Graph Mode MCPs - add database context
+        if (serverName === 'graph-mode-mcp' && options.conversationId) {
+          console.log('🔧 [CHAT-SERVICE] Graph Mode MCP detected - adding database context');
+          console.log('🔧 [CHAT-SERVICE] Conversation ID:', options.conversationId);
+          
+          enhancedInput = {
+            ...enhancedInput,
+            databaseContext: {
+              conversationId: options.conversationId,
+              apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
+              accessToken: process.env.ACCESS_TOKEN
+            }
+          };
+          console.log('🔧 [CHAT-SERVICE] Enhanced input with database context');
+        }
+        
         // Execute the tool call
         const toolResult = await this.mcpService.callTool(
           serverName,
@@ -1671,11 +1688,18 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     // Split into server and tool name
     const [serverName, toolName] = originalToolName.split(':');
     
+    // Prepare tool input with potential database context for Graph Mode
+    let toolInput = toolCall.input;
+    
+    // Note: conversationId needs to be passed through the call chain
+    // This is for the Gemini-specific path - may need options parameter added
+    console.log('🔧 [CHAT-SERVICE-GEMINI] Tool call:', { serverName, toolName });
+    
     // Execute the tool call
     const result = await this.mcpService.callTool(
       serverName,
       toolName,
-      toolCall.input
+      toolInput
     );
     
     // Format the result for the tool

@@ -97,6 +97,7 @@ const anthropic = new Anthropic({
 router.post('/', async (req: Request<{}, {}, { 
   message: string; 
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
+  conversationId?: string;
   blockedServers?: string[];
   enabledTools?: Record<string, string[]>;
   modelProvider?: string;
@@ -116,6 +117,15 @@ router.post('/', async (req: Request<{}, {}, {
   const loggingService = req.app.locals.loggingService as LoggingService;
   const mcpService = req.app.locals.mcpService as MCPService;
   const llmService = req.app.locals.llmService;
+  
+  // Extract or generate conversation ID
+  console.log('🔥 [CHAT-ROUTE] Request body conversationId:', req.body.conversationId);
+  console.log('🔥 [CHAT-ROUTE] Request body keys:', Object.keys(req.body));
+  console.log('🔥 [CHAT-ROUTE] Full request body:', JSON.stringify(req.body, null, 2).substring(0, 500));
+  
+  const conversationId = req.body.conversationId || crypto.randomUUID();
+  console.log('🔥 [CHAT-ROUTE] Using conversation ID:', conversationId);
+  console.log('🔥 [CHAT-ROUTE] Was ID from request body?', !!req.body.conversationId);
   
   // Set headers for streaming
   res.setHeader('Content-Type', 'application/json');
@@ -384,8 +394,44 @@ router.post('/', async (req: Request<{}, {}, {
           console.log('Tool:', toolName);
           console.log('Arguments:', content.input);
           
+          // Special handling for Graph Mode MCPs - add database context
+          let toolArguments = content.input as Record<string, unknown>;
+          if (serverName === 'graph-mode-mcp') {
+            console.log('🔧 Graph Mode MCP detected - adding database context');
+            console.log('🔧 Current conversationId from request:', conversationId);
+            console.log('🔧 Request body keys:', Object.keys(req.body));
+            console.log('🔧 Original tool arguments:', content.input);
+            
+            toolArguments = {
+              ...toolArguments,
+              databaseContext: {
+                conversationId: conversationId,
+                apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
+                accessToken: process.env.ACCESS_TOKEN
+              }
+            };
+            console.log('🔧 Enhanced arguments with database context:', toolArguments);
+            
+            // Test the API endpoint directly to verify data exists
+            try {
+              const testUrl = `http://localhost:3001/api/graph/${conversationId}/state`;
+              console.log('🔧 Testing API endpoint directly:', testUrl);
+              const testResponse = await fetch(testUrl);
+              const testData = await testResponse.json();
+              console.log('🔧 Direct API test result:', {
+                status: testResponse.status,
+                success: testData.success,
+                nodeCount: testData.data?.nodes?.length || 0,
+                edgeCount: testData.data?.edges?.length || 0,
+                conversationId: conversationId
+              });
+            } catch (testError) {
+              console.error('🔧 Direct API test failed:', testError);
+            }
+          }
+          
           // Execute tool
-          const toolResult = await mcpService.callTool(serverName, toolName, content.input as Record<string, unknown>);
+          const toolResult = await mcpService.callTool(serverName, toolName, toolArguments);
 
           logToolCall('MCP_RESPONSE', {
             serverName,

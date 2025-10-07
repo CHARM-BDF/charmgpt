@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "graph-mode-mcp": {
+      "command": "node",
+      "args": [
+        "/Users/dr.crouse/Documents/GitHubProjects/charm-mcp/custom-mcp-servers/graphModeMCPs/graphmodeBaseMCP/dist/index.js"
+      ],
+      "disabled": false,
+      "env": {
+        "API_BASE_URL": "http://localhost:5001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode MCP - Handles removal and filtering operations for knowledge graphs"
+    }
+  }
+}
+

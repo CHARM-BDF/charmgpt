@@ -440,6 +440,8 @@ export const useChatStore = create<ChatState>()(
         processMessage: async (content: string, attachments?: FileAttachment[]) => {
           const { conversations, currentConversationId, activeCompletionId } = get();
           console.log('[DEBUG] Starting processMessage');
+          console.log('🔥 [CHATSTORE] Current conversation ID:', currentConversationId);
+          console.log('🔥 [CHATSTORE] Available conversations:', Object.keys(conversations));
           
           if (activeCompletionId) {
             console.warn('ChatStore: Cannot process a new message while a completion is already in progress');
@@ -457,8 +459,14 @@ export const useChatStore = create<ChatState>()(
           const currentConversation = conversations[currentConversationId as string];
           if (!currentConversation) {
             console.error('ChatStore: No current conversation found');
+            console.error('🔥 [CHATSTORE] currentConversationId:', currentConversationId);
+            console.error('🔥 [CHATSTORE] Available conversation IDs:', Object.keys(conversations));
             return;
           }
+          
+          console.log('🔥 [CHATSTORE] Current conversation metadata:', currentConversation.metadata);
+          console.log('🔥 [CHATSTORE] Conversation mode:', currentConversation.metadata.mode);
+          console.log('🔥 [CHATSTORE] Conversation artifacts count:', currentConversation.artifacts?.length || 0);
           
           // Create a new assistant message immediately to store status updates
           const assistantMessageId = crypto.randomUUID();
@@ -579,16 +587,28 @@ export const useChatStore = create<ChatState>()(
           const endpoint = API_ENDPOINTS.CHAT_ARTIFACTS;
           const apiUrl = getApiUrl(endpoint);
 
+          // Debug: Check what currentConversationId actually is at this moment
+          const debugCurrentId = get().currentConversationId;
+          console.log('🔥 [CHATSTORE] DEBUG: currentConversationId from closure:', currentConversationId);
+          console.log('🔥 [CHATSTORE] DEBUG: currentConversationId from get():', debugCurrentId);
+          console.log('🔥 [CHATSTORE] DEBUG: Are they the same?', currentConversationId === debugCurrentId);
+          console.log('🔥 [CHATSTORE] DEBUG: Conversation keys in state:', Object.keys(get().conversations));
+          console.log('🔥 [CHATSTORE] DEBUG: Does currentConversationId exist in conversations?', !!get().conversations[currentConversationId as string]);
+          console.log('🔥 [CHATSTORE] DEBUG: Current conversation mode:', get().conversations[currentConversationId as string]?.metadata?.mode);
+          
           // Check stringified request body
           const requestBody = JSON.stringify({
             message: content,
             history: messageHistory,
+            conversationId: currentConversationId, // Add conversation ID for Graph Mode
             blockedServers: sanitizedBlockedServers,
             enabledTools: enabledTools,
             pinnedArtifacts: pinnedArtifacts,
             modelProvider: selectedModel,
             attachments: attachments || undefined
           });
+          
+          console.log('🔥 [CHATSTORE] Sending request with conversationId:', currentConversationId);
 
           // console.log('Full request body stringified:', requestBody);
           // console.log('Parsing request body back:', JSON.parse(requestBody).blockedServers);
@@ -1047,8 +1067,10 @@ export const useChatStore = create<ChatState>()(
           const defaultName = `Graph Mode ${Object.keys(get().conversations).length + 1}`;
           
           // Create a blank knowledge graph artifact for Graph Mode
+          // Note: Artifact has its own ID (different from conversation ID)
+          // Database stores graph data using conversation ID (not artifact ID)
           const blankGraphArtifact = {
-            id: crypto.randomUUID(),
+            id: crypto.randomUUID(), // Artifact ID (separate from conversation ID)
             type: 'application/vnd.knowledge-graph' as const,
             title: 'Graph Mode Canvas',
             content: {
@@ -1057,6 +1079,10 @@ export const useChatStore = create<ChatState>()(
             },
             timestamp: new Date()
           };
+          
+          console.log('🔥 [GRAPH-MODE] Creating conversation with ID:', id);
+          console.log('🔥 [GRAPH-MODE] Artifact ID:', blankGraphArtifact.id);
+          console.log('🔥 [GRAPH-MODE] Note: These are different IDs (1:1 relationship)');
           
           // Create a welcome message with the artifact link
           const welcomeMessage = {

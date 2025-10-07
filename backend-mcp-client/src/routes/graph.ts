@@ -27,9 +27,20 @@ router.get('/:conversationId/state', async (req: Request, res: Response) => {
     const { conversationId } = req.params;
     const loggingService = req.app.locals.loggingService as LoggingService;
     
+    console.log('🔥 [GRAPH-API] Getting graph state for conversation:', conversationId);
+    console.log('🔥 [GRAPH-API] Request headers:', req.headers);
+    console.log('🔥 [GRAPH-API] Request URL:', req.url);
+    
     loggingService.log('info', `Getting graph state for conversation: ${conversationId}`);
     
     const graphState = await getGraphDb().getCurrentGraphState(conversationId);
+    
+    console.log('🔥 [GRAPH-API] Graph state result:', {
+      hasGraphState: !!graphState,
+      nodeCount: graphState?.nodes?.length || 0,
+      edgeCount: graphState?.edges?.length || 0,
+      conversationId: conversationId
+    });
     
     if (!graphState) {
       // Return empty state for conversations without graph data yet
