@@ -228,8 +228,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             };
             
             console.log('Converted graph data:', graphData);
-            console.log('Node IDs in converted data:', graphData.nodes.map(n => ({ id: n.id, name: n.name, fill: n.fill, color: n.color })));
-            console.log('Edge sources/targets:', graphData.links.map(e => ({ source: e.source, target: e.target })));
+            console.log('Node IDs in converted data:', graphData.nodes.map((n: any) => ({ id: n.id, name: n.name, fill: n.fill, color: n.color })));
+            console.log('Edge sources/targets:', graphData.links.map((e: any) => ({ source: e.source, target: e.target })));
             console.log('🎨 First node with color:', graphData.nodes[0]);
             setParsedData(graphData);
           }
@@ -421,7 +421,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     }
 
     // Convert edges
-    let edges = [];
+    let edges: any[] = [];
     if (parsedData.links) {
       edges = parsedData.links.map((link: any, index: number) => ({
         id: `${link.source}-${link.target}-${index}`,
@@ -537,8 +537,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       if (result.success) {
         console.log('✅ Cancer data added successfully!');
         // Show success notification
-        setNotification({ message: 'Cancer research data added successfully!', type: 'success' });
-        setTimeout(() => setNotification(null), 3000);
+        setNotification({ show: true, message: 'Cancer research data added successfully!' });
+        setTimeout(() => setNotification({ show: false, message: '' }), 3000);
         
         // Refresh the graph data
         try {
@@ -572,8 +572,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
               };
               
               console.log('Updating graph display with new cancer data:', graphData);
-              console.log('Node IDs in updated data:', graphData.nodes.map(n => ({ id: n.id, name: n.name })));
-              console.log('Edge sources/targets in updated data:', graphData.links.map(e => ({ source: e.source, target: e.target })));
+              console.log('Node IDs in updated data:', graphData.nodes.map((n: any) => ({ id: n.id, name: n.name })));
+              console.log('Edge sources/targets in updated data:', graphData.links.map((e: any) => ({ source: e.source, target: e.target })));
               setParsedData(graphData);
             }
           }
@@ -582,13 +582,13 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         }
       } else {
         console.error('❌ Failed to add cancer data:', result.error);
-        setNotification({ message: `Failed to add cancer data: ${result.error}`, type: 'error' });
-        setTimeout(() => setNotification(null), 5000);
+        setNotification({ show: true, message: `Failed to add cancer data: ${result.error}` });
+        setTimeout(() => setNotification({ show: false, message: '' }), 5000);
       }
     } catch (error) {
       console.error('Error adding cancer data:', error);
-      setNotification({ message: `Error adding cancer data: ${error instanceof Error ? error.message : 'Unknown error'}`, type: 'error' });
-      setTimeout(() => setNotification(null), 5000);
+      setNotification({ show: true, message: `Error adding cancer data: ${error instanceof Error ? error.message : 'Unknown error'}` });
+      setTimeout(() => setNotification({ show: false, message: '' }), 5000);
     }
   }, [artifactId, setNotification]);
 
@@ -686,8 +686,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
               };
               
               console.log('Updating graph display with new data:', graphData);
-              console.log('Node IDs in updated data:', graphData.nodes.map(n => ({ id: n.id, name: n.name })));
-              console.log('Edge sources/targets in updated data:', graphData.links.map(e => ({ source: e.source, target: e.target })));
+              console.log('Node IDs in updated data:', graphData.nodes.map((n: any) => ({ id: n.id, name: n.name })));
+              console.log('Edge sources/targets in updated data:', graphData.links.map((e: any) => ({ source: e.source, target: e.target })));
               setParsedData(graphData);
             }
           }
