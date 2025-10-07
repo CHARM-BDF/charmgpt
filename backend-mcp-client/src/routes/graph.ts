@@ -229,9 +229,10 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
   
   try {
     const { conversationId } = req.params;
+    const { dataset = 'diabetes' } = req.body; // Default to diabetes dataset
     const loggingService = req.app.locals.loggingService as LoggingService;
     
-    console.log('=== MOCK DATA REQUEST START ===');
+    console.log(`=== MOCK DATA REQUEST START - Dataset: ${dataset} ===`);
     console.log('Conversation ID:', conversationId);
     loggingService.log('info', `Adding mock data to conversation: ${conversationId}`);
     
@@ -251,66 +252,147 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
       console.log('Created graph project:', graphProject.id);
     }
     
-    // Create mock nodes - Diabetes/Obesity related genes and diseases
-    console.log('Creating mock nodes...');
-    const mockNodes = [
-      { 
-        label: 'TP53', 
-        type: 'gene', 
-        canonicalId: 'NCBIGene:7157',
-        category: 'Gene',
-        position: { x: -150, y: -100 } 
-      },
-      { 
-        label: 'PPARG', 
-        type: 'gene', 
-        canonicalId: 'NCBIGene:5468',
-        category: 'Gene',
-        position: { x: -50, y: -100 } 
-      },
-      { 
-        label: 'INS', 
-        type: 'gene', 
-        canonicalId: 'NCBIGene:3630',
-        category: 'Gene',
-        position: { x: 50, y: -100 } 
-      },
-      { 
-        label: 'LEP', 
-        type: 'gene', 
-        canonicalId: 'NCBIGene:3952',
-        category: 'Gene',
-        position: { x: 150, y: -100 } 
-      },
-      { 
-        label: 'Type 2 Diabetes', 
-        type: 'disease', 
-        canonicalId: 'MONDO:0005148',
-        category: 'Disease',
-        position: { x: -100, y: 100 } 
-      },
-      { 
-        label: 'Obesity', 
-        type: 'disease', 
-        canonicalId: 'MONDO:0005151',
-        category: 'Disease',
-        position: { x: 100, y: 100 } 
-      },
-      { 
-        label: 'Insulin', 
-        type: 'protein', 
-        canonicalId: 'UniProtKB:P01308',
-        category: 'Protein',
-        position: { x: 0, y: 0 } 
-      },
-      { 
-        label: 'Leptin', 
-        type: 'protein', 
-        canonicalId: 'UniProtKB:P41159',
-        category: 'Protein',
-        position: { x: 0, y: 50 } 
-      }
-    ];
+    // Create mock nodes based on dataset
+    console.log(`Creating ${dataset} mock nodes...`);
+    let mockNodes;
+    
+    if (dataset === 'cancer') {
+      // Cancer research data
+      mockNodes = [
+        { 
+          label: 'STAT4', 
+          type: 'gene', 
+          canonicalId: 'NCBIGene:6775',
+          category: 'Gene',
+          position: { x: -200, y: -150 },
+          data: { category: 'gene', expression: 'high' }
+        },
+        { 
+          label: 'Sorafenib', 
+          type: 'drug', 
+          canonicalId: 'CHEBI:50924',
+          category: 'Drug',
+          position: { x: -100, y: -150 },
+          data: { category: 'drug' }
+        },
+        { 
+          label: 'Liver Cancer', 
+          type: 'disease', 
+          canonicalId: 'MONDO:0007254',
+          category: 'Disease',
+          position: { x: 0, y: -150 },
+          data: { category: 'disease' }
+        },
+        { 
+          label: 'RAF1', 
+          type: 'gene', 
+          canonicalId: 'NCBIGene:5894',
+          category: 'Gene',
+          position: { x: -200, y: 0 },
+          data: { category: 'gene', expression: 'medium' }
+        },
+        { 
+          label: 'MAPK1', 
+          type: 'gene', 
+          canonicalId: 'NCBIGene:5594',
+          category: 'Gene',
+          position: { x: -100, y: 0 },
+          data: { category: 'gene', expression: 'high' }
+        },
+        { 
+          label: 'Hepatocellular Carcinoma', 
+          type: 'disease', 
+          canonicalId: 'MONDO:0007254',
+          category: 'Disease',
+          position: { x: 0, y: 0 },
+          data: { category: 'disease' }
+        },
+        { 
+          label: 'JAK-STAT Pathway', 
+          type: 'pathway', 
+          canonicalId: 'KEGG:hsa04630',
+          category: 'Pathway',
+          position: { x: -200, y: 150 },
+          data: { category: 'pathway' }
+        },
+        { 
+          label: 'MAPK Pathway', 
+          type: 'pathway', 
+          canonicalId: 'KEGG:hsa04010',
+          category: 'Pathway',
+          position: { x: -100, y: 150 },
+          data: { category: 'pathway' }
+        }
+      ];
+    } else {
+      // Default diabetes/obesity data
+      mockNodes = [
+        { 
+          label: 'TP53', 
+          type: 'gene', 
+          canonicalId: 'NCBIGene:7157',
+          category: 'Gene',
+          position: { x: -150, y: -100 },
+          data: { category: 'gene', expression: 'medium' }
+        },
+        { 
+          label: 'PPARG', 
+          type: 'gene', 
+          canonicalId: 'NCBIGene:5468',
+          category: 'Gene',
+          position: { x: -50, y: -100 },
+          data: { category: 'gene', expression: 'high' }
+        },
+        { 
+          label: 'INS', 
+          type: 'gene', 
+          canonicalId: 'NCBIGene:3630',
+          category: 'Gene',
+          position: { x: 50, y: -100 },
+          data: { category: 'gene', expression: 'high' }
+        },
+        { 
+          label: 'LEP', 
+          type: 'gene', 
+          canonicalId: 'NCBIGene:3952',
+          category: 'Gene',
+          position: { x: 150, y: -100 },
+          data: { category: 'gene', expression: 'medium' }
+        },
+        { 
+          label: 'Type 2 Diabetes', 
+          type: 'disease', 
+          canonicalId: 'MONDO:0005148',
+          category: 'Disease',
+          position: { x: -100, y: 100 },
+          data: { category: 'disease' }
+        },
+        { 
+          label: 'Obesity', 
+          type: 'disease', 
+          canonicalId: 'MONDO:0005151',
+          category: 'Disease',
+          position: { x: 100, y: 100 },
+          data: { category: 'disease' }
+        },
+        { 
+          label: 'Insulin', 
+          type: 'protein', 
+          canonicalId: 'UniProtKB:P01308',
+          category: 'Protein',
+          position: { x: 0, y: 0 },
+          data: { category: 'protein' }
+        },
+        { 
+          label: 'Leptin', 
+          type: 'protein', 
+          canonicalId: 'UniProtKB:P41159',
+          category: 'Protein',
+          position: { x: 0, y: 50 },
+          data: { category: 'protein' }
+        }
+      ];
+    }
     
     console.log('Mock nodes data:', mockNodes);
     const createdNodes = [];
@@ -324,8 +406,8 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
           graphProject.id,
           nodeData.label,
           nodeData.type,
-          { 
-            description: `Diabetes/Obesity related ${nodeData.category}`,
+          nodeData.data || { 
+            description: `${dataset} related ${nodeData.category}`,
             canonicalId: nodeData.canonicalId,
             category: nodeData.category
           },
@@ -342,27 +424,52 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
     
     console.log('All nodes created successfully:', createdNodes.length);
     
-    // Create mock edges - Diabetes/Obesity relationships
-    console.log('Creating mock edges...');
-    const mockEdges = [
-      // Gene to Protein relationships
-      { source: createdNodes[0].id, target: createdNodes[6].id, label: 'encodes', type: 'biological' }, // TP53 -> Insulin
-      { source: createdNodes[1].id, target: createdNodes[7].id, label: 'encodes', type: 'biological' }, // PPARG -> Leptin
-      { source: createdNodes[2].id, target: createdNodes[6].id, label: 'encodes', type: 'biological' }, // INS -> Insulin
-      { source: createdNodes[3].id, target: createdNodes[7].id, label: 'encodes', type: 'biological' }, // LEP -> Leptin
-      
-      // Gene to Disease relationships
-      { source: createdNodes[0].id, target: createdNodes[4].id, label: 'associated_with', type: 'biological' }, // TP53 -> Type 2 Diabetes
-      { source: createdNodes[1].id, target: createdNodes[4].id, label: 'associated_with', type: 'biological' }, // PPARG -> Type 2 Diabetes
-      { source: createdNodes[3].id, target: createdNodes[5].id, label: 'associated_with', type: 'biological' }, // LEP -> Obesity
-      
-      // Protein to Disease relationships
-      { source: createdNodes[6].id, target: createdNodes[4].id, label: 'involved_in', type: 'biological' }, // Insulin -> Type 2 Diabetes
-      { source: createdNodes[7].id, target: createdNodes[5].id, label: 'involved_in', type: 'biological' }, // Leptin -> Obesity
-      
-      // Cross-disease relationships
-      { source: createdNodes[4].id, target: createdNodes[5].id, label: 'comorbid_with', type: 'clinical' } // Type 2 Diabetes <-> Obesity
-    ];
+    // Create mock edges based on dataset
+    console.log(`Creating ${dataset} mock edges...`);
+    let mockEdges;
+    
+    if (dataset === 'cancer') {
+      // Cancer research relationships
+      mockEdges = [
+        // Drug-target relationships
+        { source: createdNodes[1].id, target: createdNodes[3].id, label: 'inhibits', type: 'pharmacological' }, // Sorafenib -> RAF1
+        { source: createdNodes[1].id, target: createdNodes[4].id, label: 'inhibits', type: 'pharmacological' }, // Sorafenib -> MAPK1
+        
+        // Gene-pathway relationships
+        { source: createdNodes[0].id, target: createdNodes[6].id, label: 'part_of', type: 'biological' }, // STAT4 -> JAK-STAT Pathway
+        { source: createdNodes[3].id, target: createdNodes[7].id, label: 'part_of', type: 'biological' }, // RAF1 -> MAPK Pathway
+        { source: createdNodes[4].id, target: createdNodes[7].id, label: 'part_of', type: 'biological' }, // MAPK1 -> MAPK Pathway
+        
+        // Gene-disease relationships
+        { source: createdNodes[0].id, target: createdNodes[2].id, label: 'associated_with', type: 'biological' }, // STAT4 -> Liver Cancer
+        { source: createdNodes[3].id, target: createdNodes[5].id, label: 'associated_with', type: 'biological' }, // RAF1 -> HCC
+        { source: createdNodes[4].id, target: createdNodes[5].id, label: 'associated_with', type: 'biological' }, // MAPK1 -> HCC
+        
+        // Disease relationships
+        { source: createdNodes[2].id, target: createdNodes[5].id, label: 'subtype_of', type: 'clinical' } // Liver Cancer -> HCC
+      ];
+    } else {
+      // Default diabetes/obesity relationships
+      mockEdges = [
+        // Gene to Protein relationships
+        { source: createdNodes[0].id, target: createdNodes[6].id, label: 'encodes', type: 'biological' }, // TP53 -> Insulin
+        { source: createdNodes[1].id, target: createdNodes[7].id, label: 'encodes', type: 'biological' }, // PPARG -> Leptin
+        { source: createdNodes[2].id, target: createdNodes[6].id, label: 'encodes', type: 'biological' }, // INS -> Insulin
+        { source: createdNodes[3].id, target: createdNodes[7].id, label: 'encodes', type: 'biological' }, // LEP -> Leptin
+        
+        // Gene to Disease relationships
+        { source: createdNodes[0].id, target: createdNodes[4].id, label: 'associated_with', type: 'biological' }, // TP53 -> Type 2 Diabetes
+        { source: createdNodes[1].id, target: createdNodes[4].id, label: 'associated_with', type: 'biological' }, // PPARG -> Type 2 Diabetes
+        { source: createdNodes[3].id, target: createdNodes[5].id, label: 'associated_with', type: 'biological' }, // LEP -> Obesity
+        
+        // Protein to Disease relationships
+        { source: createdNodes[6].id, target: createdNodes[4].id, label: 'involved_in', type: 'biological' }, // Insulin -> Type 2 Diabetes
+        { source: createdNodes[7].id, target: createdNodes[5].id, label: 'involved_in', type: 'biological' }, // Leptin -> Obesity
+        
+        // Cross-disease relationships
+        { source: createdNodes[4].id, target: createdNodes[5].id, label: 'comorbid_with', type: 'clinical' } // Type 2 Diabetes <-> Obesity
+      ];
+    }
     
     console.log('Mock edges data:', mockEdges);
     const createdEdges = [];

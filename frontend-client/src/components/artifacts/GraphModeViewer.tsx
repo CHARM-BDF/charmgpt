@@ -5,6 +5,19 @@ import { useChatStore } from '../../store/chatStore';
 import { ChevronDown, ChevronUp, Filter, Save, Pin, PinOff, Plus, Trash2, Undo, Redo, Settings } from 'lucide-react';
 import { useMCPStore } from '../../store/mcpStore';
 
+// --- Category normalization + color palette ---
+const normalizeCategory = (value?: string) =>
+  (value ?? 'other').toString().trim().toLowerCase();
+
+const categoryColors: Record<string, string> = {
+  gene:    '#1f77b4', // blue
+  protein: '#f39c12', // orange
+  drug:    '#e74c3c', // red
+  disease: '#2ecc71', // green
+  pathway: '#9b59b6', // purple
+  other:   '#bdc3c7', // gray
+};
+
 interface GraphModeViewerProps {
   data: string | KnowledgeGraphData;
   width?: number;
@@ -151,17 +164,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     return categoryMap[category] || 6;
   };
 
-  const getColorForCategory = (category: string) => {
-    const colorMap: { [key: string]: string } = {
-      'Gene': '#e74c3c',      // Red
-      'Protein': '#3498db',    // Blue
-      'Disease': '#2ecc71',    // Green
-      'Drug': '#f39c12',      // Orange
-      'Pathway': '#9b59b6',   // Purple
-      'Other': '#95a5a6'       // Gray
-    };
-    return colorMap[category] || '#95a5a6';
-  };
+  // Color coding is now handled by Reagraph's clusterAttribute="category"
 
   // Parse the data if it's a string
   useEffect(() => {
@@ -202,17 +205,20 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             
             // Convert database format to knowledge graph format
             const graphData = {
-              nodes: result.data.nodes.map((node: any) => ({
-                id: node.id, // Use canonical ID as primary ID
-                name: node.label,
-                canonicalId: node.id, // Store canonical ID
-                category: node.data?.category || node.type,
-                group: getGroupForCategory(node.data?.category || node.type),
-                val: 15,  // Slightly larger for better visibility
-                entityType: node.type,
-                color: getColorForCategory(node.data?.category || node.type),
-                metadata: node.data
-              })),
+              nodes: result.data.nodes.map((node: any) => {
+                const category = normalizeCategory(node.data?.category || node.type);
+                
+                return {
+                  id: node.id, // Use canonical ID as primary ID
+                  name: node.label,
+                  canonicalId: node.id, // Store canonical ID
+                  category,
+                  group: getGroupForCategory(category),
+                  val: 15,  // Slightly larger for better visibility
+                  entityType: node.type,
+                  data: node.data // Put data in data field, not metadata
+                };
+              }),
               links: result.data.edges.map((edge: any) => ({
                 source: edge.source,
                 target: edge.target,
@@ -222,8 +228,9 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             };
             
             console.log('Converted graph data:', graphData);
-            console.log('Node IDs in converted data:', graphData.nodes.map(n => ({ id: n.id, name: n.name })));
+            console.log('Node IDs in converted data:', graphData.nodes.map(n => ({ id: n.id, name: n.name, fill: n.fill, color: n.color })));
             console.log('Edge sources/targets:', graphData.links.map(e => ({ source: e.source, target: e.target })));
+            console.log('🎨 First node with color:', graphData.nodes[0]);
             setParsedData(graphData);
           }
         }
@@ -382,19 +389,27 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const graphData = useMemo(() => {
     if (!parsedData || !parsedData.nodes) return { nodes: [], edges: [] };
 
-    // Convert nodes
-    const nodes = parsedData.nodes.map((node: any) => ({
-      id: node.id,
-      label: node.name || node.id,
-      color: getColorForGroup(node.group),
-      size: node.val || 10,
-      entityType: node.entityType,
-      startingId: node.startingId,
-      metadata: node.metadata,
-      isStartingNode: node.isStartingNode,
-      fx: undefined as number | undefined,
-      fy: undefined as number | undefined
-    }));
+    // Convert nodes (preserve custom fill if present; otherwise compute from category)
+    const nodes = parsedData.nodes.map((raw: any) => {
+      const category = normalizeCategory(raw.category || raw.entityType || 'other');
+      const fill = raw.fill ?? categoryColors[category] ?? categoryColors.other;
+
+      const node = {
+        id: raw.id,
+        label: raw.name || raw.id,
+        size: raw.val ?? 10,
+        entityType: raw.entityType,
+        category,                 // normalized, consistent category
+        startingId: raw.startingId,
+        metadata: raw.metadata,
+        isStartingNode: raw.isStartingNode,
+        fill,                     // <<< CRITICAL: carry fill into GraphCanvas
+        fx: undefined as number | undefined,
+        fy: undefined as number | undefined,
+      };
+
+      return node;
+    });
 
     // Check if we have exactly 2 starting nodes (connecting path scenario)
     const startingNodes = nodes.filter(node => node.isStartingNode);
@@ -480,6 +495,103 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     console.log('Redo');
   }, []);
 
+  // Add cancer research data handler
+  const handleAddCancerData = useCallback(async () => {
+    console.log('🧬 CANCER DATA BUTTON CLICKED! 🧬');
+    console.log('Artifact ID:', artifactId);
+    
+    const currentConversationId = useChatStore.getState().currentConversationId;
+    if (!currentConversationId) {
+      console.error('No conversation ID available');
+      return;
+    }
+    
+    console.log('Adding cancer research data to graph...');
+    console.log('Current conversation ID:', currentConversationId);
+    
+    try {
+      console.log('Making request to:', `/api/graph/${currentConversationId}/mock-data`);
+      console.log('Request method: POST');
+      console.log('Request headers:', { 'Content-Type': 'application/json' });
+      
+      const response = await fetch(`/api/graph/${currentConversationId}/mock-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dataset: 'cancer' })
+      });
+      
+      console.log('Response received:', response);
+      console.log('Response status:', response.status);
+      console.log('Response status text:', response.statusText);
+      
+      if (!response.ok) {
+        console.error('Response not OK:', response.status, response.statusText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Cancer data response:', result);
+      
+      if (result.success) {
+        console.log('✅ Cancer data added successfully!');
+        // Show success notification
+        setNotification({ message: 'Cancer research data added successfully!', type: 'success' });
+        setTimeout(() => setNotification(null), 3000);
+        
+        // Refresh the graph data
+        try {
+          const stateResponse = await fetch(`/api/graph/${currentConversationId}/state`);
+          if (stateResponse.ok) {
+            const stateData = await stateResponse.json();
+            console.log('Updated graph state:', stateData);
+            
+            if (stateData.success && stateData.data) {
+              // Convert database format to knowledge graph format
+              const graphData = {
+                nodes: stateData.data.nodes.map((node: any) => {
+                  const category = normalizeCategory(node.data?.category || node.type);
+                  return {
+                    id: node.id, // Use canonical ID as primary ID
+                    name: node.label,
+                    canonicalId: node.id, // Store canonical ID
+                    category,
+                    group: getGroupForCategory(category),
+                    val: 15,  // Slightly larger for better visibility
+                    entityType: node.type,
+                    metadata: node.data
+                  };
+                }),
+                links: stateData.data.edges.map((edge: any) => ({
+                  source: edge.source,
+                  target: edge.target,
+                  label: edge.label,
+                  value: 1
+                }))
+              };
+              
+              console.log('Updating graph display with new cancer data:', graphData);
+              console.log('Node IDs in updated data:', graphData.nodes.map(n => ({ id: n.id, name: n.name })));
+              console.log('Edge sources/targets in updated data:', graphData.links.map(e => ({ source: e.source, target: e.target })));
+              setParsedData(graphData);
+            }
+          }
+        } catch (fetchError) {
+          console.error('Error fetching updated graph state:', fetchError);
+        }
+      } else {
+        console.error('❌ Failed to add cancer data:', result.error);
+        setNotification({ message: `Failed to add cancer data: ${result.error}`, type: 'error' });
+        setTimeout(() => setNotification(null), 5000);
+      }
+    } catch (error) {
+      console.error('Error adding cancer data:', error);
+      setNotification({ message: `Error adding cancer data: ${error instanceof Error ? error.message : 'Unknown error'}`, type: 'error' });
+      setTimeout(() => setNotification(null), 5000);
+    }
+  }, [artifactId, setNotification]);
+
   // Add mock data handler
   const handleAddMockData = useCallback(async () => {
     console.log('🔥 MOCK DATA BUTTON CLICKED! 🔥');
@@ -549,19 +661,22 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             console.log('Updated graph state:', stateData);
             
             if (stateData.success && stateData.data) {
-              // Convert database format to knowledge graph format
-              const graphData = {
-                nodes: stateData.data.nodes.map((node: any) => ({
-                  id: node.id, // Use canonical ID as primary ID
-                  name: node.label,
-                  canonicalId: node.id, // Store canonical ID
-                  category: node.data?.category || node.type,
-                  group: getGroupForCategory(node.data?.category || node.type),
-                  val: 15,  // Slightly larger for better visibility
-                  entityType: node.type,
-                  color: getColorForCategory(node.data?.category || node.type),
-                  metadata: node.data
-                })),
+                  // Convert database format to knowledge graph format
+                  const graphData = {
+                    nodes: stateData.data.nodes.map((node: any) => {
+                      const category = normalizeCategory(node.data?.category || node.type);
+                      
+                      return {
+                        id: node.id, // Use canonical ID as primary ID
+                        name: node.label,
+                        canonicalId: node.id, // Store canonical ID
+                        category,
+                        group: getGroupForCategory(category),
+                        val: 15,  // Slightly larger for better visibility
+                        entityType: node.type,
+                        data: node.data // Put data in data field, not metadata
+                      };
+                    }),
                 links: stateData.data.edges.map((edge: any) => ({
                   source: edge.source,
                   target: edge.target,
@@ -703,10 +818,19 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             <button
               onClick={handleAddMockData}
               className="flex items-center gap-1 px-2 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded text-sm"
-              title="Add mock data for testing"
+              title="Add diabetes/obesity mock data for testing"
             >
               <Plus size={14} />
               Add Test Data
+            </button>
+            
+            <button
+              onClick={handleAddCancerData}
+              className="flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm"
+              title="Add cancer research mock data for testing"
+            >
+              <Plus size={14} />
+              Add Cancer Data
             </button>
           </div>
         </div>
