@@ -4,10 +4,13 @@ import { useProjectStore } from '../../store/projectStore';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import { useFileReference } from '../../hooks/useFileReference';
 import { FileReferencePopup } from '../fileReference/FileReferencePopup';
+import { useGraphReference } from '../../hooks/useGraphReference';
+import { GraphReferencePopup } from '../graphReference/GraphReferencePopup';
 import { FileEntry } from '@charm-mcp/shared';
 import { FileUpload } from './FileUpload';
 import { FileAttachments } from './FileAttachments';
 import { FileAttachment } from '@charm-mcp/shared';
+import { GraphItem } from '../../types/graphReference';
 
 interface ChatInputProps {
   storageService: APIStorageService;
@@ -21,7 +24,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   const addMessage = useChatStore(state => state.addMessage);
   const processMessage = useChatStore(state => state.processMessage);
   const createNewChat = useChatStore(state => state.startNewConversation);
+  const currentConversationId = useChatStore(state => state.currentConversationId);
+  const conversations = useChatStore(state => state.conversations);
   const { selectedProjectId } = useProjectStore();
+
+  // Graph Mode detection
+  const currentConversation = currentConversationId ? conversations[currentConversationId] : null;
+  const isGraphModeConversation = currentConversation?.metadata.mode === 'graph_mode';
+  console.log('[NEW] Graph Mode detection:', { 
+    currentConversationId, 
+    isGraphModeConversation, 
+    conversationMode: currentConversation?.metadata.mode 
+  });
 
   // ADDING THIS FOR TESTING
   useEffect(() => {
@@ -50,7 +64,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     }
   }, [chatInput]);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const {
     fileRefState: { isActive, query, position },
@@ -58,7 +72,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     handleFileSelect,
     closeFileRef
   } = useFileReference({
-    inputRef: textareaRef,
+    inputRef: textareaRef as React.RefObject<HTMLTextAreaElement>,
     onFileSelect: (file: FileEntry, position: number) => {
       console.log('File selected:', file, 'at position:', position);
       const before = localInput.slice(0, position - query.length - 1); // -1 for @
@@ -68,12 +82,42 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     }
   });
 
+  // Graph reference hook (only in Graph Mode)
+  const {
+    graphRefState,
+    handleInputChange: handleGraphRefInputChange,
+    handleItemSelect: handleGraphItemSelect,
+    closeGraphRef,
+    graphData,
+    loading: graphLoading,
+    error: graphError
+  } = useGraphReference({
+    inputRef: textareaRef as React.RefObject<HTMLTextAreaElement>,
+    conversationId: isGraphModeConversation ? currentConversationId : null,
+    onItemSelect: (item: GraphItem, position: number) => {
+      const before = localInput.slice(0, position - graphRefState.query.length - 1);
+      const after = localInput.slice(position);
+      // Insert actual ID for nodes, name for categories
+      const insertText = item.type === 'node' ? item.id : item.name;
+      const newInput = `${before}@${insertText}${after}`;
+      handleInputChange(newInput);
+    }
+  });
+
   // Update the input handling to be immediate instead of debounced
   const handleInputChange = (value: string) => {
     console.log('1. handleInputChange called with:', value);
     setLocalInput(value);
-    console.log('2. About to call handleFileRefInputChange');
-    handleFileRefInputChange(value);
+    
+    // Handle graph references (only in Graph Mode) - takes precedence over file references
+    if (isGraphModeConversation) {
+      console.log('[NEW] Calling handleGraphRefInputChange with:', value);
+      handleGraphRefInputChange(value);
+    } else {
+      console.log('2. About to call handleFileRefInputChange');
+      handleFileRefInputChange(value);
+    }
+    
     updateChatInput(value, false);
   };
 
@@ -207,7 +251,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     }
   };
 
-  const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+  const handlePaste = async (_e: ClipboardEvent<HTMLTextAreaElement>) => {
     // Just let the default paste behavior work
     // No special handling needed
   };
@@ -235,8 +279,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         )}
         
         <div className="flex relative">
-        {/* Popup moved outside form but inside the container */}
-        {isActive && position && selectedProjectId ? (
+        {/* File Reference Popup (only when NOT in Graph Mode) */}
+        {!isGraphModeConversation && isActive && position && selectedProjectId ? (
           <div
             className="absolute z-[9999] bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
             style={{
@@ -261,6 +305,28 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
             />
           </div>
         ) : null}
+
+        {/* Graph Reference Popup (only in Graph Mode) */}
+        {(() => {
+          const shouldShow = isGraphModeConversation && graphRefState.isActive && graphRefState.position;
+          console.log('[NEW] Graph popup render condition:', { 
+            isGraphModeConversation, 
+            isActive: graphRefState.isActive, 
+            hasPosition: !!graphRefState.position,
+            shouldShow 
+          });
+          return shouldShow && graphRefState.position ? (
+            <GraphReferencePopup
+              query={graphRefState.query}
+              position={graphRefState.position}
+              graphData={graphData}
+              onSelect={handleGraphItemSelect}
+              onClose={closeGraphRef}
+              loading={graphLoading}
+              error={graphError}
+            />
+          ) : null;
+        })()}
 
         <form onSubmit={handleSubmit} className="relative w-full flex items-end">
           <div className="flex-shrink-0 pb-3">
@@ -287,7 +353,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
                      leading-normal
                      resize-none
                      shadow-inner"
-            placeholder="Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
+            placeholder={
+              isGraphModeConversation 
+                ? "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files or nodes)"
+                : "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
+            }
           />
         </form>
         </div>
