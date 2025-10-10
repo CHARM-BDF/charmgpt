@@ -213,17 +213,24 @@ router.delete('/:conversationId/edges/:edgeId', async (req: Request, res: Respon
     
     loggingService.log('info', `Deleting edge ${edgeId} from conversation: ${conversationId}`);
     
-    await graphDb.deleteEdge(edgeId);
+    // Get graph project to obtain graphId
+    const graphProject = await graphDb.getGraphProject(conversationId);
+    if (!graphProject) {
+      return res.status(404).json({
+        success: false,
+        error: 'Graph project not found for this conversation'
+      });
+    }
+    
+    // Delete edge with correct graphId parameter
+    await graphDb.deleteEdge(edgeId, graphProject.id);
     
     // Save state for undo/redo
-    const graphProject = await graphDb.getGraphProject(conversationId);
-    if (graphProject) {
-      await graphDb.saveState(
-        graphProject.id,
-        `Deleted edge: ${edgeId}`,
-        await graphDb.getCurrentGraphState(conversationId)
-      );
-    }
+    await graphDb.saveState(
+      graphProject.id,
+      `Deleted edge: ${edgeId}`,
+      await graphDb.getCurrentGraphState(conversationId)
+    );
     
     res.json({
       success: true,
@@ -435,18 +442,25 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
         console.log(`Successfully created/updated node ${i + 1}:`, node.id);
         createdNodes.push(node);
       } catch (nodeError) {
-        console.error(`Error creating node ${i + 1}:`, nodeError);
+        console.error(`Error creating node ${i + 1}:`, JSON.stringify(nodeError, null, 2));
+        console.error(`Node data that failed:`, JSON.stringify(nodeData, null, 2));
         throw nodeError;
       }
     }
     
     console.log('All nodes created successfully:', createdNodes.length);
+    console.log('Created nodes details:', createdNodes.map((node, i) => `${i}: ${node.id} (${node.label})`));
     
     // Create mock edges based on dataset
     console.log(`Creating ${dataset} mock edges...`);
     let mockEdges;
     
     if (dataset === 'cancer') {
+      // Verify we have enough nodes for cancer dataset
+      if (createdNodes.length < 8) {
+        throw new Error(`Cancer dataset requires 8 nodes, but only ${createdNodes.length} were created`);
+      }
+      
       // Cancer research relationships
       mockEdges = [
         // Drug-target relationships
@@ -466,6 +480,9 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
         // Disease relationships
         { source: createdNodes[2].id, target: createdNodes[5].id, label: 'subtype_of', type: 'clinical' } // Liver Cancer -> HCC
       ];
+      
+      console.log('Cancer mockEdges constructed:', mockEdges.length, 'edges');
+      console.log('Edge 7 details:', JSON.stringify(mockEdges[6], null, 2));
     } else {
       // Default diabetes/obesity relationships
       mockEdges = [
@@ -494,7 +511,9 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
     
     for (let i = 0; i < mockEdges.length; i++) {
       const edgeData = mockEdges[i];
-      console.log(`Creating edge ${i + 1}/${mockEdges.length}:`, edgeData);
+      console.log(`Creating edge ${i + 1}/${mockEdges.length}:`, JSON.stringify(edgeData, null, 2));
+      console.log(`Edge ${i + 1} source node exists:`, !!edgeData.source);
+      console.log(`Edge ${i + 1} target node exists:`, !!edgeData.target);
       
       try {
         const edge = await db.addEdge(
@@ -508,7 +527,8 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
         console.log(`Successfully created edge ${i + 1}:`, edge.id);
         createdEdges.push(edge);
       } catch (edgeError) {
-        console.error(`Error creating edge ${i + 1}:`, edgeError);
+        console.error(`Error creating edge ${i + 1}:`, JSON.stringify(edgeError, null, 2));
+        console.error(`Edge data that failed:`, JSON.stringify(edgeData, null, 2));
         throw edgeError;
       }
     }

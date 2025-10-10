@@ -90,6 +90,12 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width, height });
   
+  // NEW: Loading state management
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+  
   // Graph Mode specific state
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -114,11 +120,42 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   
   const isPinned = artifactId ? getPinnedGraphId() === artifactId : false;
   
-  // New state for notification popup
-  const [notification, setNotification] = useState<{ show: boolean; message: string }>({ 
-    show: false, 
-    message: '' 
-  });
+  // Enhanced notification state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+    timestamp?: Date;
+  }>({ show: false, message: '', type: 'success' });
+
+  // Helper function to show notifications
+  const showNotification = useCallback((
+    message: string, 
+    type: 'success' | 'error' | 'info' = 'success',
+    duration: number = 3000
+  ) => {
+    setNotification({ show: true, message, type, timestamp: new Date() });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, duration);
+  }, []);
+
+  // Helper to create specific error messages
+  const getErrorMessage = useCallback((error: any): string => {
+    if (error.message?.includes('404')) {
+      return 'Graph project not found. Try creating a new graph.';
+    }
+    if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      return 'Network error. Check your connection and try again.';
+    }
+    if (error.message?.includes('timeout')) {
+      return 'Request timed out. The server may be busy.';
+    }
+    if (error.message?.includes('parse') || error.message?.includes('JSON')) {
+      return 'Invalid data received from server. Try refreshing.';
+    }
+    return 'An error occurred. Please try again or contact support.';
+  }, []);
   
   // Entity type filter states
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -188,19 +225,37 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     }
   }, [data]);
 
-  // Load graph data from database for Graph Mode conversations
-  const loadGraphDataFromDatabase = useCallback(async () => {
+  // Enhanced load function with retry logic
+  const loadGraphDataFromDatabaseWithRetry = useCallback(async (attemptNumber: number = 0) => {
     // Check if this is a Graph Mode conversation
     if (!currentConversationId) {
       console.log('No conversation ID available, skipping database load');
       return;
     }
     
+    setIsRefreshing(true);
     console.log('Loading graph data for conversation:', currentConversationId);
 
     try {
       console.log('Loading graph data from database for conversation:', currentConversationId);
       const response = await fetch(`/api/graph/${currentConversationId}/state`);
+      
+      if (!response.ok && attemptNumber < MAX_RETRIES) {
+        // Retry with exponential backoff
+        const delay = Math.min(1000 * Math.pow(2, attemptNumber), 5000);
+        console.log(`Retry attempt ${attemptNumber + 1}/${MAX_RETRIES} in ${delay}ms`);
+        
+        showNotification(
+          `Retrying... (${attemptNumber + 1}/${MAX_RETRIES})`,
+          'info',
+          delay
+        );
+        
+        setTimeout(() => {
+          loadGraphDataFromDatabaseWithRetry(attemptNumber + 1);
+        }, delay);
+        return;
+      }
       
       if (response.ok) {
         const result = await response.json();
@@ -240,12 +295,27 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           console.log('Edge sources/targets:', graphData.links.map((e: any) => ({ source: e.source, target: e.target })));
           console.log('🎨 First node with color:', graphData.nodes[0]);
           setParsedData(graphData);
+          setLastRefreshTime(new Date());
+          setRetryCount(0); // Reset retry count on success
+          showNotification('Graph refreshed successfully', 'success');
+        } else {
+          throw new Error('Failed to load graph data');
         }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error loading graph data from database:', error);
+      const errorMessage = getErrorMessage(error);
+      showNotification(errorMessage, 'error', 5000);
+      setRetryCount(attemptNumber + 1);
+    } finally {
+      setIsRefreshing(false);
     }
-  }, [currentConversationId]);
+  }, [currentConversationId, showNotification, getErrorMessage, MAX_RETRIES]);
+
+  // Keep the original function name for backward compatibility
+  const loadGraphDataFromDatabase = loadGraphDataFromDatabaseWithRetry;
 
   useEffect(() => {
     // Load from database when conversation changes
@@ -802,8 +872,64 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     );
   }
 
+  // Loading indicator component
+  const LoadingIndicator = () => {
+    if (!isRefreshing) return null;
+    
+    return (
+      <div className="absolute top-4 left-4 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg border border-blue-200 shadow-lg z-50">
+        <div className="flex items-center gap-2">
+          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">Refreshing graph...</span>
+        </div>
+      </div>
+    );
+  };
+
+  // Notification UI component
+  const NotificationToast = () => {
+    if (!notification.show) return null;
+    
+    const bgColor = {
+      success: 'bg-green-100 border-green-200 text-green-800',
+      error: 'bg-red-100 border-red-200 text-red-800',
+      info: 'bg-blue-100 border-blue-200 text-blue-800'
+    }[notification.type];
+    
+    const icon = {
+      success: '✓',
+      error: '✕',
+      info: 'ℹ'
+    }[notification.type];
+    
+    return (
+      <div className={`absolute top-4 right-4 ${bgColor} px-4 py-3 rounded-lg border shadow-lg max-w-sm z-50 animate-slide-in`}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold">{icon}</span>
+          <div className="flex-1">
+            <div className="font-medium text-sm">{notification.message}</div>
+            {notification.timestamp && (
+              <div className="text-xs opacity-75 mt-1">
+                {notification.timestamp.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col w-full h-full">
+    <div className="flex flex-col w-full h-full relative">
+      {/* NEW: Loading indicator */}
+      <LoadingIndicator />
+      
+      {/* NEW: Notification toast */}
+      <NotificationToast />
+      
       {/* Graph Mode Toolbar */}
       <div className="flex items-center justify-between p-2 bg-purple-100 dark:bg-purple-900/20 rounded mb-2">
         <div className="flex items-center gap-2">
@@ -858,10 +984,41 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
               <Plus size={14} />
               Add Cancer Data
             </button>
+            
+            {/* NEW: Manual refresh button */}
+            <button 
+              onClick={() => {
+                showNotification('Refreshing graph...', 'info', 1000);
+                loadGraphDataFromDatabase();
+              }}
+              disabled={isRefreshing}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Manually refresh graph data"
+            >
+              <svg 
+                className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
+          {/* NEW: Last refresh time indicator */}
+          {lastRefreshTime && (
+            <span className="text-xs text-gray-500 mr-2">
+              Updated {new Date().getTime() - lastRefreshTime.getTime() < 60000 
+                ? 'just now' 
+                : `${Math.floor((new Date().getTime() - lastRefreshTime.getTime()) / 60000)}m ago`}
+            </span>
+          )}
+          
           <button
             onClick={handleUndo}
             className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"

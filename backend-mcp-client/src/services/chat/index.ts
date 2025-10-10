@@ -1692,6 +1692,30 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
   }
   
   /**
+   * Check if a conversation is in Graph Mode by looking for an associated GraphProject
+   * 
+   * @param conversationId The conversation ID to check
+   * @returns True if the conversation is in Graph Mode
+   */
+  private async checkIfGraphModeConversation(conversationId?: string): Promise<boolean> {
+    if (!conversationId) return false;
+    
+    try {
+      // Check if graph project exists for this conversation
+      const graphProject = await this.graphDb?.getGraphProject(conversationId);
+      if (graphProject) {
+        console.log('✅ Graph Mode conversation detected:', conversationId);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking Graph Mode conversation:', error);
+      return false;
+    }
+  }
+
+  /**
    * Execute a tool call using the MCP service
    * 
    * @param toolCall The tool call to execute
@@ -1722,10 +1746,12 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     console.error('🎯 [EXECUTETOOLS] this.currentConversationId:', this.currentConversationId);
     console.error('=====================================================');
     
-    // Special handling for Graph Mode MCPs - add database context
-    if (serverName === 'graph-mode-mcp' && this.currentConversationId) {
+    // Check if this is a Graph Mode conversation and inject database context
+    const isGraphModeConversation = await this.checkIfGraphModeConversation(this.currentConversationId);
+    
+    if (isGraphModeConversation && this.currentConversationId) {
       console.error('=====================================================');
-      console.error('🔧🔧🔧 [EXECUTETOOLS] GRAPH MODE MCP DETECTED! 🔧🔧🔧');
+      console.error('🔧 Graph Mode detected - injecting database context into tool input');
       console.error('🔧 [EXECUTETOOLS] Adding database context with conversationId:', this.currentConversationId);
       console.error('=====================================================');
       

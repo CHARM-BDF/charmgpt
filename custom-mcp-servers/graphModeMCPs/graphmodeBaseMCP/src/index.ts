@@ -344,6 +344,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               text: `Successfully removed node '${nodeLabel}' (ID: ${nodeId}) from the graph. All edges connected to this node were also removed.`,
             },
         ],
+        refreshGraph: true  // NEW: Signal UI to refresh
       };
 
     } else if (name === "removeEdge") {
@@ -392,6 +393,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             text: `Successfully removed edge '${edgeDescription}' (ID: ${edgeId}) from the graph.`,
           },
         ],
+        refreshGraph: true  // NEW: Signal UI to refresh
       };
 
     } else if (name === "getGraphState") {

@@ -107,9 +107,14 @@ export class GraphDatabaseService {
     
     console.log('Serialized node data with canonical ID:', nodeData);
     
-    // Use upsert to handle existing nodes
+    // Use upsert to handle existing nodes with composite key
     return await this.prisma.graphNode.upsert({
-      where: { id: canonicalId },
+      where: { 
+        id_graphId: {
+          id: canonicalId,
+          graphId: graphId
+        }
+      },
       update: {
         label,
         type,
@@ -164,7 +169,7 @@ export class GraphDatabaseService {
     });
   }
 
-  async deleteEdge(edgeId: string) {
+  async deleteEdge(edgeId: string, graphId: string) {
     return await this.prisma.graphEdge.delete({
       where: { id: edgeId },
     });
