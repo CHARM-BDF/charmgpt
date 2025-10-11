@@ -48,6 +48,38 @@ return {
 };
 ```
 
+### 6. Single ID Approach (Critical - Updated)
+
+As of January 2025, Graph Mode uses a **single ID** for both the conversation and artifact:
+
+- **Conversation ID** = **Artifact ID** = **Database Key**
+- GraphProject is created **immediately** when conversation starts
+- No more confusion between conversation ID and artifact ID
+- All components use the same ID consistently
+
+This eliminates the ID mismatch issues that previously caused nodes to be created in one conversation but displayed in another.
+
+### 7. Node Data Structure (Critical)
+- **Required Fields**: `id`, `graphId`, `label`, `type`, `data`, `position`
+- **ID Generation**: Must use meaningful IDs (e.g., PubTator entity IDs)
+- **Prisma Compliance**: Must match database schema exactly
+- **Field Order**: `id` field must be at the top level, not nested
+
+```typescript
+const nodeData = {
+  id: "meaningful-id",           // ← REQUIRED at top level
+  graphId: "conversation-id",    // ← Auto-injected by backend
+  label: "Node Label",
+  type: "node-type",
+  data: {
+    // Additional node metadata
+    sourceId: "original-id",     // ← Store original ID in data
+    source: "data-source"
+  },
+  position: { x: 100, y: 100 }
+};
+```
+
 ## 📝 Complete Template for New Graph Mode MCPs
 
 ### File Structure
@@ -231,6 +263,91 @@ async function main() {
 main().catch(console.error);
 ```
 
+## 🗄️ Database Schema Requirements
+
+### Prisma Schema Compliance
+The Graph Mode system uses Prisma ORM with a specific schema. All node data must match this structure exactly:
+
+```prisma
+model GraphNode {
+  id        String   // REQUIRED: Unique identifier
+  label     String   // REQUIRED: Display name
+  type      String   // REQUIRED: Node type (gene, disease, etc.)
+  data      Json     // REQUIRED: Additional metadata
+  position  Json     // REQUIRED: x, y coordinates
+  createdAt DateTime @default(now())
+  graphId   String   // REQUIRED: Conversation/graph ID
+  
+  @@unique([id, graphId])  // Composite unique constraint
+  @@id([id, graphId])      // Composite primary key
+}
+```
+
+### Critical Requirements
+1. **`id` field is REQUIRED** - Must be at top level of data object
+2. **`graphId` is auto-injected** - Don't include in your node data
+3. **Composite primary key** - Uses `id` + `graphId` combination
+4. **Field order matters** - `id` must come first in the data object
+
+### Common Database Errors
+- **"Argument `id` is missing"** → Add `id` field to node data
+- **"Invalid `prisma.graphNode.create()` invocation"** → Check field structure
+- **"Unique constraint failed"** → Node with same `id` + `graphId` already exists
+
+### Critical: Edge Creation Fix (January 2025)
+
+**Problem:** Edges were being created in memory but not saved to the database.
+
+**Root Cause:** Tools were calling `createdEdges.push(edgeData)` but not calling `createEdgeInDatabase()`.
+
+**Solution:** Always call `createEdgeInDatabase()` for each edge:
+
+```typescript
+// ❌ WRONG - Only creates edge data in memory
+const edgeData: EdgeData = {
+  source: relation.e1,
+  target: relation.e2,
+  label: mapRelationshipType(relation.type),
+  data: { type: relation.type, source: 'pubtator' }
+};
+createdEdges.push(edgeData);
+
+// ✅ CORRECT - Actually saves edge to database
+const edgeData: EdgeData = {
+  source: relation.e1,
+  target: relation.e2,
+  label: mapRelationshipType(relation.type),
+  data: { type: relation.type, source: 'pubtator' }
+};
+
+// Actually create the edge in the database
+const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
+createdEdges.push(createdEdge);
+```
+
+**Debug Logging:** Add obvious debug logs to verify edge creation:
+
+```typescript
+console.error(`🔥 [DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
+const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
+console.error(`🔥 [DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
+```
+
+**Verification:** Check that edges appear in UI as connecting lines between nodes.
+
+### ID Generation Best Practices
+```typescript
+// ✅ GOOD: Use meaningful IDs from external systems
+const nodeId = entity.pubtatorId; // e.g., "@GENE_BRCA1"
+
+// ✅ GOOD: Generate unique IDs with prefixes
+const nodeId = `pubtator_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// ❌ BAD: Don't use generic or empty IDs
+const nodeId = ""; // Will cause database error
+const nodeId = "node"; // Not unique enough
+```
+
 ## 🔧 Configuration Requirements
 
 ### 1. MCP Server Config (`mcp_server_config.json`)
@@ -308,6 +425,9 @@ main().catch(console.error);
 3. **Wrong API endpoints** - Use `/api/graph/${conversationId}/...` pattern
 4. **Missing error handling** - Tools will crash on errors
 5. **Not rebuilding TypeScript** - Changes won't take effect
+6. **Missing or incorrect `id` field** - Database will reject node creation
+7. **Wrong node data structure** - Must match Prisma schema exactly
+8. **ID field in wrong location** - Must be at top level, not in `data` object
 
 ## 🚀 Step-by-Step Creation Process
 
@@ -394,12 +514,21 @@ npm run build
 #### Issue: TypeScript compilation errors
 **Solution**: Check imports and type definitions
 
+#### Issue: "Argument `id` is missing" database error
+**Solution**: Ensure node data includes `id` field at top level
+
+#### Issue: Node creation fails with Prisma validation error
+**Solution**: Verify node data structure matches Prisma schema exactly
+
 ### Debug Logging
 Add these console.error statements for debugging:
 ```typescript
 console.error(`[${SERVICE_NAME}] Tool called: ${name}`);
 console.error(`[${SERVICE_NAME}] Arguments:`, args);
 console.error(`[${SERVICE_NAME}] Database context:`, queryParams.databaseContext);
+console.error(`[${SERVICE_NAME}] Node data structure:`, JSON.stringify(nodeData, null, 2));
+console.error(`[${SERVICE_NAME}] API request URL:`, url);
+console.error(`[${SERVICE_NAME}] API response status:`, response.status);
 ```
 
 ## 📋 Integration with Phase 2 Features
@@ -450,7 +579,7 @@ console.error(`[${SERVICE_NAME}] Database context:`, queryParams.databaseContext
 
 ### Working Examples
 - `graphmodeBaseMCP` - Basic graph operations (removeNode, removeEdge, getGraphState)
-- `graphmodePubTatorMCP` - PubTator integration (needs `refreshGraph` update)
+- `graphmodePubTatorMCP` - PubTator integration (fully updated with `refreshGraph` and proper ID generation)
 
 ### API Endpoints
 - `GET /api/graph/${conversationId}/state` - Get current graph state
@@ -504,6 +633,18 @@ const result = await makeAPIRequest('/endpoint', context, {
   method: 'POST',
   body: JSON.stringify(data)
 });
+```
+
+#### Node Creation Helper
+```typescript
+async function createNodeInDatabase(nodeData, databaseContext) {
+  const endpoint = `/api/graph/${databaseContext.conversationId}/nodes`;
+  const nodeWithId = {
+    id: nodeData.data?.sourceId || `generated_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    ...nodeData
+  };
+  return await makeAPIRequest(endpoint, databaseContext, 'POST', nodeWithId);
+}
 ```
 
 #### Error Handling

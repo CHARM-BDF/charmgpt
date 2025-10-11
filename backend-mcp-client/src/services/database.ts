@@ -48,7 +48,8 @@ export class GraphDatabaseService {
 
   // Node Operations
   async addNode(graphId: string, label: string, type: string, data?: any, position?: { x: number; y: number }, customId?: string) {
-    console.log('Adding node with data:', { graphId, label, type, data, position, customId });
+    console.error(`[DATABASE] 📝 Writing node to database - graphId: ${graphId}, customId: ${customId}`);
+    console.error(`[DATABASE] 📝 Node data:`, { graphId, label, type, data, position, customId });
     
     const nodeData = {
       ...(customId && { id: customId }),
@@ -72,10 +73,12 @@ export class GraphDatabaseService {
       
       if (existingNode) {
         // Update existing node using the composite key
-        return await this.prisma.graphNode.updateMany({
+        const updatedNode = await this.prisma.graphNode.update({
           where: { 
-            id: nodeData.id,
-            graphId: nodeData.graphId
+            id_graphId: {
+              id: nodeData.id,
+              graphId: nodeData.graphId
+            }
           },
           data: {
             label: nodeData.label,
@@ -84,13 +87,21 @@ export class GraphDatabaseService {
             position: nodeData.position,
           }
         });
+        console.error(`[DATABASE] ✅ Node updated successfully - id: ${updatedNode.id}`);
+        console.error(`[DATABASE] ✅ Node update result:`, JSON.stringify(updatedNode, null, 2));
+        return updatedNode;
       }
     }
     
     // Create new node
-    return await this.prisma.graphNode.create({
+    const result = await this.prisma.graphNode.create({
       data: nodeData,
     });
+    
+    console.error(`[DATABASE] ✅ Node written successfully - id: ${result.id}`);
+    console.error(`[DATABASE] ✅ Node result:`, JSON.stringify(result, null, 2));
+    
+    return result;
   }
 
   async addNodeWithCanonicalId(graphId: string, label: string, type: string, canonicalId: string, category: string, data?: any, position?: { x: number; y: number }) {
@@ -157,7 +168,10 @@ export class GraphDatabaseService {
 
   // Edge Operations
   async addEdge(graphId: string, source: string, target: string, label?: string, type?: string, data?: any) {
-    return await this.prisma.graphEdge.create({
+    console.error(`[DATABASE] 📝 Writing edge to database - graphId: ${graphId}, source: ${source}, target: ${target}`);
+    console.error(`[DATABASE] 📝 Edge data:`, { graphId, source, target, label, type, data });
+    
+    const result = await this.prisma.graphEdge.create({
       data: {
         graphId,
         source,
@@ -167,6 +181,11 @@ export class GraphDatabaseService {
         data: data ? JSON.parse(JSON.stringify(data)) : {},
       },
     });
+    
+    console.error(`[DATABASE] ✅ Edge written successfully - id: ${result.id}`);
+    console.error(`[DATABASE] ✅ Edge result:`, JSON.stringify(result, null, 2));
+    
+    return result;
   }
 
   async deleteEdge(edgeId: string, graphId: string) {

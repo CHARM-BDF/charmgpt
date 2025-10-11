@@ -353,11 +353,11 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       const entityType = node.entityType || 'Other';
       const nodeName = node.label;
       
-      // Check if both entity type and node name are selected
-      return (
-        (selectedEntityTypes[entityType] || false) && 
-        (selectedNodes[nodeName] || false)
-      );
+      // Default to showing everything if filters are not yet initialized
+      const entityTypeSelected = Object.keys(selectedEntityTypes).length === 0 || selectedEntityTypes[entityType];
+      const nodeNameSelected = Object.keys(selectedNodes).length === 0 || selectedNodes[nodeName];
+      
+      return entityTypeSelected && nodeNameSelected;
     });
     
     // Get the IDs of filtered nodes
@@ -367,9 +367,11 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     const edges = graphData.edges.filter(edge => {
       const edgeLabel = edge.label || 'No Label';
       
-      // Check if edge label is selected and both source and target nodes are in the filtered nodes
+      // Default to showing everything if filters are not yet initialized
+      const edgeLabelSelected = Object.keys(selectedEdgeLabels).length === 0 || selectedEdgeLabels[edgeLabel];
+      
       return (
-        (selectedEdgeLabels[edgeLabel] || false) &&
+        edgeLabelSelected &&
         nodeIds.has(edge.source) && 
         nodeIds.has(edge.target)
       );

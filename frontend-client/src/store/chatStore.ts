@@ -1069,15 +1069,36 @@ export const useChatStore = create<ChatState>()(
           return id;
         },
 
-        startNewGraphModeConversation: (name?: string) => {
-          const id = crypto.randomUUID();
-          const defaultName = `Graph Mode ${Object.keys(get().conversations).length + 1}`;
+        startNewGraphModeConversation: async (name?: string) => {
+          const conversationId = crypto.randomUUID();
+          const defaultName = name || `Graph Mode ${Object.keys(get().conversations).length + 1}`;
           
-          // Create a blank knowledge graph artifact for Graph Mode
-          // Note: Artifact has its own ID (different from conversation ID)
-          // Database stores graph data using conversation ID (not artifact ID)
-          const blankGraphArtifact = {
-            id: crypto.randomUUID(), // Artifact ID (separate from conversation ID)
+          // Initialize GraphProject in database immediately
+          try {
+            const response = await fetch(`/api/graph/${conversationId}/init`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: defaultName,
+                description: 'Graph Mode conversation'
+              })
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to initialize graph project');
+            }
+            
+            console.log('✅ [GRAPH-MODE] GraphProject initialized for conversation:', conversationId);
+          } catch (error) {
+            console.error('❌ [GRAPH-MODE] Error creating graph project:', error);
+            // Continue with conversation creation even if graph init fails
+            // The backend will create it lazily on first node/edge creation
+          }
+          
+          // Create artifact with SAME ID as conversation
+          const graphArtifact = {
+            id: conversationId,  // Use conversation ID, not separate artifact ID
             type: 'application/vnd.knowledge-graph' as const,
             title: 'Graph Mode Canvas',
             content: {
@@ -1087,43 +1108,43 @@ export const useChatStore = create<ChatState>()(
             timestamp: new Date()
           };
           
-          console.log('🔥 [GRAPH-MODE] Creating conversation with ID:', id);
-          console.log('🔥 [GRAPH-MODE] Artifact ID:', blankGraphArtifact.id);
-          console.log('🔥 [GRAPH-MODE] Note: These are different IDs (1:1 relationship)');
+          console.log('🔥 [GRAPH-MODE] Creating conversation with ID:', conversationId);
+          console.log('🔥 [GRAPH-MODE] Artifact ID (same as conversation):', graphArtifact.id);
+          console.log('🔥 [GRAPH-MODE] Single ID approach - no more confusion!');
           
-          // Create a welcome message with the artifact link
+          // Create welcome message with the artifact link
           const welcomeMessage = {
             id: crypto.randomUUID(),
             role: 'assistant' as const,
-            content: `Welcome to Graph Mode! I've created a blank canvas for you to build your knowledge graph.\n\n[Open Graph Canvas](artifact:${blankGraphArtifact.id})`,
+            content: `Welcome to Graph Mode! I've created a blank canvas for you to build your knowledge graph.\n\n[Open Graph Canvas](artifact:${graphArtifact.id})`,
             timestamp: new Date(),
-            artifactId: blankGraphArtifact.id
+            artifactId: graphArtifact.id
           };
           
-          console.log('Graph Mode: Creating blank graph artifact:', blankGraphArtifact);
+          console.log('Graph Mode: Creating blank graph artifact:', graphArtifact);
           console.log('Graph Mode: Creating welcome message:', welcomeMessage);
           
           set(state => ({
             conversations: {
               ...state.conversations,
-              [id]: {
+              [conversationId]: {
                 metadata: {
-                  id,
-                  name: name || defaultName,
+                  id: conversationId,
+                  name: defaultName,
                   created: new Date(),
                   lastUpdated: new Date(),
                   messageCount: 0,
                   mode: 'graph_mode' // Set Graph Mode
                 },
                 messages: [welcomeMessage], // Start with welcome message
-                artifacts: [blankGraphArtifact] // Start with blank graph artifact
+                artifacts: [graphArtifact] // Start with blank graph artifact
               }
             },
-            currentConversationId: id,
+            currentConversationId: conversationId,
             // Set the blank graph artifact as the current artifact
-            artifacts: [blankGraphArtifact],
+            artifacts: [graphArtifact],
             messages: [welcomeMessage], // Add welcome message to global messages
-            selectedArtifactId: blankGraphArtifact.id,
+            selectedArtifactId: graphArtifact.id,
             showArtifactWindow: true, // Show the artifact window immediately
             inProjectConversationFlow: false, // Reset project conversation flow when starting a new conversation
             activeCompletionId: null, // Reset the active completion ID
@@ -1131,7 +1152,7 @@ export const useChatStore = create<ChatState>()(
           }));
           
           console.log('Graph Mode: State updated, artifact should be visible now');
-          console.log('Graph Mode: showArtifactWindow should be true, selectedArtifactId:', blankGraphArtifact.id);
+          console.log('Graph Mode: showArtifactWindow should be true, selectedArtifactId:', graphArtifact.id);
           
           // Check the actual state after setting
           setTimeout(() => {
@@ -1143,7 +1164,7 @@ export const useChatStore = create<ChatState>()(
             });
           }, 100);
           
-          return id;
+          return conversationId;
         },
 
         switchConversation: (id: string) => {

@@ -71,40 +71,92 @@ router.get('/:conversationId/state', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/graph/:conversationId/init - Initialize GraphProject for new conversation
+router.post('/:conversationId/init', async (req: Request, res: Response) => {
+  try {
+    const { conversationId } = req.params;
+    const { name, description } = req.body;
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    
+    console.log('🔥 [GRAPH-INIT] Initializing GraphProject for conversation:', conversationId);
+    console.log('🔥 [GRAPH-INIT] Request body:', JSON.stringify(req.body, null, 2));
+    
+    loggingService.log('info', `Initializing GraphProject for conversation: ${conversationId}`);
+    
+    const db = getGraphDb();
+    
+    // Check if GraphProject already exists
+    let graphProject = await db.getGraphProject(conversationId);
+    if (!graphProject) {
+      // Create new GraphProject
+      graphProject = await db.createGraphProject(
+        conversationId,
+        name || `Graph Mode ${conversationId.slice(0, 8)}`,
+        description || 'Graph Mode conversation'
+      );
+      console.log('✅ [GRAPH-INIT] Created new GraphProject:', graphProject.id);
+    } else {
+      console.log('ℹ️ [GRAPH-INIT] GraphProject already exists:', graphProject.id);
+    }
+    
+    res.json({
+      success: true,
+      data: graphProject
+    });
+  } catch (error) {
+    console.error('❌ [GRAPH-INIT] Error initializing graph project:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // POST /api/graph/:conversationId/nodes - Add a new node
 router.post('/:conversationId/nodes', async (req: Request, res: Response) => {
   try {
     const { conversationId } = req.params;
-    const { label, type, data, position } = req.body;
+    const { id, label, type, data, position } = req.body;
     const loggingService = req.app.locals.loggingService as LoggingService;
+    
+    console.error(`[GRAPH-API] 📥 Received node creation request for conversation: ${conversationId}`);
+    console.error(`[GRAPH-API] 📥 Node data:`, JSON.stringify(req.body, null, 2));
+    console.error(`[GRAPH-API] 📥 Request headers:`, req.headers);
     
     loggingService.log('info', `Adding node to conversation: ${conversationId}`);
     
     // Get or create graph project for this conversation
-    let graphProject = await graphDb.getGraphProject(conversationId);
+    const db = getGraphDb();
+    let graphProject = await db.getGraphProject(conversationId);
     if (!graphProject) {
       // Create new graph project for this conversation
-      graphProject = await graphDb.createGraphProject(
+      graphProject = await db.createGraphProject(
         conversationId, 
         `Graph Mode ${conversationId.slice(0, 8)}`,
         'Graph Mode conversation'
       );
     }
     
-    const node = await graphDb.addNode(
+    const node = await db.addNode(
       graphProject.id,
       label || 'New Node',
       type || 'default',
       data || {},
-      position || { x: 0, y: 0 }
+      position || { x: 0, y: 0 },
+      id // Pass the id as customId parameter
     );
     
+    console.error(`[GRAPH-API] ✅ Node created with ID: ${node.id}`);
+    console.error(`[GRAPH-API] ✅ Node details:`, JSON.stringify(node, null, 2));
+    
     // Save state for undo/redo
-    await graphDb.saveState(
+    await db.saveState(
       graphProject.id,
       `Added node: ${label}`,
-      await graphDb.getCurrentGraphState(conversationId)
+      await db.getCurrentGraphState(conversationId)
     );
+    
+    console.error(`[GRAPH-API] ✅ State saved for undo/redo`);
     
     res.json({
       success: true,
@@ -126,9 +178,13 @@ router.post('/:conversationId/edges', async (req: Request, res: Response) => {
     const { source, target, label, type, data } = req.body;
     const loggingService = req.app.locals.loggingService as LoggingService;
     
+    console.error(`[GRAPH-API] 📥 Received edge creation request for conversation: ${conversationId}`);
+    console.error(`[GRAPH-API] 📥 Edge data:`, JSON.stringify(req.body, null, 2));
+    
     loggingService.log('info', `Adding edge to conversation: ${conversationId}`);
     
-    const graphProject = await graphDb.getGraphProject(conversationId);
+    const db = getGraphDb();
+    const graphProject = await db.getGraphProject(conversationId);
     if (!graphProject) {
       return res.status(404).json({
         success: false,
@@ -136,7 +192,7 @@ router.post('/:conversationId/edges', async (req: Request, res: Response) => {
       });
     }
     
-    const edge = await graphDb.addEdge(
+    const edge = await db.addEdge(
       graphProject.id,
       source,
       target,
@@ -145,12 +201,17 @@ router.post('/:conversationId/edges', async (req: Request, res: Response) => {
       data || {}
     );
     
+    console.error(`[GRAPH-API] ✅ Edge created: ${source} -> ${target}`);
+    console.error(`[GRAPH-API] ✅ Edge details:`, JSON.stringify(edge, null, 2));
+    
     // Save state for undo/redo
-    await graphDb.saveState(
+    await db.saveState(
       graphProject.id,
       `Added edge: ${source} -> ${target}`,
-      await graphDb.getCurrentGraphState(conversationId)
+      await db.getCurrentGraphState(conversationId)
     );
+    
+    console.error(`[GRAPH-API] ✅ State saved for undo/redo`);
     
     res.json({
       success: true,

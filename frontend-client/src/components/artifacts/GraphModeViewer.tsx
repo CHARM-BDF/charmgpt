@@ -540,10 +540,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       const entityType = node.entityType || 'Other';
       const nodeName = node.label;
       
-      return (
-        (selectedEntityTypes[entityType] || false) && 
-        (selectedNodes[nodeName] || false)
-      );
+      // Default to showing everything if filters are not yet initialized
+      const entityTypeSelected = Object.keys(selectedEntityTypes).length === 0 || selectedEntityTypes[entityType];
+      const nodeNameSelected = Object.keys(selectedNodes).length === 0 || selectedNodes[nodeName];
+      
+      return entityTypeSelected && nodeNameSelected;
     });
     
     const nodeIds = new Set(nodes.map(node => node.id));
@@ -551,8 +552,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     const edges = graphData.edges.filter(edge => {
       const edgeLabel = edge.label || 'No Label';
       
+      // Default to showing everything if filters are not yet initialized
+      const edgeLabelSelected = Object.keys(selectedEdgeLabels).length === 0 || selectedEdgeLabels[edgeLabel];
+      
       return (
-        (selectedEdgeLabels[edgeLabel] || false) &&
+        edgeLabelSelected &&
         nodeIds.has(edge.source) && 
         nodeIds.has(edge.target)
       );

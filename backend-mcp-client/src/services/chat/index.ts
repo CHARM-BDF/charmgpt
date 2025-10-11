@@ -9,6 +9,7 @@ import { LLMService } from '../llm';
 import { MCPService, AnthropicTool } from '../mcp';
 import { MessageService, StoreFormat } from '../message';
 import { ArtifactService } from '../artifact';
+import { GraphDatabaseService } from '../database';
 import { ReadableStream } from 'stream/web';
 import { getToolCallAdapter, ToolCall, ToolResult } from './adapters';
 import { getResponseFormatterAdapter, FormatterAdapterType } from './formatters';
@@ -101,6 +102,8 @@ export class ChatService {
   private messageService: MessageService;
   /** Artifact service for artifact processing */
   private artifactService: ArtifactService;
+  /** Graph database service for Graph Mode operations */
+  private graphDb?: GraphDatabaseService;
   /** Current conversation ID for Graph Mode */
   private currentConversationId?: string;
   
@@ -121,6 +124,7 @@ export class ChatService {
     this.mcpService = mcpService;
     this.messageService = messageService || new MessageService();
     this.artifactService = artifactService || new ArtifactService();
+    this.graphDb = new GraphDatabaseService();
     console.log('ChatService: Initialization complete with enhanced artifact handling');
   }
   
@@ -1752,6 +1756,7 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     if (isGraphModeConversation && this.currentConversationId) {
       console.error('=====================================================');
       console.error('🔧 Graph Mode detected - injecting database context into tool input');
+      console.error('🔧 [EXECUTETOOLS] Server name:', serverName);
       console.error('🔧 [EXECUTETOOLS] Adding database context with conversationId:', this.currentConversationId);
       console.error('=====================================================');
       

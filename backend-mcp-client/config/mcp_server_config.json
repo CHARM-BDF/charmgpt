@@ -235,6 +235,18 @@
         "NODE_ENV": "development"
       },
       "description": "Graph Mode MCP - Handles removal and filtering operations for knowledge graphs"
+    },
+    "graphmode-pubtator-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodePubTatorMCP/dist/index.js"
+      ],
+      "timeout": 60000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode PubTator MCP - Adds biomedical entities from PubTator to knowledge graphs"
     }
   }
 }
