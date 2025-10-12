@@ -30,6 +30,12 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Prisma development database (SQLite)
+*.db
+*.db-journal
+backend-mcp-client/prisma/dev.db
+backend-mcp-client/prisma/dev.db.backup
+
 # docs for process - hiding so they don't distract
 ./docs/
 
