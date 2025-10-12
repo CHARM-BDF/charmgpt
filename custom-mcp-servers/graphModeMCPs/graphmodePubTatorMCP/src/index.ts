@@ -184,7 +184,7 @@ async function makePubTatorRequest(
     headers['Content-Type'] = 'application/json';
   }
 
-  console.error(`[${SERVICE_NAME}] Making PubTator request to: ${url.toString()}`);
+  // console.error(`[${SERVICE_NAME}] Making PubTator request to: ${url.toString()}`);
 
   try {
     const requestOptions: RequestInit = {
@@ -197,7 +197,7 @@ async function makePubTatorRequest(
     }
 
     const response = await fetch(url.toString(), requestOptions);
-    console.error(`[${SERVICE_NAME}] Response status: ${response.status} ${response.statusText}`);
+    // console.error(`[${SERVICE_NAME}] Response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -244,7 +244,7 @@ async function makeGraphModeAPIRequest(
     headers['Authorization'] = `Bearer ${databaseContext.accessToken}`;
   }
 
-  console.error(`[${SERVICE_NAME}] Making Graph Mode API request to: ${url}`);
+  // console.error(`[${SERVICE_NAME}] Making Graph Mode API request to: ${url}`);
 
   try {
     const requestOptions: RequestInit = {
@@ -257,7 +257,7 @@ async function makeGraphModeAPIRequest(
     }
 
     const response = await fetch(url, requestOptions);
-    console.error(`[${SERVICE_NAME}] Graph Mode API response status: ${response.status} ${response.statusText}`);
+    // console.error(`[${SERVICE_NAME}] Graph Mode API response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -313,8 +313,8 @@ async function getEntityRelations(
     pmid: rel.pmid
   }));
 
-  console.error(`🔥 [PUBTATOR-DEBUG] Raw PubTator API response for ${entityId}:`, JSON.stringify(response, null, 2));
-  console.error(`🔥 [PUBTATOR-DEBUG] Mapped relations:`, JSON.stringify(relations, null, 2));
+  // console.error(`🔥 [PUBTATOR-DEBUG] Raw PubTator API response for ${entityId}:`, JSON.stringify(response, null, 2));
+  // console.error(`🔥 [PUBTATOR-DEBUG] Mapped relations:`, JSON.stringify(relations, null, 2));
 
   // Filter by relationship types if specified
   if (relationshipTypes && relationshipTypes.length > 0) {
@@ -330,8 +330,8 @@ async function getEntityRelations(
 // =============================================================================
 // Create node in Graph Mode database
 async function createNodeInDatabase(nodeData: Omit<NodeData, 'id'>, databaseContext: DatabaseContext): Promise<any> {
-  console.error(`🔥 [DEBUG] createNodeInDatabase called with:`, JSON.stringify(nodeData, null, 2));
-  console.error(`🔥 [DEBUG] Entity type: ${nodeData.type}`);
+  // console.error(`🔥 [DEBUG] createNodeInDatabase called with:`, JSON.stringify(nodeData, null, 2));
+  // console.error(`🔥 [DEBUG] Entity type: ${nodeData.type}`);
   
   const endpoint = `/api/graph/${databaseContext.conversationId}/nodes`;
   
@@ -341,12 +341,12 @@ async function createNodeInDatabase(nodeData: Omit<NodeData, 'id'>, databaseCont
     ...nodeData
   };
 
-  console.error(`[${SERVICE_NAME}] 🔍 Creating node with ID: ${nodeWithId.id}`);
-  console.error(`[${SERVICE_NAME}] 🔍 Node structure:`, JSON.stringify(nodeWithId, null, 2));
-  console.error(`[${SERVICE_NAME}] 🔍 Database context:`, JSON.stringify(databaseContext, null, 2));
+  // console.error(`[${SERVICE_NAME}] 🔍 Creating node with ID: ${nodeWithId.id}`);
+  // console.error(`[${SERVICE_NAME}] 🔍 Node structure:`, JSON.stringify(nodeWithId, null, 2));
+  // console.error(`[${SERVICE_NAME}] 🔍 Database context:`, JSON.stringify(databaseContext, null, 2));
   
   const result = await makeGraphModeAPIRequest(endpoint, databaseContext, 'POST', nodeWithId);
-  console.error(`[${SERVICE_NAME}] ✅ Node created successfully:`, result);
+  // console.error(`[${SERVICE_NAME}] ✅ Node created successfully:`, result);
   return result;
 }
 
@@ -354,11 +354,11 @@ async function createNodeInDatabase(nodeData: Omit<NodeData, 'id'>, databaseCont
 async function createEdgeInDatabase(edgeData: EdgeData, databaseContext: DatabaseContext): Promise<any> {
   const endpoint = `/api/graph/${databaseContext.conversationId}/edges`;
   
-  console.error(`[${SERVICE_NAME}] 🔍 Creating edge: ${edgeData.source} → ${edgeData.target}`);
-  console.error(`[${SERVICE_NAME}] 🔍 Edge structure:`, JSON.stringify(edgeData, null, 2));
+  // console.error(`[${SERVICE_NAME}] 🔍 Creating edge: ${edgeData.source} → ${edgeData.target}`);
+  // console.error(`[${SERVICE_NAME}] 🔍 Edge structure:`, JSON.stringify(edgeData, null, 2));
   
   const result = await makeGraphModeAPIRequest(endpoint, databaseContext, 'POST', edgeData);
-  console.error(`[${SERVICE_NAME}] ✅ Edge created successfully:`, result);
+  // console.error(`[${SERVICE_NAME}] ✅ Edge created successfully:`, result);
   return result;
 }
 
@@ -663,7 +663,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const queryParams = AddNodesFromPMIDsArgumentsSchema.parse(args);
       const { pmids, concepts, databaseContext } = queryParams;
 
-      console.error(`[${SERVICE_NAME}] Processing ${pmids.length} PMIDs for concepts: ${concepts.join(', ')}`);
+      // console.error(`[${SERVICE_NAME}] Processing ${pmids.length} PMIDs for concepts: ${concepts.join(', ')}`);
 
       const createdNodes: NodeData[] = [];
       const createdEdges: EdgeData[] = [];
@@ -736,9 +736,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       }
 
-      console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
+      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
+      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
       
       return {
         content: [{
@@ -753,7 +753,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const queryParams = AddNodesFromTextArgumentsSchema.parse(args);
       const { text, concepts, databaseContext } = queryParams;
 
-      console.error(`[${SERVICE_NAME}] Processing text of length ${text.length} for concepts: ${concepts.join(', ')}`);
+      // console.error(`[${SERVICE_NAME}] Processing text of length ${text.length} for concepts: ${concepts.join(', ')}`);
 
       // Annotate text with PubTator
       const endpoint = '/annotations/';
@@ -802,9 +802,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         processedEntities.add(entity.id);
       }
 
-      console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, 0 edges`);
-      console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, 0 edges`);
+      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
+      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
       
       return {
         content: [{
@@ -819,7 +819,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const queryParams = AddNodesFromEntityNetworkArgumentsSchema.parse(args);
       const { query, concept, max_entities, max_relations_per_entity, relationship_types, databaseContext } = queryParams;
 
-      console.error(`[${SERVICE_NAME}] Building entity network for query: ${query}, concept: ${concept}`);
+      // console.error(`[${SERVICE_NAME}] Building entity network for query: ${query}, concept: ${concept}`);
 
       // Find entities using autocomplete
       const entities = await getEntityAutocomplete(query, concept);
@@ -906,12 +906,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               }
             };
             
-        console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
-        console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
+        // console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
+        // console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
         
         // Actually create the edge in the database
         const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
-        console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
+        // console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
         createdEdges.push(createdEdge);
           }
 
@@ -923,9 +923,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       }
 
-      console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
+      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
+      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
       
       return {
         content: [{
@@ -940,7 +940,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const queryParams = FindRelatedEntitiesArgumentsSchema.parse(args);
       const { sourceEntity, sourceType, targetType, relationshipTypes, maxResults, databaseContext } = queryParams;
 
-      console.error(`[${SERVICE_NAME}] Finding ${targetType} entities related to ${sourceEntity} (${sourceType})`);
+      // console.error(`[${SERVICE_NAME}] Finding ${targetType} entities related to ${sourceEntity} (${sourceType})`);
 
       // Find the source entity using autocomplete
       const sourceEntities = await getEntityAutocomplete(sourceEntity, sourceType);
@@ -1010,7 +1010,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           createdNodes.push(createdTargetNode);
           processedEntities.add(relation.e2);
         } else {
-          console.error(`🔥 [DEBUG] SKIPPED - entity already processed: ${relation.e2}`);
+          // console.error(`🔥 [DEBUG] SKIPPED - entity already processed: ${relation.e2}`);
         }
 
         // Create edge
@@ -1024,18 +1024,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         };
         
-        console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
-        console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
+        // console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
+        // console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
         
         // Actually create the edge in the database
         const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
-        console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
+        // console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
         createdEdges.push(createdEdge);
       }
 
-      console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
+      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
+      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
       
       return {
         content: [{
@@ -1050,7 +1050,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const queryParams = FindAllRelatedEntitiesArgumentsSchema.parse(args);
       const { sourceEntity, sourceType, relationshipTypes, maxResults, databaseContext } = queryParams;
 
-      console.error(`[${SERVICE_NAME}] Finding ALL entities related to ${sourceEntity} (${sourceType})`);
+      // console.error(`[${SERVICE_NAME}] Finding ALL entities related to ${sourceEntity} (${sourceType})`);
 
       // Find the source entity using autocomplete
       const sourceEntities = await getEntityAutocomplete(sourceEntity, sourceType);
@@ -1091,10 +1091,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // Get ALL relationships for the source entity (no target type filtering)
       const relations = await getEntityRelations(sourceEntityData.id, maxResults, relationshipTypes);
-      console.error(`🔥 [PUBTATOR-DEBUG] Found ${relations.length} relations from PubTator API`);
+      // console.error(`🔥 [PUBTATOR-DEBUG] Found ${relations.length} relations from PubTator API`);
 
       for (const relation of relations) {
-        console.error(`🔥 [PUBTATOR-DEBUG] Processing relation: ${relation.e1} -> ${relation.e2} (${relation.type})`);
+        // console.error(`🔥 [PUBTATOR-DEBUG] Processing relation: ${relation.e1} -> ${relation.e2} (${relation.type})`);
         
         // Skip relations with missing target entity
         if (!relation.e2) {
@@ -1103,13 +1103,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         
         // Create source entity if it doesn't exist
-        console.error(`🔥 [DEBUG] Checking if ${relation.e1} is in processedEntities`);
-        console.error(`🔥 [DEBUG] processedEntities contains:`, Array.from(processedEntities));
+        // console.error(`🔥 [DEBUG] Checking if ${relation.e1} is in processedEntities`);
+        // console.error(`🔥 [DEBUG] processedEntities contains:`, Array.from(processedEntities));
         
         if (!processedEntities.has(relation.e1)) {
-          console.error(`🔥 [PUBTATOR-DEBUG] Creating node for source entity: ${relation.e1}`);
+          // console.error(`🔥 [PUBTATOR-DEBUG] Creating node for source entity: ${relation.e1}`);
           const sourceEntityType = getEntityTypeFromId(relation.e1);
-          console.error(`🔥 [PUBTATOR-DEBUG] Source entity type determined:`, sourceEntityType);
+          // console.error(`🔥 [PUBTATOR-DEBUG] Source entity type determined:`, sourceEntityType);
           const sourceNodeData: Omit<NodeData, 'id'> = {
             label: extractEntityName(relation.e1),
             type: sourceEntityType.type,
@@ -1128,16 +1128,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           createdNodes.push(createdSourceNode);
           processedEntities.add(relation.e1);
         } else {
-          console.error(`🔥 [DEBUG] SKIPPED - source entity already processed: ${relation.e1}`);
+          // console.error(`🔥 [DEBUG] SKIPPED - source entity already processed: ${relation.e1}`);
         }
 
         // Create target entity if it doesn't exist
-        console.error(`🔥 [DEBUG] Checking if ${relation.e2} is in processedEntities`);
+        // console.error(`🔥 [DEBUG] Checking if ${relation.e2} is in processedEntities`);
         
         if (!processedEntities.has(relation.e2)) {
-          console.error(`🔥 [PUBTATOR-DEBUG] Creating node for target entity: ${relation.e2}`);
+          // console.error(`🔥 [PUBTATOR-DEBUG] Creating node for target entity: ${relation.e2}`);
           const targetEntityType = getEntityTypeFromId(relation.e2);
-          console.error(`🔥 [PUBTATOR-DEBUG] Target entity type determined:`, targetEntityType);
+          // console.error(`🔥 [PUBTATOR-DEBUG] Target entity type determined:`, targetEntityType);
           const targetNodeData: Omit<NodeData, 'id'> = {
             label: extractEntityName(relation.e2),
             type: targetEntityType.type,
@@ -1156,7 +1156,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           createdNodes.push(createdTargetNode);
           processedEntities.add(relation.e2);
         } else {
-          console.error(`🔥 [DEBUG] SKIPPED - target entity already processed: ${relation.e2}`);
+          // console.error(`🔥 [DEBUG] SKIPPED - target entity already processed: ${relation.e2}`);
         }
 
         // Create edge
@@ -1170,18 +1170,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         };
         
-        console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
-        console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
+        // console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
+        // console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
         
         // Actually create the edge in the database
         const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
-        console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
+        // console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
         createdEdges.push(createdEdge);
       }
 
-      console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
+      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
+      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
       
       return {
         content: [{

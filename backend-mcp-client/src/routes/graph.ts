@@ -27,20 +27,20 @@ router.get('/:conversationId/state', async (req: Request, res: Response) => {
     const { conversationId } = req.params;
     const loggingService = req.app.locals.loggingService as LoggingService;
     
-    console.log('🔥 [GRAPH-API] Getting graph state for conversation:', conversationId);
-    console.log('🔥 [GRAPH-API] Request headers:', req.headers);
-    console.log('🔥 [GRAPH-API] Request URL:', req.url);
+    // console.log('🔥 [GRAPH-API] Getting graph state for conversation:', conversationId);
+    // console.log('🔥 [GRAPH-API] Request headers:', req.headers);
+    // console.log('🔥 [GRAPH-API] Request URL:', req.url);
     
     loggingService.log('info', `Getting graph state for conversation: ${conversationId}`);
     
     const graphState = await getGraphDb().getCurrentGraphState(conversationId);
     
-    console.log('🔥 [GRAPH-API] Graph state result:', {
-      hasGraphState: !!graphState,
-      nodeCount: graphState?.nodes?.length || 0,
-      edgeCount: graphState?.edges?.length || 0,
-      conversationId: conversationId
-    });
+    // console.log('🔥 [GRAPH-API] Graph state result:', {
+    //   hasGraphState: !!graphState,
+    //   nodeCount: graphState?.nodes?.length || 0,
+    //   edgeCount: graphState?.edges?.length || 0,
+    //   conversationId: conversationId
+    // });
     
     if (!graphState) {
       // Return empty state for conversations without graph data yet
@@ -73,30 +73,45 @@ router.get('/:conversationId/state', async (req: Request, res: Response) => {
 
 // POST /api/graph/:conversationId/init - Initialize GraphProject for new conversation
 router.post('/:conversationId/init', async (req: Request, res: Response) => {
+  console.error('🔥🔥🔥 [GRAPH-INIT] ENDPOINT HIT! 🔥🔥🔥');
+  console.error('🔥 [GRAPH-INIT] Request path:', req.path);
+  console.error('🔥 [GRAPH-INIT] Request params:', req.params);
+  console.error('🔥 [GRAPH-INIT] Request body:', req.body);
+  
   try {
+    console.error('🔥 [GRAPH-INIT] Extracting params...');
     const { conversationId } = req.params;
+    console.error('🔥 [GRAPH-INIT] conversationId:', conversationId);
+    
     const { name, description } = req.body;
+    console.error('🔥 [GRAPH-INIT] name:', name, 'description:', description);
+    
     const loggingService = req.app.locals.loggingService as LoggingService;
+    console.error('🔥 [GRAPH-INIT] loggingService obtained');
     
-    console.log('🔥 [GRAPH-INIT] Initializing GraphProject for conversation:', conversationId);
-    console.log('🔥 [GRAPH-INIT] Request body:', JSON.stringify(req.body, null, 2));
-    
+    console.error('🔥 [GRAPH-INIT] About to log to loggingService...');
     loggingService.log('info', `Initializing GraphProject for conversation: ${conversationId}`);
+    console.error('🔥 [GRAPH-INIT] Logged to loggingService');
     
+    console.error('🔥 [GRAPH-INIT] Getting database instance...');
     const db = getGraphDb();
+    console.error('🔥 [GRAPH-INIT] Database instance obtained');
     
     // Check if GraphProject already exists
+    console.error('🔥 [GRAPH-INIT] Checking if GraphProject exists...');
     let graphProject = await db.getGraphProject(conversationId);
+    console.error('🔥 [GRAPH-INIT] GraphProject check complete, result:', graphProject ? 'EXISTS' : 'NOT FOUND');
+    
     if (!graphProject) {
-      // Create new GraphProject
+      console.error('🔥 [GRAPH-INIT] Creating new GraphProject...');
       graphProject = await db.createGraphProject(
         conversationId,
         name || `Graph Mode ${conversationId.slice(0, 8)}`,
         description || 'Graph Mode conversation'
       );
-      console.log('✅ [GRAPH-INIT] Created new GraphProject:', graphProject.id);
+      console.error('✅ [GRAPH-INIT] Created new GraphProject:', graphProject.id);
     } else {
-      console.log('ℹ️ [GRAPH-INIT] GraphProject already exists:', graphProject.id);
+      console.error('ℹ️ [GRAPH-INIT] GraphProject already exists:', graphProject.id);
     }
     
     res.json({
@@ -119,9 +134,9 @@ router.post('/:conversationId/nodes', async (req: Request, res: Response) => {
     const { id, label, type, data, position } = req.body;
     const loggingService = req.app.locals.loggingService as LoggingService;
     
-    console.error(`[GRAPH-API] 📥 Received node creation request for conversation: ${conversationId}`);
-    console.error(`[GRAPH-API] 📥 Node data:`, JSON.stringify(req.body, null, 2));
-    console.error(`[GRAPH-API] 📥 Request headers:`, req.headers);
+    // console.error(`[GRAPH-API] 📥 Received node creation request for conversation: ${conversationId}`);
+    // console.error(`[GRAPH-API] 📥 Node data:`, JSON.stringify(req.body, null, 2));
+    // console.error(`[GRAPH-API] 📥 Request headers:`, req.headers);
     
     loggingService.log('info', `Adding node to conversation: ${conversationId}`);
     
@@ -146,8 +161,8 @@ router.post('/:conversationId/nodes', async (req: Request, res: Response) => {
       id // Pass the id as customId parameter
     );
     
-    console.error(`[GRAPH-API] ✅ Node created with ID: ${node.id}`);
-    console.error(`[GRAPH-API] ✅ Node details:`, JSON.stringify(node, null, 2));
+    // console.error(`[GRAPH-API] ✅ Node created with ID: ${node.id}`);
+    // console.error(`[GRAPH-API] ✅ Node details:`, JSON.stringify(node, null, 2));
     
     // Save state for undo/redo
     await db.saveState(
@@ -156,7 +171,7 @@ router.post('/:conversationId/nodes', async (req: Request, res: Response) => {
       await db.getCurrentGraphState(conversationId)
     );
     
-    console.error(`[GRAPH-API] ✅ State saved for undo/redo`);
+    // console.error(`[GRAPH-API] ✅ State saved for undo/redo`);
     
     res.json({
       success: true,
@@ -178,8 +193,8 @@ router.post('/:conversationId/edges', async (req: Request, res: Response) => {
     const { source, target, label, type, data } = req.body;
     const loggingService = req.app.locals.loggingService as LoggingService;
     
-    console.error(`[GRAPH-API] 📥 Received edge creation request for conversation: ${conversationId}`);
-    console.error(`[GRAPH-API] 📥 Edge data:`, JSON.stringify(req.body, null, 2));
+    // console.error(`[GRAPH-API] 📥 Received edge creation request for conversation: ${conversationId}`);
+    // console.error(`[GRAPH-API] 📥 Edge data:`, JSON.stringify(req.body, null, 2));
     
     loggingService.log('info', `Adding edge to conversation: ${conversationId}`);
     
@@ -201,8 +216,8 @@ router.post('/:conversationId/edges', async (req: Request, res: Response) => {
       data || {}
     );
     
-    console.error(`[GRAPH-API] ✅ Edge created: ${source} -> ${target}`);
-    console.error(`[GRAPH-API] ✅ Edge details:`, JSON.stringify(edge, null, 2));
+    // console.error(`[GRAPH-API] ✅ Edge created: ${source} -> ${target}`);
+    // console.error(`[GRAPH-API] ✅ Edge details:`, JSON.stringify(edge, null, 2));
     
     // Save state for undo/redo
     await db.saveState(
@@ -211,7 +226,7 @@ router.post('/:conversationId/edges', async (req: Request, res: Response) => {
       await db.getCurrentGraphState(conversationId)
     );
     
-    console.error(`[GRAPH-API] ✅ State saved for undo/redo`);
+    // console.error(`[GRAPH-API] ✅ State saved for undo/redo`);
     
     res.json({
       success: true,
@@ -308,38 +323,38 @@ router.delete('/:conversationId/edges/:edgeId', async (req: Request, res: Respon
 
 // POST /api/graph/:conversationId/mock-data - Add mock data for testing
 router.post('/:conversationId/mock-data', async (req: Request, res: Response) => {
-  console.log('🔥 GRAPH ROUTE HIT! 🔥');
-  console.log('Request URL:', req.url);
-  console.log('Request method:', req.method);
-  console.log('Request params:', req.params);
+  // console.log('🔥 GRAPH ROUTE HIT! 🔥');
+  // console.log('Request URL:', req.url);
+  // console.log('Request method:', req.method);
+  // console.log('Request params:', req.params);
   
   try {
     const { conversationId } = req.params;
     const { dataset = 'diabetes' } = req.body; // Default to diabetes dataset
     const loggingService = req.app.locals.loggingService as LoggingService;
     
-    console.log(`=== MOCK DATA REQUEST START - Dataset: ${dataset} ===`);
-    console.log('Conversation ID:', conversationId);
+    // console.log(`=== MOCK DATA REQUEST START - Dataset: ${dataset} ===`);
+    // console.log('Conversation ID:', conversationId);
     loggingService.log('info', `Adding mock data to conversation: ${conversationId}`);
     
     // Get or create graph project for this conversation
-    console.log('Checking for existing graph project...');
+    // console.log('Checking for existing graph project...');
     const db = getGraphDb();
     let graphProject = await db.getGraphProject(conversationId);
-    console.log('Existing graph project:', graphProject ? 'Found' : 'Not found');
+    // console.log('Existing graph project:', graphProject ? 'Found' : 'Not found');
     
     if (!graphProject) {
-      console.log('Creating new graph project...');
+      // console.log('Creating new graph project...');
       graphProject = await db.createGraphProject(
         conversationId, 
         `Graph Mode ${conversationId.slice(0, 8)}`,
         'Graph Mode conversation with mock data'
       );
-      console.log('Created graph project:', graphProject.id);
+      // console.log('Created graph project:', graphProject.id);
     }
     
     // Create mock nodes based on dataset
-    console.log(`Creating ${dataset} mock nodes...`);
+    // console.log(`Creating ${dataset} mock nodes...`);
     let mockNodes;
     
     if (dataset === 'cancer') {
@@ -480,12 +495,12 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
       ];
     }
     
-    console.log('Mock nodes data:', mockNodes);
+    // console.log('Mock nodes data:', mockNodes);
     const createdNodes = [];
     
     for (let i = 0; i < mockNodes.length; i++) {
       const nodeData = mockNodes[i];
-      console.log(`Creating node ${i + 1}/${mockNodes.length}:`, nodeData);
+      // console.log(`Creating node ${i + 1}/${mockNodes.length}:`, nodeData);
       
       try {
         const node = await db.addNode(
@@ -500,7 +515,7 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
           nodeData.position,
           nodeData.canonicalId // Use canonicalId as custom ID
         );
-        console.log(`Successfully created/updated node ${i + 1}:`, node.id);
+        // console.log(`Successfully created/updated node ${i + 1}:`, node.id);
         createdNodes.push(node);
       } catch (nodeError) {
         console.error(`Error creating node ${i + 1}:`, JSON.stringify(nodeError, null, 2));
@@ -509,11 +524,11 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
       }
     }
     
-    console.log('All nodes created successfully:', createdNodes.length);
-    console.log('Created nodes details:', createdNodes.map((node, i) => `${i}: ${node.id} (${node.label})`));
+    // console.log('All nodes created successfully:', createdNodes.length);
+    // console.log('Created nodes details:', createdNodes.map((node, i) => `${i}: ${node.id} (${node.label})`));
     
     // Create mock edges based on dataset
-    console.log(`Creating ${dataset} mock edges...`);
+    // console.log(`Creating ${dataset} mock edges...`);
     let mockEdges;
     
     if (dataset === 'cancer') {
@@ -542,8 +557,8 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
         { source: createdNodes[2].id, target: createdNodes[5].id, label: 'subtype_of', type: 'clinical' } // Liver Cancer -> HCC
       ];
       
-      console.log('Cancer mockEdges constructed:', mockEdges.length, 'edges');
-      console.log('Edge 7 details:', JSON.stringify(mockEdges[6], null, 2));
+      // console.log('Cancer mockEdges constructed:', mockEdges.length, 'edges');
+      // console.log('Edge 7 details:', JSON.stringify(mockEdges[6], null, 2));
     } else {
       // Default diabetes/obesity relationships
       mockEdges = [
@@ -567,14 +582,14 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
       ];
     }
     
-    console.log('Mock edges data:', mockEdges);
+    // console.log('Mock edges data:', mockEdges);
     const createdEdges = [];
     
     for (let i = 0; i < mockEdges.length; i++) {
       const edgeData = mockEdges[i];
-      console.log(`Creating edge ${i + 1}/${mockEdges.length}:`, JSON.stringify(edgeData, null, 2));
-      console.log(`Edge ${i + 1} source node exists:`, !!edgeData.source);
-      console.log(`Edge ${i + 1} target node exists:`, !!edgeData.target);
+      // console.log(`Creating edge ${i + 1}/${mockEdges.length}:`, JSON.stringify(edgeData, null, 2));
+      // console.log(`Edge ${i + 1} source node exists:`, !!edgeData.source);
+      // console.log(`Edge ${i + 1} target node exists:`, !!edgeData.target);
       
       try {
         const edge = await db.addEdge(
@@ -585,7 +600,7 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
           edgeData.type,
           { description: `Mock ${edgeData.type} relationship` }
         );
-        console.log(`Successfully created edge ${i + 1}:`, edge.id);
+        // console.log(`Successfully created edge ${i + 1}:`, edge.id);
         createdEdges.push(edge);
       } catch (edgeError) {
         console.error(`Error creating edge ${i + 1}:`, JSON.stringify(edgeError, null, 2));
@@ -594,28 +609,28 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
       }
     }
     
-    console.log('All edges created successfully:', createdEdges.length);
+    // console.log('All edges created successfully:', createdEdges.length);
     
     // Save state for undo/redo
-    console.log('Saving state for undo/redo...');
+    // console.log('Saving state for undo/redo...');
     try {
       const currentState = await db.getCurrentGraphState(conversationId);
-      console.log('Current graph state:', currentState);
+      // console.log('Current graph state:', currentState);
       
       await db.saveState(
         graphProject.id,
         'Added mock data',
         currentState
       );
-      console.log('State saved successfully');
+      // console.log('State saved successfully');
     } catch (stateError) {
       console.error('Error saving state:', stateError);
       // Don't throw here, just log the error
     }
     
-    console.log('=== MOCK DATA REQUEST SUCCESS ===');
-    console.log('Created nodes:', createdNodes.length);
-    console.log('Created edges:', createdEdges.length);
+    // console.log('=== MOCK DATA REQUEST SUCCESS ===');
+    // console.log('Created nodes:', createdNodes.length);
+    // console.log('Created edges:', createdEdges.length);
     
     res.json({
       success: true,

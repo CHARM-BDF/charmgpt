@@ -48,8 +48,8 @@ export class GraphDatabaseService {
 
   // Node Operations
   async addNode(graphId: string, label: string, type: string, data?: any, position?: { x: number; y: number }, customId?: string) {
-    console.error(`[DATABASE] 📝 Writing node to database - graphId: ${graphId}, customId: ${customId}`);
-    console.error(`[DATABASE] 📝 Node data:`, { graphId, label, type, data, position, customId });
+    // console.error(`[DATABASE] 📝 Writing node to database - graphId: ${graphId}, customId: ${customId}`);
+    // console.error(`[DATABASE] 📝 Node data:`, { graphId, label, type, data, position, customId });
     
     const nodeData = {
       ...(customId && { id: customId }),
@@ -60,7 +60,7 @@ export class GraphDatabaseService {
       position: position ? JSON.parse(JSON.stringify(position)) : { x: 0, y: 0 },
     };
     
-    console.log('Serialized node data:', nodeData);
+    // console.log('Serialized node data:', nodeData);
     
     // Check if node with this ID already exists in the same graph
     if (nodeData.id) {
@@ -87,8 +87,8 @@ export class GraphDatabaseService {
             position: nodeData.position,
           }
         });
-        console.error(`[DATABASE] ✅ Node updated successfully - id: ${updatedNode.id}`);
-        console.error(`[DATABASE] ✅ Node update result:`, JSON.stringify(updatedNode, null, 2));
+        // console.error(`[DATABASE] ✅ Node updated successfully - id: ${updatedNode.id}`);
+        // console.error(`[DATABASE] ✅ Node update result:`, JSON.stringify(updatedNode, null, 2));
         return updatedNode;
       }
     }
@@ -98,14 +98,14 @@ export class GraphDatabaseService {
       data: nodeData,
     });
     
-    console.error(`[DATABASE] ✅ Node written successfully - id: ${result.id}`);
-    console.error(`[DATABASE] ✅ Node result:`, JSON.stringify(result, null, 2));
+    // console.error(`[DATABASE] ✅ Node written successfully - id: ${result.id}`);
+    // console.error(`[DATABASE] ✅ Node result:`, JSON.stringify(result, null, 2));
     
     return result;
   }
 
   async addNodeWithCanonicalId(graphId: string, label: string, type: string, canonicalId: string, category: string, data?: any, position?: { x: number; y: number }) {
-    console.log('Adding node with canonical ID:', { graphId, label, type, canonicalId, category, data, position });
+    // console.log('Adding node with canonical ID:', { graphId, label, type, canonicalId, category, data, position });
     
     const nodeData = {
       id: canonicalId, // Use canonicalId as the primary ID
@@ -116,7 +116,7 @@ export class GraphDatabaseService {
       position: position ? JSON.parse(JSON.stringify(position)) : { x: 0, y: 0 },
     };
     
-    console.log('Serialized node data with canonical ID:', nodeData);
+    // console.log('Serialized node data with canonical ID:', nodeData);
     
     // Use upsert to handle existing nodes with composite key
     return await this.prisma.graphNode.upsert({
@@ -137,7 +137,7 @@ export class GraphDatabaseService {
   }
 
   async getNodeByCanonicalId(graphId: string, canonicalId: string) {
-    console.log('Looking for node with canonical ID in graph:', { graphId, canonicalId });
+    // console.log('Looking for node with canonical ID in graph:', { graphId, canonicalId });
     
     return await this.prisma.graphNode.findFirst({
       where: {
@@ -168,8 +168,8 @@ export class GraphDatabaseService {
 
   // Edge Operations
   async addEdge(graphId: string, source: string, target: string, label?: string, type?: string, data?: any) {
-    console.error(`[DATABASE] 📝 Writing edge to database - graphId: ${graphId}, source: ${source}, target: ${target}`);
-    console.error(`[DATABASE] 📝 Edge data:`, { graphId, source, target, label, type, data });
+    // console.error(`[DATABASE] 📝 Writing edge to database - graphId: ${graphId}, source: ${source}, target: ${target}`);
+    // console.error(`[DATABASE] 📝 Edge data:`, { graphId, source, target, label, type, data });
     
     const result = await this.prisma.graphEdge.create({
       data: {
@@ -182,8 +182,8 @@ export class GraphDatabaseService {
       },
     });
     
-    console.error(`[DATABASE] ✅ Edge written successfully - id: ${result.id}`);
-    console.error(`[DATABASE] ✅ Edge result:`, JSON.stringify(result, null, 2));
+    // console.error(`[DATABASE] ✅ Edge written successfully - id: ${result.id}`);
+    // console.error(`[DATABASE] ✅ Edge result:`, JSON.stringify(result, null, 2));
     
     return result;
   }

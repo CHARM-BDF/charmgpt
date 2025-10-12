@@ -1074,6 +1074,7 @@ export const useChatStore = create<ChatState>()(
           const defaultName = name || `Graph Mode ${Object.keys(get().conversations).length + 1}`;
           
           // Initialize GraphProject in database immediately
+          console.log('🔥 [FRONTEND] About to call /api/graph/:conversationId/init for:', conversationId);
           try {
             const response = await fetch(`/api/graph/${conversationId}/init`, {
               method: 'POST',
@@ -1092,8 +1093,8 @@ export const useChatStore = create<ChatState>()(
             console.log('✅ [GRAPH-MODE] GraphProject initialized for conversation:', conversationId);
           } catch (error) {
             console.error('❌ [GRAPH-MODE] Error creating graph project:', error);
-            // Continue with conversation creation even if graph init fails
-            // The backend will create it lazily on first node/edge creation
+            // Don't continue if init fails - Graph Mode requires database initialization
+            throw new Error('Failed to initialize Graph Mode. Please try again.');
           }
           
           // Create artifact with SAME ID as conversation

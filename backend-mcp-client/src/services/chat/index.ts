@@ -158,16 +158,8 @@ export class ChatService {
     },
     statusHandler?: (status: string) => void
   ): Promise<StoreFormat> {
-    // CRITICAL DEBUG: Entry point
-    console.error('=====================================================');
-    console.error('🎯 [CHAT-SERVICE] processChat CALLED');
-    console.error('🎯 [CHAT-SERVICE] options.conversationId:', options.conversationId);
-    console.error('🎯 [CHAT-SERVICE] options keys:', Object.keys(options));
-    console.error('=====================================================');
-    
     // Store conversation ID for use in tool execution
     this.currentConversationId = options.conversationId;
-    console.error('🎯 [CHAT-SERVICE] Stored conversationId in class property:', this.currentConversationId);
     
     // Notify status if handler provided
     statusHandler?.('Initializing chat processing...');
@@ -1368,11 +1360,14 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
         console.error('🔍 [CHAT-SERVICE] - serverName:', serverName);
         console.error('🔍 [CHAT-SERVICE] - toolName:', toolName);
         console.error('🔍 [CHAT-SERVICE] - this.currentConversationId:', this.currentConversationId);
-        console.error('🔍 [CHAT-SERVICE] - Check result:', serverName === 'graph-mode-mcp' && this.currentConversationId);
         
-        // Special handling for Graph Mode MCPs - add database context
-        // USE this.currentConversationId instead of options.conversationId (options is out of scope here!)
-        if (serverName === 'graph-mode-mcp' && this.currentConversationId) {
+        // Check if this is a Graph Mode conversation by querying the database
+        const isGraphMode = await this.checkIfGraphModeConversation(this.currentConversationId);
+        console.error('🔍 [CHAT-SERVICE] - Check result:', isGraphMode);
+        
+        // Special handling for Graph Mode conversations - add database context for ALL MCPs
+        // If the conversation is in Graph Mode, ALL tools get database context
+        if (isGraphMode) {
           console.error('=====================================================');
           console.error('🔧🔧🔧 [CHAT-SERVICE] GRAPH MODE MCP DETECTED! 🔧🔧🔧');
           console.error('🔧 [CHAT-SERVICE] Conversation ID:', this.currentConversationId);
@@ -1697,26 +1692,51 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
   
   /**
    * Check if a conversation is in Graph Mode by looking for an associated GraphProject
+   * Includes retry logic to handle database connection timing issues
    * 
    * @param conversationId The conversation ID to check
+   * @param maxRetries Maximum number of retry attempts (default: 3)
    * @returns True if the conversation is in Graph Mode
    */
-  private async checkIfGraphModeConversation(conversationId?: string): Promise<boolean> {
-    if (!conversationId) return false;
-    
-    try {
-      // Check if graph project exists for this conversation
-      const graphProject = await this.graphDb?.getGraphProject(conversationId);
-      if (graphProject) {
-        console.log('✅ Graph Mode conversation detected:', conversationId);
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error checking Graph Mode conversation:', error);
+  private async checkIfGraphModeConversation(conversationId?: string, maxRetries = 3): Promise<boolean> {
+    if (!conversationId) {
+      // console.log('🔍 [GRAPH-MODE-CHECK] No conversationId provided');
       return false;
     }
+    
+    // console.log('🔍 [GRAPH-MODE-CHECK] Checking conversationId:', conversationId);
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Check if graph project exists for this conversation
+        const graphProject = await this.graphDb?.getGraphProject(conversationId);
+        console.error(`🔍 [GRAPH-MODE-CHECK] Attempt ${attempt}/${maxRetries} for ${conversationId}: GraphProject =`, graphProject ? `Found (id: ${graphProject.id})` : 'Not found');
+        
+        if (graphProject) {
+          console.error('✅ [GRAPH-MODE-CHECK] Graph Mode conversation detected:', conversationId);
+          return true;
+        }
+        
+        // If not found (but no error), no need to retry
+        console.error('🔍 [GRAPH-MODE-CHECK] No GraphProject found for conversationId:', conversationId);
+        return false;
+      } catch (error) {
+        console.error(`❌ [GRAPH-MODE-CHECK] Attempt ${attempt}/${maxRetries} failed for conversationId ${conversationId}:`, error);
+        
+        // If this was the last attempt, return false
+        if (attempt === maxRetries) {
+          console.error('❌ [GRAPH-MODE-CHECK] All retry attempts exhausted for conversationId:', conversationId);
+          return false;
+        }
+        
+        // Wait before retrying (exponential backoff: 50ms, 100ms, 200ms)
+        const delay = 50 * Math.pow(2, attempt - 1);
+        console.log(`🔍 [GRAPH-MODE-CHECK] Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    return false;
   }
 
   /**
@@ -1743,23 +1763,10 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     // Prepare tool input with potential database context for Graph Mode
     let toolInput = toolCall.input;
     
-    console.error('=====================================================');
-    console.error('🎯 [EXECUTETOOLS] executeToolCall called');
-    console.error('🎯 [EXECUTETOOLS] serverName:', serverName);
-    console.error('🎯 [EXECUTETOOLS] toolName:', toolName);
-    console.error('🎯 [EXECUTETOOLS] this.currentConversationId:', this.currentConversationId);
-    console.error('=====================================================');
-    
     // Check if this is a Graph Mode conversation and inject database context
     const isGraphModeConversation = await this.checkIfGraphModeConversation(this.currentConversationId);
     
     if (isGraphModeConversation && this.currentConversationId) {
-      console.error('=====================================================');
-      console.error('🔧 Graph Mode detected - injecting database context into tool input');
-      console.error('🔧 [EXECUTETOOLS] Server name:', serverName);
-      console.error('🔧 [EXECUTETOOLS] Adding database context with conversationId:', this.currentConversationId);
-      console.error('=====================================================');
-      
       toolInput = {
         ...toolInput,
         databaseContext: {
