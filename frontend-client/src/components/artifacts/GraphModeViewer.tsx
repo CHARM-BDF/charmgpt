@@ -181,6 +181,9 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
   const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
+  
+  // Edge aggregation state
+  const [aggregateEdges, setAggregateEdges] = useState(true);
 
   // Helper function to get color based on entity group
   const getColorForGroup = (group: number): string => {
@@ -517,22 +520,81 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       startingNodes[1].fy = 0;
     }
 
-    // Convert edges
+    // Convert edges with optional aggregation
     let edges: any[] = [];
     if (parsedData.links) {
-      edges = parsedData.links.map((link: any, index: number) => ({
-        id: `${link.source}-${link.target}-${index}`,
-        source: link.source,
-        target: link.target,
-        label: link.label?.replace('biolink:', '') || '',
-        color: '#888',
-        size: Math.max(1, link.value || 1),
-        data: link.data  // ← PRESERVE edge data!
-      }));
+      if (aggregateEdges) {
+        // Group edges by source-target pair
+        const edgeGroups = new Map<string, any[]>();
+        
+        parsedData.links.forEach((link: any) => {
+          const key = `${link.source}-${link.target}`;
+          if (!edgeGroups.has(key)) {
+            edgeGroups.set(key, []);
+          }
+          edgeGroups.get(key)!.push(link);
+        });
+        
+        // Log aggregation stats
+        const multiEdgePairs = Array.from(edgeGroups.entries()).filter(([_, group]) => group.length > 1);
+        if (multiEdgePairs.length > 0) {
+          console.log(`📊 Edge Aggregation: Found ${multiEdgePairs.length} node pairs with multiple edges:`);
+          multiEdgePairs.forEach(([key, group]) => {
+            const [sourceId, targetId] = key.split('-');
+            const sourceNode = parsedData.nodes.find((n: any) => n.id === sourceId);
+            const targetNode = parsedData.nodes.find((n: any) => n.id === targetId);
+            const sourceName = sourceNode?.name || sourceId;
+            const targetName = targetNode?.name || targetId;
+            const labels = group.map((e: any) => e.label).join(', ');
+            console.log(`  ${sourceName} → ${targetName}`);
+            console.log(`    (${sourceId} → ${targetId})`);
+            console.log(`    ${group.length} edges: ${labels}`);
+          });
+        } else {
+          console.log(`📊 Edge Aggregation: No duplicate edges found (all ${edgeGroups.size} node pairs have single edges)`);
+        }
+        
+        // Create aggregated edges
+        edges = Array.from(edgeGroups.entries()).map(([key, group], index) => {
+          const first = group[0];
+          const predicates = [...new Set(group.map((e: any) => e.label?.replace('biolink:', '') || ''))];
+          
+          return {
+            id: `${key}-agg-${index}`,
+            source: first.source,
+            target: first.target,
+            label: group.length > 1
+              ? (predicates.length === 1 
+                  ? `${predicates[0]} (${group.length})` 
+                  : `${predicates[0]} +${predicates.length - 1} (${group.length})`)
+              : (predicates[0] || ''),
+            color: '#888',
+            size: Math.max(1, group.length),
+            labelVisible: true,
+            data: {
+              count: group.length,
+              edges: group,  // Store all individual edges
+              predicates: predicates,
+              allData: group.map((e: any) => e.data).filter((d: any) => d)  // All edge metadata
+            }
+          };
+        });
+      } else {
+        // No aggregation - show all edges separately
+        edges = parsedData.links.map((link: any, index: number) => ({
+          id: `${link.source}-${link.target}-${index}`,
+          source: link.source,
+          target: link.target,
+          label: link.label?.replace('biolink:', '') || '',
+          color: '#888',
+          size: Math.max(1, link.value || 1),
+          data: link.data  // ← PRESERVE edge data!
+        }));
+      }
     }
 
     return { nodes, edges };
-  }, [parsedData]);
+  }, [parsedData, aggregateEdges]);
 
   // Apply filters when selections change
   useEffect(() => {
@@ -552,16 +614,33 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     const nodeIds = new Set(nodes.map(node => node.id));
     
     const edges = graphData.edges.filter(edge => {
-      const edgeLabel = edge.label || 'No Label';
+      let edgeLabel = edge.label || 'No Label';
+      const originalLabel = edgeLabel;
+      
+      // For aggregated edges, extract the base label (remove count badge)
+      // "affects (2)" -> "affects"
+      // "affects +1 (3)" -> "affects"
+      if (edge.data?.count > 1) {
+        edgeLabel = edgeLabel.replace(/\s*(\+\d+\s*)?\(\d+\)$/, '').trim();
+      }
       
       // Default to showing everything if filters are not yet initialized
       const edgeLabelSelected = Object.keys(selectedEdgeLabels).length === 0 || selectedEdgeLabels[edgeLabel];
       
-      return (
+      const passesFilter = (
         edgeLabelSelected &&
         nodeIds.has(edge.source) && 
         nodeIds.has(edge.target)
       );
+      
+      // Debug: Log filtered out aggregated edges
+      if (!passesFilter && edge.data?.count > 1) {
+        console.log(`🚫 Filtered out aggregated edge: ${originalLabel} (base: ${edgeLabel})`);
+        console.log(`  - Label selected: ${edgeLabelSelected}, source exists: ${nodeIds.has(edge.source)}, target exists: ${nodeIds.has(edge.target)}`);
+        console.log(`  - Available filters:`, Object.keys(selectedEdgeLabels));
+      }
+      
+      return passesFilter;
     });
     
     setFilteredNodes(nodes);
@@ -854,7 +933,66 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
 
   // Handle edge click - log edge data to console
   const handleEdgeClick = (edge: any, props?: any, event?: any) => {
-    console.log('Edge clicked:', edge);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    if (edge.data?.count > 1) {
+      // Multiple edges aggregated
+      console.log(`🔗 AGGREGATED EDGE: ${edge.source} → ${edge.target}`);
+      console.log(`📊 Total relationships: ${edge.data.count}`);
+      console.log(`🏷️  Predicates: ${edge.data.predicates.join(', ')}`);
+      console.log('');
+      console.log('Individual relationships:');
+      
+      edge.data.edges.forEach((e: any, i: number) => {
+        console.log('');
+        console.log(`${i + 1}. ${e.label || 'Unknown predicate'}`);
+        if (e.data) {
+          if (e.data.phrase) console.log(`   📝 ${e.data.phrase}`);
+          if (e.data.publications && e.data.publications.length > 0) {
+            console.log(`   📚 Publications (${e.data.publications.length}): ${e.data.publications.join(', ')}`);
+          } else {
+            console.log(`   📚 Publications: None`);
+          }
+          if (e.data.primary_source) console.log(`   🔍 Source: ${e.data.primary_source}`);
+          if (e.data.agg1) console.log(`   🔗 Aggregator 1: ${e.data.agg1}`);
+          if (e.data.agg2) console.log(`   🔗 Aggregator 2: ${e.data.agg2}`);
+          if (e.data.edgeType) console.log(`   ⚡ Type: ${e.data.edgeType}`);
+        }
+      });
+      
+      console.log('');
+      console.log('Full edge object:', edge);
+    } else if (edge.data?.edges && edge.data.edges.length === 1) {
+      // Single edge (but in aggregated format)
+      const singleEdge = edge.data.edges[0];
+      console.log(`🔗 SINGLE EDGE: ${edge.source} → ${edge.target}`);
+      console.log(`🏷️  Predicate: ${singleEdge.label || edge.label}`);
+      console.log('');
+      
+      if (singleEdge.data) {
+        if (singleEdge.data.phrase) console.log(`📝 ${singleEdge.data.phrase}`);
+        if (singleEdge.data.publications && singleEdge.data.publications.length > 0) {
+          console.log(`📚 Publications (${singleEdge.data.publications.length}): ${singleEdge.data.publications.join(', ')}`);
+        } else {
+          console.log(`📚 Publications: None`);
+        }
+        if (singleEdge.data.primary_source) console.log(`🔍 Source: ${singleEdge.data.primary_source}`);
+        if (singleEdge.data.agg1) console.log(`🔗 Aggregator 1: ${singleEdge.data.agg1}`);
+        if (singleEdge.data.agg2) console.log(`🔗 Aggregator 2: ${singleEdge.data.agg2}`);
+        if (singleEdge.data.edgeType) console.log(`⚡ Type: ${singleEdge.data.edgeType}`);
+        if (singleEdge.data.qualifiers && singleEdge.data.qualifiers.length > 0) {
+          console.log(`🎯 Qualifiers (${singleEdge.data.qualifiers.length}):`, singleEdge.data.qualifiers);
+        }
+      }
+      
+      console.log('');
+      console.log('Full edge object:', edge);
+    } else {
+      // Fallback for non-aggregated edges
+      console.log('🔗 EDGE:', edge);
+    }
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
   // Notification popup component
@@ -1019,6 +1157,22 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
               </svg>
               <span>Refresh</span>
             </button>
+            
+            {/* NEW: Edge aggregation toggle */}
+            <button
+              onClick={() => setAggregateEdges(!aggregateEdges)}
+              className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded transition-colors ${
+                aggregateEdges
+                  ? 'bg-green-500 hover:bg-green-600 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
+              title={aggregateEdges ? "Aggregating duplicate edges - click to show all" : "Showing all edges - click to aggregate"}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>{aggregateEdges ? 'Aggregated' : 'All Edges'}</span>
+            </button>
           </div>
         </div>
         
@@ -1070,7 +1224,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       <div ref={containerRef} className="w-full h-full flex-grow relative" style={{ minWidth: '900px' }}>
         <NotificationPopup />
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
-          Ctrl/Cmd + Click on a node to add it to chat
+          <div>Ctrl/Cmd + Click node to add to chat</div>
+          <div>Click edge to view details in console</div>
         </div>
         <GraphCanvas
           nodes={filteredNodes.length ? filteredNodes : graphData.nodes}

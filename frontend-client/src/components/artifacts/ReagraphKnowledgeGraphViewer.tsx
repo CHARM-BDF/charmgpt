@@ -1103,7 +1103,8 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         <NotificationPopup />
         {/* Tooltip for Ctrl/Cmd+Click functionality */}
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
-          Ctrl/Cmd + Click on a node to add it to chat
+          <div>Ctrl/Cmd + Click node to add to chat</div>
+          <div>Click edge to view details in console</div>
         </div>
         {/* <GraphCanvas
           nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
