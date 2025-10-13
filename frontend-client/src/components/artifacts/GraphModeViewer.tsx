@@ -4,6 +4,7 @@ import { KnowledgeGraphData } from '@charm-mcp/shared';
 import { useChatStore } from '../../store/chatStore';
 import { ChevronDown, ChevronUp, Filter, Save, Pin, PinOff, Plus, Trash2, Undo, Redo, Settings } from 'lucide-react';
 import { useMCPStore } from '../../store/mcpStore';
+import { EdgeDetailCard } from './EdgeDetailCard';
 
 // --- Category normalization + color palette ---
 const normalizeCategory = (value?: string) =>
@@ -184,6 +185,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   
   // Edge aggregation state
   const [aggregateEdges, setAggregateEdges] = useState(true);
+  
+  // Edge detail card state
+  const [hoveredEdge, setHoveredEdge] = useState<any>(null);
+  const [pinnedEdgeCard, setPinnedEdgeCard] = useState<any>(null);
+  const [cardPosition, setCardPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Helper function to get color based on entity group
   const getColorForGroup = (group: number): string => {
@@ -933,6 +939,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
 
   // Handle edge click - log edge data to console
   const handleEdgeClick = (edge: any, props?: any, event?: any) => {
+    console.log('🚀 handleEdgeClick called!', { edge, props, event });
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     if (edge.data?.count > 1) {
@@ -993,7 +1000,98 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     }
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Show detail card for all edges
+    console.log('🎯 Attempting to show detail card...', { 
+      hasEvent: !!event, 
+      edgeCount: edge.data?.count,
+      eventType: event?.type
+    });
+    
+    if (edge.data?.count >= 1) {
+      setHoveredEdge(edge);
+      
+      // Try to get position from event, fallback to center of screen
+      let x = window.innerWidth / 2;
+      let y = window.innerHeight / 2;
+      
+      if (event) {
+        // Try different event properties
+        x = event.clientX || event.pageX || event.x || x;
+        y = event.clientY || event.pageY || event.y || y;
+      }
+      
+      console.log('📍 Card position:', { x, y });
+      setCardPosition({ x, y });
+    }
   };
+  
+  // Handle edge detail card pin toggle
+  const handlePinEdgeCard = useCallback(() => {
+    if (pinnedEdgeCard) {
+      setPinnedEdgeCard(null);
+    } else if (hoveredEdge) {
+      setPinnedEdgeCard(hoveredEdge);
+    }
+  }, [hoveredEdge, pinnedEdgeCard]);
+  
+  // Handle copy edge details to chat
+  const handleCopyEdgeToChat = useCallback(() => {
+    const edge = hoveredEdge || pinnedEdgeCard;
+    if (!edge) return;
+    
+    // Get node names for better readability
+    const sourceNode = parsedData?.nodes?.find((n: any) => n.id === edge.source);
+    const targetNode = parsedData?.nodes?.find((n: any) => n.id === edge.target);
+    const sourceName = sourceNode?.name || edge.source;
+    const targetName = targetNode?.name || edge.target;
+    
+    const edges = edge.data?.edges || [edge];
+    const count = edge.data?.count || 1;
+    
+    const lines = [
+      `${sourceName} → ${targetName} (${count} ${count === 1 ? 'relationship' : 'relationships'})`,
+      ''
+    ];
+    
+    edges.forEach((e: any, i: number) => {
+      const edgeData = e.data || {};
+      lines.push(`${i + 1}. ${e.label || 'Unknown predicate'}`);
+      
+      if (edgeData.phrase) {
+        lines.push(`   📝 ${edgeData.phrase}`);
+      }
+      
+      if (edgeData.publications && edgeData.publications.length > 0) {
+        lines.push(`   📚 Publications (${edgeData.publications.length}): ${edgeData.publications.join(', ')}`);
+      } else {
+        lines.push(`   📚 Publications: None`);
+      }
+      
+      if (edgeData.primary_source) {
+        lines.push(`   🔍 Source: ${edgeData.primary_source}`);
+      }
+      
+      if (edgeData.agg1) {
+        lines.push(`   🔗 Aggregator 1: ${edgeData.agg1}`);
+      }
+      
+      if (edgeData.agg2) {
+        lines.push(`   🔗 Aggregator 2: ${edgeData.agg2}`);
+      }
+      
+      lines.push('');
+    });
+    
+    updateChatInput(lines.join('\n'), true);
+    
+    // Pin graph if not already pinned
+    if (artifactId && !isPinned) {
+      setPinnedGraphId(artifactId);
+    }
+    
+    showNotification('Edge details added to chat input', 'success');
+  }, [hoveredEdge, pinnedEdgeCard, parsedData, updateChatInput, artifactId, isPinned, setPinnedGraphId, showNotification]);
 
   // Notification popup component
   const NotificationPopup = () => {
@@ -1223,9 +1321,32 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       
       <div ref={containerRef} className="w-full h-full flex-grow relative" style={{ minWidth: '900px' }}>
         <NotificationPopup />
+        
+        {/* Edge Detail Card */}
+        {(hoveredEdge || pinnedEdgeCard) && (
+          <>
+            {console.log('💳 Rendering EdgeDetailCard', { hoveredEdge, pinnedEdgeCard, cardPosition })}
+            <EdgeDetailCard
+            edge={{
+              ...(hoveredEdge || pinnedEdgeCard),
+              sourceName: parsedData?.nodes?.find((n: any) => n.id === (hoveredEdge || pinnedEdgeCard)?.source)?.name,
+              targetName: parsedData?.nodes?.find((n: any) => n.id === (hoveredEdge || pinnedEdgeCard)?.target)?.name
+            }}
+            position={cardPosition}
+            onClose={() => {
+              setHoveredEdge(null);
+              setPinnedEdgeCard(null);
+            }}
+            onPin={handlePinEdgeCard}
+            onCopyToChat={handleCopyEdgeToChat}
+            isPinned={!!pinnedEdgeCard}
+          />
+          </>
+        )}
+        
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
           <div>Ctrl/Cmd + Click node to add to chat</div>
-          <div>Click edge to view details in console</div>
+          <div>Click edge to view details</div>
         </div>
         <GraphCanvas
           nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
