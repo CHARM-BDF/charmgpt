@@ -939,7 +939,6 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
 
   // Handle edge click - log edge data to console
   const handleEdgeClick = (edge: any, props?: any, event?: any) => {
-    console.log('🚀 handleEdgeClick called!', { edge, props, event });
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     if (edge.data?.count > 1) {
@@ -1001,27 +1000,19 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // Show detail card for all edges
-    console.log('🎯 Attempting to show detail card...', { 
-      hasEvent: !!event, 
-      edgeCount: edge.data?.count,
-      eventType: event?.type
-    });
-    
+    // Show detail card for all edges with aggregation
     if (edge.data?.count >= 1) {
       setHoveredEdge(edge);
       
-      // Try to get position from event, fallback to center of screen
+      // Get position from event, fallback to center of screen
       let x = window.innerWidth / 2;
       let y = window.innerHeight / 2;
       
       if (event) {
-        // Try different event properties
         x = event.clientX || event.pageX || event.x || x;
         y = event.clientY || event.pageY || event.y || y;
       }
       
-      console.log('📍 Card position:', { x, y });
       setCardPosition({ x, y });
     }
   };
@@ -1324,9 +1315,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         
         {/* Edge Detail Card */}
         {(hoveredEdge || pinnedEdgeCard) && (
-          <>
-            {console.log('💳 Rendering EdgeDetailCard', { hoveredEdge, pinnedEdgeCard, cardPosition })}
-            <EdgeDetailCard
+          <EdgeDetailCard
             edge={{
               ...(hoveredEdge || pinnedEdgeCard),
               sourceName: parsedData?.nodes?.find((n: any) => n.id === (hoveredEdge || pinnedEdgeCard)?.source)?.name,
@@ -1341,7 +1330,6 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             onCopyToChat={handleCopyEdgeToChat}
             isPinned={!!pinnedEdgeCard}
           />
-          </>
         )}
         
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
