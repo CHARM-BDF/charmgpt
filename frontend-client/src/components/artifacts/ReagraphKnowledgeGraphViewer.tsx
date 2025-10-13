@@ -968,6 +968,11 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     console.log('Node clicked:', node);
   };
 
+  // Handle edge click - log edge data to console
+  const handleEdgeClick = (edge: any, props?: any, event?: any) => {
+    console.log('Edge clicked:', edge);
+  };
+
   // Notification popup component
   const NotificationPopup = () => {
     if (!notification.show) return null;
@@ -1107,6 +1112,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           draggable
           labelType="all"
           onNodeClick={handleNodeClick}
+          onEdgeClick={handleEdgeClick}
         /> */}
       </div>
     </div>

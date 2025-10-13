@@ -286,7 +286,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
               source: edge.source,
               target: edge.target,
               label: edge.label,
-              value: 1
+              value: 1,
+              data: edge.data  // ← PRESERVE edge data!
             }))
           };
           
@@ -525,7 +526,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         target: link.target,
         label: link.label?.replace('biolink:', '') || '',
         color: '#888',
-        size: Math.max(1, link.value || 1)
+        size: Math.max(1, link.value || 1),
+        data: link.data  // ← PRESERVE edge data!
       }));
     }
 
@@ -667,7 +669,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
                   source: edge.source,
                   target: edge.target,
                   label: edge.label,
-                  value: 1
+                  value: 1,
+                  data: edge.data  // ← PRESERVE edge data!
                 }))
               };
               
@@ -781,7 +784,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
                   source: edge.source,
                   target: edge.target,
                   label: edge.label,
-                  value: 1
+                  value: 1,
+                  data: edge.data  // ← PRESERVE edge data!
                 }))
               };
               
@@ -846,6 +850,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     }
     
     console.log('Node clicked:', node);
+  };
+
+  // Handle edge click - log edge data to console
+  const handleEdgeClick = (edge: any, props?: any, event?: any) => {
+    console.log('Edge clicked:', edge);
   };
 
   // Notification popup component
@@ -1070,6 +1079,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           draggable
           labelType="all"
           onNodeClick={handleNodeClick}
+          onEdgeClick={handleEdgeClick}
         />
       </div>
     </div>

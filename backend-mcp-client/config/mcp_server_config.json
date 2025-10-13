@@ -247,6 +247,18 @@
         "NODE_ENV": "development"
       },
       "description": "Graph Mode PubTator MCP - Adds biomedical entities from PubTator to knowledge graphs"
+    },
+    "graphmode-translator": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeTranslator/dist/index.js"
+      ],
+      "timeout": 120000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode Translator MCP - Imports knowledge graphs from Translator API using PK"
     }
   }
 }
