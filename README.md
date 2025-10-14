@@ -4,6 +4,11 @@ This guide walks you through setting up and running the custom MCP (Model Contex
 
 ## Contents
 - [Prerequisites](#prerequisites)
+- [Database Setup](#database-setup)
+  - [Automated Database Setup](#automated-database-setup-recommended)
+  - [Manual Database Setup](#manual-database-setup)
+  - [Database Schema](#database-schema)
+  - [Useful Database Commands](#useful-database-commands)
 - [Automated Setup](#automated-setup)
 - [Manual Setup](#manual-setup)
   - [Build MCP Servers](#build-mcp-servers)
@@ -25,6 +30,77 @@ This guide walks you through setting up and running the custom MCP (Model Contex
 - Git repository cloned locally
 - Node.js (v16 or later) and npm installed
 
+## Database Setup
+
+The application uses a SQLite database to store Graph Mode data (nodes, edges, and conversation states). The database file (`dev.db`) is in `.gitignore`, so you need to set it up locally.
+
+### Automated Database Setup (Recommended)
+
+Run the database setup script from the repository root:
+
+```bash
+./setup-database.sh
+```
+
+This script will:
+- Create a `.env` file with database configuration (if it doesn't exist)
+- Install backend dependencies
+- Generate the Prisma client
+- Create the database and apply the schema
+- Display useful database commands
+
+### Manual Database Setup
+
+If you prefer to set up the database manually:
+
+1. **Create Environment Configuration**
+   
+   Create a `.env` file in the `backend-mcp-client` directory:
+   ```bash
+   cd backend-mcp-client
+   echo 'DATABASE_URL="file:./dev.db"' > .env
+   ```
+
+2. **Install Backend Dependencies**
+   
+   ```bash
+   npm install
+   ```
+
+3. **Generate Prisma Client and Create Database**
+   
+   ```bash
+   npm run db:generate
+   npm run db:push
+   ```
+
+### Database Schema
+
+The database includes the following models:
+
+- **GraphProject**: Main graph container linked to frontend conversations
+- **GraphNode**: Individual nodes with custom IDs, labels, types, position, and data
+- **GraphEdge**: Connections between nodes with labels and metadata (including source, publications, qualifiers)
+- **GraphState**: Snapshots for undo/redo functionality
+
+### Useful Database Commands
+
+From the `backend-mcp-client` directory:
+
+```bash
+# Open Prisma Studio to view/edit data in a GUI
+npm run db:studio
+
+# Regenerate Prisma client after schema changes
+npm run db:generate
+
+# Create a new migration
+npm run db:migrate
+
+# Push schema changes to database
+npm run db:push
+```
+
 ## Automated Setup
 
 The simplest way to set up all custom MCP servers is to use the provided bash script:
@@ -43,6 +119,8 @@ This script handles the entire setup process:
 ## Manual Setup
 
 If you prefer to set up the servers step by step, follow these instructions:
+
+**Note:** Make sure you've completed the [Database Setup](#database-setup) before building and running MCP servers.
 
 ### Build MCP Servers
 
@@ -209,6 +287,14 @@ Now that you have the application running, you can:
 - If you see an error about Docker daemon not running, make sure Docker Desktop is started
 - If build fails due to network issues, check your internet connection and try again
 - If the application doesn't start, check that all dependencies are installed with `npm install`
+
+### Database Issues
+
+- **Database not found**: Run `./setup-database.sh` from the repository root to create the database
+- **Prisma client errors**: Run `npm run db:generate` from the `backend-mcp-client` directory
+- **Schema sync issues**: Run `npm run db:push` to sync your schema with the database
+- **Permission errors**: Ensure the `backend-mcp-client` directory has write permissions
+- **View database contents**: Run `npm run db:studio` from `backend-mcp-client` to open Prisma Studio
 
 ### Debug Logging Utility
 
