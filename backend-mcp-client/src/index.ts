@@ -106,8 +106,8 @@ try {
 }
 
 app.use(cors());
-// Increase the body parser limit to handle large pinned artifacts
-app.use(express.json({ limit: '1mb' }));
+// Increase the body parser limit to handle large pinned artifacts and bulk operations
+app.use(express.json({ limit: '50mb' }));
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

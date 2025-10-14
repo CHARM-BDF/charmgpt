@@ -258,6 +258,70 @@ export class GraphDatabaseService {
   }
 
   // Cleanup
+  async bulkCreateNodes(nodes: any[]) {
+    // Bulk insert - SQLite doesn't support skipDuplicates, so we'll handle duplicates gracefully
+    let result;
+    try {
+      result = await this.prisma.graphNode.createMany({
+        data: nodes
+      });
+    } catch (error: any) {
+      // If we get a unique constraint error, try inserting one by one to skip duplicates
+      if (error.code === 'P2002' || error.message?.includes('UNIQUE constraint failed')) {
+        console.log('Bulk insert failed due to duplicates, falling back to individual inserts');
+        let created = 0;
+        for (const node of nodes) {
+          try {
+            await this.prisma.graphNode.create({ data: node });
+            created++;
+          } catch (nodeError: any) {
+            // Skip duplicate nodes
+            if (nodeError.code === 'P2002' || nodeError.message?.includes('UNIQUE constraint failed')) {
+              continue;
+            }
+            throw nodeError;
+          }
+        }
+        result = { count: created };
+      } else {
+        throw error;
+      }
+    }
+    return result;
+  }
+
+  async bulkCreateEdges(edges: any[]) {
+    // Bulk insert - SQLite doesn't support skipDuplicates, so we'll handle duplicates gracefully
+    let result;
+    try {
+      result = await this.prisma.graphEdge.createMany({
+        data: edges
+      });
+    } catch (error: any) {
+      // If we get a unique constraint error, try inserting one by one to skip duplicates
+      if (error.code === 'P2002' || error.message?.includes('UNIQUE constraint failed')) {
+        console.log('Bulk insert failed due to duplicates, falling back to individual inserts');
+        let created = 0;
+        for (const edge of edges) {
+          try {
+            await this.prisma.graphEdge.create({ data: edge });
+            created++;
+          } catch (edgeError: any) {
+            // Skip duplicate edges
+            if (edgeError.code === 'P2002' || edgeError.message?.includes('UNIQUE constraint failed')) {
+              continue;
+            }
+            throw edgeError;
+          }
+        }
+        result = { count: created };
+      } else {
+        throw error;
+      }
+    }
+    return result;
+  }
+
   async disconnect() {
     await this.prisma.$disconnect();
   }
