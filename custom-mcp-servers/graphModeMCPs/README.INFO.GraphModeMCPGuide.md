@@ -294,6 +294,128 @@ model GraphNode {
 - **"Invalid `prisma.graphNode.create()` invocation"** → Check field structure
 - **"Unique constraint failed"** → Node with same `id` + `graphId` already exists
 
+### Edge Deduplication Requirements (January 2025)
+
+**Problem:** Multiple queries to the same data source can create duplicate edges in the database, leading to data bloat and confusion about actual relationship counts.
+
+**Solution:** All Graph Mode MCPs must populate edge metadata fields that enable automatic deduplication at the database layer.
+
+#### Required Edge Data Fields
+
+Every edge created by a Graph Mode MCP MUST include:
+
+```typescript
+const edgeData = {
+  source: "node_id_1",          // Subject node ID
+  target: "node_id_2",          // Object node ID
+  label: "predicate",           // Relationship type
+  data: {
+    source: "mcp-name",         // REQUIRED: MCP identifier (e.g., "translator", "pubtator")
+    primary_source: "...",      // REQUIRED: Knowledge source identifier
+    publications: [...],        // REQUIRED: Array of publication IDs (can be empty)
+    // ... other metadata
+  }
+};
+```
+
+#### Uniqueness Constraint
+
+An edge is considered unique within a conversation when this combination is unique:
+```
+conversationId + data.source + data.primary_source + source + label + target
+```
+
+#### Primary Source Guidelines
+
+**Format**: Use infores: prefix or PMID: prefix for consistency
+
+**Examples**:
+- Translator: `"infores:ctd"`, `"infores:biogrid"`, `"infores:chembl"`
+- Pubtator with PMID: `"PMID:33961781"`
+- Pubtator without PMID: `"infores:pubtator"`
+- Future MCPs: `"infores:your-source"` or specific identifier
+
+#### Publications Array Format
+
+**Always use an array**, even for single or zero publications:
+
+```typescript
+// Multiple publications
+publications: ["PMID:33961781", "PMID:12345678"]
+
+// Single publication  
+publications: ["PMID:33961781"]
+
+// No publications
+publications: []
+
+// PubMed Central IDs (if applicable)
+publications: ["PMC:8675309"]
+```
+
+**Prefix Guidelines**:
+- PubMed: `"PMID:12345678"`
+- PubMed Central: `"PMC:8675309"`
+- DOI: `"DOI:10.1234/example"`
+- Other: Use standard prefix or create one
+
+#### Deduplication Behavior
+
+When the database service detects a duplicate edge:
+1. Existing edge is returned (no new edge created)
+2. Log message indicates duplicate was found
+3. No error is thrown
+4. Operation succeeds with existing edge data
+
+This means:
+- ✅ Fetching same Translator PK multiple times → no duplicates
+- ✅ Querying same Pubtator PMID multiple times → no duplicates
+- ✅ Different sources for same relationship → separate edges (correct!)
+- ✅ Different PMIDs for same relationship → separate edges (correct!)
+
+#### Example: Pubtator MCP
+
+```typescript
+const edgeData: EdgeData = {
+  source: relation.e1,
+  target: relation.e2,
+  label: mapRelationshipType(relation.type),
+  data: {
+    type: relation.type,
+    source: 'pubtator',                                                    // MCP identifier
+    primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',  // Knowledge source
+    publications: relation.pmid ? [`PMID:${relation.pmid}`] : []         // Publications array
+  }
+};
+```
+
+#### Example: Translator MCP
+
+```typescript
+const edgeData = {
+  source: edge.subject,
+  target: edge.object,
+  label: edge.predicate.replace('biolink:', ''),
+  data: {
+    source: 'translator',                    // MCP identifier
+    primary_source: edgeData.primary_source, // e.g., "infores:ctd"
+    publications: edgeData.publications,     // e.g., ["PMID:123", "PMID:456"]
+    // ... other Translator-specific fields
+  }
+};
+```
+
+#### Verification Checklist
+
+When creating a new Graph Mode MCP, verify:
+
+- [ ] `data.source` is populated with MCP identifier
+- [ ] `data.primary_source` is populated with knowledge source
+- [ ] `data.publications` is an array (not a string or null)
+- [ ] Publications use standard prefixes (PMID:, PMC:, DOI:)
+- [ ] Same query run twice doesn't create duplicate edges
+- [ ] Different sources create separate edges correctly
+
 ### Critical: Edge Creation Fix (January 2025)
 
 **Problem:** Edges were being created in memory but not saved to the database.
@@ -520,6 +642,7 @@ const nodeId = "node"; // Not unique enough
 9. **Creating only target nodes** - Source entities in relations must also be created as nodes
 10. **Edge creation without database persistence** - Must call `createEdgeInDatabase()`, not just push to array
 11. **UI filtering hiding all nodes** - Filter logic must default to showing everything when not initialized
+12. **Missing edge deduplication fields** - Must include `source`, `primary_source`, and `publications` in edge data
 
 ## 🧠 Critical Lessons Learned (January 2025)
 

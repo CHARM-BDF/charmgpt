@@ -565,6 +565,12 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           const first = group[0];
           const predicates = [...new Set(group.map((e: any) => e.label?.replace('biolink:', '') || ''))];
           
+          // Calculate edge thickness: 1-5 linear, 5+ uses 5 + sqrt(n-5)
+          // Round to nearest tenth, max 25
+          const count = group.length;
+          let edgeSize = count <= 5 ? count : 5 + Math.sqrt(count - 5);
+          edgeSize = Math.min(Math.round(edgeSize * 10) / 10, 25);
+          
           return {
             id: `${key}-agg-${index}`,
             source: first.source,
@@ -575,7 +581,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
                   : `${predicates[0]} +${predicates.length - 1} (${group.length})`)
               : (predicates[0] || ''),
             color: '#888',
-            size: Math.max(1, group.length),
+            size: edgeSize,
             labelVisible: true,
             data: {
               count: group.length,

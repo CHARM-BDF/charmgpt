@@ -171,6 +171,32 @@ export class GraphDatabaseService {
     // console.error(`[DATABASE] 📝 Writing edge to database - graphId: ${graphId}, source: ${source}, target: ${target}`);
     // console.error(`[DATABASE] 📝 Edge data:`, { graphId, source, target, label, type, data });
     
+    // Check for duplicate edge based on uniqueness constraint
+    // Unique key: graphId + data.source + data.primary_source + source + label + target
+    if (data?.source && data?.primary_source) {
+      // Fetch all edges between these nodes with same label
+      const potentialDuplicates = await this.prisma.graphEdge.findMany({
+        where: {
+          graphId,
+          source,
+          target,
+          label
+        }
+      });
+      
+      // Check if any edge has matching MCP source and knowledge source
+      for (const edge of potentialDuplicates) {
+        const edgeData = edge.data as any;
+        if (edgeData?.source === data.source && 
+            edgeData?.primary_source === data.primary_source) {
+          console.error(`[DATABASE] ⚠️ Edge already exists, returning existing edge: ${edge.id}`);
+          console.error(`[DATABASE] ⚠️ Duplicate key: ${data.source} + ${data.primary_source} + ${source} + ${label} + ${target}`);
+          return edge;
+        }
+      }
+    }
+    
+    // Create new edge if no duplicate found
     const result = await this.prisma.graphEdge.create({
       data: {
         graphId,
@@ -182,7 +208,7 @@ export class GraphDatabaseService {
       },
     });
     
-    // console.error(`[DATABASE] ✅ Edge written successfully - id: ${result.id}`);
+    console.error(`[DATABASE] ✅ New edge created: ${result.id}`);
     // console.error(`[DATABASE] ✅ Edge result:`, JSON.stringify(result, null, 2));
     
     return result;

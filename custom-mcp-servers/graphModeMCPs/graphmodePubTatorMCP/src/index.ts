@@ -76,7 +76,9 @@ interface EdgeData {
   label: string;
   data: {
     type: string;
-    source?: string;
+    source: string;           // MCP identifier
+    primary_source: string;   // Knowledge source (PMID or pubtator)
+    publications: string[];   // Array of PMIDs with prefix
     [key: string]: any;
   };
 }
@@ -718,7 +720,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   data: {
                     type: relation.type,
                     source: 'pubtator',
-                    pmid: pmid
+                    primary_source: pmid ? `PMID:${pmid}` : 'infores:pubtator',
+                    publications: pmid ? [`PMID:${pmid}`] : []
                   }
                 };
                 // Actually create the edge in the database
@@ -902,7 +905,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               label: mapRelationshipType(relation.type),
               data: {
                 type: relation.type,
-                source: 'pubtator'
+                source: 'pubtator',
+                primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+                publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
               }
             };
             
@@ -1020,7 +1025,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           label: mapRelationshipType(relation.type),
           data: {
             type: relation.type,
-            source: 'pubtator'
+            source: 'pubtator',
+            primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
           }
         };
         
@@ -1166,7 +1173,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           label: mapRelationshipType(relation.type),
           data: {
             type: relation.type,
-            source: 'pubtator'
+            source: 'pubtator',
+            primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
           }
         };
         
