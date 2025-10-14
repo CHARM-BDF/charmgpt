@@ -54,7 +54,7 @@ model GraphNode {
 }
 
 model GraphEdge {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid())  // Auto-generated CUID for backward compatibility, but can be overridden with custom composite IDs
   source    String   // Source node ID
   target    String   // Target node ID
   label     String?

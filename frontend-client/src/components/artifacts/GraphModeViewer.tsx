@@ -12,11 +12,42 @@ const normalizeCategory = (value?: string) =>
 
 const categoryColors: Record<string, string> = {
   gene:    '#1f77b4', // blue
-  protein: '#f39c12', // orange
+  protein: '#1f77b4', // blue (same as gene)
   drug:    '#e74c3c', // red
   disease: '#2ecc71', // green
   pathway: '#9b59b6', // purple
   other:   '#bdc3c7', // gray
+};
+
+/**
+ * Enhanced category detection with priority-based assignment
+ * Prioritizes: Gene, Protein, Disease, Drug, Pathway over other categories
+ */
+const detectBestCategory = (rawCategory: string, categoriesArray: string[] = []): string => {
+  const priorityCategories = [
+    { biolink: 'biolink:Gene', clean: 'gene' },
+    { biolink: 'biolink:Protein', clean: 'protein' },
+    { biolink: 'biolink:Disease', clean: 'disease' },
+    { biolink: 'biolink:Drug', clean: 'drug' },
+    { biolink: 'biolink:Pathway', clean: 'pathway' }
+  ];
+
+  // First, check the raw category
+  for (const { biolink, clean } of priorityCategories) {
+    if (rawCategory?.toLowerCase().includes(clean) || rawCategory?.toLowerCase().includes(biolink.toLowerCase())) {
+      return clean;
+    }
+  }
+
+  // Then, search through the categories array
+  for (const { biolink, clean } of priorityCategories) {
+    for (const category of categoriesArray) {
+      if (category?.toLowerCase().includes(clean) || category?.toLowerCase().includes(biolink.toLowerCase())) {
+        return clean;
+      }
+    }
+  }
+  return 'other';
 };
 
 interface GraphModeViewerProps {
@@ -278,7 +309,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           // Convert database format to knowledge graph format
           const graphData = {
             nodes: result.data.nodes.map((node: any) => {
-              const category = normalizeCategory(node.data?.category || node.type);
+              // Get the categories array from the data
+              const categoriesArray = node.data?.categories || [];
+              
+              // Use enhanced category detection
+              const category = detectBestCategory(node.data?.category || node.type, categoriesArray);
               
               return {
                 id: node.id, // Use canonical ID as primary ID
@@ -497,7 +532,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
 
     // Convert nodes (preserve custom fill if present; otherwise compute from category)
     const nodes = parsedData.nodes.map((raw: any) => {
-      const category = normalizeCategory(raw.category || raw.entityType || 'other');
+      // Get the categories array from the data
+      const categoriesArray = raw.data?.categories || [];
+      
+      // Use enhanced category detection
+      const category = detectBestCategory(raw.category || raw.entityType || 'other', categoriesArray);
       const fill = raw.fill ?? categoryColors[category] ?? categoryColors.other;
 
       const node = {
@@ -510,6 +549,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         metadata: raw.metadata,
         isStartingNode: raw.isStartingNode,
         fill,                     // <<< CRITICAL: carry fill into GraphCanvas
+        data: raw.data,           // <<< CRITICAL: preserve full data including categories array
         fx: undefined as number | undefined,
         fy: undefined as number | undefined,
       };
@@ -744,7 +784,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
               // Convert database format to knowledge graph format
               const graphData = {
                 nodes: stateData.data.nodes.map((node: any) => {
-                  const category = normalizeCategory(node.data?.category || node.type);
+                  // Get the categories array from the data
+                  const categoriesArray = node.data?.categories || [];
+                  
+                  // Use enhanced category detection
+                  const category = detectBestCategory(node.data?.category || node.type, categoriesArray);
                   return {
                     id: node.id, // Use canonical ID as primary ID
                     name: node.label,
@@ -858,7 +902,11 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
                   // Convert database format to knowledge graph format
                   const graphData = {
                     nodes: stateData.data.nodes.map((node: any) => {
-                      const category = normalizeCategory(node.data?.category || node.type);
+                      // Get the categories array from the data
+                      const categoriesArray = node.data?.categories || [];
+                      
+                      // Use enhanced category detection
+                      const category = detectBestCategory(node.data?.category || node.type, categoriesArray);
                       
                       return {
                         id: node.id, // Use canonical ID as primary ID
