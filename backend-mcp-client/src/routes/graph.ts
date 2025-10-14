@@ -352,6 +352,45 @@ router.post('/:conversationId/nodes/bulk', async (req: Request, res: Response) =
   }
 });
 
+// PUT /api/graph/:conversationId/nodes/:nodeId - Update node
+router.put('/:conversationId/nodes/:nodeId', async (req: Request, res: Response) => {
+  try {
+    const { conversationId, nodeId } = req.params;
+    const updates = req.body; // { label?, type?, data?, position? }
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    
+    loggingService.log('info', `Updating node ${nodeId} in conversation: ${conversationId}`);
+    
+    const graphProject = await graphDb.getGraphProject(conversationId);
+    if (!graphProject) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Graph project not found for this conversation' 
+      });
+    }
+    
+    const result = await graphDb.updateNode(nodeId, graphProject.id, updates);
+    
+    // Save state for undo/redo
+    await graphDb.saveState(
+      graphProject.id,
+      `Updated node: ${nodeId}`,
+      await graphDb.getCurrentGraphState(conversationId)
+    );
+    
+    res.json({ 
+      success: true, 
+      data: result 
+    });
+  } catch (error) {
+    console.error('Error updating node:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // DELETE /api/graph/:conversationId/nodes/:nodeId - Delete a node
 router.delete('/:conversationId/nodes/:nodeId', async (req: Request, res: Response) => {
   try {

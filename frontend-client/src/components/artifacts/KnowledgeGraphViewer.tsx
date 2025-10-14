@@ -42,6 +42,57 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
     }
   }, [data]);
 
+  // Function to log node neighbors to console
+  const logNodeNeighbors = (clickedNode: any) => {
+    if (!graphData?.links) {
+      console.log('No edges data available for neighbor analysis');
+      return;
+    }
+
+    // Find all edges connected to this node
+    const connectedEdges = graphData.links.filter((edge: any) => 
+      edge.source === clickedNode.id || edge.target === clickedNode.id
+    );
+
+    // Get neighbor nodes
+    const neighborIds = new Set<string>();
+    connectedEdges.forEach((edge: any) => {
+      if (edge.source === clickedNode.id) {
+        neighborIds.add(edge.target);
+      } else if (edge.target === clickedNode.id) {
+        neighborIds.add(edge.source);
+      }
+    });
+
+    // Get neighbor node details
+    const neighbors = Array.from(neighborIds).map(neighborId => {
+      const neighborNode = graphData.nodes.find((n: any) => n.id === neighborId);
+      return neighborNode ? {
+        id: neighborNode.id,
+        name: neighborNode.name || neighborNode.label || 'Unknown',
+        type: neighborNode.type || neighborNode.entityType || 'Unknown',
+        isSeedNode: neighborNode.data?.seedNode || false
+      } : null;
+    }).filter(Boolean);
+
+    // Log detailed neighbor information
+    console.group(`🔍 Neighbors of ${clickedNode.name || clickedNode.label} (${clickedNode.id})`);
+    console.log(`📊 Total neighbors: ${neighbors.length}`);
+    console.log(`🔗 Total connections: ${connectedEdges.length}`);
+    
+    if (neighbors.length > 0) {
+      console.log('👥 Neighbor Details:');
+      neighbors.forEach((neighbor: any, index: number) => {
+        const seedIndicator = neighbor.isSeedNode ? '🌱' : '';
+        console.log(`  ${index + 1}. ${neighbor.name} (${neighbor.id}) [${neighbor.type}] ${seedIndicator}`);
+      });
+    } else {
+      console.log('❌ No neighbors found');
+    }
+    
+    console.groupEnd();
+  };
+
   // Adjust dimensions based on container size
   useEffect(() => {
     if (containerRef.current) {
@@ -176,6 +227,8 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
           width={dimensions.width}
           height={dimensions.height}
           onNodeClick={(node: KnowledgeGraphNode) => {
+            // Log node neighbors to console
+            logNodeNeighbors(node);
             // You can add custom node click behavior here
             console.log('Node clicked:', node);
           }}

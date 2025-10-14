@@ -932,6 +932,57 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     );
   };
 
+  // Function to log node neighbors to console
+  const logNodeNeighbors = (clickedNode: any) => {
+    if (!parsedData?.edges) {
+      console.log('No edges data available for neighbor analysis');
+      return;
+    }
+
+    // Find all edges connected to this node
+    const connectedEdges = parsedData.edges.filter((edge: any) => 
+      edge.source === clickedNode.id || edge.target === clickedNode.id
+    );
+
+    // Get neighbor nodes
+    const neighborIds = new Set<string>();
+    connectedEdges.forEach((edge: any) => {
+      if (edge.source === clickedNode.id) {
+        neighborIds.add(edge.target);
+      } else if (edge.target === clickedNode.id) {
+        neighborIds.add(edge.source);
+      }
+    });
+
+    // Get neighbor node details
+    const neighbors = Array.from(neighborIds).map(neighborId => {
+      const neighborNode = parsedData.nodes.find((n: any) => n.id === neighborId);
+      return neighborNode ? {
+        id: neighborNode.id,
+        name: neighborNode.name || neighborNode.label || 'Unknown',
+        type: neighborNode.type || neighborNode.entityType || 'Unknown',
+        isSeedNode: neighborNode.data?.seedNode || false
+      } : null;
+    }).filter(Boolean);
+
+    // Log detailed neighbor information
+    console.group(`🔍 Neighbors of ${clickedNode.label || clickedNode.name} (${clickedNode.id})`);
+    console.log(`📊 Total neighbors: ${neighbors.length}`);
+    console.log(`🔗 Total connections: ${connectedEdges.length}`);
+    
+    if (neighbors.length > 0) {
+      console.log('👥 Neighbor Details:');
+      neighbors.forEach((neighbor: any, index: number) => {
+        const seedIndicator = neighbor.isSeedNode ? '🌱' : '';
+        console.log(`  ${index + 1}. ${neighbor.name} (${neighbor.id}) [${neighbor.type}] ${seedIndicator}`);
+      });
+    } else {
+      console.log('❌ No neighbors found');
+    }
+    
+    console.groupEnd();
+  };
+
   // Handle node click with Control/Command key detection
   const handleNodeClick = (node: any, props?: any, event?: any) => {
     // Check if Control key (or Command key on Mac) is pressed
@@ -963,6 +1014,9 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         setNotification({ show: false, message: '' });
       }, 3000);
     }
+    
+    // Log node neighbors to console
+    logNodeNeighbors(node);
     
     // Log for debugging
     console.log('Node clicked:', node);

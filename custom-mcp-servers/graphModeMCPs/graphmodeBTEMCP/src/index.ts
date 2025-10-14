@@ -106,6 +106,12 @@ const QueryBTEArgumentsSchema = z.object({
   databaseContext: DatabaseContextSchema,
 });
 
+const ExpandNeighborhoodArgumentsSchema = z.object({
+  nodeIds: z.array(z.string()).min(1, "At least one seed node ID is required"),
+  categories: z.array(z.string()).optional().describe("Optional categories to filter connecting nodes (e.g., ['gene', 'disease'])"),
+  databaseContext: DatabaseContextSchema,
+});
+
 // =============================================================================
 // SERVER SETUP
 // =============================================================================
@@ -127,6 +133,20 @@ const server = new Server(
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
+
+/**
+ * Normalize user-provided category to Biolink format
+ */
+function normalizeCategoryToBiolink(category: string): string {
+  // If already has biolink: prefix, return as-is
+  if (category.startsWith('biolink:')) {
+    return category;
+  }
+  
+  // Capitalize first letter and add biolink: prefix
+  const capitalized = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+  return `biolink:${capitalized}`;
+}
 
 /**
  * Make API request to GraphMode backend database
@@ -567,6 +587,215 @@ async function processTrapiResponse(
 }
 
 /**
+ * Mark nodes as seed nodes in the database
+ */
+async function markNodesAsSeed(
+  nodeIds: string[],
+  databaseContext: any
+): Promise<void> {
+  for (const nodeId of nodeIds) {
+    try {
+      // Get current node data
+      const currentState = await makeAPIRequest('/state', databaseContext);
+      const node = currentState.data.nodes.find((n: any) => n.id === nodeId);
+      
+      if (node) {
+        // Update node with seedNode flag
+        const updatedData = {
+          ...node.data,
+          seedNode: true
+        };
+        
+        await makeAPIRequest(`/nodes/${nodeId}`, databaseContext, {
+          method: 'PUT',
+          body: JSON.stringify({ data: updatedData })
+        });
+        
+        console.error(`[${SERVICE_NAME}] Marked node ${nodeId} as seed`);
+      } else {
+        console.error(`[${SERVICE_NAME}] Node ${nodeId} not found in current graph`);
+      }
+    } catch (error) {
+      console.error(`[${SERVICE_NAME}] Failed to mark node ${nodeId} as seed:`, error);
+    }
+  }
+}
+
+/**
+ * Build neighborhood expansion query for BTE
+ */
+function buildNeighborhoodQuery(
+  seedNodeIds: string[],
+  categories?: string[]
+): any {
+  // Normalize categories to biolink format
+  const biolinkCategories = categories?.map(normalizeCategoryToBiolink);
+  
+  // Build TRAPI query with seed nodes and open-ended neighbors
+  return {
+    nodes: {
+      n0: {
+        ids: seedNodeIds,
+        set_interpretation: "BATCH" // Query all seeds at once
+      },
+      n1: {
+        ...(biolinkCategories && biolinkCategories.length > 0 
+          ? { categories: biolinkCategories } 
+          : {}) // No categories = get all types
+      }
+    },
+    edges: {
+      e1: {
+        subject: "n0",
+        object: "n1"
+        // No predicates = get all relationship types
+      }
+    }
+  };
+}
+
+/**
+ * Filter nodes to keep only those connected to 2+ seed nodes
+ */
+function filterMultiConnectedNodes(
+  trapiResponse: TrapiResponse,
+  seedNodeIds: string[]
+): { nodes: Record<string, BteNode>; edges: Record<string, BteEdge> } {
+  const knowledgeGraph = trapiResponse.message?.knowledge_graph;
+  if (!knowledgeGraph) {
+    return { nodes: {}, edges: {} };
+  }
+  
+  console.error(`[${SERVICE_NAME}] === FILTERING ANALYSIS ===`);
+  console.error(`[${SERVICE_NAME}] Seed nodes: ${seedNodeIds.join(', ')}`);
+  console.error(`[${SERVICE_NAME}] Total edges in BTE response: ${Object.keys(knowledgeGraph.edges).length}`);
+  console.error(`[${SERVICE_NAME}] Total nodes in BTE response: ${Object.keys(knowledgeGraph.nodes).length}`);
+  
+  // Count connections per neighbor node
+  const connectionCounts = new Map<string, Set<string>>();
+  
+  for (const [edgeId, edge] of Object.entries(knowledgeGraph.edges)) {
+    const neighborId = edge.object; // Neighbor is the object
+    const seedId = edge.subject; // Seed is the subject
+    
+    // Skip if this edge doesn't involve a seed node
+    if (!seedNodeIds.includes(seedId)) continue;
+    
+    // Track which seeds this neighbor connects to
+    if (!connectionCounts.has(neighborId)) {
+      connectionCounts.set(neighborId, new Set());
+    }
+    connectionCounts.get(neighborId)!.add(seedId);
+  }
+  
+  console.error(`[${SERVICE_NAME}] === CONNECTION ANALYSIS ===`);
+  console.error(`[${SERVICE_NAME}] Found ${connectionCounts.size} unique neighbor nodes`);
+  
+  // Log detailed connection analysis
+  for (const [neighborId, seedSet] of connectionCounts.entries()) {
+    const neighborNode = knowledgeGraph.nodes[neighborId];
+    const neighborName = neighborNode?.name || 'Unknown';
+    const neighborCategory = neighborNode?.categories?.[0]?.replace('biolink:', '') || 'Unknown';
+    const connectedSeeds = Array.from(seedSet);
+    
+    console.error(`[${SERVICE_NAME}] Neighbor: ${neighborName} (${neighborId}) [${neighborCategory}]`);
+    console.error(`[${SERVICE_NAME}]   Connected to ${seedSet.size} unique seed(s): ${connectedSeeds.join(', ')}`);
+    
+    if (seedSet.size >= 2) {
+      console.error(`[${SERVICE_NAME}]   ✅ KEEPING - Connected to 2+ seeds`);
+    } else {
+      console.error(`[${SERVICE_NAME}]   ❌ FILTERING OUT - Connected to only 1 seed`);
+    }
+  }
+  
+  // Filter for nodes connected to 2+ seeds
+  const multiConnectedNodeIds = Array.from(connectionCounts.entries())
+    .filter(([_, seedSet]) => seedSet.size >= 2)
+    .map(([nodeId, _]) => nodeId);
+  
+  console.error(`[${SERVICE_NAME}] === FILTERING RESULTS ===`);
+  console.error(`[${SERVICE_NAME}] Nodes connected to 2+ seeds: ${multiConnectedNodeIds.length}`);
+  console.error(`[${SERVICE_NAME}] Nodes filtered out (1 seed only): ${connectionCounts.size - multiConnectedNodeIds.length}`);
+  
+  // Filter nodes
+  const filteredNodes: Record<string, BteNode> = {};
+  for (const nodeId of multiConnectedNodeIds) {
+    if (knowledgeGraph.nodes[nodeId]) {
+      filteredNodes[nodeId] = knowledgeGraph.nodes[nodeId];
+    }
+  }
+  
+  // Filter edges (only keep edges involving filtered nodes)
+  const filteredEdges: Record<string, BteEdge> = {};
+  for (const [edgeId, edge] of Object.entries(knowledgeGraph.edges)) {
+    const isSeedToFiltered = seedNodeIds.includes(edge.subject) && multiConnectedNodeIds.includes(edge.object);
+    
+    if (isSeedToFiltered) {
+      filteredEdges[edgeId] = edge;
+    }
+  }
+  
+  console.error(`[${SERVICE_NAME}] Final filtered nodes: ${Object.keys(filteredNodes).length}`);
+  console.error(`[${SERVICE_NAME}] Final filtered edges: ${Object.keys(filteredEdges).length}`);
+  console.error(`[${SERVICE_NAME}] === END FILTERING ANALYSIS ===`);
+  
+  return { nodes: filteredNodes, edges: filteredEdges };
+}
+
+/**
+ * Generate connection summary for neighborhood expansion
+ */
+function generateConnectionSummary(
+  nodes: Record<string, BteNode>,
+  edges: Record<string, BteEdge>,
+  seedNodeIds: string[]
+): string {
+  // Count nodes per category
+  const categoryCount = new Map<string, number>();
+  for (const node of Object.values(nodes)) {
+    const category = node.categories?.[0]?.replace('biolink:', '') || 'Unknown';
+    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
+  }
+  
+  // Count connections per seed node
+  const seedConnections = new Map<string, Map<string, number>>();
+  for (const seedId of seedNodeIds) {
+    seedConnections.set(seedId, new Map());
+  }
+  
+  for (const edge of Object.values(edges)) {
+    const seedId = edge.subject;
+    const neighborNode = nodes[edge.object];
+    
+    if (neighborNode && seedNodeIds.includes(seedId)) {
+      const category = neighborNode.categories?.[0]?.replace('biolink:', '') || 'Unknown';
+      const seedMap = seedConnections.get(seedId)!;
+      seedMap.set(category, (seedMap.get(category) || 0) + 1);
+    }
+  }
+  
+  // Build summary text
+  let summary = `**Overall Summary:**\n`;
+  summary += `- Total nodes found: ${Object.keys(nodes).length}\n`;
+  summary += `- Total edges: ${Object.keys(edges).length}\n\n`;
+  
+  summary += `**Nodes by Category:**\n`;
+  for (const [category, count] of Array.from(categoryCount.entries()).sort((a, b) => b[1] - a[1])) {
+    summary += `- ${category}: ${count}\n`;
+  }
+  
+  summary += `\n**Connections per Seed Node:**\n`;
+  for (const [seedId, categoryMap] of seedConnections.entries()) {
+    summary += `\n*${seedId}:*\n`;
+    for (const [category, count] of Array.from(categoryMap.entries()).sort((a, b) => b[1] - a[1])) {
+      summary += `  - ${category}: ${count}\n`;
+    }
+  }
+  
+  return summary;
+}
+
+/**
  * Generate human-readable query description
  */
 function generateQueryDescription(queryGraph: any): string {
@@ -666,6 +895,36 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
         required: ["query_graph", "databaseContext"]
       }
+    },
+    {
+      name: "expand_neighborhood",
+      description: "Expand the graph by finding first-degree neighbors of seed nodes. Only keeps nodes connected to 2+ seed nodes (intersection). Marks seed nodes persistently in the database.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          nodeIds: {
+            type: "array",
+            items: { type: "string" },
+            description: "Array of seed node IDs (e.g., ['NCBIGene:695', 'NCBIGene:1956'])"
+          },
+          categories: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional: Array of categories to filter connecting nodes (e.g., ['gene', 'disease']). Leave empty to get all categories."
+          },
+          databaseContext: {
+            type: "object",
+            properties: {
+              conversationId: { type: "string" },
+              artifactId: { type: "string" },
+              apiBaseUrl: { type: "string" },
+              accessToken: { type: "string" }
+            },
+            required: ["conversationId"]
+          }
+        },
+        required: ["nodeIds", "databaseContext"]
+      }
     }
   ];
 
@@ -718,6 +977,54 @@ The graph has been updated with the new nodes and edges from BTE.
 Note: Duplicate nodes/edges were automatically skipped.`
         }],
         refreshGraph: true  // CRITICAL: Triggers UI refresh
+      };
+    }
+
+    if (name === "expand_neighborhood") {
+      const queryParams = ExpandNeighborhoodArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Executing neighborhood expansion for ${queryParams.nodeIds.length} seed nodes`);
+      
+      // Step 1: Mark seed nodes
+      await markNodesAsSeed(queryParams.nodeIds, queryParams.databaseContext);
+      
+      // Step 2: Build and execute BTE query
+      const queryGraph = buildNeighborhoodQuery(queryParams.nodeIds, queryParams.categories);
+      const trapiResponse = await makeBTERequest(queryGraph);
+      
+      // Step 3: Filter for multi-connected nodes
+      const { nodes, edges } = filterMultiConnectedNodes(trapiResponse, queryParams.nodeIds);
+      
+      // Step 4: Process and add to database
+      const filteredResponse: TrapiResponse = {
+        message: {
+          knowledge_graph: { nodes, edges },
+          results: []
+        }
+      };
+      const stats = await processTrapiResponse(filteredResponse, queryParams.databaseContext);
+      
+      // Step 5: Generate summary
+      const summary = generateConnectionSummary(nodes, edges, queryParams.nodeIds);
+      
+      return {
+        content: [{
+          type: "text",
+          text: `✅ Neighborhood Expansion Complete!
+
+**Seed Nodes:** ${queryParams.nodeIds.length} nodes marked as seeds
+**Filter:** Nodes connected to 2+ seeds only
+${queryParams.categories ? `**Categories:** ${queryParams.categories.join(', ')}` : '**Categories:** All types'}
+
+**Results:**
+- Created ${stats.nodeCount} new nodes
+- Created ${stats.edgeCount} new edges
+
+${summary}
+
+The graph has been updated with the neighborhood expansion.`
+        }],
+        refreshGraph: true
       };
     }
 

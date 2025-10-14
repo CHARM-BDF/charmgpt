@@ -126,7 +126,9 @@ The MCP is configured in `backend-mcp-client/config/mcp_server_config.json`:
 }
 ```
 
-## Tool: `query_bte`
+## Tools
+
+### Tool: `query_bte`
 
 ### Input Schema
 
@@ -162,6 +164,52 @@ The MCP is configured in `backend-mcp-client/config/mcp_server_config.json`:
     text: "✅ BTE Query Complete!\n\n**Results:**\n- Added X nodes\n- Added Y edges\n..."
   }],
   refreshGraph: true  // Triggers UI refresh
+}
+```
+
+### Tool: `expand_neighborhood`
+
+Expand the graph by finding first-degree neighbors of seed nodes. Only keeps nodes connected to 2+ seed nodes (intersection). Marks seed nodes persistently in the database.
+
+#### Input Schema
+
+```json
+{
+  "nodeIds": ["NCBIGene:695", "NCBIGene:1956"],
+  "categories": ["gene", "disease"],
+  "databaseContext": {
+    "conversationId": "string"
+  }
+}
+```
+
+#### Parameters
+
+- **nodeIds** (required): Array of seed node IDs to expand from
+- **categories** (optional): Array of categories to filter connecting nodes (e.g., ['gene', 'disease']). Leave empty to get all categories.
+- **databaseContext** (required): Auto-injected by GraphMode
+
+#### Example Usage
+
+```typescript
+// User prompt: "Expand the neighborhood for genes NCBIGene:695 and NCBIGene:1956, only show diseases"
+
+// MCP constructs call:
+{
+  "nodeIds": ["NCBIGene:695", "NCBIGene:1956"],
+  "categories": ["disease"]
+}
+```
+
+#### Response Format
+
+```typescript
+{
+  content: [{
+    type: "text",
+    text: "✅ Neighborhood Expansion Complete!\n\n**Seed Nodes:** 2 nodes marked as seeds\n**Filter:** Nodes connected to 2+ seeds only\n**Categories:** disease\n\n**Results:**\n- Created 5 new nodes\n- Created 8 new edges\n\n**Overall Summary:**\n- Total nodes found: 5\n- Total edges: 8\n\n**Nodes by Category:**\n- Disease: 5\n\n**Connections per Seed Node:**\n\n*NCBIGene:695:*\n  - Disease: 3\n\n*NCBIGene:1956:*\n  - Disease: 2\n\nThe graph has been updated with the neighborhood expansion."
+  }],
+  refreshGraph: true
 }
 ```
 
@@ -248,6 +296,9 @@ Common categories supported by BTE:
 
 ### 5. Multi-hop Reasoning
 "Find drugs that affect proteins associated with genes linked to this disease"
+
+### 6. Neighborhood Expansion
+"Expand the neighborhood for these genes and show only diseases connected to multiple genes"
 
 ## Testing
 

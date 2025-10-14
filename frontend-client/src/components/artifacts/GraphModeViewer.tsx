@@ -584,18 +584,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         // Log aggregation stats
         const multiEdgePairs = Array.from(edgeGroups.entries()).filter(([_, group]) => group.length > 1);
         if (multiEdgePairs.length > 0) {
-          console.log(`📊 Edge Aggregation: Found ${multiEdgePairs.length} node pairs with multiple edges:`);
-          multiEdgePairs.forEach(([key, group]) => {
-            const [sourceId, targetId] = key.split('-');
-            const sourceNode = parsedData.nodes.find((n: any) => n.id === sourceId);
-            const targetNode = parsedData.nodes.find((n: any) => n.id === targetId);
-            const sourceName = sourceNode?.name || sourceId;
-            const targetName = targetNode?.name || targetId;
-            const labels = group.map((e: any) => e.label).join(', ');
-            console.log(`  ${sourceName} → ${targetName}`);
-            console.log(`    (${sourceId} → ${targetId})`);
-            console.log(`    ${group.length} edges: ${labels}`);
-          });
+          console.log(`📊 Edge Aggregation: Found ${multiEdgePairs.length} node pairs with multiple edges`);
         } else {
           console.log(`📊 Edge Aggregation: No duplicate edges found (all ${edgeGroups.size} node pairs have single edges)`);
         }
@@ -962,6 +951,61 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     }
   }, [artifactId]);
 
+  // Function to log node neighbors to console
+  const logNodeNeighbors = (clickedNode: any) => {
+    // Use the current graph data (either filtered or full)
+    const currentEdges = filteredEdges.length > 0 ? filteredEdges : graphData.edges;
+    const currentNodes = filteredNodes.length > 0 ? filteredNodes : graphData.nodes;
+    
+    if (!currentEdges || currentEdges.length === 0) {
+      console.log('No edges data available for neighbor analysis');
+      return;
+    }
+
+    // Find all edges connected to this node
+    const connectedEdges = currentEdges.filter((edge: any) => 
+      edge.source === clickedNode.id || edge.target === clickedNode.id
+    );
+
+    // Get neighbor nodes
+    const neighborIds = new Set<string>();
+    connectedEdges.forEach((edge: any) => {
+      if (edge.source === clickedNode.id) {
+        neighborIds.add(edge.target);
+      } else if (edge.target === clickedNode.id) {
+        neighborIds.add(edge.source);
+      }
+    });
+
+    // Get neighbor node details
+    const neighbors = Array.from(neighborIds).map(neighborId => {
+      const neighborNode = currentNodes.find((n: any) => n.id === neighborId);
+      return neighborNode ? {
+        id: neighborNode.id,
+        name: neighborNode.name || neighborNode.label || 'Unknown',
+        type: neighborNode.type || neighborNode.entityType || 'Unknown',
+        isSeedNode: neighborNode.data?.seedNode || false
+      } : null;
+    }).filter(Boolean);
+
+    // Log detailed neighbor information
+    console.group(`🔍 Neighbors of ${clickedNode.label || clickedNode.name} (${clickedNode.id})`);
+    console.log(`📊 Total neighbors: ${neighbors.length}`);
+    console.log(`🔗 Total connections: ${connectedEdges.length}`);
+    
+    if (neighbors.length > 0) {
+      console.log('👥 Neighbor Details:');
+      neighbors.forEach((neighbor: any, index: number) => {
+        const seedIndicator = neighbor.isSeedNode ? '🌱' : '';
+        console.log(`  ${index + 1}. ${neighbor.name} (${neighbor.id}) [${neighbor.type}] ${seedIndicator}`);
+      });
+    } else {
+      console.log('❌ No neighbors found');
+    }
+    
+    console.groupEnd();
+  };
+
   // Handle node click with Control/Command key detection
   const handleNodeClick = (node: any, props?: any, event?: any) => {
     if (event && (event.ctrlKey || event.metaKey)) {
@@ -987,6 +1031,9 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         setNotification({ show: false, message: '' });
       }, 3000);
     }
+    
+    // Log node neighbors to console
+    logNodeNeighbors(node);
     
     console.log('Node clicked:', node);
   };
