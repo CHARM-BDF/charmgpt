@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Artifact } from '../../types/artifacts';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
@@ -17,6 +17,7 @@ import { Pin, PinOff, Info } from 'lucide-react';
 import { useProjectStore } from '../../store/projectStore';
 // @ts-ignore - Heroicons type definitions mismatch
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { CodeEditorView } from './CodeEditorView';
 
 // Helper function to parse snippet text with clickable entities
 function parseSnippetWithClickables(snippet: string, onEntityClick: (entity: string) => void) {
@@ -208,12 +209,23 @@ export const ArtifactContent: React.FC<{
   // Use selector functions to only subscribe to the specific state we need
   const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
   const toggleArtifactPin = useChatStore(state => state.toggleArtifactPin);
+  const addArtifact = useChatStore(state => state.addArtifact);
+  const addMessage = useChatStore(state => state.addMessage);
+  const getPinnedArtifacts = useChatStore(state => state.getPinnedArtifacts);
   const updateChatInput = useChatStore(state => state.updateChatInput);
   // Keep legacy support for knowledge graph components
   const setPinnedGraphId = useChatStore(state => state.setPinnedGraphId);
   const getPinnedGraphId = useChatStore(state => state.getPinnedGraphId);
   const { selectedProjectId } = useProjectStore();
   
+  // Code editor
+  const [editedCode, setEditedCode] = useState<string>('');
+
+  // State for handling file reference artifacts
+  const [fileContent, setFileContent] = useState<string>('');
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [fileLoadError, setFileLoadError] = useState<string | null>(null);
+
   // Get current conversation to check if it's Graph Mode
   const currentConversationId = useChatStore(state => state.currentConversationId);
   const conversations = useChatStore(state => state.conversations);
@@ -224,6 +236,73 @@ export const ArtifactContent: React.FC<{
   const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
 
+  // Check if artifact supports editor view (code artifacts)
+  const supportsEditorView = ['code', 'application/python', 'application/vnd.ant.python', 'application/javascript', 'application/vnd.react'].includes(artifact.type);
+
+  // Check if this is a file reference artifact
+  const isFileReference = !!(artifact.metadata?.fileReference);
+
+  useEffect(() => {
+    if (isFileReference && storageService && !isLoadingFile) {
+      setIsLoadingFile(true);
+      setFileLoadError(null);
+
+      storageService.readContent(artifact.metadata.fileReference.fileId)
+        .then((content: any) => {
+          const fileRef = artifact.metadata!.fileReference!;
+          let textContent: string;
+
+          if (content instanceof Uint8Array) {
+            const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+              // For images, convert to base64 using a more reliable method
+              let binary = '';
+              const len = content.byteLength;
+              for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(content[i]);
+              }
+              const base64String = btoa(binary);
+              textContent = base64String;
+            } else {
+              // For text files, decode as UTF-8
+              textContent = new TextDecoder('utf-8').decode(content);
+            }
+          } else {
+            textContent = content as string;
+          }
+
+          // Process content based on file type
+          const extension = fileRef.fileName.toLowerCase().split('.').pop() || '';
+          if (extension === 'csv') {
+            import('../../utils/csvToMarkdown').then(({ csvToMarkdown }) => {
+              setFileContent(csvToMarkdown(textContent));
+              setIsLoadingFile(false);
+            });
+          } else if (extension === 'tsv') {
+            import('../../utils/csvToMarkdown').then(({ tsvToMarkdown }) => {
+              setFileContent(tsvToMarkdown(textContent));
+              setIsLoadingFile(false);
+            });
+          } else {
+            setFileContent(textContent);
+            setIsLoadingFile(false);
+          }
+        })
+        .catch((error: any) => {
+          console.error('Failed to load file content:', error);
+          setFileLoadError('Failed to load file content');
+          setIsLoadingFile(false);
+        });
+    }
+  }, [artifact.id]);
+
+  // Clear content when artifact changes
+  useEffect(() => {
+    setFileContent('');
+    setFileLoadError(null);
+    setEditedCode(artifact.content); // Initialize edited code
+  }, [artifact.id, artifact.content]);
+
   const handleSaveToProject = async () => {
     if (!storageService || !selectedProjectId || !isMarkdown) return;
     
@@ -231,7 +310,8 @@ export const ArtifactContent: React.FC<{
       setSavingToProject(true);
       const fileName = `${artifact.title || 'document'}.md`;
       
-      await storageService.createFile(artifact.content, {
+      const contentToSave = isFileReference ? fileContent : artifact.content;
+      await storageService.createFile(contentToSave, {
         description: fileName,
         tags: [`project:${selectedProjectId}`],
         schema: {
@@ -280,7 +360,8 @@ export const ArtifactContent: React.FC<{
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(artifact.content);
+      const contentToCopy = isFileReference ? fileContent : artifact.content;
+      await navigator.clipboard.writeText(contentToCopy);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
@@ -288,15 +369,198 @@ export const ArtifactContent: React.FC<{
     }
   };
 
+  const handleCodeExecution = async (code: string, language: string) => {
+    console.log(`Executing ${language} code:`, code);
+
+    try {
+      // Map language to appropriate MCP server and tool
+      let serverName = '';
+      let toolName = '';
+      switch (language.toLowerCase()) {
+        case 'python':
+        case 'py':
+          serverName = 'python';
+          toolName = 'execute_python';
+          break;
+        case 'r':
+          serverName = 'r';
+          toolName = 'execute_r';
+          break;
+        case 'racket':
+        case 'scheme':
+          serverName = 'racket';
+          toolName = 'execute_racket';
+          break;
+        default:
+          throw new Error(`Execution not supported for language: ${language}`);
+      }
+
+      // Get pinned artifacts to pass as context
+      const pinnedArtifacts = getPinnedArtifacts().map(artifact => ({
+        id: artifact.id,
+        type: artifact.type,
+        title: artifact.title,
+        content: artifact.content,
+        metadata: artifact.metadata
+      }));
+
+      // Make direct API call to MCP execution endpoint
+      const response = await fetch('/api/mcp-execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          serverName,
+          toolName,
+          arguments: { code },
+          attachments: [], // TODO: Get current attachments if available
+          pinnedArtifacts
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Code execution result:', result);
+
+      if (result.success && result.result) {
+        // Create a message for the code execution
+        const artifactIds: string[] = [];
+        let messageContent = `Executed ${language} code\n\n`;
+
+        // Helper function to create artifact button HTML
+        const createArtifactButton = (id: string, type: string, title: string): string => {
+          return `<button class="artifact-button text-sm text-blue-600 dark:text-blue-400 hover:underline" data-artifact-id="${id}" data-artifact-type="${type}" style="cursor: pointer; background: none; border: none; padding: 0;">📎 ${title}</button>`;
+        };
+
+        // 1. Create artifact for the execution output/text
+        if (result.result.content && Array.isArray(result.result.content)) {
+          const textContent = result.result.content
+            .filter((item: any) => item.type === 'text')
+            .map((item: any) => item.text)
+            .join('\n');
+
+          if (textContent.trim()) {
+            const artifactId = addArtifact({
+              id: crypto.randomUUID(),
+              artifactId: crypto.randomUUID(),
+              type: 'text/markdown' as ArtifactType,
+              title: `${language} Execution Output`,
+              content: textContent,
+              position: artifactIds.length
+            });
+            artifactIds.push(artifactId);
+            messageContent += `**Output:**\n${createArtifactButton(artifactId, 'text/markdown', `${language} Execution Output`)}\n\n`;
+          }
+        }
+
+        // 2. Handle binary outputs (plots, images, etc.)
+        if (result.result.binaryOutput) {
+          const binaryOutput = result.result.binaryOutput;
+          const title = binaryOutput.title || `Generated ${binaryOutput.type.split('/')[1]}`;
+          const artifactId = addArtifact({
+            id: crypto.randomUUID(),
+            artifactId: crypto.randomUUID(),
+            type: binaryOutput.type as ArtifactType,
+            title: title,
+            content: binaryOutput.data,
+            position: artifactIds.length
+          });
+          artifactIds.push(artifactId);
+          messageContent += `**Generated:**\n${createArtifactButton(artifactId, binaryOutput.type, title)}\n\n`;
+        }
+
+        // 3. Handle artifacts array from MCP response
+        if (result.result.artifacts && Array.isArray(result.result.artifacts)) {
+          console.log('MCP artifacts found:', result.result.artifacts.length);
+          result.result.artifacts.forEach((mcpArtifact: any, index: number) => {
+            console.log(`MCP artifact ${index}:`, {
+              type: mcpArtifact.type,
+              title: mcpArtifact.title,
+              hasContent: !!mcpArtifact.content,
+              contentLength: mcpArtifact.content?.length,
+              hasMetadata: !!mcpArtifact.metadata,
+              hasFileReference: !!mcpArtifact.metadata?.fileReference,
+              fileId: mcpArtifact.metadata?.fileReference?.fileId
+            });
+
+            const artifactId = addArtifact({
+              id: crypto.randomUUID(),
+              artifactId: crypto.randomUUID(),
+              type: mcpArtifact.type as ArtifactType,
+              title: mcpArtifact.title,
+              content: mcpArtifact.content,
+              position: artifactIds.length,
+              language: mcpArtifact.language,
+              metadata: mcpArtifact.metadata // This includes fileReference for server-side storage artifacts
+            });
+            artifactIds.push(artifactId);
+            messageContent += `**Created:**\n${createArtifactButton(artifactId, mcpArtifact.type, mcpArtifact.title)}\n\n`;
+          });
+        }
+
+        // Add the execution message to the chat transcript
+        addMessage({
+          role: 'assistant',
+          content: messageContent.trim(),
+          artifactId: artifactIds[0], // Primary artifact for backward compatibility
+          artifactIds: artifactIds
+        } as any);
+
+        if (artifactIds.length > 0) {
+          alert(`Code executed successfully! Created ${artifactIds.length} artifact(s) and added to chat.`);
+        } else {
+          alert('Code executed successfully! Check console for results.');
+        }
+      } else {
+        alert(`Code execution failed: ${result.error}`);
+      }
+
+    } catch (error) {
+      console.error('Code execution failed:', error);
+      alert(`Code execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const renderContent = () => {
+    // Handle file reference artifacts
+    if (isFileReference) {
+      if (isLoadingFile) {
+        return (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <span className="ml-2">Loading file content...</span>
+          </div>
+        );
+      }
+      if (fileLoadError) {
+        return (
+          <div className="text-red-500 p-4">
+            <p>Error loading file: {fileLoadError}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              File: {artifact.metadata?.fileReference?.fileName}
+            </p>
+          </div>
+        );
+      }
+      if (!fileContent) {
+        return (
+          <div className="text-gray-500 p-4">
+            <p>No content available</p>
+          </div>
+        );
+      }
+    }
+    const displayContent = isFileReference ? fileContent : artifact.content;
     if (viewMode === 'source') {
-      // For knowledge graph artifacts, format as JSON with syntax highlighting
       if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
         try {
-          // Parse and pretty-print the JSON
-          const jsonObj = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const jsonObj = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           const prettyJson = JSON.stringify(jsonObj, null, 2);
           
@@ -325,7 +589,7 @@ export const ArtifactContent: React.FC<{
       return (
         <div className="relative w-full min-w-0 overflow-x-auto">
           <pre className="w-max bg-gray-50 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-md">
-            <code className="whitespace-pre">{artifact.content}</code>
+            <code className="whitespace-pre">{displayContent}</code>
           </pre>
         </div>
       );
@@ -337,6 +601,21 @@ export const ArtifactContent: React.FC<{
       case 'application/vnd.ant.python':
       case 'application/javascript':
       case 'application/vnd.react':
+        // Handle different view modes for code artifacts
+        if (viewMode === 'source') {
+          return (
+            <CodeEditorView
+              code={editedCode}
+              language={artifact.language || getLanguage(artifact.type, artifact.language)}
+              title={artifact.language || artifact.type.replace('application/', '')}
+              isDarkMode={false} // TODO: Get from theme context
+              readOnly={false}
+              onChange={setEditedCode}
+              onExecute={handleCodeExecution}
+            />
+          );
+        }
+        // Default rendered view with syntax highlighting
         return (
           <div className="bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <div className="bg-gray-100 px-4 py-2 text-sm font-mono text-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -348,7 +627,7 @@ export const ArtifactContent: React.FC<{
                 style={oneLight}
                 customStyle={{ margin: 0, background: 'transparent' }}
               >
-                {artifact.content}
+                {displayContent}
               </SyntaxHighlighter>
             </div>
           </div>
@@ -371,7 +650,7 @@ export const ArtifactContent: React.FC<{
         if (isGraphModeConversation) {
           return (
             <GraphModeViewer
-              data={artifact.content}
+              data={displayContent}
               width={800}
               height={600}
               artifactId={artifact.id}
@@ -385,13 +664,13 @@ export const ArtifactContent: React.FC<{
             {useReagraph ? (
               <div className="w-full h-full overflow-hidden">
                 <ReagraphKnowledgeGraphViewer 
-                  data={artifact.content} 
+                  data={displayContent} 
                   artifactId={artifact.id}
                 />
               </div>
             ) : (
               <KnowledgeGraphViewer 
-                data={artifact.content} 
+                data={displayContent} 
                 artifactId={artifact.id}
                 showVersionControls={true}
               />
@@ -403,19 +682,19 @@ export const ArtifactContent: React.FC<{
         return (
           <div className="w-full h-full min-h-[500px] flex flex-col">
             <ProteinVisualizationViewer 
-              data={artifact.content}
+              data={displayContent}
             />
           </div>
         );
       
       case 'pfocr':
-        return <PFOCRViewer data={artifact.content} />;
+        return <PFOCRViewer data={displayContent} />;
       
       case 'html':
         return (
           <div 
             className="border rounded-lg p-4 bg-white"
-            dangerouslySetInnerHTML={{ __html: sanitizeHTML(artifact.content) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(displayContent) }}
           />
         );
       
@@ -424,7 +703,7 @@ export const ArtifactContent: React.FC<{
           <div className="flex flex-col items-center gap-4">
             <div className="flex justify-center items-center">
               <img 
-                src={`data:image/png;base64,${artifact.content}`}
+                src={`data:image/png;base64,${displayContent}`}
                 alt={artifact.title}
                 className="max-w-full h-auto"
               />
@@ -455,33 +734,33 @@ export const ArtifactContent: React.FC<{
           <div 
             className="border rounded-lg p-4 bg-white flex justify-center items-center"
             dangerouslySetInnerHTML={{ 
-              __html: sanitizeHTML(artifact.content.trim()) 
+              __html: sanitizeHTML(displayContent.trim()) 
             }}
           />
         );
       
       case 'application/vnd.ant.mermaid':
-        return <div className="mermaid">{artifact.content}</div>;
+        return <div className="mermaid">{displayContent}</div>;
       
       case 'text/markdown':
         const trimmedContent = (() => {
           // Check if we have a JSON string with nested content
-          if (artifact.content.trim().startsWith('{')) {
+          if (displayContent.trim().startsWith('{')) {
             try {
-              const parsed = JSON.parse(artifact.content);
+              const parsed = JSON.parse(displayContent);
               // If it has a content property, use that instead
               if (parsed.content) {
                 console.log('Found nested content in artifact, extracting inner content');
                 return typeof parsed.content === 'string' 
                   ? parsed.content.split('\n').map((line: string) => line.trimStart()).join('\n')
-                  : artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+                  : displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
               }
             } catch (e) {
               console.log('Content looks like JSON but failed to parse:', e);
             }
           }
           // Default trimming for normal content
-          return artifact.content.split('\n').map((line: string) => line.trimStart()).join('\n');
+          return displayContent.split('\n').map((line: string) => line.trimStart()).join('\n');
         })();
 
         // Debug logging
@@ -652,14 +931,14 @@ export const ArtifactContent: React.FC<{
         );
 
       case 'text':
-        return <div className="prose max-w-none whitespace-pre-wrap">{artifact.content}</div>;
+        return <div className="prose max-w-none whitespace-pre-wrap">{displayContent}</div>;
 
       case 'application/vnd.bibliography':
         try {
           // Check if content is already an object or a string that needs parsing
-          const bibliography = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const bibliography = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           return (
             <div className="prose max-w-none dark:prose-invert">
@@ -706,15 +985,15 @@ export const ArtifactContent: React.FC<{
           );
         } catch (error) {
           console.error('Failed to parse bibliography:', error);
-          return <div className="prose max-w-none whitespace-pre-wrap">{typeof artifact.content === 'string' ? artifact.content : 'Invalid bibliography format'}</div>;
+          return <div className="prose max-w-none whitespace-pre-wrap">{typeof displayContent === 'string' ? displayContent : 'Invalid bibliography format'}</div>;
         }
 
       case 'application/vnd.snippet-view':
         try {
           // Check if content is already an object or a string that needs parsing
-          const snippetData = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const snippetData = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           const snippets = snippetData.snippets || [];
           
@@ -796,16 +1075,16 @@ export const ArtifactContent: React.FC<{
           );
         } catch (error) {
           console.error('Failed to parse snippet view:', error);
-          return <div className="prose max-w-none whitespace-pre-wrap">{typeof artifact.content === 'string' ? artifact.content : 'Invalid snippet view format'}</div>;
+          return <div className="prose max-w-none whitespace-pre-wrap">{typeof displayContent === 'string' ? displayContent : 'Invalid snippet view format'}</div>;
         }
 
       case 'application/json':
       case 'application/vnd.ant.json':
         try {
           // Try to parse and pretty-print the JSON
-          const jsonObj = typeof artifact.content === 'string' 
-            ? JSON.parse(artifact.content) 
-            : artifact.content;
+          const jsonObj = typeof displayContent === 'string' 
+            ? JSON.parse(displayContent) 
+            : displayContent;
           
           const prettyJson = JSON.stringify(jsonObj, null, 2);
           
@@ -828,11 +1107,11 @@ export const ArtifactContent: React.FC<{
         } catch (error) {
           console.error('Failed to parse JSON:', error);
           // If JSON parsing fails, try to render as markdown or plain text
-          return renderFallbackContent(artifact.content);
+          return renderFallbackContent(displayContent);
         }
 
       default:
-        return renderFallbackContent(artifact.content);
+        return renderFallbackContent(displayContent);
     }
   };
 
