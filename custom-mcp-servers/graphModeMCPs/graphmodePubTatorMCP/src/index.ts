@@ -71,12 +71,15 @@ interface NodeData {
 }
 
 interface EdgeData {
+  id: string;                 // ADD THIS - for bulk operations with composite IDs
   source: string;
   target: string;
   label: string;
   data: {
     type: string;
-    source?: string;
+    source: string;           // MCP identifier
+    primary_source: string;   // Knowledge source (PMID or pubtator)
+    publications: string[];   // Array of PMIDs with prefix
     [key: string]: any;
   };
 }
@@ -362,6 +365,90 @@ async function createEdgeInDatabase(edgeData: EdgeData, databaseContext: Databas
   return result;
 }
 
+/**
+ * Bulk create nodes in Graph Mode database
+ */
+async function bulkCreateNodesInDatabase(
+  nodes: Omit<NodeData, 'id'>[],
+  databaseContext: DatabaseContext
+): Promise<{ created: number; skipped: number; total: number }> {
+  if (nodes.length === 0) {
+    return { created: 0, skipped: 0, total: 0 };
+  }
+
+  const endpoint = `/api/graph/${databaseContext.conversationId}/nodes/bulk`;
+  
+  // Add IDs to nodes
+  const nodesWithIds: NodeData[] = nodes.map(node => ({
+    id: node.data?.pubtatorId || `pubtator_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    ...node
+  }));
+
+  // Batch nodes in groups of 500 to avoid payload size limits
+  const batchSize = 500;
+  let totalCreated = 0;
+  let totalSkipped = 0;
+
+  for (let i = 0; i < nodesWithIds.length; i += batchSize) {
+    const batch = nodesWithIds.slice(i, i + batchSize);
+    
+    const result = await makeGraphModeAPIRequest(
+      endpoint,
+      databaseContext,
+      'POST',
+      { nodes: batch }
+    );
+    
+    totalCreated += result.created || 0;
+    totalSkipped += result.skipped || 0;
+  }
+
+  return {
+    created: totalCreated,
+    skipped: totalSkipped,
+    total: nodesWithIds.length
+  };
+}
+
+/**
+ * Bulk create edges in Graph Mode database
+ */
+async function bulkCreateEdgesInDatabase(
+  edges: EdgeData[],
+  databaseContext: DatabaseContext
+): Promise<{ created: number; skipped: number; total: number }> {
+  if (edges.length === 0) {
+    return { created: 0, skipped: 0, total: 0 };
+  }
+
+  const endpoint = `/api/graph/${databaseContext.conversationId}/edges/bulk`;
+
+  // Batch edges in groups of 500 to avoid payload size limits
+  const batchSize = 500;
+  let totalCreated = 0;
+  let totalSkipped = 0;
+
+  for (let i = 0; i < edges.length; i += batchSize) {
+    const batch = edges.slice(i, i + batchSize);
+    
+    const result = await makeGraphModeAPIRequest(
+      endpoint,
+      databaseContext,
+      'POST',
+      { edges: batch }
+    );
+    
+    totalCreated += result.created || 0;
+    totalSkipped += result.skipped || 0;
+  }
+
+  return {
+    created: totalCreated,
+    skipped: totalSkipped,
+    total: edges.length
+  };
+}
+
 // Entity type classification based on entity type
 function getEntityType(entityType: string): EntityType {
   switch (entityType.toLowerCase()) {
@@ -413,6 +500,21 @@ function mapRelationshipType(relationType: string): string {
     'stimulate': 'stimulates'
   };
   return mapping[relationType] || relationType;
+}
+
+/**
+ * Generate composite edge ID for deduplication
+ * Format: graphId|data.source|primary_source|source|label|target
+ */
+function generateCompositeEdgeId(
+  graphId: string,
+  dataSource: string,
+  primarySource: string,
+  source: string,
+  label: string,
+  target: string
+): string {
+  return [graphId, dataSource, primarySource, source, label, target].join('|');
 }
 
 // =============================================================================
@@ -665,8 +767,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // console.error(`[${SERVICE_NAME}] Processing ${pmids.length} PMIDs for concepts: ${concepts.join(', ')}`);
 
-      const createdNodes: NodeData[] = [];
-      const createdEdges: EdgeData[] = [];
+      // Collect all nodes and edges first
+      const nodesToCreate: Omit<NodeData, 'id'>[] = [];
+      const edgesToCreate: EdgeData[] = [];
       const processedEntities = new Set<string>();
 
       for (const pmid of pmids) {
@@ -680,7 +783,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             continue;
           }
 
-          // Process entities
+          // Collect entities
           for (const entity of annotations.annotations) {
             if (!concepts.includes(entity.type)) continue;
             if (processedEntities.has(entity.id)) continue;
@@ -702,28 +805,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               }
             };
 
-            const createdNode = await createNodeInDatabase(nodeData, databaseContext);
-            createdNodes.push(createdNode);
+            nodesToCreate.push(nodeData);
             processedEntities.add(entity.id);
           }
 
-          // Process relations
+          // Collect relations
           if (annotations.relations) {
             for (const relation of annotations.relations) {
               if (processedEntities.has(relation.e1) && processedEntities.has(relation.e2)) {
                 const edgeData: EdgeData = {
+                  id: generateCompositeEdgeId(
+                    databaseContext.conversationId,
+                    'pubtator',
+                    pmid ? `PMID:${pmid}` : 'infores:pubtator',
+                    relation.e1,
+                    mapRelationshipType(relation.type),
+                    relation.e2
+                  ),
                   source: relation.e1,
                   target: relation.e2,
                   label: mapRelationshipType(relation.type),
                   data: {
                     type: relation.type,
                     source: 'pubtator',
-                    pmid: pmid
+                    primary_source: pmid ? `PMID:${pmid}` : 'infores:pubtator',
+                    publications: pmid ? [`PMID:${pmid}`] : []
                   }
                 };
-                // Actually create the edge in the database
-                const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
-                createdEdges.push(createdEdge);
+                edgesToCreate.push(edgeData);
               }
             }
           }
@@ -736,14 +845,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       }
 
-      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
-      
+      // Bulk create nodes and edges
+      const nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
+      const edgeResult = await bulkCreateEdgesInDatabase(edgesToCreate, databaseContext);
+
       return {
         content: [{
           type: "text",
-          text: `Successfully added ${createdNodes.length} nodes and ${createdEdges.length} edges from ${pmids.length} PubMed articles to the Graph Mode knowledge graph.`
+          text: `Successfully added ${nodeResult.created} nodes and ${edgeResult.created} edges from ${pmids.length} PubMed articles to the Graph Mode knowledge graph.
+Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate edges were automatically skipped.`
         }],
         refreshGraph: true
       };
@@ -773,7 +883,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      const createdNodes: NodeData[] = [];
+      // Collect nodes for bulk creation
+      const nodesToCreate: Omit<NodeData, 'id'>[] = [];
       const processedEntities = new Set<string>();
 
       // Process entities
@@ -797,19 +908,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         };
 
-        const createdNode = await createNodeInDatabase(nodeData, databaseContext);
-        createdNodes.push(createdNode);
+        nodesToCreate.push(nodeData);
         processedEntities.add(entity.id);
       }
 
-      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, 0 edges`);
-      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
-      
+      // Bulk create nodes
+      const nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
+
       return {
         content: [{
           type: "text",
-          text: `Successfully added ${createdNodes.length} biomedical entities from the text to the Graph Mode knowledge graph.`
+          text: `Successfully added ${nodeResult.created} biomedical entities from the text to the Graph Mode knowledge graph.
+Note: ${nodeResult.skipped} duplicate entities were automatically skipped.`
         }],
         refreshGraph: true
       };
@@ -834,11 +944,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      const createdNodes: NodeData[] = [];
-      const createdEdges: EdgeData[] = [];
+      // Collect all nodes and edges for bulk creation
+      const nodesToCreate: Omit<NodeData, 'id'>[] = [];
+      const edgesToCreate: EdgeData[] = [];
       const processedEntities = new Set<string>();
 
-      // Create nodes for found entities
+      // Collect nodes for found entities
       for (const entity of limitedEntities) {
         const entityType = getEntityType(concept);
         const nodeData: Omit<NodeData, 'id'> = {
@@ -856,26 +967,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         };
 
-        const createdNode = await createNodeInDatabase(nodeData, databaseContext);
-        createdNodes.push(createdNode);
+        nodesToCreate.push(nodeData);
         processedEntities.add(entity.id);
       }
 
-      // Get relationships for each entity
+      // Get relationships for each entity and collect nodes/edges
       for (const entity of limitedEntities) {
         try {
           const relations = await getEntityRelations(entity.id, max_relations_per_entity, relationship_types);
           
-      for (const relation of relations) {
-        // Skip relations with missing target entity
-        if (!relation.e2) {
-          console.error(`[${SERVICE_NAME}] Skipping relation with missing target entity:`, relation);
-          continue;
-        }
-        
-        // Create target entity if it doesn't exist
-        if (!processedEntities.has(relation.e2)) {
-          const targetEntityType = getEntityTypeFromId(relation.e2);
+          for (const relation of relations) {
+            // Skip relations with missing target entity
+            if (!relation.e2) {
+              console.error(`[${SERVICE_NAME}] Skipping relation with missing target entity:`, relation);
+              continue;
+            }
+            
+            // Collect target entity if it doesn't exist
+            if (!processedEntities.has(relation.e2)) {
+              const targetEntityType = getEntityTypeFromId(relation.e2);
               const targetNodeData: Omit<NodeData, 'id'> = {
                 label: extractEntityName(relation.e2),
                 type: targetEntityType.type,
@@ -890,29 +1000,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 }
               };
 
-              const createdTargetNode = await createNodeInDatabase(targetNodeData, databaseContext);
-              createdNodes.push(createdTargetNode);
+              nodesToCreate.push(targetNodeData);
               processedEntities.add(relation.e2);
             }
 
-            // Create edge
+            // Collect edge
             const edgeData: EdgeData = {
+              id: generateCompositeEdgeId(
+                databaseContext.conversationId,
+                'pubtator',
+                relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+                relation.e1,
+                mapRelationshipType(relation.type),
+                relation.e2
+              ),
               source: relation.e1,
               target: relation.e2,
               label: mapRelationshipType(relation.type),
               data: {
                 type: relation.type,
-                source: 'pubtator'
+                source: 'pubtator',
+                primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+                publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
               }
             };
             
-        // console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
-        // console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
-        
-        // Actually create the edge in the database
-        const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
-        // console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
-        createdEdges.push(createdEdge);
+            edgesToCreate.push(edgeData);
           }
 
           // Rate limiting
@@ -923,14 +1036,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       }
 
-      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // Bulk create nodes and edges
+      const nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
+      const edgeResult = await bulkCreateEdgesInDatabase(edgesToCreate, databaseContext);
       
       return {
         content: [{
           type: "text",
-          text: `Successfully built entity network with ${createdNodes.length} nodes and ${createdEdges.length} edges for query "${query}".`
+          text: `Successfully built entity network with ${nodeResult.created} nodes and ${edgeResult.created} edges for query "${query}".
+Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate edges were automatically skipped.`
         }],
         refreshGraph: true
       };
@@ -954,11 +1068,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       const sourceEntityData = sourceEntities[0];
-      const createdNodes: NodeData[] = [];
-      const createdEdges: EdgeData[] = [];
+      
+      // Collect all nodes and edges for bulk creation
+      const nodesToCreate: Omit<NodeData, 'id'>[] = [];
+      const edgesToCreate: EdgeData[] = [];
       const processedEntities = new Set<string>();
 
-      // Create source entity node if it doesn't exist
+      // Collect source entity node
       const sourceEntityType = getEntityType(sourceType);
       const sourceNodeData: Omit<NodeData, 'id'> = {
         label: sourceEntityData.name,
@@ -975,8 +1091,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       };
 
-      const createdSourceNode = await createNodeInDatabase(sourceNodeData, databaseContext);
-      createdNodes.push(createdSourceNode);
+      nodesToCreate.push(sourceNodeData);
       processedEntities.add(sourceEntityData.id);
 
       // Get relationships for the source entity
@@ -989,7 +1104,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }).slice(0, maxResults);
 
       for (const relation of filteredRelations) {
-        // Create target entity if it doesn't exist
+        // Collect target entity if it doesn't exist
         if (!processedEntities.has(relation.e2)) {
           const targetEntityType = getEntityType(targetType);
           const targetNodeData: Omit<NodeData, 'id'> = {
@@ -1006,41 +1121,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
           };
 
-          const createdTargetNode = await createNodeInDatabase(targetNodeData, databaseContext);
-          createdNodes.push(createdTargetNode);
+          nodesToCreate.push(targetNodeData);
           processedEntities.add(relation.e2);
-        } else {
-          // console.error(`🔥 [DEBUG] SKIPPED - entity already processed: ${relation.e2}`);
         }
 
-        // Create edge
+        // Collect edge
         const edgeData: EdgeData = {
+          id: generateCompositeEdgeId(
+            databaseContext.conversationId,
+            'pubtator',
+            relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            relation.e1,
+            mapRelationshipType(relation.type),
+            relation.e2
+          ),
           source: relation.e1,
           target: relation.e2,
           label: mapRelationshipType(relation.type),
           data: {
             type: relation.type,
-            source: 'pubtator'
+            source: 'pubtator',
+            primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
           }
         };
         
-        // console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
-        // console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
-        
-        // Actually create the edge in the database
-        const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
-        // console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
-        createdEdges.push(createdEdge);
+        edgesToCreate.push(edgeData);
       }
 
-      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // Bulk create nodes and edges
+      const nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
+      const edgeResult = await bulkCreateEdgesInDatabase(edgesToCreate, databaseContext);
       
       return {
         content: [{
           type: "text",
-          text: `Found ${createdNodes.length - 1} ${targetType} entities related to ${sourceEntity}. Added ${createdNodes.length} nodes and ${createdEdges.length} edges to the graph.`
+          text: `Found ${nodeResult.created - 1} ${targetType} entities related to ${sourceEntity}. Added ${nodeResult.created} nodes and ${edgeResult.created} edges to the graph.
+Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate edges were automatically skipped.`
         }],
         refreshGraph: true
       };
@@ -1064,11 +1181,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       const sourceEntityData = sourceEntities[0];
-      const createdNodes: NodeData[] = [];
-      const createdEdges: EdgeData[] = [];
+      
+      // Collect all nodes and edges for bulk creation
+      const nodesToCreate: Omit<NodeData, 'id'>[] = [];
+      const edgesToCreate: EdgeData[] = [];
       const processedEntities = new Set<string>();
 
-      // Create source entity node if it doesn't exist
+      // Collect source entity node
       const sourceEntityType = getEntityType(sourceType);
       const sourceNodeData: Omit<NodeData, 'id'> = {
         label: sourceEntityData.name,
@@ -1085,8 +1204,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       };
 
-      const createdSourceNode = await createNodeInDatabase(sourceNodeData, databaseContext);
-      createdNodes.push(createdSourceNode);
+      nodesToCreate.push(sourceNodeData);
       processedEntities.add(sourceEntityData.id);
 
       // Get ALL relationships for the source entity (no target type filtering)
@@ -1094,22 +1212,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // console.error(`🔥 [PUBTATOR-DEBUG] Found ${relations.length} relations from PubTator API`);
 
       for (const relation of relations) {
-        // console.error(`🔥 [PUBTATOR-DEBUG] Processing relation: ${relation.e1} -> ${relation.e2} (${relation.type})`);
-        
         // Skip relations with missing target entity
         if (!relation.e2) {
           console.error(`[${SERVICE_NAME}] Skipping relation with missing target entity:`, relation);
           continue;
         }
         
-        // Create source entity if it doesn't exist
-        // console.error(`🔥 [DEBUG] Checking if ${relation.e1} is in processedEntities`);
-        // console.error(`🔥 [DEBUG] processedEntities contains:`, Array.from(processedEntities));
-        
+        // Collect source entity if it doesn't exist
         if (!processedEntities.has(relation.e1)) {
-          // console.error(`🔥 [PUBTATOR-DEBUG] Creating node for source entity: ${relation.e1}`);
           const sourceEntityType = getEntityTypeFromId(relation.e1);
-          // console.error(`🔥 [PUBTATOR-DEBUG] Source entity type determined:`, sourceEntityType);
           const sourceNodeData: Omit<NodeData, 'id'> = {
             label: extractEntityName(relation.e1),
             type: sourceEntityType.type,
@@ -1124,20 +1235,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
           };
 
-          const createdSourceNode = await createNodeInDatabase(sourceNodeData, databaseContext);
-          createdNodes.push(createdSourceNode);
+          nodesToCreate.push(sourceNodeData);
           processedEntities.add(relation.e1);
-        } else {
-          // console.error(`🔥 [DEBUG] SKIPPED - source entity already processed: ${relation.e1}`);
         }
 
-        // Create target entity if it doesn't exist
-        // console.error(`🔥 [DEBUG] Checking if ${relation.e2} is in processedEntities`);
-        
+        // Collect target entity if it doesn't exist
         if (!processedEntities.has(relation.e2)) {
-          // console.error(`🔥 [PUBTATOR-DEBUG] Creating node for target entity: ${relation.e2}`);
           const targetEntityType = getEntityTypeFromId(relation.e2);
-          // console.error(`🔥 [PUBTATOR-DEBUG] Target entity type determined:`, targetEntityType);
           const targetNodeData: Omit<NodeData, 'id'> = {
             label: extractEntityName(relation.e2),
             type: targetEntityType.type,
@@ -1152,41 +1256,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
           };
 
-          const createdTargetNode = await createNodeInDatabase(targetNodeData, databaseContext);
-          createdNodes.push(createdTargetNode);
+          nodesToCreate.push(targetNodeData);
           processedEntities.add(relation.e2);
-        } else {
-          // console.error(`🔥 [DEBUG] SKIPPED - target entity already processed: ${relation.e2}`);
         }
 
-        // Create edge
+        // Collect edge
         const edgeData: EdgeData = {
+          id: generateCompositeEdgeId(
+            databaseContext.conversationId,
+            'pubtator',
+            relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            relation.e1,
+            mapRelationshipType(relation.type),
+            relation.e2
+          ),
           source: relation.e1,
           target: relation.e2,
           label: mapRelationshipType(relation.type),
           data: {
             type: relation.type,
-            source: 'pubtator'
+            source: 'pubtator',
+            primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
           }
         };
         
-        // console.error(`🔥 [PUBTATOR-DEBUG] About to create edge: ${relation.e1} -> ${relation.e2} (${relation.type})`);
-        // console.error(`🔥 [PUBTATOR-DEBUG] Edge data:`, JSON.stringify(edgeData, null, 2));
-        
-        // Actually create the edge in the database
-        const createdEdge = await createEdgeInDatabase(edgeData, databaseContext);
-        // console.error(`🔥 [PUBTATOR-DEBUG] Edge created successfully:`, JSON.stringify(createdEdge, null, 2));
-        createdEdges.push(createdEdge);
+        edgesToCreate.push(edgeData);
       }
 
-      // console.error(`[${SERVICE_NAME}] 📊 Operation complete: ${createdNodes.length} nodes, ${createdEdges.length} edges`);
-      // console.error(`[${SERVICE_NAME}] 📊 Node IDs created:`, createdNodes.map(n => n.data?.id || n.id || 'NO_ID'));
-      // console.error(`[${SERVICE_NAME}] 📊 First node structure:`, JSON.stringify(createdNodes[0], null, 2));
+      // Bulk create nodes and edges
+      const nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
+      const edgeResult = await bulkCreateEdgesInDatabase(edgesToCreate, databaseContext);
       
       return {
         content: [{
           type: "text",
-          text: `Found comprehensive relationship network for ${sourceEntity}. Added ${createdNodes.length} nodes and ${createdEdges.length} edges across all entity types to the graph.`
+          text: `Found comprehensive relationship network for ${sourceEntity}. Added ${nodeResult.created} nodes and ${edgeResult.created} edges across all entity types to the graph.
+Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate edges were automatically skipped.`
         }],
         refreshGraph: true
       };

@@ -314,6 +314,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       startingId: node.startingId,
       metadata: node.metadata,
       isStartingNode: node.isStartingNode,
+      data: node.data, // Preserve the data property including seedNode
       fx: undefined as number | undefined, // Fixed x position
       fy: undefined as number | undefined  // Fixed y position
     }));
@@ -932,6 +933,61 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     );
   };
 
+  // Function to log node neighbors to console
+  const logNodeNeighbors = (clickedNode: any) => {
+    // Use the current graph data (either filtered or full)
+    const currentEdges = filteredEdges.length > 0 ? filteredEdges : graphData.edges;
+    const currentNodes = filteredNodes.length > 0 ? filteredNodes : graphData.nodes;
+    
+    if (!currentEdges || currentEdges.length === 0) {
+      console.log('No edges data available for neighbor analysis');
+      return;
+    }
+
+    // Find all edges connected to this node
+    const connectedEdges = currentEdges.filter((edge: any) => 
+      edge.source === clickedNode.id || edge.target === clickedNode.id
+    );
+
+    // Get neighbor nodes
+    const neighborIds = new Set<string>();
+    connectedEdges.forEach((edge: any) => {
+      if (edge.source === clickedNode.id) {
+        neighborIds.add(edge.target);
+      } else if (edge.target === clickedNode.id) {
+        neighborIds.add(edge.source);
+      }
+    });
+
+    // Get neighbor node details
+    const neighbors = Array.from(neighborIds).map(neighborId => {
+      const neighborNode = currentNodes.find((n: any) => n.id === neighborId);
+      return neighborNode ? {
+        id: neighborNode.id,
+        name: neighborNode.name || neighborNode.label || 'Unknown',
+        type: neighborNode.type || neighborNode.entityType || 'Unknown',
+        isSeedNode: neighborNode.data?.seedNode || false
+      } : null;
+    }).filter(Boolean);
+
+    // Log detailed neighbor information
+    console.group(`🔍 Neighbors of ${clickedNode.label || clickedNode.name} (${clickedNode.id})`);
+    console.log(`📊 Total neighbors: ${neighbors.length}`);
+    console.log(`🔗 Total connections: ${connectedEdges.length}`);
+    
+    if (neighbors.length > 0) {
+      console.log('👥 Neighbor Details:');
+      neighbors.forEach((neighbor: any, index: number) => {
+        const seedIndicator = neighbor.isSeedNode ? '🌱' : '';
+        console.log(`  ${index + 1}. ${neighbor.name} (${neighbor.id}) [${neighbor.type}] ${seedIndicator}`);
+      });
+    } else {
+      console.log('❌ No neighbors found');
+    }
+    
+    console.groupEnd();
+  };
+
   // Handle node click with Control/Command key detection
   const handleNodeClick = (node: any, props?: any, event?: any) => {
     // Check if Control key (or Command key on Mac) is pressed
@@ -964,8 +1020,32 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       }, 3000);
     }
     
+    // Log node neighbors to console
+    logNodeNeighbors(node);
+    
     // Log for debugging
     console.log('Node clicked:', node);
+  };
+
+  // Handle edge click - log edge data to console
+  const handleEdgeClick = (edge: any, props?: any, event?: any) => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Log edge coordinates
+    console.log(`📍 Edge Coordinates:`);
+    console.log(`   Source: x=${edge.sourceX?.toFixed(2) || 'N/A'}, y=${edge.sourceY?.toFixed(2) || 'N/A'}, z=${edge.sourceZ?.toFixed(2) || 'N/A'}`);
+    console.log(`   Target: x=${edge.targetX?.toFixed(2) || 'N/A'}, y=${edge.targetY?.toFixed(2) || 'N/A'}, z=${edge.targetZ?.toFixed(2) || 'N/A'}`);
+    console.log(`   Midpoint: x=${edge.midX?.toFixed(2) || 'N/A'}, y=${edge.midY?.toFixed(2) || 'N/A'}, z=${edge.midZ?.toFixed(2) || 'N/A'}`);
+    console.log('');
+    
+    console.log(`🔗 EDGE: ${edge.source} → ${edge.target}`);
+    console.log(`🏷️  Label: ${edge.label || 'No label'}`);
+    console.log(`📊 Size: ${edge.size || 'N/A'}`);
+    console.log(`🎨 Color: ${edge.color || 'N/A'}`);
+    
+    console.log('');
+    console.log('Full edge object:', edge);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
   // Notification popup component
@@ -1098,16 +1178,47 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
         <NotificationPopup />
         {/* Tooltip for Ctrl/Cmd+Click functionality */}
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
-          Ctrl/Cmd + Click on a node to add it to chat
+          <div>Ctrl/Cmd + Click node to add to chat</div>
+          <div>Click edge to view details in console</div>
         </div>
-        {/* <GraphCanvas
+        <GraphCanvas
           nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
           edges={filteredEdges.length ? filteredEdges : graphData.edges}
           layoutType="forceDirected2d"
           draggable
           labelType="all"
           onNodeClick={handleNodeClick}
-        /> */}
+          onEdgeClick={handleEdgeClick}
+          edgeOpacity={0.4}
+          renderNode={({ node, size, color, opacity }) => {
+            const isSeed = node.data?.seedNode;
+            
+            return (
+              <group>
+                {/* Main node circle */}
+                <mesh>
+                  <circleGeometry args={[size, 32]} />
+                  <meshBasicMaterial color={color} opacity={opacity} />
+                </mesh>
+                {/* Seed node halo effect */}
+                {isSeed && (
+                  <>
+                    {/* Outer halo */}
+                    <mesh position={[0, 0, 2.0]}>
+                      <ringGeometry args={[size + 4, size + 8, 32]} />
+                      <meshBasicMaterial color="#000000" opacity={0.3} />
+                    </mesh>
+                    {/* Inner ring */}
+                    <mesh position={[0, 0, 2.1]}>
+                      <ringGeometry args={[size + 1, size + 3, 32]} />
+                      <meshBasicMaterial color="#000000" opacity={0.9} />
+                    </mesh>
+                  </>
+                )}
+              </group>
+            );
+          }}
+        />
       </div>
     </div>
   );

@@ -211,10 +211,32 @@ const KnowledgeGraphVisualizer = () => {
         // Add the actual link lines
         link.append("path")
             .attr("stroke", "#999")
+            .attr("stroke-opacity", 0.3)
             .attr("stroke-width", 1.5)
             .attr("fill", "none")
             .attr("marker-end", "url(#end)")
             .on("click", (event, d) => {
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
+                // Log edge coordinates
+                console.log(`📍 Edge Coordinates:`);
+                console.log(`   Source: x=${d.source.x?.toFixed(2) || 'N/A'}, y=${d.source.y?.toFixed(2) || 'N/A'}, z=${d.source.z?.toFixed(2) || 'N/A'}`);
+                console.log(`   Target: x=${d.target.x?.toFixed(2) || 'N/A'}, y=${d.target.y?.toFixed(2) || 'N/A'}, z=${d.target.z?.toFixed(2) || 'N/A'}`);
+                
+                // Calculate midpoint
+                const midX = d.source.x && d.target.x ? ((d.source.x + d.target.x) / 2).toFixed(2) : 'N/A';
+                const midY = d.source.y && d.target.y ? ((d.source.y + d.target.y) / 2).toFixed(2) : 'N/A';
+                const midZ = d.source.z && d.target.z ? ((d.source.z + d.target.z) / 2).toFixed(2) : 'N/A';
+                console.log(`   Midpoint: x=${midX}, y=${midY}, z=${midZ}`);
+                console.log('');
+                
+                console.log(`🔗 EDGE: ${d.source.id || d.source} → ${d.target.id || d.target}`);
+                console.log(`🏷️  Label: ${d.label || 'No label'}`);
+                
+                console.log('');
+                console.log('Full edge object:', d);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
                 setSelectedElement({ type: 'link', data: d });
                 event.stopPropagation();
             });
@@ -245,9 +267,28 @@ const KnowledgeGraphVisualizer = () => {
         node.append("circle")
             .attr("r", d => d.type === 'group' ? 15 : 8)
             .attr("fill", d => color(d.group))
-            .attr("stroke", d => d.type === 'group' ? "#333" : "none")
-            .attr("stroke-width", d => d.type === 'group' ? 2 : 0)
-            .on("click", (event, d) => {
+            .attr("stroke", d => {
+                if (d.type === 'group') return "#333";
+                if (d.data?.seedNode) return "#000000";
+                return "none";
+            })
+            .attr("stroke-width", d => {
+                if (d.type === 'group') return 2;
+                if (d.data?.seedNode) return 4;
+                return 0;
+            });
+
+        // Add halo effect for seed nodes
+        node.filter(d => d.data?.seedNode)
+            .append("circle")
+            .attr("r", d => (d.type === 'group' ? 15 : 8) + 4)
+            .attr("fill", "none")
+            .attr("stroke", "rgba(0, 0, 0, 0.3)")
+            .attr("stroke-width", 8)
+            .lower(); // Put halo behind the main node
+
+        // Add click handlers to nodes
+        node.on("click", (event, d) => {
                 setSelectedElement({ type: 'node', data: d });
                 event.stopPropagation();
             })
@@ -258,6 +299,10 @@ const KnowledgeGraphVisualizer = () => {
                     event.stopPropagation();
                 }
             });
+
+        // Bring seed nodes to the front
+        node.filter(d => d.data?.seedNode)
+            .raise();
 
         // Add indicators for group nodes
         node.filter(d => d.type === 'group')

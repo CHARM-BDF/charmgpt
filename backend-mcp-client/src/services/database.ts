@@ -171,6 +171,32 @@ export class GraphDatabaseService {
     // console.error(`[DATABASE] 📝 Writing edge to database - graphId: ${graphId}, source: ${source}, target: ${target}`);
     // console.error(`[DATABASE] 📝 Edge data:`, { graphId, source, target, label, type, data });
     
+    // Check for duplicate edge based on uniqueness constraint
+    // Unique key: graphId + data.source + data.primary_source + source + label + target
+    if (data?.source && data?.primary_source) {
+      // Fetch all edges between these nodes with same label
+      const potentialDuplicates = await this.prisma.graphEdge.findMany({
+        where: {
+          graphId,
+          source,
+          target,
+          label
+        }
+      });
+      
+      // Check if any edge has matching MCP source and knowledge source
+      for (const edge of potentialDuplicates) {
+        const edgeData = edge.data as any;
+        if (edgeData?.source === data.source && 
+            edgeData?.primary_source === data.primary_source) {
+          console.error(`[DATABASE] ⚠️ Edge already exists, returning existing edge: ${edge.id}`);
+          console.error(`[DATABASE] ⚠️ Duplicate key: ${data.source} + ${data.primary_source} + ${source} + ${label} + ${target}`);
+          return edge;
+        }
+      }
+    }
+    
+    // Create new edge if no duplicate found
     const result = await this.prisma.graphEdge.create({
       data: {
         graphId,
@@ -182,7 +208,7 @@ export class GraphDatabaseService {
       },
     });
     
-    // console.error(`[DATABASE] ✅ Edge written successfully - id: ${result.id}`);
+    console.error(`[DATABASE] ✅ New edge created: ${result.id}`);
     // console.error(`[DATABASE] ✅ Edge result:`, JSON.stringify(result, null, 2));
     
     return result;
@@ -232,6 +258,70 @@ export class GraphDatabaseService {
   }
 
   // Cleanup
+  async bulkCreateNodes(nodes: any[]) {
+    // Bulk insert - SQLite doesn't support skipDuplicates, so we'll handle duplicates gracefully
+    let result;
+    try {
+      result = await this.prisma.graphNode.createMany({
+        data: nodes
+      });
+    } catch (error: any) {
+      // If we get a unique constraint error, try inserting one by one to skip duplicates
+      if (error.code === 'P2002' || error.message?.includes('UNIQUE constraint failed')) {
+        console.log('Bulk insert failed due to duplicates, falling back to individual inserts');
+        let created = 0;
+        for (const node of nodes) {
+          try {
+            await this.prisma.graphNode.create({ data: node });
+            created++;
+          } catch (nodeError: any) {
+            // Skip duplicate nodes
+            if (nodeError.code === 'P2002' || nodeError.message?.includes('UNIQUE constraint failed')) {
+              continue;
+            }
+            throw nodeError;
+          }
+        }
+        result = { count: created };
+      } else {
+        throw error;
+      }
+    }
+    return result;
+  }
+
+  async bulkCreateEdges(edges: any[]) {
+    // Bulk insert - SQLite doesn't support skipDuplicates, so we'll handle duplicates gracefully
+    let result;
+    try {
+      result = await this.prisma.graphEdge.createMany({
+        data: edges
+      });
+    } catch (error: any) {
+      // If we get a unique constraint error, try inserting one by one to skip duplicates
+      if (error.code === 'P2002' || error.message?.includes('UNIQUE constraint failed')) {
+        console.log('Bulk insert failed due to duplicates, falling back to individual inserts');
+        let created = 0;
+        for (const edge of edges) {
+          try {
+            await this.prisma.graphEdge.create({ data: edge });
+            created++;
+          } catch (edgeError: any) {
+            // Skip duplicate edges
+            if (edgeError.code === 'P2002' || edgeError.message?.includes('UNIQUE constraint failed')) {
+              continue;
+            }
+            throw edgeError;
+          }
+        }
+        result = { count: created };
+      } else {
+        throw error;
+      }
+    }
+    return result;
+  }
+
   async disconnect() {
     await this.prisma.$disconnect();
   }

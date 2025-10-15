@@ -42,6 +42,57 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
     }
   }, [data]);
 
+  // Function to log node neighbors to console
+  const logNodeNeighbors = (clickedNode: any) => {
+    if (!graphData?.links) {
+      console.log('No edges data available for neighbor analysis');
+      return;
+    }
+
+    // Find all edges connected to this node
+    const connectedEdges = graphData.links.filter((edge: any) => 
+      edge.source === clickedNode.id || edge.target === clickedNode.id
+    );
+
+    // Get neighbor nodes
+    const neighborIds = new Set<string>();
+    connectedEdges.forEach((edge: any) => {
+      if (edge.source === clickedNode.id) {
+        neighborIds.add(edge.target);
+      } else if (edge.target === clickedNode.id) {
+        neighborIds.add(edge.source);
+      }
+    });
+
+    // Get neighbor node details
+    const neighbors = Array.from(neighborIds).map(neighborId => {
+      const neighborNode = graphData.nodes.find((n: any) => n.id === neighborId);
+      return neighborNode ? {
+        id: neighborNode.id,
+        name: neighborNode.name || neighborNode.label || 'Unknown',
+        type: neighborNode.type || neighborNode.entityType || 'Unknown',
+        isSeedNode: neighborNode.data?.seedNode || false
+      } : null;
+    }).filter(Boolean);
+
+    // Log detailed neighbor information
+    console.group(`🔍 Neighbors of ${clickedNode.name || clickedNode.label} (${clickedNode.id})`);
+    console.log(`📊 Total neighbors: ${neighbors.length}`);
+    console.log(`🔗 Total connections: ${connectedEdges.length}`);
+    
+    if (neighbors.length > 0) {
+      console.log('👥 Neighbor Details:');
+      neighbors.forEach((neighbor: any, index: number) => {
+        const seedIndicator = neighbor.isSeedNode ? '🌱' : '';
+        console.log(`  ${index + 1}. ${neighbor.name} (${neighbor.id}) [${neighbor.type}] ${seedIndicator}`);
+      });
+    } else {
+      console.log('❌ No neighbors found');
+    }
+    
+    console.groupEnd();
+  };
+
   // Adjust dimensions based on container size
   useEffect(() => {
     if (containerRef.current) {
@@ -170,14 +221,74 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
           nodeLabel="name"
           nodeColor={(node: KnowledgeGraphNode) => node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4')}
           nodeVal={(node: KnowledgeGraphNode) => node.val || 1}
+          nodeCanvasObject={(node: KnowledgeGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+            const label = node.name || node.id;
+            const fontSize = 12/globalScale;
+            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4');
+            
+            // Draw node circle
+            ctx.beginPath();
+            ctx.arc(node.x!, node.y!, node.val || 1, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw halo effect for seed nodes (on top)
+            if (node.data?.seedNode) {
+              // Outer halo
+              ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+              ctx.lineWidth = 8/globalScale;
+              ctx.beginPath();
+              ctx.arc(node.x!, node.y!, (node.val || 1) + 2, 0, 2 * Math.PI);
+              ctx.stroke();
+              
+              // Inner ring
+              ctx.strokeStyle = '#000000';
+              ctx.lineWidth = 4/globalScale;
+              ctx.beginPath();
+              ctx.arc(node.x!, node.y!, node.val || 1, 0, 2 * Math.PI);
+              ctx.stroke();
+            }
+            
+            // Draw label
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillText(label, node.x!, node.y! + (node.val || 1) + fontSize);
+          }}
           linkLabel="label"
-          linkColor={(link: KnowledgeGraphLink) => link.color || '#999'}
+          linkColor={(link: KnowledgeGraphLink) => (link.color || '#999') + '66'}
           linkWidth={(link: KnowledgeGraphLink) => link.value || 1}
           width={dimensions.width}
           height={dimensions.height}
           onNodeClick={(node: KnowledgeGraphNode) => {
+            // Log node neighbors to console
+            logNodeNeighbors(node);
             // You can add custom node click behavior here
             console.log('Node clicked:', node);
+          }}
+          onLinkClick={(link: KnowledgeGraphLink) => {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
+            // Log edge coordinates
+            console.log(`📍 Edge Coordinates:`);
+            console.log(`   Source: x=${link.source.x?.toFixed(2) || 'N/A'}, y=${link.source.y?.toFixed(2) || 'N/A'}, z=${link.source.z?.toFixed(2) || 'N/A'}`);
+            console.log(`   Target: x=${link.target.x?.toFixed(2) || 'N/A'}, y=${link.target.y?.toFixed(2) || 'N/A'}, z=${link.target.z?.toFixed(2) || 'N/A'}`);
+            
+            // Calculate midpoint
+            const midX = link.source.x && link.target.x ? ((link.source.x + link.target.x) / 2).toFixed(2) : 'N/A';
+            const midY = link.source.y && link.target.y ? ((link.source.y + link.target.y) / 2).toFixed(2) : 'N/A';
+            const midZ = link.source.z && link.target.z ? ((link.source.z + link.target.z) / 2).toFixed(2) : 'N/A';
+            console.log(`   Midpoint: x=${midX}, y=${midY}, z=${midZ}`);
+            console.log('');
+            
+            console.log(`🔗 EDGE: ${link.source.id || link.source} → ${link.target.id || link.target}`);
+            console.log(`🏷️  Label: ${link.label || 'No label'}`);
+            console.log(`📊 Value: ${link.value || 'N/A'}`);
+            console.log(`🎨 Color: ${link.color || 'N/A'}`);
+            
+            console.log('');
+            console.log('Full edge object:', link);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           }}
         />
       </div>
