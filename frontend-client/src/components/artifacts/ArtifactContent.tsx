@@ -205,6 +205,7 @@ export const ArtifactContent: React.FC<{
   const [useReagraph, setUseReagraph] = useState(true);
   const [savingToProject, setSavingToProject] = useState(false);
   const [clusterNodes, setClusterNodes] = useState(false);
+  const [collapseNodes, setCollapseNodes] = useState(false);
   
   // Use selector functions to only subscribe to the specific state we need
   const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
@@ -378,6 +379,7 @@ export const ArtifactContent: React.FC<{
               artifactId={artifact.id}
               showVersionControls={true}
               clusterNodes={clusterNodes}
+              collapseNodes={collapseNodes}
             />
           );
         }
@@ -948,6 +950,22 @@ export const ArtifactContent: React.FC<{
                     d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
                 {clusterNodes ? 'Clustered' : 'Cluster Nodes'}
+              </button>
+              
+              <button
+                onClick={() => setCollapseNodes(!collapseNodes)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  collapseNodes
+                    ? 'bg-purple-500 text-white hover:bg-purple-600'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title="Collapse clusters into single representative nodes"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                {collapseNodes ? 'Collapsed' : 'Collapse Clusters'}
               </button>
             </div>
           )}

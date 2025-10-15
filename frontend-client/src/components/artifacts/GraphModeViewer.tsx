@@ -57,6 +57,7 @@ interface GraphModeViewerProps {
   artifactId?: string;
   showVersionControls?: boolean;
   clusterNodes?: boolean;
+  collapseNodes?: boolean;
 }
 
 // Helper to determine if a node should be clustered
@@ -133,7 +134,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   height = 600,
   artifactId,
   showVersionControls = true,
-  clusterNodes = false
+  clusterNodes = false,
+  collapseNodes = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [parsedData, setParsedData] = useState<KnowledgeGraphData | null>(null);
@@ -240,6 +242,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const [pinnedEdgeCard, setPinnedEdgeCard] = useState<any>(null);
   const [cardPosition, setCardPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   
+  // Collapsed cluster state - tracks which cluster groups are collapsed
+  const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
   
   // Manual clustering state (removed - using simpler approach)
   
@@ -611,18 +615,109 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       startingNodes[1].fy = 0;
     }
 
-    // Convert edges
+    // Create cluster nodes when collapsing is enabled
+    let finalNodes = nodes;
+    let nodeIdMap = new Map<string, string>(); // Maps original node IDs to cluster IDs
+    
+    if (collapseNodes) {
+      // Group nodes by their clusterGroup
+      const clusterGroups = new Map<string, any[]>();
+      nodes.forEach(node => {
+        const clusterGroup = node.data?.clusterGroup;
+        if (clusterGroup) {
+          if (!clusterGroups.has(clusterGroup)) {
+            clusterGroups.set(clusterGroup, []);
+          }
+          clusterGroups.get(clusterGroup)!.push(node);
+        } else {
+          // Nodes without cluster groups remain individual
+          if (!clusterGroups.has(`single:${node.id}`)) {
+            clusterGroups.set(`single:${node.id}`, []);
+          }
+          clusterGroups.get(`single:${node.id}`)!.push(node);
+        }
+      });
+      
+      console.log('🔄 Creating cluster nodes:', clusterGroups.size, 'groups');
+      
+      // Create cluster nodes or keep individual nodes
+      const processedNodes: any[] = [];
+      clusterGroups.forEach((members, clusterGroup) => {
+        if (members.length === 1) {
+          // Single node - keep as is
+          const node = members[0];
+          processedNodes.push(node);
+          nodeIdMap.set(node.id, node.id);
+        } else {
+          // Multiple nodes - check if this cluster is expanded
+          const isExpanded = collapsedClusters.has(clusterGroup);
+          
+          if (isExpanded) {
+            // Cluster is expanded - show individual nodes
+            members.forEach(member => {
+              processedNodes.push(member);
+              nodeIdMap.set(member.id, member.id);
+            });
+            console.log(`  Cluster ${clusterGroup} is expanded - showing ${members.length} individual nodes`);
+          } else {
+            // Cluster is collapsed - create cluster node
+            const clusterId = `cluster_${clusterGroup.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const size = Math.min(15 + members.length * 2, 40); // Dynamic size based on member count
+            
+            const clusterNode = {
+              ...members[0], // Inherit properties from first member
+              id: clusterId,
+              label: `${members[0].category || 'Node'} Cluster (${members.length})`,
+              size: size,
+              isCluster: true,
+              clusterMembers: members,
+              data: {
+                ...members[0].data,
+                isClusterNode: true,
+                clusterGroup: clusterGroup // Keep the cluster group for click handling
+              }
+            };
+            
+            processedNodes.push(clusterNode);
+            
+            // Map all member IDs to this cluster ID
+            members.forEach(member => {
+              nodeIdMap.set(member.id, clusterId);
+            });
+            
+            console.log(`  Created cluster ${clusterId} with ${members.length} members`);
+          }
+        }
+      });
+      
+      finalNodes = processedNodes;
+      console.log('✅ Cluster nodes created:', finalNodes.length, 'total nodes');
+    } else {
+      // No collapsing - identity mapping
+      nodes.forEach(node => {
+        nodeIdMap.set(node.id, node.id);
+      });
+    }
+
+    // Convert edges with cluster remapping
     let edges: any[] = [];
     if (parsedData.links) {
       if (aggregateEdges) {
         const edgeGroups = new Map<string, any[]>();
 
         parsedData.links.forEach((link: any) => {
-          const key = `${link.source}-${link.target}`;
+          // Remap source and target to cluster nodes if needed
+          const source = nodeIdMap.get(link.source) || link.source;
+          const target = nodeIdMap.get(link.target) || link.target;
+          
+          // Skip self-loops (edges where source and target became the same cluster)
+          if (source === target) return;
+          
+          const key = `${source}-${target}`;
           if (!edgeGroups.has(key)) {
             edgeGroups.set(key, []);
           }
-          edgeGroups.get(key)!.push(link);
+          edgeGroups.get(key)!.push({ ...link, source, target });
         });
 
         const multiEdgePairs = Array.from(edgeGroups.entries()).filter(([_, group]) => group.length > 1);
@@ -662,23 +757,31 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         });
       } else {
         edges = parsedData.links.map((link: any, index: number) => {
+          // Remap source and target to cluster nodes if needed
+          const source = nodeIdMap.get(link.source) || link.source;
+          const target = nodeIdMap.get(link.target) || link.target;
+          
+          // Skip self-loops
+          if (source === target) return null;
+          
           return {
-            id: `${link.source}-${link.target}-${index}`,
-            source: link.source,
-            target: link.target,
+            id: `${source}-${target}-${index}`,
+            source,
+            target,
             label: link.label?.replace('biolink:', '') || '',
             color: '#888',
             size: Math.max(1, link.value || 1),
             data: link.data
           };
-        });
+        }).filter(Boolean);
       }
     }
 
     console.log('🎯 FINAL GRAPH DATA:');
-    console.log('  Nodes:', nodes.length, nodes.map(n => ({ 
+    console.log('  Nodes:', finalNodes.length, finalNodes.map(n => ({ 
       id: n.id, 
       label: n.label, 
+      isCluster: n.isCluster,
       clusterGroup: n.data?.clusterGroup,
       size: n.size || n.val
     })));
@@ -689,8 +792,27 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       label: e.label 
     })));
     
-    return { nodes, edges };
-  }, [parsedData, aggregateEdges, clusterNodes]);
+    return { nodes: finalNodes, edges };
+  }, [parsedData, aggregateEdges, clusterNodes, collapseNodes, collapsedClusters]);
+
+  // Pre-calculate cluster metadata for Shift+Click functionality
+  const clusterMetadata = useMemo(() => {
+    const metadata = new Map<string, string>(); // nodeId -> clusterGroup
+    graphData.nodes.forEach(node => {
+      if (node.data?.clusterGroup) {
+        metadata.set(node.id, node.data.clusterGroup);
+      }
+    });
+    console.log('🔍 Cluster metadata calculated:', metadata.size, 'nodes with cluster groups');
+    return metadata;
+  }, [graphData.nodes]);
+
+  // Clear collapsed clusters when collapsing is disabled
+  useEffect(() => {
+    if (!collapseNodes) {
+      setCollapsedClusters(new Set());
+    }
+  }, [collapseNodes]);
 
   // Apply filters when selections change
   useEffect(() => {
@@ -1092,10 +1214,48 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       isCluster: node.isCluster
     });
     
-    // If clustering is enabled and this looks like a cluster node, let Reagraph handle it
-    if (clusterNodes && node.isCluster && !event?.ctrlKey && !event?.metaKey) {
-      console.log('🎯 CLUSTER CLICK - Letting Reagraph handle cluster expansion/collapse');
-      return; // Don't interfere with Reagraph's built-in cluster handling
+    // Handle Shift+Click to collapse cluster containing this node
+    if (event?.shiftKey && !node.isCluster) {
+      const clusterGroup = clusterMetadata.get(node.id);
+      
+      if (clusterGroup) {
+        // Count how many nodes are in this cluster
+        const clusterSize = Array.from(clusterMetadata.values())
+          .filter(cg => cg === clusterGroup).length;
+        
+        if (clusterSize > 1) {
+          // Add this cluster to collapsed set
+          const newCollapsedClusters = new Set(collapsedClusters);
+          newCollapsedClusters.add(clusterGroup);
+          setCollapsedClusters(newCollapsedClusters);
+          
+          console.log(`📁 SHIFT+CLICK: Collapsed cluster ${clusterGroup} (${clusterSize} nodes)`);
+          return;
+        }
+      }
+      console.log('⚠️ SHIFT+CLICK: Node not in a multi-node cluster');
+      return;
+    }
+    
+    // Handle cluster collapse/expand when collapsing is enabled
+    if (collapseNodes && node.isCluster && !event?.ctrlKey && !event?.metaKey) {
+      console.log('🎯 CLUSTER CLICK - Toggling cluster collapse state');
+      const clusterGroup = node.data?.clusterGroup;
+      
+      if (clusterGroup) {
+        const newCollapsedClusters = new Set(collapsedClusters);
+        if (newCollapsedClusters.has(clusterGroup)) {
+          // Expand: remove from collapsed set
+          newCollapsedClusters.delete(clusterGroup);
+          console.log(`📂 EXPANDING cluster: ${clusterGroup}`);
+        } else {
+          // Collapse: add to collapsed set
+          newCollapsedClusters.add(clusterGroup);
+          console.log(`📁 COLLAPSING cluster: ${clusterGroup}`);
+        }
+        setCollapsedClusters(newCollapsedClusters);
+      }
+      return;
     }
     
     if (event && (event.ctrlKey || event.metaKey)) {
@@ -1569,6 +1729,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
           <div>Ctrl/Cmd + Click node to add to chat</div>
           <div>Click cluster to expand/collapse</div>
+          <div>Shift + Click node to collapse its cluster</div>
           <div>Click edge to view details</div>
         </div>
         <GraphCanvas
