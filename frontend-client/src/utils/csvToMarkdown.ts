@@ -15,6 +15,9 @@ export function csvToMarkdown(csvContent: string, maxRows: number = 100): string
       header: false,
       skipEmptyLines: true,
       preview: maxRows + 1, // +1 for header row
+      delimiter: ',',  // Force comma delimiter (don't guess, as pipe chars inside quotes confuse it)
+      quoteChar: '"',
+      escapeChar: '"',
       transformHeader: (header: string) => header.trim(),
       transform: (value: string) => value.trim()
     });
@@ -39,11 +42,12 @@ export function csvToMarkdown(csvContent: string, maxRows: number = 100): string
       markdown += `*Showing all ${dataRows.length} rows*\n\n`;
     }
     
-    // Header row
-    markdown += '| ' + headers.join(' | ') + ' |\n';
+    // Header row - escape pipe characters to prevent markdown table issues
+    const escapedHeaders = headers.map(h => (h || '').replace(/\|/g, '\\|'));
+    markdown += '| ' + escapedHeaders.join(' | ') + ' |\n';
     
     // Separator row
-    markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+    markdown += '| ' + escapedHeaders.map(() => '---').join(' | ') + ' |\n';
     
     // Data rows
     dataRows.forEach(row => {
@@ -106,11 +110,12 @@ export function tsvToMarkdown(tsvContent: string, maxRows: number = 100): string
       markdown += `*Showing all ${dataRows.length} rows*\n\n`;
     }
     
-    // Header row
-    markdown += '| ' + headers.join(' | ') + ' |\n';
+    // Header row - escape pipe characters to prevent markdown table issues
+    const escapedHeaders = headers.map(h => (h || '').replace(/\|/g, '\\|'));
+    markdown += '| ' + escapedHeaders.join(' | ') + ' |\n';
     
     // Separator row
-    markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+    markdown += '| ' + escapedHeaders.map(() => '---').join(' | ') + ' |\n';
     
     // Data rows
     dataRows.forEach(row => {
