@@ -59,10 +59,20 @@ interface GraphModeViewerProps {
   clusterNodes?: boolean;
 }
 
-// Helper to generate cluster group ID based on category + sorted neighbors
-const generateClusterGroup = (node: any, neighborMap: Map<string, Set<string>>): string => {
+// Helper to determine if a node should be clustered
+const shouldNodeBeClustered = (node: any, neighborMap: Map<string, Set<string>>, allNodes: any[]): { shouldCluster: boolean, clusterGroup?: string } => {
   const neighbors = Array.from(neighborMap.get(node.id) || []).sort();
-  return `${node.category}:${neighbors.join(',')}`;
+  const clusterKey = `${node.category}:${neighbors.join(',')}`;
+  
+  // Count how many nodes have this exact cluster key
+  const nodeCount = allNodes.filter(n => {
+    const nNeighbors = Array.from(neighborMap.get(n.id) || []).sort();
+    const nClusterKey = `${n.category}:${nNeighbors.join(',')}`;
+    return nClusterKey === clusterKey;
+  }).length;
+  
+  // Only cluster if there are multiple nodes
+  return nodeCount > 1 ? { shouldCluster: true, clusterGroup: clusterKey } : { shouldCluster: false };
 };
 
 // Custom hook for managing search inputs
@@ -583,12 +593,12 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       });
     }
 
-    // Add clusterGroup to node data for Reagraph clustering
+    // Add clusterGroup to node data for Reagraph clustering (only for nodes that should be clustered)
     nodes.forEach(node => {
-      const clusterGroup = generateClusterGroup(node, neighborMap);
+      const { shouldCluster, clusterGroup } = shouldNodeBeClustered(node, neighborMap, nodes);
       node.data = {
         ...node.data,
-        clusterGroup: clusterGroup
+        ...(shouldCluster && clusterGroup ? { clusterGroup } : {})
       };
     });
 
