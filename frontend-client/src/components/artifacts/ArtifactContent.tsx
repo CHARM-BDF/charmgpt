@@ -204,6 +204,7 @@ export const ArtifactContent: React.FC<{
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph, setUseReagraph] = useState(true);
   const [savingToProject, setSavingToProject] = useState(false);
+  const [clusterNodes, setClusterNodes] = useState(false);
   
   // Use selector functions to only subscribe to the specific state we need
   const isPinnedArtifact = useChatStore(state => state.isPinnedArtifact);
@@ -376,6 +377,7 @@ export const ArtifactContent: React.FC<{
               height={600}
               artifactId={artifact.id}
               showVersionControls={true}
+              clusterNodes={clusterNodes}
             />
           );
         }
@@ -877,6 +879,10 @@ export const ArtifactContent: React.FC<{
   };
 
   const canToggleView = ['html', 'image/svg+xml', 'application/vnd.knowledge-graph', 'application/vnd.ant.knowledge-graph'].includes(artifact.type);
+  
+  // Check if this is a Graph Mode artifact
+  const isGraphModeArtifact = isGraphModeConversation && 
+    artifact.type === 'application/vnd.knowledge-graph';
 
   return (
     <div className="h-full mx-auto w-[95%] flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
@@ -888,38 +894,62 @@ export const ArtifactContent: React.FC<{
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          {/* Pin button for all artifact types */}
-          <button
-            onClick={() => toggleArtifactPin(artifact.id)}
-            className={`p-2 rounded-full ${
-              isPinned 
-                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-            }`}
-            title={isPinned ? "Unpin artifact (stop sending with messages)" : "Pin artifact (send with messages)"}
-          >
-            {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
-          </button>
-          
-          {isMarkdown && selectedProjectId && (
-            <button
-              onClick={handleSaveToProject}
-              disabled={savingToProject}
-              className={`px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 
-                       border border-gray-300 dark:border-gray-600 rounded-md shadow-sm flex items-center gap-1
-                       ${savingToProject ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <DocumentArrowDownIcon className="w-4 h-4" />
-              {savingToProject ? 'Saving...' : 'Save to Project'}
-            </button>
+          {!isGraphModeArtifact && (
+            <>
+              {/* Pin button for all artifact types */}
+              <button
+                onClick={() => toggleArtifactPin(artifact.id)}
+                className={`p-2 rounded-full ${
+                  isPinned 
+                    ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                }`}
+                title={isPinned ? "Unpin artifact (stop sending with messages)" : "Pin artifact (send with messages)"}
+              >
+                {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+              </button>
+              
+              {isMarkdown && selectedProjectId && (
+                <button
+                  onClick={handleSaveToProject}
+                  disabled={savingToProject}
+                  className={`px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 
+                           border border-gray-300 dark:border-gray-600 rounded-md shadow-sm flex items-center gap-1
+                           ${savingToProject ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <DocumentArrowDownIcon className="w-4 h-4" />
+                  {savingToProject ? 'Saving...' : 'Save to Project'}
+                </button>
+              )}
+              {canToggleView && (
+                <button
+                  onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
+                  className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
+                >
+                  {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
+                </button>
+              )}
+            </>
           )}
-          {canToggleView && (
-            <button
-              onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
-              className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
-            >
-              {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
-            </button>
+          
+          {isGraphModeArtifact && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setClusterNodes(!clusterNodes)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  clusterNodes
+                    ? 'bg-blue-500 text-white hover:bg-blue-600'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title="Group nodes with same category and neighbors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                {clusterNodes ? 'Clustered' : 'Cluster Nodes'}
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -56,7 +56,164 @@ interface GraphModeViewerProps {
   height?: number;
   artifactId?: string;
   showVersionControls?: boolean;
+  clusterNodes?: boolean;
 }
+
+// Helper to calculate cluster node size (like edge sizing)
+const calculateClusterSize = (memberCount: number): number => {
+  if (memberCount <= 1) return 15; // Base size for single nodes
+  if (memberCount <= 5) return 15 + (memberCount - 1) * 3; // Linear growth
+  // After 5: use sqrt scaling, max size 40
+  const size = 27 + Math.sqrt(memberCount - 5) * 4;
+  return Math.min(Math.round(size), 40);
+};
+
+// Simple clustering function - groups nodes by category + sorted neighbor IDs
+const clusterNodesByNeighbors = (
+  nodes: any[], 
+  edges: any[],
+  expandedClusters: Set<string>
+): { clusteredNodes: any[], nodeIdMap: Map<string, string> } => {
+  // Build neighbor map for each node
+  const neighborMap = new Map<string, Set<string>>();
+  
+  nodes.forEach(node => {
+    neighborMap.set(node.id, new Set());
+  });
+  
+  edges.forEach(edge => {
+    neighborMap.get(edge.source)?.add(edge.target);
+    neighborMap.get(edge.target)?.add(edge.source);
+  });
+  
+  // Group nodes by category first, then by shared neighbors
+  const clusters = new Map<string, any[]>();
+  
+  console.log('🔍 Analyzing nodes for clustering...');
+  
+  // First, group by category
+  const categoryGroups = new Map<string, any[]>();
+  nodes.forEach(node => {
+    const category = node.category || 'other';
+    if (!categoryGroups.has(category)) {
+      categoryGroups.set(category, []);
+    }
+    categoryGroups.get(category)!.push(node);
+  });
+  
+  console.log('📊 Category groups:', Array.from(categoryGroups.entries()).map(([cat, nodes]) => `${cat}: ${nodes.length} nodes`));
+  
+  // For each category, try to find nodes with shared neighbors
+  categoryGroups.forEach((categoryNodes, category) => {
+    if (categoryNodes.length <= 1) {
+      // Single node in category - no clustering possible
+      categoryNodes.forEach(node => {
+        const clusteringId = `${category}:single`;
+        if (!clusters.has(clusteringId)) {
+          clusters.set(clusteringId, []);
+        }
+        clusters.get(clusteringId)!.push(node);
+      });
+      return;
+    }
+    
+    // For categories with multiple nodes, look for shared neighbors
+    const neighborGroups = new Map<string, any[]>();
+    
+    categoryNodes.forEach(node => {
+      const neighbors = Array.from(neighborMap.get(node.id) || []).sort();
+      
+      // Create a more flexible clustering key
+      // If node has many neighbors, use a subset for clustering
+      let clusteringKey;
+      if (neighbors.length >= 3) {
+        // For nodes with many neighbors, cluster by first 2-3 neighbors
+        clusteringKey = `${category}:${neighbors.slice(0, 3).join(',')}`;
+      } else {
+        // For nodes with few neighbors, use exact match
+        clusteringKey = `${category}:${neighbors.join(',')}`;
+      }
+      
+      console.log(`  Node ${node.label} (${category}): neighbors [${neighbors.join(', ')}] → clustering key: "${clusteringKey}"`);
+      
+      if (!neighborGroups.has(clusteringKey)) {
+        neighborGroups.set(clusteringKey, []);
+      }
+      neighborGroups.get(clusteringKey)!.push(node);
+    });
+    
+    // Add neighbor groups to main clusters
+    neighborGroups.forEach((groupNodes, key) => {
+      clusters.set(key, groupNodes);
+    });
+  });
+  
+  console.log('📦 Clustering groups found:', clusters.size);
+  clusters.forEach((members, clusteringId) => {
+    console.log(`  Group "${clusteringId}": ${members.length} members - ${members.map(m => m.label).join(', ')}`);
+  });
+  
+  // Convert clusters to nodes and build ID mapping
+  const clusteredNodes: any[] = [];
+  const nodeIdMap = new Map<string, string>();
+  
+  clusters.forEach((members, clusteringId) => {
+    if (members.length === 1) {
+      // Single node - return as is
+      const node = members[0];
+      console.log(`  Single node: ${node.label} (no clustering needed)`);
+      clusteredNodes.push(node);
+      nodeIdMap.set(node.id, node.id);
+    } else {
+      // Multiple nodes - create cluster
+      const size = calculateClusterSize(members.length);
+      const clusterId = `cluster_${clusteringId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      
+      console.log(`  Creating cluster: ${clusterId} with ${members.length} members`);
+      console.log(`    Members: ${members.map(m => m.label).join(', ')}`);
+      console.log(`    Cluster size: ${size}`);
+      console.log(`    Expanded: ${expandedClusters.has(clusterId)}`);
+      
+      // Check if this cluster is expanded
+      if (expandedClusters.has(clusterId)) {
+        // If expanded, show individual nodes
+        console.log(`    → EXPANDED: showing individual nodes`);
+        members.forEach(member => {
+          clusteredNodes.push(member);
+          nodeIdMap.set(member.id, member.id);
+        });
+      } else {
+        // If not expanded, show as cluster
+        const clusterNode = {
+          ...members[0], // Inherit properties from first member
+          id: clusterId,
+          label: `${members[0].category || 'Node'} Cluster (${members.length})`,
+          size: size,
+          isCluster: true,
+          clusterMembers: members,
+          originalId: members[0].id
+        };
+        
+        console.log(`    → CLUSTERED: created cluster node "${clusterNode.label}"`);
+        console.log(`    → Cluster node details:`, {
+          id: clusterNode.id,
+          label: clusterNode.label,
+          isCluster: clusterNode.isCluster,
+          size: clusterNode.size,
+          memberCount: clusterNode.clusterMembers.length
+        });
+        clusteredNodes.push(clusterNode);
+        
+        // Map all member IDs to cluster ID
+        members.forEach(member => {
+          nodeIdMap.set(member.id, clusterId);
+        });
+      }
+    }
+  });
+  
+  return { clusteredNodes, nodeIdMap };
+};
 
 // Custom hook for managing search inputs
 const useSearchInput = (initialValue = '') => {
@@ -115,7 +272,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   width = 800, 
   height = 600,
   artifactId,
-  showVersionControls = true
+  showVersionControls = true,
+  clusterNodes = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [parsedData, setParsedData] = useState<KnowledgeGraphData | null>(null);
@@ -221,6 +379,9 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const [hoveredEdge, setHoveredEdge] = useState<any>(null);
   const [pinnedEdgeCard, setPinnedEdgeCard] = useState<any>(null);
   const [cardPosition, setCardPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  
+  // Cluster expansion state
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
 
   // Helper function to get color based on entity group
   const getColorForGroup = (group: number): string => {
@@ -531,7 +692,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     if (!parsedData || !parsedData.nodes) return { nodes: [], edges: [] };
 
     // Convert nodes (preserve custom fill if present; otherwise compute from category)
-    const nodes = parsedData.nodes.map((raw: any) => {
+    let nodes = parsedData.nodes.map((raw: any) => {
       // Get the categories array from the data
       const categoriesArray = raw.data?.categories || [];
       
@@ -557,6 +718,50 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       return node;
     });
 
+    // Apply clustering if enabled
+    let nodeIdMap = new Map<string, string>();
+    if (clusterNodes) {
+      console.log('🔄 CLUSTERING ENABLED - Starting clustering process');
+      console.log('📊 Original nodes:', nodes.length, nodes.map(n => ({ id: n.id, label: n.label, category: n.category })));
+      
+      // First create edges to analyze structural equivalence
+      const tempEdges = parsedData.links?.map((link: any) => ({
+        source: link.source,
+        target: link.target
+      })) || [];
+      
+      console.log('🔗 Edges for clustering analysis:', tempEdges.length, tempEdges);
+      
+      const clusteringResult = clusterNodesByNeighbors(nodes, tempEdges, expandedClusters);
+      nodes = clusteringResult.clusteredNodes;
+      nodeIdMap = clusteringResult.nodeIdMap;
+      
+      console.log('🔄 CLUSTERING RESULT:');
+      console.log('  Clustered nodes returned:', nodes.length);
+      console.log('  Node details:', nodes.map(n => ({ 
+        id: n.id, 
+        label: n.label, 
+        isCluster: n.isCluster,
+        size: n.size 
+      })));
+      console.log('  Node ID map size:', nodeIdMap.size);
+      
+      console.log('✅ CLUSTERING COMPLETE');
+      console.log('📊 Clustered nodes:', nodes.length, nodes.map(n => ({ 
+        id: n.id, 
+        label: n.label, 
+        isCluster: n.isCluster,
+        clusterMembers: n.isCluster ? n.clusterMembers?.length : 'N/A'
+      })));
+      console.log('🗺️ Node ID mapping:', Array.from(nodeIdMap.entries()));
+    } else {
+      console.log('❌ CLUSTERING DISABLED');
+      // Build identity mapping when not clustering
+      nodes.forEach(node => {
+        nodeIdMap.set(node.id, node.id);
+      });
+    }
+
     // Check if we have exactly 2 starting nodes (connecting path scenario)
     const startingNodes = nodes.filter(node => node.isStartingNode);
     if (startingNodes.length === 2) {
@@ -566,19 +771,27 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       startingNodes[1].fy = 0;
     }
 
-    // Convert edges with optional aggregation
+    // Convert edges with cluster ID mapping
     let edges: any[] = [];
     if (parsedData.links) {
+      // nodeIdMap is already built above
+      
       if (aggregateEdges) {
-        // Group edges by source-target pair
+        // Existing aggregation logic with cluster mapping
         const edgeGroups = new Map<string, any[]>();
         
         parsedData.links.forEach((link: any) => {
-          const key = `${link.source}-${link.target}`;
+          const source = nodeIdMap.get(link.source) || link.source;
+          const target = nodeIdMap.get(link.target) || link.target;
+          
+          // Skip self-loops from clustering
+          if (source === target) return;
+          
+          const key = `${source}-${target}`;
           if (!edgeGroups.has(key)) {
             edgeGroups.set(key, []);
           }
-          edgeGroups.get(key)!.push(link);
+          edgeGroups.get(key)!.push({ ...link, source, target });
         });
         
         // Log aggregation stats
@@ -621,35 +834,74 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           };
         });
       } else {
-        // No aggregation - show all edges separately
-        edges = parsedData.links.map((link: any, index: number) => ({
-          id: `${link.source}-${link.target}-${index}`,
-          source: link.source,
-          target: link.target,
-          label: link.label?.replace('biolink:', '') || '',
-          color: '#888',
-          size: Math.max(1, link.value || 1),
-          data: link.data  // ← PRESERVE edge data!
-        }));
+        // No aggregation - map edges with cluster IDs
+        edges = parsedData.links.map((link: any, index: number) => {
+          const source = nodeIdMap.get(link.source) || link.source;
+          const target = nodeIdMap.get(link.target) || link.target;
+          
+          // Skip self-loops
+          if (source === target) return null;
+          
+          return {
+            id: `${source}-${target}-${index}`,
+            source,
+            target,
+            label: link.label?.replace('biolink:', '') || '',
+            color: '#888',
+            size: Math.max(1, link.value || 1),
+            data: link.data
+          };
+        }).filter(Boolean);
       }
     }
 
+    console.log('🎯 FINAL GRAPH DATA:');
+    console.log('  Nodes:', nodes.length, nodes.map(n => ({ 
+      id: n.id, 
+      label: n.label, 
+      isCluster: n.isCluster,
+      size: n.size || n.val
+    })));
+    console.log('  Edges:', edges.length, edges.map(e => ({ 
+      id: e.id, 
+      source: e.source, 
+      target: e.target, 
+      label: e.label 
+    })));
+    
     return { nodes, edges };
-  }, [parsedData, aggregateEdges]);
+  }, [parsedData, aggregateEdges, clusterNodes, expandedClusters]);
 
   // Apply filters when selections change
   useEffect(() => {
     if (!parsedData || !parsedData.nodes) return;
     
     const nodes = graphData.nodes.filter(node => {
-      const entityType = node.entityType || 'Other';
-      const nodeName = node.label;
-      
-      // Default to showing everything if filters are not yet initialized
-      const entityTypeSelected = Object.keys(selectedEntityTypes).length === 0 || selectedEntityTypes[entityType];
-      const nodeNameSelected = Object.keys(selectedNodes).length === 0 || selectedNodes[nodeName];
-      
-      return entityTypeSelected && nodeNameSelected;
+      // Handle cluster nodes differently
+      if (node.isCluster) {
+        // For cluster nodes, check if ANY of the cluster members would pass the filters
+        const hasVisibleMembers = node.clusterMembers.some((member: any) => {
+          const memberEntityType = member.entityType || 'Other';
+          const memberNodeName = member.label;
+          
+          const entityTypeSelected = Object.keys(selectedEntityTypes).length === 0 || selectedEntityTypes[memberEntityType];
+          const nodeNameSelected = Object.keys(selectedNodes).length === 0 || selectedNodes[memberNodeName];
+          
+          return entityTypeSelected && nodeNameSelected;
+        });
+        
+        return hasVisibleMembers;
+      } else {
+        // Regular node filtering
+        const entityType = node.entityType || 'Other';
+        const nodeName = node.label;
+        
+        // Default to showing everything if filters are not yet initialized
+        const entityTypeSelected = Object.keys(selectedEntityTypes).length === 0 || selectedEntityTypes[entityType];
+        const nodeNameSelected = Object.keys(selectedNodes).length === 0 || selectedNodes[nodeName];
+        
+        return entityTypeSelected && nodeNameSelected;
+      }
     });
     
     const nodeIds = new Set(nodes.map(node => node.id));
@@ -1008,13 +1260,58 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
 
   // Handle node click with Control/Command key detection
   const handleNodeClick = (node: any, props?: any, event?: any) => {
+    // Always log cluster information on any click
+    console.log('🖱️ NODE CLICKED:', {
+      id: node.id,
+      label: node.label,
+      isCluster: node.isCluster,
+      clusterMembers: node.isCluster ? node.clusterMembers?.map((m: any) => ({ id: m.id, label: m.label })) : null,
+      size: node.size || node.val,
+      category: node.category
+    });
+    
+    // Handle cluster expansion on regular click
+    if (node.isCluster && !event?.ctrlKey && !event?.metaKey) {
+      const newExpandedClusters = new Set(expandedClusters);
+      if (newExpandedClusters.has(node.id)) {
+        newExpandedClusters.delete(node.id);
+        setNotification({
+          show: true,
+          message: `Collapsed ${node.label}`
+        });
+      } else {
+        newExpandedClusters.add(node.id);
+        setNotification({
+          show: true,
+          message: `Expanded ${node.label} to show ${node.clusterMembers.length} individual nodes`
+        });
+      }
+      setExpandedClusters(newExpandedClusters);
+      
+      setTimeout(() => {
+        setNotification({ show: false, message: '' });
+      }, 2000);
+      
+      return;
+    }
+    
     if (event && (event.ctrlKey || event.metaKey)) {
-      const nodeInfo = [
-        `${node.label} (${node.id})`,
-        node.entityType ? `Type: ${node.entityType}` : '',
-        node.startingId ? `Original IDs: ${node.startingId.join(', ')}` : '',
-        node.metadata?.description ? `Description: ${node.metadata.description}` : ''
-      ].filter(Boolean).join('\n');
+      let nodeInfo = '';
+      
+      if (node.isCluster) {
+        nodeInfo = [
+          `${node.label}`,
+          `Members: ${node.clusterMembers.map((m: any) => m.label).join(', ')}`,
+          node.entityType ? `Type: ${node.entityType}` : ''
+        ].filter(Boolean).join('\n');
+      } else {
+        nodeInfo = [
+          `${node.label} (${node.id})`,
+          node.entityType ? `Type: ${node.entityType}` : '',
+          node.startingId ? `Original IDs: ${node.startingId.join(', ')}` : '',
+          node.metadata?.description ? `Description: ${node.metadata.description}` : ''
+        ].filter(Boolean).join('\n');
+      }
       
       updateChatInput(nodeInfo, true);
       
@@ -1370,6 +1667,40 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
               </svg>
               <span>{aggregateEdges ? 'Aggregated' : 'All Edges'}</span>
             </button>
+            
+            {/* DEBUG: Log current rendered data */}
+            <button
+              onClick={() => {
+                console.log('🖱️ DEBUG BUTTON CLICKED - Current rendered data:');
+                console.log('📊 Rendered nodes:', (filteredNodes.length ? filteredNodes : graphData.nodes).length);
+                console.log('📊 Rendered nodes details:', (filteredNodes.length ? filteredNodes : graphData.nodes).map(n => ({
+                  id: n.id,
+                  label: n.label,
+                  isCluster: n.isCluster,
+                  size: n.size || n.val,
+                  category: n.category
+                })));
+                console.log('🔗 Rendered edges:', (filteredEdges.length ? filteredEdges : graphData.edges).length);
+                console.log('🔗 Rendered edges details:', (filteredEdges.length ? filteredEdges : graphData.edges).map(e => ({
+                  id: e.id,
+                  source: e.source,
+                  target: e.target,
+                  label: e.label
+                })));
+                console.log('🎯 Filtering state:');
+                console.log('  - filteredNodes.length:', filteredNodes.length);
+                console.log('  - filteredEdges.length:', filteredEdges.length);
+                console.log('  - graphData.nodes.length:', graphData.nodes.length);
+                console.log('  - graphData.edges.length:', graphData.edges.length);
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors"
+              title="Debug: Log current rendered nodes and edges"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Debug</span>
+            </button>
           </div>
         </div>
         
@@ -1442,6 +1773,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
         
         <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
           <div>Ctrl/Cmd + Click node to add to chat</div>
+          <div>Click cluster to expand/collapse</div>
           <div>Click edge to view details</div>
         </div>
         <GraphCanvas
@@ -1452,9 +1784,33 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          onBackgroundClick={() => {
+            console.log('🖱️ BACKGROUND CLICKED - Current rendered data:');
+            console.log('📊 Rendered nodes:', (filteredNodes.length ? filteredNodes : graphData.nodes).length);
+            console.log('📊 Rendered nodes details:', (filteredNodes.length ? filteredNodes : graphData.nodes).map(n => ({
+              id: n.id,
+              label: n.label,
+              isCluster: n.isCluster,
+              size: n.size || n.val,
+              category: n.category
+            })));
+            console.log('🔗 Rendered edges:', (filteredEdges.length ? filteredEdges : graphData.edges).length);
+            console.log('🔗 Rendered edges details:', (filteredEdges.length ? filteredEdges : graphData.edges).map(e => ({
+              id: e.id,
+              source: e.source,
+              target: e.target,
+              label: e.label
+            })));
+            console.log('🎯 Filtering state:');
+            console.log('  - filteredNodes.length:', filteredNodes.length);
+            console.log('  - filteredEdges.length:', filteredEdges.length);
+            console.log('  - graphData.nodes.length:', graphData.nodes.length);
+            console.log('  - graphData.edges.length:', graphData.edges.length);
+          }}
           edgeOpacity={0.4}
           renderNode={({ node, size, color, opacity }) => {
             const isSeed = node.data?.seedNode;
+            const isCluster = node.isCluster;
             
             return (
               <group>
@@ -1463,6 +1819,15 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
                   <circleGeometry args={[size, 32]} />
                   <meshBasicMaterial color={color} opacity={opacity} />
                 </mesh>
+                
+                {/* Cluster indicator - subtle border */}
+                {isCluster && (
+                  <mesh position={[0, 0, 1.5]}>
+                    <ringGeometry args={[size, size + 2, 32]} />
+                    <meshBasicMaterial color="#666666" opacity={0.6} />
+                  </mesh>
+                )}
+                
                 {/* Seed node halo effect */}
                 {isSeed && (
                   <>
