@@ -314,6 +314,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
       startingId: node.startingId,
       metadata: node.metadata,
       isStartingNode: node.isStartingNode,
+      data: node.data, // Preserve the data property including seedNode
       fx: undefined as number | undefined, // Fixed x position
       fy: undefined as number | undefined  // Fixed y position
     }));
@@ -934,13 +935,17 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Function to log node neighbors to console
   const logNodeNeighbors = (clickedNode: any) => {
-    if (!parsedData?.edges) {
+    // Use the current graph data (either filtered or full)
+    const currentEdges = filteredEdges.length > 0 ? filteredEdges : graphData.edges;
+    const currentNodes = filteredNodes.length > 0 ? filteredNodes : graphData.nodes;
+    
+    if (!currentEdges || currentEdges.length === 0) {
       console.log('No edges data available for neighbor analysis');
       return;
     }
 
     // Find all edges connected to this node
-    const connectedEdges = parsedData.edges.filter((edge: any) => 
+    const connectedEdges = currentEdges.filter((edge: any) => 
       edge.source === clickedNode.id || edge.target === clickedNode.id
     );
 
@@ -956,7 +961,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
     // Get neighbor node details
     const neighbors = Array.from(neighborIds).map(neighborId => {
-      const neighborNode = parsedData.nodes.find((n: any) => n.id === neighborId);
+      const neighborNode = currentNodes.find((n: any) => n.id === neighborId);
       return neighborNode ? {
         id: neighborNode.id,
         name: neighborNode.name || neighborNode.label || 'Unknown',
@@ -1160,7 +1165,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           <div>Ctrl/Cmd + Click node to add to chat</div>
           <div>Click edge to view details in console</div>
         </div>
-        {/* <GraphCanvas
+        <GraphCanvas
           nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
           edges={filteredEdges.length ? filteredEdges : graphData.edges}
           layoutType="forceDirected2d"
@@ -1168,7 +1173,30 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
-        /> */}
+          renderNode={({ node, size, color, opacity }) => {
+            const isSeed = node.data?.seedNode;
+            if (isSeed) {
+              console.log('🌱 Seed node detected in Reagraph:', node.id, node.label, node.data);
+            }
+            
+            return (
+              <group>
+                {/* Main node circle */}
+                <mesh>
+                  <circleGeometry args={[size, 32]} />
+                  <meshBasicMaterial color={color} opacity={opacity} />
+                </mesh>
+                {/* Seed node ring */}
+                {isSeed && (
+                  <mesh position={[0, 0, 0.1]}>
+                    <ringGeometry args={[size + 1, size + 3, 32]} />
+                    <meshBasicMaterial color="#000000" opacity={0.9} />
+                  </mesh>
+                )}
+              </group>
+            );
+          }}
+        />
       </div>
     </div>
   );

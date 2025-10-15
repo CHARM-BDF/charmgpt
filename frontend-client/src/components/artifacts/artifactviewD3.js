@@ -245,8 +245,16 @@ const KnowledgeGraphVisualizer = () => {
         node.append("circle")
             .attr("r", d => d.type === 'group' ? 15 : 8)
             .attr("fill", d => color(d.group))
-            .attr("stroke", d => d.type === 'group' ? "#333" : "none")
-            .attr("stroke-width", d => d.type === 'group' ? 2 : 0)
+            .attr("stroke", d => {
+                if (d.type === 'group') return "#333";
+                if (d.data?.seedNode) return "#000000";
+                return "none";
+            })
+            .attr("stroke-width", d => {
+                if (d.type === 'group') return 2;
+                if (d.data?.seedNode) return 4;
+                return 0;
+            })
             .on("click", (event, d) => {
                 setSelectedElement({ type: 'node', data: d });
                 event.stopPropagation();
@@ -258,6 +266,10 @@ const KnowledgeGraphVisualizer = () => {
                     event.stopPropagation();
                 }
             });
+
+        // Bring seed nodes to the front
+        node.filter(d => d.data?.seedNode)
+            .raise();
 
         // Add indicators for group nodes
         node.filter(d => d.type === 'group')

@@ -221,6 +221,33 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
           nodeLabel="name"
           nodeColor={(node: KnowledgeGraphNode) => node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4')}
           nodeVal={(node: KnowledgeGraphNode) => node.val || 1}
+          nodeCanvasObject={(node: KnowledgeGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+            const label = node.name || node.id;
+            const fontSize = 12/globalScale;
+            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = node.color || (node.group ? `hsl(${node.group * 45 % 360}, 70%, 50%)` : '#1f77b4');
+            
+            // Draw node circle
+            ctx.beginPath();
+            ctx.arc(node.x!, node.y!, node.val || 1, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw thick black ring for seed nodes (on top)
+            if (node.data?.seedNode) {
+              console.log('🌱 Seed node detected in ForceGraph2D:', node.id, node.name, node.data);
+              ctx.strokeStyle = '#000000';
+              ctx.lineWidth = 4/globalScale;
+              ctx.beginPath();
+              ctx.arc(node.x!, node.y!, node.val || 1, 0, 2 * Math.PI);
+              ctx.stroke();
+            }
+            
+            // Draw label
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillText(label, node.x!, node.y! + (node.val || 1) + fontSize);
+          }}
           linkLabel="label"
           linkColor={(link: KnowledgeGraphLink) => link.color || '#999'}
           linkWidth={(link: KnowledgeGraphLink) => link.value || 1}

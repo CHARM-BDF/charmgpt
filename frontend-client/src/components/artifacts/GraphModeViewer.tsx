@@ -1445,6 +1445,29 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          renderNode={({ node, size, color, opacity }) => {
+            const isSeed = node.data?.seedNode;
+            if (isSeed) {
+              console.log('🌱 Seed node detected:', node.id, node.label, node.data);
+            }
+            
+            return (
+              <group>
+                {/* Main node circle */}
+                <mesh>
+                  <circleGeometry args={[size, 32]} />
+                  <meshBasicMaterial color={color} opacity={opacity} />
+                </mesh>
+                {/* Seed node ring */}
+                {isSeed && (
+                  <mesh position={[0, 0, 0.1]}>
+                    <ringGeometry args={[size + 1, size + 3, 32]} />
+                    <meshBasicMaterial color="#000000" opacity={0.9} />
+                  </mesh>
+                )}
+              </group>
+            );
+          }}
         />
       </div>
     </div>
