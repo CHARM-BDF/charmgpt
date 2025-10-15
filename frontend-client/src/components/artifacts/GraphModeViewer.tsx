@@ -1088,8 +1088,15 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       size: node.size || node.val,
       category: node.category,
       shiftKey: event?.shiftKey,
-      ctrlKey: event?.ctrlKey || event?.metaKey
+      ctrlKey: event?.ctrlKey || event?.metaKey,
+      isCluster: node.isCluster
     });
+    
+    // If clustering is enabled and this looks like a cluster node, let Reagraph handle it
+    if (clusterNodes && node.isCluster && !event?.ctrlKey && !event?.metaKey) {
+      console.log('🎯 CLUSTER CLICK - Letting Reagraph handle cluster expansion/collapse');
+      return; // Don't interfere with Reagraph's built-in cluster handling
+    }
     
     if (event && (event.ctrlKey || event.metaKey)) {
       let nodeInfo = [
