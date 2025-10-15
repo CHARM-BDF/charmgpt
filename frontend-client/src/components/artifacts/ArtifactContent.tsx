@@ -1202,7 +1202,29 @@ export const ArtifactContent: React.FC<{
                   {savingToProject ? 'Saving...' : 'Save to Project'}
                 </button>
               )}
-              {canToggleView && (
+              {isFileReference && artifact.metadata?.fileReference && (
+                <button
+                  onClick={() => {
+                    const fileId = artifact.metadata!.fileReference!.fileId;
+                    const fileName = artifact.metadata!.fileReference!.fileName;
+
+                    // Create download link and trigger download
+                    const downloadUrl = `/api/storage/files/${fileId}/download`;
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 
+                          border border-gray-300 dark:border-gray-600 rounded-md shadow-sm flex items-center gap-1"
+                >
+                  <DocumentArrowDownIcon className="w-4 h-4" />
+                  Download
+                </button>
+              )}
+              {canToggleView && !supportsEditorView && (
                 <button
                   onClick={() => setViewMode(mode => mode === 'rendered' ? 'source' : 'rendered')}
                   className="px-3 py-1 text-sm bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm"
@@ -1210,6 +1232,30 @@ export const ArtifactContent: React.FC<{
                   {viewMode === 'rendered' ? 'View Source' : 'View Rendered'}
                 </button>
               )}
+              {supportsEditorView && (
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => setViewMode('rendered')}
+                className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm ${
+                  viewMode === 'rendered' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                View
+              </button>
+              <button
+                onClick={() => setViewMode('editor')}
+                className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm ${
+                  viewMode === 'editor' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                Edit
+              </button>
+            </div>
+          )}
             </>
           )}
           
