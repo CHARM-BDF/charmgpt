@@ -1029,7 +1029,23 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
 
   // Handle edge click - log edge data to console
   const handleEdgeClick = (edge: any, props?: any, event?: any) => {
-    console.log('Edge clicked:', edge);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Log edge coordinates
+    console.log(`📍 Edge Coordinates:`);
+    console.log(`   Source: x=${edge.sourceX?.toFixed(2) || 'N/A'}, y=${edge.sourceY?.toFixed(2) || 'N/A'}, z=${edge.sourceZ?.toFixed(2) || 'N/A'}`);
+    console.log(`   Target: x=${edge.targetX?.toFixed(2) || 'N/A'}, y=${edge.targetY?.toFixed(2) || 'N/A'}, z=${edge.targetZ?.toFixed(2) || 'N/A'}`);
+    console.log(`   Midpoint: x=${edge.midX?.toFixed(2) || 'N/A'}, y=${edge.midY?.toFixed(2) || 'N/A'}, z=${edge.midZ?.toFixed(2) || 'N/A'}`);
+    console.log('');
+    
+    console.log(`🔗 EDGE: ${edge.source} → ${edge.target}`);
+    console.log(`🏷️  Label: ${edge.label || 'No label'}`);
+    console.log(`📊 Size: ${edge.size || 'N/A'}`);
+    console.log(`🎨 Color: ${edge.color || 'N/A'}`);
+    
+    console.log('');
+    console.log('Full edge object:', edge);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
   // Notification popup component
@@ -1173,11 +1189,9 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          edgeOpacity={0.4}
           renderNode={({ node, size, color, opacity }) => {
             const isSeed = node.data?.seedNode;
-            if (isSeed) {
-              console.log('🌱 Seed node detected in Reagraph:', node.id, node.label, node.data);
-            }
             
             return (
               <group>
@@ -1186,12 +1200,20 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
                   <circleGeometry args={[size, 32]} />
                   <meshBasicMaterial color={color} opacity={opacity} />
                 </mesh>
-                {/* Seed node ring */}
+                {/* Seed node halo effect */}
                 {isSeed && (
-                  <mesh position={[0, 0, 0.1]}>
-                    <ringGeometry args={[size + 1, size + 3, 32]} />
-                    <meshBasicMaterial color="#000000" opacity={0.9} />
-                  </mesh>
+                  <>
+                    {/* Outer halo */}
+                    <mesh position={[0, 0, 2.0]}>
+                      <ringGeometry args={[size + 4, size + 8, 32]} />
+                      <meshBasicMaterial color="#000000" opacity={0.3} />
+                    </mesh>
+                    {/* Inner ring */}
+                    <mesh position={[0, 0, 2.1]}>
+                      <ringGeometry args={[size + 1, size + 3, 32]} />
+                      <meshBasicMaterial color="#000000" opacity={0.9} />
+                    </mesh>
+                  </>
                 )}
               </group>
             );

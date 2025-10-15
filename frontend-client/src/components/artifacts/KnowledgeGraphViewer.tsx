@@ -234,9 +234,16 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
             ctx.arc(node.x!, node.y!, node.val || 1, 0, 2 * Math.PI);
             ctx.fill();
             
-            // Draw thick black ring for seed nodes (on top)
+            // Draw halo effect for seed nodes (on top)
             if (node.data?.seedNode) {
-              console.log('🌱 Seed node detected in ForceGraph2D:', node.id, node.name, node.data);
+              // Outer halo
+              ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+              ctx.lineWidth = 8/globalScale;
+              ctx.beginPath();
+              ctx.arc(node.x!, node.y!, (node.val || 1) + 2, 0, 2 * Math.PI);
+              ctx.stroke();
+              
+              // Inner ring
               ctx.strokeStyle = '#000000';
               ctx.lineWidth = 4/globalScale;
               ctx.beginPath();
@@ -249,7 +256,7 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
             ctx.fillText(label, node.x!, node.y! + (node.val || 1) + fontSize);
           }}
           linkLabel="label"
-          linkColor={(link: KnowledgeGraphLink) => link.color || '#999'}
+          linkColor={(link: KnowledgeGraphLink) => (link.color || '#999') + '66'}
           linkWidth={(link: KnowledgeGraphLink) => link.value || 1}
           width={dimensions.width}
           height={dimensions.height}
@@ -258,6 +265,30 @@ export const KnowledgeGraphViewer: React.FC<KnowledgeGraphViewerProps> = ({
             logNodeNeighbors(node);
             // You can add custom node click behavior here
             console.log('Node clicked:', node);
+          }}
+          onLinkClick={(link: KnowledgeGraphLink) => {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
+            // Log edge coordinates
+            console.log(`📍 Edge Coordinates:`);
+            console.log(`   Source: x=${link.source.x?.toFixed(2) || 'N/A'}, y=${link.source.y?.toFixed(2) || 'N/A'}, z=${link.source.z?.toFixed(2) || 'N/A'}`);
+            console.log(`   Target: x=${link.target.x?.toFixed(2) || 'N/A'}, y=${link.target.y?.toFixed(2) || 'N/A'}, z=${link.target.z?.toFixed(2) || 'N/A'}`);
+            
+            // Calculate midpoint
+            const midX = link.source.x && link.target.x ? ((link.source.x + link.target.x) / 2).toFixed(2) : 'N/A';
+            const midY = link.source.y && link.target.y ? ((link.source.y + link.target.y) / 2).toFixed(2) : 'N/A';
+            const midZ = link.source.z && link.target.z ? ((link.source.z + link.target.z) / 2).toFixed(2) : 'N/A';
+            console.log(`   Midpoint: x=${midX}, y=${midY}, z=${midZ}`);
+            console.log('');
+            
+            console.log(`🔗 EDGE: ${link.source.id || link.source} → ${link.target.id || link.target}`);
+            console.log(`🏷️  Label: ${link.label || 'No label'}`);
+            console.log(`📊 Value: ${link.value || 'N/A'}`);
+            console.log(`🎨 Color: ${link.color || 'N/A'}`);
+            
+            console.log('');
+            console.log('Full edge object:', link);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           }}
         />
       </div>
