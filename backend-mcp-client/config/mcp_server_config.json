@@ -1,5 +1,12 @@
 {
   "mcpServers": {
+    "kappa": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/kappa-mcp/dist/index.js"
+      ],
+      "timeout": 60000
+    },
     "pubtator": {
       "command": "node",
       "args": [
