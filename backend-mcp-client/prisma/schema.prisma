@@ -35,8 +35,8 @@ model GraphNode {
   id        String   // Allow custom IDs (CURIEs) - not globally unique
   label     String
   type      String
-  data      Json     // Flexible node data
-  position  Json     // x, y coordinates
+  data      String   // Flexible node data (JSON string)
+  position  String   // x, y coordinates (JSON string)
   createdAt DateTime @default(now())
   
   // Graph relationship
@@ -59,7 +59,7 @@ model GraphEdge {
   target    String   // Target node ID
   label     String?
   type      String?
-  data      Json?
+  data      String?  // Flexible edge data (JSON string)
   createdAt DateTime @default(now())
   
   // Graph relationship
@@ -74,7 +74,7 @@ model GraphEdge {
 
 model GraphState {
   id          String   @id @default(cuid())
-  snapshot    Json     // Complete graph state
+  snapshot    String   // Complete graph state (JSON string)
   command     String   // Description of what created this state
   timestamp   DateTime @default(now())
   
