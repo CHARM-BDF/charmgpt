@@ -302,7 +302,8 @@ export const ArtifactContent: React.FC<{
   useEffect(() => {
     setFileContent('');
     setFileLoadError(null);
-    setEditedCode(artifact.content); // Initialize edited code
+    //setEditedCode(artifact.content); // Initialize edited code
+    setViewMode('rendered');
   }, [artifact.id, artifact.content]);
 
   const handleSaveToProject = async () => {
