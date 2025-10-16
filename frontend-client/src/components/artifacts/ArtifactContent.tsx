@@ -557,7 +557,7 @@ export const ArtifactContent: React.FC<{
       }
     }
     const displayContent = isFileReference ? fileContent : artifact.content;
-    if (viewMode === 'source') {
+    if (viewMode === 'source' && !supportsEditorView) {
       if (artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') {
         try {
           const jsonObj = typeof displayContent === 'string' 
@@ -1245,9 +1245,9 @@ export const ArtifactContent: React.FC<{
                 View
               </button>
               <button
-                onClick={() => setViewMode('editor')}
+                onClick={() => setViewMode('source')}
                 className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm ${
-                  viewMode === 'editor' 
+                  viewMode === 'source' 
                     ? 'bg-blue-500 text-white' 
                     : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
