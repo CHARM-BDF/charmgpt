@@ -21,6 +21,28 @@ router.get('/test', (req, res) => {
   res.json({ success: true, message: 'Graph router is working!' });
 });
 
+// GET /api/graph/projects - Get all graph projects
+router.get('/projects', async (req: Request, res: Response) => {
+  try {
+    const loggingService = req.app.locals.loggingService as LoggingService;
+    
+    loggingService.log('info', 'Getting all graph projects');
+    
+    const projects = await getGraphDb().getAllGraphProjects();
+    
+    res.json({
+      success: true,
+      data: projects
+    });
+  } catch (error) {
+    console.error('Error getting graph projects:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // GET /api/graph/:conversationId/state - Get current graph state
 router.get('/:conversationId/state', async (req: Request, res: Response) => {
   try {

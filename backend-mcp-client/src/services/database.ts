@@ -5,13 +5,45 @@ let prisma: PrismaClient;
 
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
-    // Ensure DATABASE_URL is set
+    // Ensure DATABASE_URL is set with absolute path
     if (!process.env.DATABASE_URL) {
-      process.env.DATABASE_URL = "file:./prisma/dev.db";
+      const projectRoot = process.cwd().replace('/backend-mcp-client', '');
+      process.env.DATABASE_URL = `file:${projectRoot}/backend-mcp-client/prisma/dev.db`;
     }
     
+    console.error('🔍 [DATABASE-DEBUG] DATABASE_URL:', process.env.DATABASE_URL);
+    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
+    
     prisma = new PrismaClient({
-      log: ['query', 'info', 'warn', 'error'],
+      log: [
+        {
+          emit: 'event',
+          level: 'query',
+        },
+        {
+          emit: 'event',
+          level: 'error',
+        },
+        {
+          emit: 'event',
+          level: 'info',
+        },
+        {
+          emit: 'event',
+          level: 'warn',
+        },
+      ],
+    });
+    
+    // Add event listeners for detailed logging
+    prisma.$on('query', (e) => {
+      console.error('🔍 [DATABASE-QUERY]', e.query);
+      console.error('🔍 [DATABASE-QUERY] Params:', e.params);
+      console.error('🔍 [DATABASE-QUERY] Duration:', e.duration + 'ms');
+    });
+    
+    prisma.$on('error', (e) => {
+      console.error('❌ [DATABASE-ERROR]', e);
     });
   }
   return prisma;
@@ -38,17 +70,91 @@ export class GraphDatabaseService {
   }
 
   async getGraphProject(conversationId: string) {
-    return await this.prisma.graphProject.findUnique({
-      where: { conversationId },
-      include: {
-        nodes: true,
-        edges: true,
-        states: {
-          orderBy: { timestamp: 'desc' },
-          take: 10, // Last 10 states for history
+    console.error('🔍 [DATABASE-DEBUG] getGraphProject called with conversationId:', conversationId);
+    console.error('🔍 [DATABASE-DEBUG] Current DATABASE_URL:', process.env.DATABASE_URL);
+    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
+    
+    try {
+      // First, let's test if we can connect to the database at all
+      console.error('🔍 [DATABASE-DEBUG] Testing database connection...');
+      const tableCount = await this.prisma.$queryRaw`SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'`;
+      console.error('🔍 [DATABASE-DEBUG] Table count result:', JSON.stringify(tableCount, (key, value) => typeof value === 'bigint' ? value.toString() : value));
+      
+      // List all tables
+      const tables = await this.prisma.$queryRaw`SELECT name FROM sqlite_master WHERE type='table'`;
+      console.error('🔍 [DATABASE-DEBUG] Available tables:', JSON.stringify(tables, (key, value) => typeof value === 'bigint' ? value.toString() : value));
+      
+      const result = await this.prisma.graphProject.findUnique({
+        where: { conversationId },
+        include: {
+          nodes: true,
+          edges: true,
+          states: {
+            orderBy: { timestamp: 'desc' },
+            take: 10, // Last 10 states for history
+          },
         },
-      },
-    });
+      });
+      
+      console.error('🔍 [DATABASE-DEBUG] getGraphProject result:', result ? 'Found project' : 'No project found');
+      
+      // Handle BigInt serialization
+      if (result) {
+        const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
+          typeof value === 'bigint' ? value.toString() : value
+        ));
+        return serializedResult;
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ [DATABASE-DEBUG] getGraphProject error:', error);
+      console.error('❌ [DATABASE-DEBUG] Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        meta: error.meta
+      });
+      throw error;
+    }
+  }
+
+  async getAllGraphProjects() {
+    console.error('🔍 [DATABASE-DEBUG] getAllGraphProjects called');
+    console.error('🔍 [DATABASE-DEBUG] Current DATABASE_URL:', process.env.DATABASE_URL);
+    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
+    
+    try {
+      const result = await this.prisma.graphProject.findMany({
+        include: {
+          nodes: true,
+          edges: true,
+          states: {
+            orderBy: { timestamp: 'desc' },
+            take: 1, // Just the latest state
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      console.error('🔍 [DATABASE-DEBUG] getAllGraphProjects result count:', result.length);
+      
+      // Handle BigInt serialization
+      const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
+        typeof value === 'bigint' ? value.toString() : value
+      ));
+      
+      return serializedResult;
+    } catch (error) {
+      console.error('❌ [DATABASE-DEBUG] getAllGraphProjects error:', error);
+      console.error('❌ [DATABASE-DEBUG] Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        meta: error.meta
+      });
+      throw error;
+    }
   }
 
   // Node Operations

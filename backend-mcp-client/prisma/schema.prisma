@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,57 +10,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model GraphProject {
-  id               String       @id @default(cuid())
-  name             String
-  description      String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  conversationId   String       @unique
-  conversationName String
-  edges            GraphEdge[]
-  nodes            GraphNode[]
-  states           GraphState[]
+// Graph Mode Models for Knowledge Graph Management
 
+model GraphProject {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Graph data relationships
+  nodes       GraphNode[]
+  edges       GraphEdge[]
+  states      GraphState[]  // For history/undo
+  
+  // Conversation relationship (linked to frontend conversation)
+  conversationId   String   @unique
+  conversationName String   // Store conversation name for reference
+  
   @@map("graph_projects")
 }
 
 model GraphNode {
-  id        String
+  id        String   // Allow custom IDs (CURIEs) - not globally unique
   label     String
   type      String
-  data      String
-  position  String
-  createdAt DateTime     @default(now())
+  data      String   // Flexible node data (JSON string)
+  position  String   // x, y coordinates (JSON string)
+  createdAt DateTime @default(now())
+  
+  // Graph relationship
   graphId   String
   graph     GraphProject @relation(fields: [graphId], references: [id], onDelete: Cascade)
-
-  @@id([id, graphId])
+  
+  // Composite unique constraint: id + graphId (allows same ID in different graphs)
   @@unique([id, graphId])
+  @@id([id, graphId])
+  
+  // Note: Edge relationships removed due to composite primary key complexity
+  // Edge relationships are maintained through application logic
+  
   @@map("graph_nodes")
 }
 
 model GraphEdge {
-  id        String       @id @default(cuid())
-  source    String
-  target    String
+  id        String   @id @default(cuid())  // Auto-generated CUID for backward compatibility, but can be overridden with custom composite IDs
+  source    String   // Source node ID
+  target    String   // Target node ID
   label     String?
   type      String?
-  data      String?
-  createdAt DateTime     @default(now())
+  data      String?  // Flexible edge data (JSON string)
+  createdAt DateTime @default(now())
+  
+  // Graph relationship
   graphId   String
   graph     GraphProject @relation(fields: [graphId], references: [id], onDelete: Cascade)
-
+  
+  // Note: Foreign key relationships removed due to composite primary key complexity
+  // Node relationships are maintained through application logic
+  
   @@map("graph_edges")
 }
 
 model GraphState {
-  id        String       @id @default(cuid())
-  snapshot  String
-  command   String
-  timestamp DateTime     @default(now())
-  graphId   String
-  graph     GraphProject @relation(fields: [graphId], references: [id], onDelete: Cascade)
-
+  id          String   @id @default(cuid())
+  snapshot    String   // Complete graph state (JSON string)
+  command     String   // Description of what created this state
+  timestamp   DateTime @default(now())
+  
+  // Graph relationship
+  graphId     String
+  graph       GraphProject @relation(fields: [graphId], references: [id], onDelete: Cascade)
+  
   @@map("graph_states")
 }
