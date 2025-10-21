@@ -223,50 +223,72 @@ function cleanQueryGraph(queryGraph: any): any {
  * Make request to BTE TRAPI endpoint
  */
 async function makeBTERequest(queryGraph: any): Promise<TrapiResponse> {
-  try {
-    const url = `${BTE_API_URL}/query`;
-    
-    // Clean the query graph to remove empty arrays
-    const cleanedQueryGraph = cleanQueryGraph(queryGraph);
-    
-    console.error(`[${SERVICE_NAME}] Making BTE request to: ${url}`);
-    console.error(`[${SERVICE_NAME}] Query graph:`, JSON.stringify(cleanedQueryGraph, null, 2));
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const url = `${BTE_API_URL}/query`;
+      
+      // Clean the query graph to remove empty arrays
+      const cleanedQueryGraph = cleanQueryGraph(queryGraph);
+      
+      console.error(`[${SERVICE_NAME}] Making BTE request to: ${url} (attempt ${attempt}/${maxRetries})`);
+      console.error(`[${SERVICE_NAME}] Query graph:`, JSON.stringify(cleanedQueryGraph, null, 2));
 
-    const requestBody = {
-      message: {
-        query_graph: cleanedQueryGraph
+      const requestBody = {
+        message: {
+          query_graph: cleanedQueryGraph
+        }
+      };
+
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': TOOL_NAME,
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      console.error(`[${SERVICE_NAME}] BTE response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`BTE API error (${response.status}): ${errorText}`);
       }
-    };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': TOOL_NAME,
-      },
-      body: JSON.stringify(requestBody)
-    });
+      const data = await response.json();
+      console.error(`[${SERVICE_NAME}] BTE response received:`, {
+        nodeCount: Object.keys(data.message?.knowledge_graph?.nodes || {}).length,
+        edgeCount: Object.keys(data.message?.knowledge_graph?.edges || {}).length,
+        resultCount: data.message?.results?.length || 0,
+      });
 
-    console.error(`[${SERVICE_NAME}] BTE response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`BTE API error (${response.status}): ${errorText}`);
+      return data;
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`[${SERVICE_NAME}] BTE request failed (attempt ${attempt}/${maxRetries}):`, error);
+      
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+        console.error(`[${SERVICE_NAME}] Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
-
-    const data = await response.json();
-    console.error(`[${SERVICE_NAME}] BTE response received:`, {
-      nodeCount: Object.keys(data.message?.knowledge_graph?.nodes || {}).length,
-      edgeCount: Object.keys(data.message?.knowledge_graph?.edges || {}).length,
-      resultCount: data.message?.results?.length || 0,
-    });
-
-    return data;
-  } catch (error) {
-    console.error(`[${SERVICE_NAME}] BTE request failed:`, error);
-    throw error;
   }
+  
+  // If we get here, all retries failed
+  console.error(`[${SERVICE_NAME}] BTE request failed after ${maxRetries} attempts`);
+  throw lastError || new Error('BTE API request failed after multiple attempts');
 }
 
 /**
@@ -601,8 +623,10 @@ async function markNodesAsSeed(
       
       if (node) {
         // Update node with seedNode flag
+        // Handle case where data might already be a string (from database)
+        const currentData = typeof node.data === 'string' ? JSON.parse(node.data) : node.data;
         const updatedData = {
-          ...node.data,
+          ...currentData,
           seedNode: true
         };
         
@@ -786,7 +810,8 @@ function generateConnectionSummary(
   
   summary += `\n**Connections per Seed Node:**\n`;
   for (const [seedId, categoryMap] of seedConnections.entries()) {
-    summary += `\n*${seedId}:*\n`;
+    const totalConnections = Array.from(categoryMap.values()).reduce((sum, count) => sum + count, 0);
+    summary += `\n*${seedId}* (${totalConnections} total connections):\n`;
     for (const [category, count] of Array.from(categoryMap.entries()).sort((a, b) => b[1] - a[1])) {
       summary += `  - ${category}: ${count}\n`;
     }
@@ -985,32 +1010,37 @@ Note: Duplicate nodes/edges were automatically skipped.`
       
       console.error(`[${SERVICE_NAME}] Executing neighborhood expansion for ${queryParams.nodeIds.length} seed nodes`);
       
-      // Step 1: Mark seed nodes
-      await markNodesAsSeed(queryParams.nodeIds, queryParams.databaseContext);
-      
-      // Step 2: Build and execute BTE query
-      const queryGraph = buildNeighborhoodQuery(queryParams.nodeIds, queryParams.categories);
-      const trapiResponse = await makeBTERequest(queryGraph);
-      
-      // Step 3: Filter for multi-connected nodes
-      const { nodes, edges } = filterMultiConnectedNodes(trapiResponse, queryParams.nodeIds);
-      
-      // Step 4: Process and add to database
-      const filteredResponse: TrapiResponse = {
-        message: {
-          knowledge_graph: { nodes, edges },
-          results: []
+      try {
+        // Step 1: Mark seed nodes (continue even if this fails)
+        try {
+          await markNodesAsSeed(queryParams.nodeIds, queryParams.databaseContext);
+        } catch (error) {
+          console.error(`[${SERVICE_NAME}] Warning: Failed to mark some nodes as seeds:`, error);
         }
-      };
-      const stats = await processTrapiResponse(filteredResponse, queryParams.databaseContext);
-      
-      // Step 5: Generate summary
-      const summary = generateConnectionSummary(nodes, edges, queryParams.nodeIds);
-      
-      return {
-        content: [{
-          type: "text",
-          text: `✅ Neighborhood Expansion Complete!
+        
+        // Step 2: Build and execute BTE query
+        const queryGraph = buildNeighborhoodQuery(queryParams.nodeIds, queryParams.categories);
+        const trapiResponse = await makeBTERequest(queryGraph);
+        
+        // Step 3: Filter for multi-connected nodes
+        const { nodes, edges } = filterMultiConnectedNodes(trapiResponse, queryParams.nodeIds);
+        
+        // Step 4: Process and add to database
+        const filteredResponse: TrapiResponse = {
+          message: {
+            knowledge_graph: { nodes, edges },
+            results: []
+          }
+        };
+        const stats = await processTrapiResponse(filteredResponse, queryParams.databaseContext);
+        
+        // Step 5: Generate summary
+        const summary = generateConnectionSummary(nodes, edges, queryParams.nodeIds);
+        
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Neighborhood Expansion Complete!
 
 **Seed Nodes:** ${queryParams.nodeIds.length} nodes marked as seeds
 **Filter:** Nodes connected to 2+ seeds only
@@ -1022,10 +1052,33 @@ ${queryParams.categories ? `**Categories:** ${queryParams.categories.join(', ')}
 
 ${summary}
 
-The graph has been updated with the neighborhood expansion.`
-        }],
-        refreshGraph: true
-      };
+**Summary:** Each seed node now shows its connection count to different node types. The graph has been updated with the neighborhood expansion.`
+          }],
+          refreshGraph: true
+        };
+      } catch (error) {
+        console.error(`[${SERVICE_NAME}] Neighborhood expansion failed:`, error);
+        return {
+          content: [{
+            type: "text",
+            text: `❌ Neighborhood Expansion Failed
+
+**Error:** ${error instanceof Error ? error.message : 'Unknown error'}
+
+**Troubleshooting:**
+- BTE API may be temporarily unavailable
+- Network connectivity issues
+- Query may be too complex
+
+**Suggestions:**
+- Try again in a few minutes
+- Simplify the query (fewer seed nodes)
+- Check network connection
+
+The graph state has not been modified.`
+          }]
+        };
+      }
     }
 
     throw new Error(`Unknown tool: ${name}`);

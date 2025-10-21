@@ -129,6 +129,18 @@ async function makeAPIRequest(
 
 function formatGraphStateForModel(graphData: any): string {
   const { nodes, edges, metadata } = graphData;
+  
+  // Debug: Log what we're getting
+  console.error(`[${SERVICE_NAME}] formatGraphStateForModel - graphData:`, {
+    hasGraphData: !!graphData,
+    hasNodes: !!nodes,
+    hasEdges: !!edges,
+    nodeCount: nodes?.length || 0,
+    edgeCount: edges?.length || 0,
+    graphDataKeys: graphData ? Object.keys(graphData) : 'no graphData',
+    nodesType: typeof nodes,
+    edgesType: typeof edges
+  });
 
   if (!nodes || nodes.length === 0) {
     return "The graph is currently empty (no nodes or edges).";
@@ -272,11 +284,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               properties: {
                 nodeType: {
                   type: "string",
-                  description: "Filter nodes by type (e.g., 'gene', 'disease', 'drug')",
+                  description: "Filter nodes by type (case-insensitive, e.g., 'gene', 'Gene', 'GENE' all work)",
                 },
                 edgeType: {
                   type: "string",
-                  description: "Filter edges by type (e.g., 'inhibits', 'associated_with')",
+                  description: "Filter edges by type (case-insensitive, e.g., 'inhibits', 'Inhibits', 'INHIBITS' all work)",
                 },
                 nodeIds: {
                   type: "array",
@@ -437,6 +449,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       let graphData = result.data;
+      
+      // Debug: Log the actual data structure
+      console.error(`[${SERVICE_NAME}] Debug - result.data structure:`, {
+        hasData: !!result.data,
+        hasNodes: !!result.data?.nodes,
+        hasEdges: !!result.data?.edges,
+        nodeCount: result.data?.nodes?.length || 0,
+        edgeCount: result.data?.edges?.length || 0,
+        dataKeys: result.data ? Object.keys(result.data) : 'no data',
+        firstNode: result.data?.nodes?.[0] || 'no nodes'
+      });
 
       // Apply filters if provided
       if (filter) {
@@ -445,7 +468,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // Filter nodes
         if (nodeType || nodeIds) {
           graphData.nodes = graphData.nodes?.filter((node: any) => {
-            if (nodeType && node.type !== nodeType) return false;
+            if (nodeType && node.type?.toLowerCase() !== nodeType.toLowerCase()) return false;
             if (nodeIds && nodeIds.length > 0 && !nodeIds.includes(node.id)) return false;
             return true;
           });
@@ -455,7 +478,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (edgeType || nodeIds) {
           const validNodeIds = new Set(graphData.nodes?.map((n: any) => n.id) || []);
           graphData.edges = graphData.edges?.filter((edge: any) => {
-            if (edgeType && edge.type !== edgeType) return false;
+            if (edgeType && edge.type?.toLowerCase() !== edgeType.toLowerCase()) return false;
             // Only include edges where both nodes are in the filtered set
             if (nodeIds && nodeIds.length > 0) {
               if (!validNodeIds.has(edge.source) || !validNodeIds.has(edge.target)) {

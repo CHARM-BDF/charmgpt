@@ -259,12 +259,23 @@ export class GraphDatabaseService {
   }
 
   async updateNode(nodeId: string, graphId: string, updates: { label?: string; type?: string; data?: any; position?: { x: number; y: number } }) {
+    // Serialize data and position fields as JSON strings for SQLite
+    const serializedUpdates: any = { ...updates };
+    if (updates.data !== undefined) {
+      // Only serialize if it's not already a string
+      serializedUpdates.data = typeof updates.data === 'string' ? updates.data : JSON.stringify(updates.data);
+    }
+    if (updates.position !== undefined) {
+      // Only serialize if it's not already a string
+      serializedUpdates.position = typeof updates.position === 'string' ? updates.position : JSON.stringify(updates.position);
+    }
+    
     return await this.prisma.graphNode.updateMany({
       where: { 
         id: nodeId,
         graphId: graphId
       },
-      data: updates,
+      data: serializedUpdates,
     });
   }
 

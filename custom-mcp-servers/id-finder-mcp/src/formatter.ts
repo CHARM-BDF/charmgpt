@@ -54,11 +54,22 @@ export interface AraxNode {
 // Extract normalizer information from ARAX response
 export function extractNormalizerInfo(araxResponse: AraxResponse): NormalizerInfo[] {
     return Object.entries(araxResponse).map(([entityName, data]) => {
+        // Check if data.id exists and has the required properties
+        if (!data.id) {
+            console.error(`[id-finder-mcp] No ID data found for entity: ${entityName}`);
+            return {
+                input: entityName,
+                category: 'Unknown',
+                curie: 'Unknown',
+                name: 'Unknown'
+            };
+        }
+        
         return {
             input: entityName,
-            category: data.id.SRI_normalizer_category,
-            curie: data.id.SRI_normalizer_curie,
-            name: data.id.SRI_normalizer_name
+            category: data.id.SRI_normalizer_category || 'Unknown',
+            curie: data.id.SRI_normalizer_curie || 'Unknown',
+            name: data.id.SRI_normalizer_name || 'Unknown'
         };
     });
 }
@@ -78,7 +89,11 @@ export function formatAraxAsMarkdownTable(araxResponse: AraxResponse): string {
     
     // Add rows for each entity
     Object.entries(araxResponse).forEach(([entityName, data]) => {
-        markdown += `| ${entityName} | ${data.id.SRI_normalizer_category} | ${data.id.SRI_normalizer_curie} | ${data.id.SRI_normalizer_name} |\n`;
+        if (data.id) {
+            markdown += `| ${entityName} | ${data.id.SRI_normalizer_category || 'Unknown'} | ${data.id.SRI_normalizer_curie || 'Unknown'} | ${data.id.SRI_normalizer_name || 'Unknown'} |\n`;
+        } else {
+            markdown += `| ${entityName} | Unknown | Unknown | Unknown |\n`;
+        }
     });
     
     return markdown;
@@ -89,13 +104,13 @@ export function convertAraxToEntityIdentification(araxResponse: AraxResponse): E
     return Object.entries(araxResponse).map(([entityName, data]) => {
         // Create an entity from normalizer info
         const mainEntity: Entity = {
-            identifier: data.id.SRI_normalizer_curie,
-            type: [data.id.SRI_normalizer_category],
-            name: data.id.SRI_normalizer_name
+            identifier: data.id?.SRI_normalizer_curie || 'Unknown',
+            type: [data.id?.SRI_normalizer_category || 'Unknown'],
+            name: data.id?.SRI_normalizer_name || 'Unknown'
         };
         
         // Create entities from nodes if needed
-        const nodeEntities: Entity[] = data.nodes.map(node => ({
+        const nodeEntities: Entity[] = (data.nodes || []).map(node => ({
             identifier: node.identifier,
             type: [node.category],
             name: node.label || node.name_sri || node.name_kg2pre || node.identifier

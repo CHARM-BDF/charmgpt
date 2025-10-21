@@ -272,7 +272,7 @@
       "args": [
         "../custom-mcp-servers/graphModeMCPs/graphmodeBTEMCP/dist/index.js"
       ],
-      "timeout": 60000,
+      "timeout": 120000,
       "env": {
         "API_BASE_URL": "http://localhost:3001",
         "NODE_ENV": "development"
