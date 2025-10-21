@@ -938,6 +938,61 @@ async function processTranslatorData(
   }
 }
 
+/**
+ * Generate a concise summary of Translator data for LLM analysis
+ */
+function generateDataSummary(
+  nodes: GraphModeNode[],
+  edges: GraphModeEdge[]
+): string {
+  // Count nodes by category
+  const categoryCounts: Record<string, number> = {};
+  for (const node of nodes) {
+    const category = node.type || 'Unknown';
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+  }
+
+  // Calculate node connectivity (how many edges each node appears in)
+  const nodeConnectivity: Record<string, number> = {};
+  for (const edge of edges) {
+    nodeConnectivity[edge.source] = (nodeConnectivity[edge.source] || 0) + 1;
+    nodeConnectivity[edge.target] = (nodeConnectivity[edge.target] || 0) + 1;
+  }
+
+  // Get top 20 most-connected nodes
+  const topNodes = Object.entries(nodeConnectivity)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([nodeId, count]) => {
+      const node = nodes.find(n => n.id === nodeId);
+      return {
+        id: nodeId,
+        label: node?.label || nodeId,
+        category: node?.type || 'Unknown',
+        connectionCount: count
+      };
+    });
+
+  // Build summary text
+  let summary = `Translator Graph Summary\n\n`;
+  summary += `Total Nodes: ${nodes.length}\n`;
+  summary += `Total Edges: ${edges.length}\n\n`;
+  
+  summary += `Node Categories:\n`;
+  for (const [category, count] of Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])) {
+    summary += `- ${category}: ${count}\n`;
+  }
+  
+  summary += `\nTop 20 Most Connected Nodes:\n`;
+  for (const node of topNodes) {
+    summary += `- ${node.label} (${node.category}): ${node.connectionCount} connections\n`;
+  }
+  
+  summary += `\nPlease analyze this data and speculate on the nature of the biological process that could be involved based on the node types and their connections.`;
+  
+  return summary;
+}
+
 // =============================================================================
 // TOOL DEFINITIONS
 // =============================================================================
@@ -1002,12 +1057,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       console.error(`[${SERVICE_NAME}] Processing Translator data...`);
       const result = await processTranslatorData(translatorData, databaseContext);
 
-      const successMessage = `✅ Successfully imported Translator graph using bulk operations!\n\n` +
-        `📊 Statistics:\n` +
-        `- Created ${result.nodes.length} nodes\n` +
-        `- Created ${result.edges.length} edges\n` +
-        `- Source: Translator PK ${pk}\n\n` +
-        `The graph has been added to your workspace and should now be visible.`;
+      // Generate summary for LLM instead of sending raw data
+      const dataSummary = generateDataSummary(result.nodes, result.edges);
+
+      const successMessage = `✅ Successfully imported Translator graph!\n\n` +
+        `${dataSummary}`;
 
       return {
         content: [{

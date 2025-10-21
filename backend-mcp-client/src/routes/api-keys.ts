@@ -10,10 +10,24 @@ const router = Router();
 router.get('/status', (req, res) => {
   try {
     const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
+    
+    // Check if API keys are real (not placeholder values)
+    const hasRealAnthropicKey = process.env.ANTHROPIC_API_KEY && 
+      process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' &&
+      process.env.ANTHROPIC_API_KEY.length > 20;
+    
+    const hasRealOpenAIKey = process.env.OPENAI_API_KEY && 
+      process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
+      process.env.OPENAI_API_KEY.length > 20;
+    
+    const hasRealGeminiKey = process.env.GEMINI_API_KEY && 
+      process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' &&
+      process.env.GEMINI_API_KEY.length > 20;
+    
     const keyStatus = {
-      anthropic: useVertexAI || !!process.env.ANTHROPIC_API_KEY,
-      openai: !!process.env.OPENAI_API_KEY,
-      gemini: useVertexAI || !!process.env.GEMINI_API_KEY,
+      anthropic: useVertexAI || hasRealAnthropicKey,
+      openai: hasRealOpenAIKey,
+      gemini: useVertexAI || hasRealGeminiKey,
       ollama: true // Ollama runs locally, always available
     };
 

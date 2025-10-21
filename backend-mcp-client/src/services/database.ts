@@ -5,6 +5,11 @@ let prisma: PrismaClient;
 
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
+    // Ensure DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      process.env.DATABASE_URL = "file:./prisma/dev.db";
+    }
+    
     prisma = new PrismaClient({
       log: ['query', 'info', 'warn', 'error'],
     });
