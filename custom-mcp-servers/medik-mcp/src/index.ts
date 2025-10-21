@@ -1092,9 +1092,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                         }
                     });
 
-                    // Log the raw response for debugging
-                    console.error(`[medik-mcp] [Pathfinder:${requestId}] Raw LLM response:`, 
-                        response ? `success=${response.success}, content_length=${response.content?.length || 0}` : 'null');
+                    // Log summary instead of raw response
+                    console.error(`[medik-mcp] [Pathfinder:${requestId}] 📥 LLM response: ${response?.success ? 'success' : 'error'} (${response?.content?.length || 0} chars)`);
                     
                     // Add more detailed logging for the response
                     sendStructuredLog(server, 'info', `[Pathfinder:${requestId}] Received LLM response`, {

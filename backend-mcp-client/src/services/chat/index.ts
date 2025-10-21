@@ -315,7 +315,7 @@ export class ChatService {
     
     // Log the extracted formatter output
     console.log(`🔍 [FORMATTER OUTPUT] === BEGIN FORMATTER OUTPUT LOG ===`);
-    console.log(`🔍 [FORMATTER OUTPUT] Raw formatter output:`, JSON.stringify(formatterOutput, null, 2));
+    // console.log(`🔍 [FORMATTER OUTPUT] Raw formatter output:`, JSON.stringify(formatterOutput, null, 2));
     console.log(`🔍 [FORMATTER-RESPONSE] Output: ${JSON.stringify(formatterOutput)}`);
     console.log(`🔍 [FORMATTER OUTPUT] === END FORMATTER OUTPUT LOG ===`);
     
@@ -446,7 +446,7 @@ export class ChatService {
     // === FINAL UI OUTPUT LOGGING ===
     console.log(`🔍 [FINAL-OUTPUT] === BEGIN FINAL UI OUTPUT LOG ===`);
     console.log(`🔍 [FINAL-OUTPUT] This is exactly what will be returned to the UI:`);
-    console.log(`🔍 [FINAL-OUTPUT] Complete StoreFormat object:`, JSON.stringify(storeFormat, null, 2));
+    // console.log(`🔍 [FINAL-OUTPUT] Complete StoreFormat object:`, JSON.stringify(storeFormat, null, 2));
     console.log(`🔍 [FINAL-OUTPUT] Object type:`, typeof storeFormat);
     console.log(`🔍 [FINAL-OUTPUT] Object keys:`, Object.keys(storeFormat));
     console.log(`🔍 [FINAL-OUTPUT] === END FINAL UI OUTPUT LOG ===`);
@@ -1427,9 +1427,9 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
         }
         
         // Log detailed information about the tool result
-        console.log(`🔍 TOOL-EXECUTION: Raw result received from tool: ${JSON.stringify(toolResult, null, 2).substring(0, 1000)}...`);
+        // console.log(`🔍 TOOL-EXECUTION: Raw result received from tool: ${JSON.stringify(toolResult, null, 2).substring(0, 1000)}...`);
         console.log(`🔍 TOOL-EXECUTION: Result type: ${typeof toolResult}`);
-        console.log(`🔍 [MCP-RESPONSE] Result: ${JSON.stringify(toolResult)}`);
+        // console.log(`🔍 [MCP-RESPONSE] Result: ${JSON.stringify(toolResult)}`);
         
         if ('content' in toolResult) {
           const textContent = Array.isArray(toolResult.content) 

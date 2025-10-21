@@ -337,7 +337,7 @@ export class GraphDatabaseService {
       data: {
         graphId,
         command,
-        snapshot: snapshot ? JSON.parse(JSON.stringify(snapshot)) : {},
+        snapshot: JSON.stringify(snapshot || {}),
       },
     });
   }

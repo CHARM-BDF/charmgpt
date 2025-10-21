@@ -218,12 +218,10 @@ async function fetchTranslatorData(pk: string, preferredEnvironment: string): Pr
   for (const env of environments) {
     try {
       const baseUrl = TRANSLATOR_URLS[env as keyof typeof TRANSLATOR_URLS];
-      console.error(`[${SERVICE_NAME}] Trying environment: ${env} (${baseUrl})`);
+      console.error(`[${SERVICE_NAME}] 🔍 Trying ${env} environment...`);
 
       // First, fetch the message with trace
       const traceUrl = `${baseUrl}/ars/api/messages/${pk}?trace=y`;
-      console.error(`[${SERVICE_NAME}] Fetching: ${traceUrl}`);
-      
       const traceResponse = await fetch(traceUrl);
       
       if (!traceResponse.ok) {
@@ -237,11 +235,8 @@ async function fetchTranslatorData(pk: string, preferredEnvironment: string): Pr
         throw new Error('No merged_version found in trace response');
       }
 
-      console.error(`[${SERVICE_NAME}] Found merged_version: ${mergedVersion}`);
-
       // Fetch the merged version
       const mergedUrl = `${baseUrl}/ars/api/messages/${mergedVersion}`;
-      console.error(`[${SERVICE_NAME}] Fetching merged data: ${mergedUrl}`);
 
       const mergedResponse = await fetch(mergedUrl);
       
@@ -250,7 +245,13 @@ async function fetchTranslatorData(pk: string, preferredEnvironment: string): Pr
       }
 
       const mergedData = await mergedResponse.json();
-      console.error(`[${SERVICE_NAME}] Successfully fetched data from ${env}`);
+      // Log summary instead of raw data
+      const message = mergedData.fields?.data?.message || mergedData.message;
+      const nodeCount = message?.knowledge_graph?.nodes ? Object.keys(message.knowledge_graph.nodes).length : 0;
+      const edgeCount = message?.knowledge_graph?.edges ? Object.keys(message.knowledge_graph.edges).length : 0;
+      const resultCount = message?.results ? message.results.length : 0;
+      
+      console.error(`[${SERVICE_NAME}] ✅ Successfully fetched from ${env}: ${resultCount} results, ${nodeCount} nodes, ${edgeCount} edges`);
       
       return mergedData;
     } catch (error) {
@@ -671,10 +672,10 @@ function createNodeData(
       label: nodeName,
       type: nodeType,
       data: {
+        // Store only essential fields to reduce data size
         categories: nodeCategories,
         originalId: nodeId,
-        source: 'translator',
-        ...originalNodeData
+        source: 'translator'
       },
       position: { x: 0, y: 0 }
     };
@@ -763,10 +764,10 @@ async function createNodeInDatabase(
       label: nodeName,
       type: nodeType,
       data: {
+        // Store only essential fields to reduce data size
         categories: nodeCategories,
         originalId: nodeId,
-        source: 'translator',
-        ...originalNodeData
+        source: 'translator'
       },
       position: { x: 0, y: 0 }
     };
@@ -870,8 +871,7 @@ async function processTranslatorData(
     const edges = message.knowledge_graph?.edges || {};
     const auxiliaryGraphs = message.auxiliary_graphs || {};
 
-    console.error(`[${SERVICE_NAME}] Processing ${results.length} results`);
-    console.error(`[${SERVICE_NAME}] Knowledge graph has ${Object.keys(nodes).length} nodes and ${Object.keys(edges).length} edges`);
+    console.error(`[${SERVICE_NAME}] 📊 Processing ${results.length} results with ${Object.keys(nodes).length} nodes and ${Object.keys(edges).length} edges`);
 
     // Collect all nodes and edges first (bulk approach)
     const nodesToCreate: GraphModeNode[] = [];
@@ -879,9 +879,9 @@ async function processTranslatorData(
     const processedNodes = new Set<string>();
 
     // Loop through results to collect nodes and edges
+    let totalEdgesProcessed = 0;
     for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
       const result = results[resultIndex];
-      console.error(`[${SERVICE_NAME}] Processing result ${resultIndex + 1}/${results.length}`);
 
       // Get analyses
       const analyses = result.analyses || [];
@@ -907,26 +907,29 @@ async function processTranslatorData(
               edgesToCreate,
               databaseContext
             );
+            totalEdgesProcessed++;
           }
         }
       }
     }
+    
+    console.error(`[${SERVICE_NAME}] 🔄 Processed ${totalEdgesProcessed} edges from ${results.length} results`);
 
     // Bulk create nodes
     let nodeResult = { created: 0, skipped: 0, total: 0 };
     if (nodesToCreate.length > 0) {
-      console.error(`[${SERVICE_NAME}] Bulk creating ${nodesToCreate.length} nodes`);
+      console.error(`[${SERVICE_NAME}] 💾 Creating ${nodesToCreate.length} nodes in database...`);
       nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
     }
 
     // Bulk create edges
     let edgeResult = { created: 0, skipped: 0, total: 0 };
     if (edgesToCreate.length > 0) {
-      console.error(`[${SERVICE_NAME}] Bulk creating ${edgesToCreate.length} edges`);
+      console.error(`[${SERVICE_NAME}] 🔗 Creating ${edgesToCreate.length} edges in database...`);
       edgeResult = await bulkCreateEdgesInDatabase(edgesToCreate, databaseContext);
     }
 
-    console.error(`[${SERVICE_NAME}] Processing complete: ${nodeResult.created} nodes created, ${edgeResult.created} edges created`);
+    console.error(`[${SERVICE_NAME}] ✅ Import complete: ${nodeResult.created} nodes, ${edgeResult.created} edges created (${nodeResult.skipped} nodes, ${edgeResult.skipped} edges skipped)`);
 
     return { 
       nodes: nodesToCreate.slice(0, nodeResult.created), 
@@ -1040,21 +1043,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     if (name === "fetchTranslatorGraph") {
-      console.error(`[${SERVICE_NAME}] Tool called: fetchTranslatorGraph`);
-      
       const queryParams = TranslatorToolArgumentsSchema.parse(args);
       const { pk, environment, databaseContext } = queryParams;
 
-      console.error(`[${SERVICE_NAME}] PK: ${pk}`);
-      console.error(`[${SERVICE_NAME}] Environment: ${environment}`);
-      console.error(`[${SERVICE_NAME}] ConversationId: ${databaseContext.conversationId}`);
+      console.error(`[${SERVICE_NAME}] 🚀 Starting Translator import: PK=${pk}, env=${environment || 'prod'}, conv=${databaseContext.conversationId}`);
 
       // Fetch data from Translator API
-      console.error(`[${SERVICE_NAME}] Fetching Translator data...`);
       const translatorData = await fetchTranslatorData(pk, environment || 'prod');
 
       // Process the data and create nodes/edges
-      console.error(`[${SERVICE_NAME}] Processing Translator data...`);
       const result = await processTranslatorData(translatorData, databaseContext);
 
       // Generate summary for LLM instead of sending raw data

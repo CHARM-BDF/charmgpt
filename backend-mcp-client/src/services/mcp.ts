@@ -36,7 +36,7 @@ export class MCPService {
     
     if (notification.method === 'notifications/message') {
       console.log(`🔍 [MCP-DEBUG:${traceId}] 2. Processing log message notification`);
-      console.log(`🔍 [MCP-DEBUG:${traceId}] Raw params:`, JSON.stringify(notification.params, null, 2));
+      // console.log(`🔍 [MCP-DEBUG:${traceId}] Raw params:`, JSON.stringify(notification.params, null, 2));
       
       if (notification.params) {
         try {
@@ -72,7 +72,7 @@ export class MCPService {
                 };
                 
                 console.log(`🔍 [MCP-DEBUG:${traceId}] 6. Sending formatted message to handler:`);
-                console.log(`🔍 [MCP-DEBUG:${traceId}]`, JSON.stringify(formattedLogMessage, null, 2));
+                // console.log(`🔍 [MCP-DEBUG:${traceId}]`, JSON.stringify(formattedLogMessage, null, 2));
                 
                 handler(formattedLogMessage);
                 console.log(`🔍 [MCP-DEBUG:${traceId}] ✅ Handler ${handlerIndex} completed`);

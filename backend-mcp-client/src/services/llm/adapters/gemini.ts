@@ -15,7 +15,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
    */
   convertToolDefinitions(tools: MCPTool[]): any {
     console.log('\n=== GEMINI LLM TOOL DEFINITION CONVERSION ===');
-    console.log('Input MCP tools:', JSON.stringify(tools, null, 2));
+    // console.log('Input MCP tools:', JSON.stringify(tools, null, 2));
     
     const convertedTools = [{
       functionDeclarations: tools.map(tool => ({
@@ -25,7 +25,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
       }))
     }];
     
-    console.log('Converted Gemini format:', JSON.stringify(convertedTools, null, 2));
+    // console.log('Converted Gemini format:', JSON.stringify(convertedTools, null, 2));
     console.log('=== END GEMINI LLM TOOL DEFINITION CONVERSION ===\n');
     
     return convertedTools;
@@ -38,7 +38,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
    */
   extractToolCalls(response: any): ToolCall[] {
     console.log('\n=== GEMINI LLM TOOL CALL EXTRACTION ===');
-    console.log('Raw response:', JSON.stringify(response, null, 2));
+    // console.log('Raw response:', JSON.stringify(response, null, 2));
     
     if (!response) {
       console.log('No response found');
@@ -78,7 +78,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
         functionCalls = response.functionCalls;
       }
       
-      console.log('Extracted function calls:', JSON.stringify(functionCalls, null, 2));
+      // console.log('Extracted function calls:', JSON.stringify(functionCalls, null, 2));
       
       if (!functionCalls || functionCalls.length === 0) {
         console.log('No function calls found in response');
@@ -92,7 +92,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
         input: functionCall.args || {}
       }));
       
-      console.log('Converted tool calls:', JSON.stringify(toolCalls, null, 2));
+      // console.log('Converted tool calls:', JSON.stringify(toolCalls, null, 2));
       console.log('=== END GEMINI LLM TOOL CALL EXTRACTION ===\n');
       
       return toolCalls;
@@ -110,7 +110,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
    */
   formatToolResults(toolResults: ToolResult[]): any {
     console.log('\n=== GEMINI LLM TOOL RESULT FORMATTING ===');
-    console.log('Input tool results:', JSON.stringify(toolResults, null, 2));
+    // console.log('Input tool results:', JSON.stringify(toolResults, null, 2));
     
     if (!toolResults || toolResults.length === 0) {
       console.log('No tool results to format');
@@ -132,7 +132,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
       }
     };
     
-    console.log('Formatted result:', JSON.stringify(formattedResult, null, 2));
+    // console.log('Formatted result:', JSON.stringify(formattedResult, null, 2));
     console.log('=== END GEMINI LLM TOOL RESULT FORMATTING ===\n');
     
     return formattedResult;
@@ -145,7 +145,7 @@ export class GeminiToolAdapter implements ToolCallAdapter {
    */
   hasFunctionCalls(response: any): boolean {
     console.log('\n=== GEMINI LLM FUNCTION CALL CHECK ===');
-    console.log('Checking response for function calls:', JSON.stringify(response, null, 2));
+    // console.log('Checking response for function calls:', JSON.stringify(response, null, 2));
     
     if (!response) {
       console.log('No response found');

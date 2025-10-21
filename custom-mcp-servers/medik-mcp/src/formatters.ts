@@ -269,13 +269,14 @@ export function formatKnowledgeGraphArtifact(
     console.log(`MEDIK FORMATTER: Attempted to save to: ${logsDir}`);
   }
 
-  // Log the raw data before processing
-  console.log(`MEDIK FORMATTER: Processing ${queryResults.length} raw results`);
-  console.log(`MEDIK FORMATTER: Query params:`, JSON.stringify(queryParams, null, 2));
+  // Log summary instead of raw data
+  console.log(`MEDIK FORMATTER: 📊 Processing ${queryResults.length} results for query: ${queryParams.e3}`);
   
-  // Sample the first few results to avoid excessive logging
+  // Log only essential info instead of full JSON
   if (queryResults.length > 0) {
-    console.log(`MEDIK FORMATTER: Sample of first result:`, JSON.stringify(queryResults[0], null, 2));
+    const firstResult = queryResults[0];
+    const resultKeys = Object.keys(firstResult);
+    console.log(`MEDIK FORMATTER: 📋 First result has ${resultKeys.length} fields: ${resultKeys.slice(0, 5).join(', ')}${resultKeys.length > 5 ? '...' : ''}`);
   }
   
   // Track unique CAID nodes that will be filtered out

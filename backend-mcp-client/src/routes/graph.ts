@@ -289,7 +289,7 @@ router.post('/:conversationId/edges/bulk', async (req: Request, res: Response) =
       target: edge.target,
       label: edge.label,
       type: edge.type || 'default',
-      data: edge.data || {},
+      data: JSON.stringify(edge.data || {}),
       createdAt: new Date()
     }));
     
@@ -344,8 +344,8 @@ router.post('/:conversationId/nodes/bulk', async (req: Request, res: Response) =
       graphId: graphProject.id,
       label: node.label,
       type: node.type,
-      data: node.data || {},
-      position: node.position || { x: 0, y: 0 },
+      data: JSON.stringify(node.data || {}),
+      position: JSON.stringify(node.position || { x: 0, y: 0 }),
       createdAt: new Date()
     }));
     
@@ -690,8 +690,8 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
         // console.log(`Successfully created/updated node ${i + 1}:`, node.id);
         createdNodes.push(node);
       } catch (nodeError) {
-        console.error(`Error creating node ${i + 1}:`, JSON.stringify(nodeError, null, 2));
-        console.error(`Node data that failed:`, JSON.stringify(nodeData, null, 2));
+        // console.error(`Error creating node ${i + 1}:`, JSON.stringify(nodeError, null, 2));
+        // console.error(`Node data that failed:`, JSON.stringify(nodeData, null, 2));
         throw nodeError;
       }
     }
@@ -775,8 +775,8 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
         // console.log(`Successfully created edge ${i + 1}:`, edge.id);
         createdEdges.push(edge);
       } catch (edgeError) {
-        console.error(`Error creating edge ${i + 1}:`, JSON.stringify(edgeError, null, 2));
-        console.error(`Edge data that failed:`, JSON.stringify(edgeData, null, 2));
+        // console.error(`Error creating edge ${i + 1}:`, JSON.stringify(edgeError, null, 2));
+        // console.error(`Edge data that failed:`, JSON.stringify(edgeData, null, 2));
         throw edgeError;
       }
     }
@@ -814,7 +814,7 @@ router.post('/:conversationId/mock-data', async (req: Request, res: Response) =>
     });
   } catch (error) {
     console.error('Error adding mock data:', error);
-    console.error('Full error details:', JSON.stringify(error, null, 2));
+    // console.error('Full error details:', JSON.stringify(error, null, 2));
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
