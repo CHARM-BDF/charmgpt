@@ -26,7 +26,7 @@ export const ArtifactWindow: React.FC<ArtifactWindowProps> = ({ storageService }
     <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col min-w-0">
       <div className="flex-1 flex min-h-0 min-w-0 bg-gray-200 dark:bg-gray-900">
         {selectedArtifact ? (
-          <ArtifactContent artifact={selectedArtifact} storageService={storageService} />
+          <ArtifactContent key={selectedArtifact.id} artifact={selectedArtifact} storageService={storageService} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
             <div className="text-center p-4">

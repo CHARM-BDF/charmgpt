@@ -221,7 +221,7 @@ export const ArtifactContent: React.FC<{
   const { selectedProjectId } = useProjectStore();
   
   // Code editor
-  const [editedCode, setEditedCode] = useState<string>('');
+  const [editedCode, setEditedCode] = useState<string>(artifact.content);
 
   // State for handling file reference artifacts
   const [fileContent, setFileContent] = useState<string>('');
