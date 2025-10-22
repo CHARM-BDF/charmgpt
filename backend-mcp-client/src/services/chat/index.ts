@@ -215,7 +215,8 @@ export class ChatService {
       message, // Original query
       processedHistory, // All processed messages
       toolExecutions, // Tool execution history
-      options.attachments // File attachments
+      options.attachments, // File attachments
+      options.pinnedArtifacts // Pinned artifacts (including file references)
     );
     
     // Build the system prompt for formatter
@@ -805,6 +806,22 @@ export class ChatService {
       }
     }
 
+    // Collect all available files (both direct attachments and pinned artifacts with file references)
+    const allAvailableFiles = this.collectAllAvailableFiles(options.attachments, options.pinnedArtifacts);
+    
+    // Add file information with preview if any files are available
+    if (allAvailableFiles.length > 0) {
+      console.log(`🔍 SEQUENTIAL-THINKING: Including ${allAvailableFiles.length} file(s) with preview in conversation context`);
+      console.log(`🔍 SEQUENTIAL-THINKING: - Direct attachments: ${options.attachments?.length || 0}`);
+      console.log(`🔍 SEQUENTIAL-THINKING: - Pinned file artifacts: ${allAvailableFiles.length - (options.attachments?.length || 0)}`);
+      
+      const attachmentInfo = await this.formatAttachments(allAvailableFiles);
+      workingMessages.push({
+        role: 'user',
+        content: `Note: ${attachmentInfo}\n\nThese files are available in the current directory and can be accessed directly by their filenames in your code.`
+      });
+    }
+    
     // Add the actual user message last
     workingMessages.push({ role: 'user', content: message });
     
@@ -1997,6 +2014,46 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     });
   }
 
+  /**
+   * Collect all available files from both direct attachments and pinned artifacts
+   */
+  private collectAllAvailableFiles(
+    attachments?: FileAttachment[],
+    pinnedArtifacts?: Array<{
+      id: string;
+      type: string;
+      title: string;
+      content: string;
+      metadata?: any;
+    }>
+  ): FileAttachment[] {
+    const allFiles: FileAttachment[] = [];
+    
+    // Add direct attachments
+    if (attachments && attachments.length > 0) {
+      allFiles.push(...attachments);
+    }
+    
+    // Add pinned artifacts that have file references (server-side stored files)
+    if (pinnedArtifacts && pinnedArtifacts.length > 0) {
+      for (const artifact of pinnedArtifacts) {
+        if (artifact.metadata?.fileReference) {
+          const fileRef = artifact.metadata.fileReference;
+          // Convert pinned file artifact to FileAttachment format
+          allFiles.push({
+            id: fileRef.fileId,
+            name: fileRef.fileName,
+            size: 0, // Size not available from pinned artifacts
+            type: fileRef.fileType || 'application/octet-stream',
+            varName: fileRef.fileName.split('.')[0]
+          });
+        }
+      }
+    }
+    
+    return allFiles;
+  }
+
   private async formatAttachments(
     attachments?: FileAttachment[]
   ): Promise<string> {
@@ -2040,7 +2097,14 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
     originalQuery: string,
     processedMessages: any[],
     toolExecutions: any[] = [],
-    attachments?: FileAttachment[]
+    attachments?: FileAttachment[],
+    pinnedArtifacts?: Array<{
+      id: string;
+      type: string;
+      title: string;
+      content: string;
+      metadata?: any;
+    }>
   ): Promise<string> {
     let prompt = `<SYSTEM>
 You are an AI assistant tasked with creating comprehensive, accurate responses based on information gathered through tools. The information below has already been collected in response to the user's query. Your job is to synthesize this information into a helpful response.
@@ -2056,7 +2120,7 @@ ${toolExecutions.map((tool, index) => `${index + 1}. ${tool.name}: ${tool.descri
 </TOOL_EXECUTION_SUMMARY>
 
 <AVAILABLE_ATTACHMENTS>
-${await this.formatAttachments(attachments)}
+${await this.formatAttachments(this.collectAllAvailableFiles(attachments, pinnedArtifacts))}
 </AVAILABLE_ATTACHMENTS>
 
 <GATHERED_DATA>
