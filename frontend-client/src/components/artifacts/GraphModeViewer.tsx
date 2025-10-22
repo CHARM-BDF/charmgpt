@@ -1528,182 +1528,46 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       {/* NEW: Notification toast */}
       <NotificationToast />
       
-      {/* Graph Mode Toolbar */}
-      <div className="flex items-center justify-between p-2 bg-purple-100 dark:bg-purple-900/20 rounded mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-purple-800 dark:text-purple-200">
-            Graph Mode
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setIsEditMode(!isEditMode)}
-              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                isEditMode 
-                  ? 'bg-purple-500 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {isEditMode ? 'Exit Edit' : 'Edit Mode'}
-            </button>
-            
-            {isEditMode && (
-              <>
-                <button
-                  onClick={handleAddNode}
-                  className="flex items-center gap-1 px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-sm"
-                >
-                  <Plus size={14} />
-                  Add Node
-                </button>
-                <button
-                  onClick={handleAddEdge}
-                  className="flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm"
-                >
-                  <Plus size={14} />
-                  Add Edge
-                </button>
-              </>
-            )}
-            
-            <button
-              onClick={handleAddMockData}
-              className="flex items-center gap-1 px-2 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded text-sm"
-              title="Add diabetes/obesity mock data for testing"
-            >
-              <Plus size={14} />
-              Add Test Data
-            </button>
-            
-            <button
-              onClick={handleAddCancerData}
-              className="flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm"
-              title="Add cancer research mock data for testing"
-            >
-              <Plus size={14} />
-              Add Cancer Data
-            </button>
-            
-            {/* NEW: Manual refresh button */}
-            <button 
-              onClick={() => {
-                showNotification('Refreshing graph...', 'info', 1000);
-                loadGraphDataFromDatabase();
-              }}
-              disabled={isRefreshing}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Manually refresh graph data"
-            >
-              <svg 
-                className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
-                xmlns="http://www.w3.org/2000/svg" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Refresh</span>
-            </button>
-            
-            {/* NEW: Edge aggregation toggle */}
-            <button
-              onClick={() => setAggregateEdges(!aggregateEdges)}
-              className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded transition-colors ${
-                aggregateEdges
-                  ? 'bg-green-500 hover:bg-green-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-              }`}
-              title={aggregateEdges ? "Aggregating duplicate edges - click to show all" : "Showing all edges - click to aggregate"}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <span>{aggregateEdges ? 'Aggregated' : 'All Edges'}</span>
-            </button>
-            
-            
-            
-            {/* DEBUG: Log current rendered data */}
-            <button
-              onClick={() => {
-                console.log('🖱️ DEBUG BUTTON CLICKED - Current rendered data:');
-                console.log('📊 Rendered nodes:', (filteredNodes.length ? filteredNodes : graphData.nodes).length);
-                console.log('📊 Rendered nodes details:', (filteredNodes.length ? filteredNodes : graphData.nodes).map(n => ({
-                  id: n.id,
-                  label: n.label,
-                  isCluster: n.isCluster,
-                  size: n.size || n.val,
-                  category: n.category
-                })));
-                console.log('🔗 Rendered edges:', (filteredEdges.length ? filteredEdges : graphData.edges).length);
-                console.log('🔗 Rendered edges details:', (filteredEdges.length ? filteredEdges : graphData.edges).map(e => ({
-                  id: e.id,
-                  source: e.source,
-                  target: e.target,
-                  label: e.label
-                })));
-                console.log('🎯 Filtering state:');
-                console.log('  - filteredNodes.length:', filteredNodes.length);
-                console.log('  - filteredEdges.length:', filteredEdges.length);
-                console.log('  - graphData.nodes.length:', graphData.nodes.length);
-                console.log('  - graphData.edges.length:', graphData.edges.length);
-              }}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors"
-              title="Debug: Log current rendered nodes and edges"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Debug</span>
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {/* NEW: Last refresh time indicator */}
-          {lastRefreshTime && (
-            <span className="text-xs text-gray-500 mr-2">
-              Updated {new Date().getTime() - lastRefreshTime.getTime() < 60000 
-                ? 'just now' 
-                : `${Math.floor((new Date().getTime() - lastRefreshTime.getTime()) / 60000)}m ago`}
-            </span>
-          )}
-          
-          <button
-            onClick={handleUndo}
-            className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-            title="Undo"
-          >
-            <Undo size={16} />
-          </button>
-          <button
-            onClick={handleRedo}
-            className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-            title="Redo"
-          >
-            <Redo size={16} />
-          </button>
-          
-          {artifactId && (
-            <button
-              onClick={() => {
-                if (artifactId) {
-                  setPinnedGraphId(isPinned ? null : artifactId);
-                }
-              }}
-              className={`p-2 rounded-full ${
-                isPinned 
-                  ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-              }`}
-              title={isPinned ? "Unpin graph (stop sending with messages)" : "Pin graph (send with messages)"}
-            >
-              {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
-            </button>
-          )}
-        </div>
+      
+      {/* Debug button - positioned at top right of view, outside GraphCanvas */}
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          onClick={() => {
+            console.log('🖱️ DEBUG BUTTON CLICKED - Current rendered data:');
+            console.log('📊 Rendered nodes:', (filteredNodes.length ? filteredNodes : graphData.nodes).length);
+            console.log('📊 Rendered nodes details:', (filteredNodes.length ? filteredNodes : graphData.nodes).map(n => ({
+              id: n.id,
+              label: n.label,
+              isCluster: n.isCluster,
+              size: n.size || n.val,
+              category: n.category
+            })));
+            console.log('🔗 Rendered edges:', (filteredEdges.length ? filteredEdges : graphData.edges).length);
+            console.log('🔗 Rendered edges details:', (filteredEdges.length ? filteredEdges : graphData.edges).map(e => ({
+              id: e.id,
+              source: e.source,
+              target: e.target,
+              label: e.label
+            })));
+          }}
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded shadow-lg transition-colors"
+          title="Debug: Log current rendered nodes and edges"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Debug</span>
+        </button>
       </div>
       
+      {/* Instructions - positioned at bottom right of view, outside GraphCanvas */}
+      <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
+        <div>Ctrl/Cmd + Click node to add to chat</div>
+        <div>Click cluster to expand/collapse</div>
+        <div>Shift + Click node to collapse its cluster</div>
+        <div>Click edge to view details</div>
+      </div>
+
       <div ref={containerRef} className="w-full h-full flex-grow relative" style={{ minWidth: '900px' }}>
         <NotificationPopup />
         
@@ -1725,13 +1589,6 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             isPinned={!!pinnedEdgeCard}
           />
         )}
-        
-        <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-md opacity-70 z-40 pointer-events-none">
-          <div>Ctrl/Cmd + Click node to add to chat</div>
-          <div>Click cluster to expand/collapse</div>
-          <div>Shift + Click node to collapse its cluster</div>
-          <div>Click edge to view details</div>
-        </div>
         <GraphCanvas
           nodes={filteredNodes.length ? filteredNodes : graphData.nodes}
           edges={filteredEdges.length ? filteredEdges : graphData.edges}

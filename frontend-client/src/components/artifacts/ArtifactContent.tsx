@@ -1261,43 +1261,80 @@ export const ArtifactContent: React.FC<{
           )}
           
           {isGraphModeArtifact && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setClusterNodes(!clusterNodes)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  clusterNodes
-                    ? 'bg-blue-500 text-white hover:bg-blue-600'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-                title="Group nodes with same category and neighbors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                {clusterNodes ? 'Clustered' : 'Cluster Nodes'}
-              </button>
+            <>
+              {/* Main button row */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setClusterNodes(!clusterNodes)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    clusterNodes
+                      ? 'bg-blue-500 text-white hover:bg-blue-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                  title="Group nodes with same category and neighbors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  {clusterNodes ? 'Clustered' : 'Cluster Nodes'}
+                </button>
+                
+                <button
+                  onClick={() => setCollapseNodes(!collapseNodes)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    collapseNodes
+                      ? 'bg-purple-500 text-white hover:bg-purple-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                  title="Collapse clusters into single representative nodes"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  {collapseNodes ? 'Collapsed' : 'Collapse Clusters'}
+                </button>
+              </div>
               
-              <button
-                onClick={() => setCollapseNodes(!collapseNodes)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  collapseNodes
-                    ? 'bg-purple-500 text-white hover:bg-purple-600'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-                title="Collapse clusters into single representative nodes"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                {collapseNodes ? 'Collapsed' : 'Collapse Clusters'}
-              </button>
-            </div>
+              {/* Secondary function row - positioned on the right */}
+              <div className="flex justify-end items-center gap-2 mt-2">
+                {/* Debug button */}
+                <button
+                  onClick={() => {
+                    console.log('🖱️ DEBUG BUTTON CLICKED - Current rendered data:');
+                    console.log('📊 Rendered nodes:', graphData?.nodes?.length || 0);
+                    console.log('📊 Rendered nodes details:', graphData?.nodes?.map(n => ({
+                      id: n.id,
+                      label: n.label,
+                      isCluster: n.isCluster,
+                      size: n.size || n.val,
+                      category: n.category
+                    })) || []);
+                    console.log('🔗 Rendered edges:', graphData?.edges?.length || 0);
+                    console.log('🔗 Rendered edges details:', graphData?.edges?.map(e => ({
+                      id: e.id,
+                      source: e.source,
+                      target: e.target,
+                      label: e.label
+                    })) || []);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors"
+                  title="Debug: Log current rendered nodes and edges"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Debug</span>
+                </button>
+                
+                {/* Space for additional functions - you can add more buttons here */}
+              </div>
+            </>
           )}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto min-h-0 p-4">
+      <div className="flex-1 overflow-y-auto min-h-0 p-4 relative">
         {renderContent()}
       </div>
       <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-lg flex justify-end">
