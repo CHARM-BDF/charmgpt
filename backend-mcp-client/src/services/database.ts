@@ -288,6 +288,63 @@ export class GraphDatabaseService {
     });
   }
 
+  // Bulk delete nodes by type or criteria
+  async bulkDeleteNodesByType(graphId: string, nodeTypes: string[], excludeTypes?: string[]) {
+    if (excludeTypes && excludeTypes.length > 0) {
+      // Delete all nodes EXCEPT the excluded types (case-insensitive)
+      // Use raw SQL for case-insensitive matching
+      const excludeTypesPlaceholders = excludeTypes.map(() => '?').join(',');
+      const excludeTypesValues = excludeTypes.map(type => type.toLowerCase());
+      
+      const result = await this.prisma.$executeRaw`
+        DELETE FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) NOT IN (${excludeTypesValues.join(',')})
+      `;
+      return { count: result };
+    } else if (nodeTypes && nodeTypes.length > 0) {
+      // Delete nodes of specific types (case-insensitive)
+      const nodeTypesPlaceholders = nodeTypes.map(() => '?').join(',');
+      const nodeTypesValues = nodeTypes.map(type => type.toLowerCase());
+      
+      const result = await this.prisma.$executeRaw`
+        DELETE FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) IN (${nodeTypesValues.join(',')})
+      `;
+      return { count: result };
+    }
+    
+    return { count: 0 };
+  }
+
+  // Get nodes by type for preview before deletion
+  async getNodesByType(graphId: string, nodeTypes: string[], excludeTypes?: string[]) {
+    if (excludeTypes && excludeTypes.length > 0) {
+      // Get all nodes EXCEPT the excluded types (case-insensitive)
+      const excludeTypesValues = excludeTypes.map(type => type.toLowerCase());
+      
+      return await this.prisma.$queryRaw`
+        SELECT id, label, type 
+        FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) NOT IN (${excludeTypesValues.join(',')})
+      `;
+    } else if (nodeTypes && nodeTypes.length > 0) {
+      // Get nodes of specific types (case-insensitive)
+      const nodeTypesValues = nodeTypes.map(type => type.toLowerCase());
+      
+      return await this.prisma.$queryRaw`
+        SELECT id, label, type 
+        FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) IN (${nodeTypesValues.join(',')})
+      `;
+    }
+    
+    return [];
+  }
+
   // Edge Operations
   async addEdge(graphId: string, source: string, target: string, label?: string, type?: string, data?: any) {
     // console.error(`[DATABASE] 📝 Writing edge to database - graphId: ${graphId}, source: ${source}, target: ${target}`);

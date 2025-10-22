@@ -413,6 +413,76 @@ router.put('/:conversationId/nodes/:nodeId', async (req: Request, res: Response)
   }
 });
 
+// DELETE /api/graph/:conversationId/nodes/by-type - Bulk delete nodes by type
+router.delete('/:conversationId/nodes/by-type', async (req: Request, res: Response) => {
+  try {
+    const { conversationId } = req.params;
+    const { nodeTypes, excludeTypes, preview = false } = req.body;
+    const loggingService = req.app.locals.loggingService as LoggingService;
+
+    loggingService.log('info', `Bulk deleting nodes by type for conversation: ${conversationId}`);
+
+    // Get graph project to get graphId
+    const graphProject = await getGraphDb().getGraphProject(conversationId);
+    if (!graphProject) {
+      return res.status(404).json({
+        success: false,
+        error: 'Graph project not found for this conversation'
+      });
+    }
+
+    if (preview) {
+      // Preview mode - return nodes that would be deleted
+      const nodesToDelete = await getGraphDb().getNodesByType(
+        graphProject.id, 
+        nodeTypes || [], 
+        excludeTypes
+      );
+      
+      return res.json({
+        success: true,
+        preview: true,
+        data: {
+          nodesToDelete: nodesToDelete,
+          count: Array.isArray(nodesToDelete) ? nodesToDelete.length : 0,
+          nodeTypes: nodeTypes || [],
+          excludeTypes: excludeTypes || []
+        }
+      });
+    }
+    
+    // Perform actual deletion
+    const result = await getGraphDb().bulkDeleteNodesByType(
+      graphProject.id,
+      nodeTypes || [],
+      excludeTypes
+    );
+
+    // Save state for undo/redo
+    await getGraphDb().saveState(
+      graphProject.id,
+      `Bulk deleted nodes by type: ${JSON.stringify({ nodeTypes, excludeTypes })}`,
+      await getGraphDb().getCurrentGraphState(conversationId)
+    );
+
+    res.json({
+      success: true,
+      message: `Bulk deleted ${result.count} nodes`,
+      data: {
+        deletedCount: result.count,
+        nodeTypes: nodeTypes || [],
+        excludeTypes: excludeTypes || []
+      }
+    });
+  } catch (error) {
+    console.error('Error bulk deleting nodes by type:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // DELETE /api/graph/:conversationId/nodes/:nodeId - Delete a node
 router.delete('/:conversationId/nodes/:nodeId', async (req: Request, res: Response) => {
   try {

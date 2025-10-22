@@ -82,6 +82,26 @@ const RemoveNodesByDegreeArgumentsSchema = z.object({
   ),
 });
 
+// Schema for bulk remove nodes by type tool
+const BulkRemoveNodesByTypeArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  criteria: z.object({
+    nodeTypes: z.array(z.string()).optional().describe("Array of node types to delete (e.g., ['gene', 'disease'])"),
+    excludeTypes: z.array(z.string()).optional().describe("Array of node types to keep (delete everything except these)"),
+    preview: z.boolean().optional().default(false).describe("If true, preview what would be deleted without actually deleting"),
+  }).refine(
+    (criteria) => {
+      // Either nodeTypes or excludeTypes must be provided, but not both
+      const hasNodeTypes = criteria.nodeTypes && criteria.nodeTypes.length > 0;
+      const hasExcludeTypes = criteria.excludeTypes && criteria.excludeTypes.length > 0;
+      return hasNodeTypes || hasExcludeTypes;
+    },
+    {
+      message: "Either nodeTypes or excludeTypes must be provided (but not both)"
+    }
+  ),
+});
+
 // =============================================================================
 // SERVER SETUP
 // =============================================================================
@@ -488,6 +508,50 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                   description: "Filter by node type (case-insensitive, e.g., 'gene', 'disease')",
                 },
               },
+            },
+          },
+          required: ["databaseContext", "criteria"],
+        },
+      },
+      {
+        name: "bulkRemoveNodesByType",
+        description: "Efficiently remove multiple nodes based on their type or exclusion criteria. " +
+          "This is much faster than calling removeNode multiple times. " +
+          "Supports two modes: 1) Delete specific node types, or 2) Delete everything except specified types. " +
+          "Type matching is case-insensitive (e.g., 'Gene', 'gene', 'GENE' all match). " +
+          "Use this for bulk cleanup operations like 'remove all diseases' or 'keep only genes and proteins'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            criteria: {
+              type: "object",
+              properties: {
+                nodeTypes: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Array of node types to delete (e.g., ['gene', 'disease']). Case-insensitive matching.",
+                },
+                excludeTypes: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Array of node types to keep (delete everything except these). Case-insensitive matching.",
+                },
+                preview: {
+                  type: "boolean",
+                  description: "If true, preview what would be deleted without actually deleting",
+                  default: false,
+                },
+              },
+              required: [],
             },
           },
           required: ["databaseContext", "criteria"],
@@ -936,6 +1000,92 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         refreshGraph: true
       };
 
+    } else if (name === "bulkRemoveNodesByType") {
+      const { databaseContext, criteria } = BulkRemoveNodesByTypeArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Bulk removing nodes by type`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      console.error(`[${SERVICE_NAME}] Criteria:`, JSON.stringify(criteria, null, 2));
+      
+      // Make API call to backend
+      const result = await makeAPIRequest(
+        '/nodes/by-type',
+        databaseContext,
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({
+            nodeTypes: criteria.nodeTypes,
+            excludeTypes: criteria.excludeTypes,
+            preview: criteria.preview
+          })
+        }
+      );
+      
+      if (!result || !result.success) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to bulk remove nodes by type: ${result?.error || 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+      
+      if (criteria.preview) {
+        // Preview mode - show what would be deleted
+        const nodesToDelete = result.data?.nodesToDelete || [];
+        const count = result.data?.count || 0;
+        
+        if (count === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No nodes found matching the specified criteria.",
+              },
+            ],
+          };
+        }
+        
+        const nodeList = nodesToDelete.slice(0, 10).map((node: any) => 
+          `${node.label} (${node.type})`
+        ).join(', ');
+        const moreText = count > 10 ? ` and ${count - 10} more...` : '';
+        
+        const criteriaDesc = criteria.nodeTypes && criteria.nodeTypes.length > 0 
+          ? `types: ${criteria.nodeTypes.join(', ')}`
+          : `exclude types: ${criteria.excludeTypes?.join(', ') || 'none'}`;
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Preview: Would delete ${count} nodes matching criteria (${criteriaDesc}).\n\n` +
+                    `Sample nodes: ${nodeList}${moreText}\n\n` +
+                    `Set preview: false to perform the actual deletion.`,
+            },
+          ],
+        };
+      } else {
+        // Actual deletion
+        const deletedCount = result.data?.deletedCount || 0;
+        const criteriaDesc = criteria.nodeTypes && criteria.nodeTypes.length > 0 
+          ? `types: ${criteria.nodeTypes.join(', ')}`
+          : `exclude types: ${criteria.excludeTypes?.join(', ') || 'none'}`;
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Bulk removal completed: ${deletedCount} nodes removed successfully. ` +
+                    `Criteria: ${criteriaDesc}`,
+            },
+          ],
+          refreshGraph: true
+        };
+      }
+
     } else {
       throw new Error(`Unknown tool: ${name}`);
     }
@@ -973,7 +1123,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   console.error(`[${SERVICE_NAME}] Starting Graph Mode MCP Server`);
   console.error(`[${SERVICE_NAME}] Default API Base URL: ${DEFAULT_API_BASE_URL}`);
-  console.error(`[${SERVICE_NAME}] Available tools: removeNode, removeEdge, getGraphState, bulkRemoveNodes, bulkRemoveEdges, removeNodesByDegree`);
+  console.error(`[${SERVICE_NAME}] Available tools: removeNode, removeEdge, getGraphState, bulkRemoveNodes, bulkRemoveEdges, removeNodesByDegree, bulkRemoveNodesByType`);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
