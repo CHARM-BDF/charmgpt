@@ -1297,39 +1297,6 @@ export const ArtifactContent: React.FC<{
                 </button>
               </div>
               
-              {/* Secondary function row - positioned on the right */}
-              <div className="flex justify-end items-center gap-2 mt-2">
-                {/* Debug button */}
-                <button
-                  onClick={() => {
-                    console.log('🖱️ DEBUG BUTTON CLICKED - Current rendered data:');
-                    console.log('📊 Rendered nodes:', graphData?.nodes?.length || 0);
-                    console.log('📊 Rendered nodes details:', graphData?.nodes?.map(n => ({
-                      id: n.id,
-                      label: n.label,
-                      isCluster: n.isCluster,
-                      size: n.size || n.val,
-                      category: n.category
-                    })) || []);
-                    console.log('🔗 Rendered edges:', graphData?.edges?.length || 0);
-                    console.log('🔗 Rendered edges details:', graphData?.edges?.map(e => ({
-                      id: e.id,
-                      source: e.source,
-                      target: e.target,
-                      label: e.label
-                    })) || []);
-                  }}
-                  className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors"
-                  title="Debug: Log current rendered nodes and edges"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Debug</span>
-                </button>
-                
-                {/* Space for additional functions - you can add more buttons here */}
-              </div>
             </>
           )}
         </div>
