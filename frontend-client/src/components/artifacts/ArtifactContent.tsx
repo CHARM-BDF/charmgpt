@@ -24,7 +24,7 @@ export const ArtifactContent: React.FC<{
   const [copySuccess, setCopySuccess] = useState(false);
   const [useReagraph,] = useState(false); // Temporarily disabled due to reagraph initialization error
   const [savingToProject, setSavingToProject] = useState(false);
-  const [editedCode, setEditedCode] = useState<string>('');
+  const [editedCode, setEditedCode] = useState<string>(artifact.content);
   
   // State for handling file reference artifacts
   const [fileContent, setFileContent] = useState<string>('');
@@ -42,9 +42,6 @@ export const ArtifactContent: React.FC<{
   const getPinnedGraphId = useChatStore(state => state.getPinnedGraphId);
   const { selectedProjectId } = useProjectStore();
   
-  // Code editor
-  const [editedCode, setEditedCode] = useState<string>(artifact.content);
-
   const isKnowledgeGraph = artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph';
   const isPinned = isPinnedArtifact(artifact.id);
   const isMarkdown = artifact.type === 'text/markdown';
