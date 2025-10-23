@@ -138,7 +138,7 @@ interface CodeBlockAccumulator {
 
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
   console.log('🔍 AssistantMarkdown: Component rendered with content:', content?.substring(0, 200));
-  const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow, addMessage, setIsLoading } = useChatStore();
+  const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
 
   // Add debug logging
   // console.log('AssistantMarkdown received content:', {
@@ -382,23 +382,97 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
         const type = decodeURIComponent(parts[2] || 'Unknown');
         console.log('🎯 AssistantMarkdown: Decoded values:', { curie, name, type });
         
-        const handleAddGraphNode = () => {
+        const handleAddGraphNode = async () => {
           console.log('🚀 Button clicked! Adding node:', { curie, name, type });
           
-          // Create user message that triggers the tool
-          const message = `Add node ${curie} (${name}) to the graph`;
-          console.log('🚀 Creating user message:', message);
+          const currentConversationId = useChatStore.getState().currentConversationId;
+          if (!currentConversationId) {
+            console.error('No conversation ID available');
+            return;
+          }
           
-          // Add as user message and trigger AI response
-          addMessage({
-            role: 'user',
-            content: message,
-            timestamp: new Date().toISOString()
-          });
-          
-          setIsLoading(true);
-          console.log('🚀 Set loading to true, message should appear in chat');
-          // The normal chat flow will handle calling the MCP tool
+          try {
+            // 1. Normalize the node using Node Normalizer API
+            const normalizerUrl = "https://nodenorm.transltr.io/1.5/get_normalized_nodes";
+            const queryParams = new URLSearchParams({ 
+              curie: curie, 
+              conflate: "true",
+              drug_chemical_conflate: "false",
+              description: "false",
+              individual_types: "false"
+            });
+            
+            console.log('🔍 Normalizing node:', curie);
+            const normResponse = await fetch(`${normalizerUrl}?${queryParams}`);
+            
+            if (!normResponse.ok) {
+              throw new Error(`Node normalization failed: ${normResponse.statusText}`);
+            }
+            
+            const normalizedData = await normResponse.json();
+            const nodeData = normalizedData[curie];
+            
+            if (!nodeData) {
+              throw new Error(`Could not normalize ${curie}`);
+            }
+            
+            // 2. Prepare node data for graph
+            const preferredId = nodeData.id?.identifier || curie;
+            const label = nodeData.id?.label || name;
+            const types = nodeData.type || [];
+            const semanticType = types[0]?.replace('biolink:', '') || type || 'Unknown';
+            
+            const nodeDataForGraph = {
+              id: preferredId,
+              label: label,
+              type: semanticType,
+              data: JSON.stringify({
+                equivalentIds: nodeData.equivalent_identifiers || [],
+                semanticTypes: types,
+                informationContent: nodeData.information_content || 0,
+                originalCurie: curie
+              }),
+              position: JSON.stringify({ x: 0, y: 0 })
+            };
+            
+            // 3. Add to graph via backend API
+            console.log('➕ Adding node to graph:', preferredId);
+            const response = await fetch(`/api/graph/${currentConversationId}/nodes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(nodeDataForGraph)
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to add node: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log('✅ Node added successfully:', result);
+            
+            // 4. Trigger graph refresh by dispatching custom event
+            window.dispatchEvent(new CustomEvent('graph-node-added', { 
+              detail: { nodeId: preferredId, label } 
+            }));
+            
+            // 5. Show success notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+            notification.textContent = `✅ Added ${label} to graph`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+            
+            console.log(`✅ Successfully added ${label} to the graph!`);
+            
+          } catch (error) {
+            console.error('❌ Error adding node:', error);
+            // Show error notification
+            const errorNotification = document.createElement('div');
+            errorNotification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+            errorNotification.textContent = `❌ Failed to add ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            document.body.appendChild(errorNotification);
+            setTimeout(() => errorNotification.remove(), 5000);
+          }
         };
         
         console.log('🎯 AssistantMarkdown: Rendering graphnode button');
@@ -490,8 +564,6 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
           rehypePlugins={[rehypeRaw as any]}
           /* react-markdown v8 */
           transformLinkUri={allowGraphnodeProtocol as any}
-          /* react-markdown v9 */
-          urlTransform={allowGraphnodeProtocol as any}
           components={{
             ...markdownComponents,
             button: ({node, ...props}: any) => {

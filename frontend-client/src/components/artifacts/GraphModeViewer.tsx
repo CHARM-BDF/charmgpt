@@ -414,6 +414,21 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     return unsubscribe;
   }, [currentConversationId, loadGraphDataFromDatabase]);
 
+  // Listen for direct node additions from interactive buttons
+  useEffect(() => {
+    const handleNodeAdded = (event: CustomEvent) => {
+      console.log('📢 Node added event received:', event.detail);
+      // Trigger a graph refresh
+      loadGraphDataFromDatabaseWithRetry(0);
+    };
+    
+    window.addEventListener('graph-node-added', handleNodeAdded as EventListener);
+    
+    return () => {
+      window.removeEventListener('graph-node-added', handleNodeAdded as EventListener);
+    };
+  }, [loadGraphDataFromDatabaseWithRetry]);
+
   // Adjust dimensions based on container size
   useEffect(() => {
     if (containerRef.current) {
