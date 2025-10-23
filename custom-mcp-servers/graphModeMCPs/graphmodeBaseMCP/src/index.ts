@@ -120,6 +120,12 @@ const NormalizeNodeArgumentsSchema = z.object({
   individualTypes: z.boolean().optional().default(false).describe("Whether to return individual types for equivalent identifiers (default: false)"),
 });
 
+// Schema for add node by CURIE tool
+const AddNodeByCurieArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  nodeId: z.string().min(1, "Node CURIE is required").describe("The CURIE identifier to add (e.g., 'MONDO:0007254', 'NCBIGene:994')"),
+});
+
 // =============================================================================
 // SERVER SETUP
 // =============================================================================
@@ -580,11 +586,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         description: "Add a node to the graph by searching for it using natural language. " +
           "Uses the SRI Name Resolver API to find the best match for the given name. " +
           "If there's only one clear match, automatically adds the node. " +
-          "If there are multiple matches, returns the top 10 best matches with CURIEs for user selection. " +
+          "If there are multiple matches, returns the top 10 best matches with interactive buttons for user selection. " +
           "Supports filtering by Biolink types (e.g., 'Disease', 'Gene', 'Protein'). " +
           "Use this for natural language node addition like 'add breast cancer' or 'add BRCA1 gene'. " +
           "IMPORTANT: If you see a node name with a CURIE in parentheses like 'CDC25B (NCBIGene:994)', " +
-          "just use the text part 'CDC25B' - do not include the CURIE in parentheses.",
+          "just use the text part 'CDC25B' - do not include the CURIE in parentheses. " +
+          "CRITICAL: When multiple matches are found, display the response exactly as returned - do not paraphrase or reformat the interactive buttons.",
         inputSchema: {
           type: "object",
           properties: {
@@ -660,6 +667,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "boolean",
               description: "Whether to return individual types for equivalent identifiers (default: false)",
               default: false,
+            },
+          },
+          required: ["databaseContext", "nodeId"],
+        },
+      },
+      {
+        name: "addNodeByCurie",
+        description: "Add a node to the graph using a specific CURIE identifier. " +
+          "Automatically normalizes the node using Node Normalizer API to get complete information. " +
+          "Use this when you have a specific CURIE (e.g., from search results).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                artifactId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            nodeId: {
+              type: "string",
+              description: "The CURIE identifier (e.g., 'MONDO:0007254', 'NCBIGene:994')",
             },
           },
           required: ["databaseContext", "nodeId"],
@@ -1197,6 +1230,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     } else if (name === "addNodeByName") {
       const { databaseContext, nodeName, biolinkTypes, autoAdd } = AddNodeByNameArgumentsSchema.parse(args);
       
+      console.error(`[${SERVICE_NAME}] ===== ADD NODE BY NAME CALLED =====`);
       console.error(`[${SERVICE_NAME}] Adding node by name: ${nodeName}`);
       console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
       console.error(`[${SERVICE_NAME}] Biolink types: ${biolinkTypes?.join(', ') || 'none'}`);
@@ -1298,17 +1332,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       
       // Multiple matches or autoAdd is false - return matches for user selection
-      const matchList = matches.slice(0, 10).map((match: any, index: number) => 
-        `${index + 1}. **${match.label}** (${match.curie})\n   Type: ${match.types?.[0] || 'Unknown'}\n   Score: ${match.score || 'N/A'}\n   Synonyms: ${(match.synonyms || []).slice(0, 3).join(', ')}${(match.synonyms || []).length > 3 ? '...' : ''}`
-      ).join('\n\n');
+      const matchList = matches.slice(0, 10).map((match: any, index: number) => {
+        const curie = encodeURIComponent(match.curie);
+        const name = encodeURIComponent(match.label);
+        const types = encodeURIComponent(match.types?.[0] || 'Unknown');
+        
+        const linkText = `[🔘 Add ${match.label}](graphnode:add:${curie}:${name}:${types})`;
+        console.error(`[${SERVICE_NAME}] Generated link for ${match.label}: ${linkText}`);
+        
+        return `${linkText} - **${match.curie}**\n` +
+               `   Type: ${match.types?.[0] || 'Unknown'} | Score: ${match.score || 'N/A'}`;
+      }).join('\n\n');
+      
+      const fullResponse = `Found ${matches.length} matches for '${nodeName}':\n\n${matchList}\n\n` +
+                          `Click any button to add that node to the graph.`;
+      
+      console.error(`[${SERVICE_NAME}] Full response with buttons:`, fullResponse);
       
       return {
         content: [
           {
             type: "text",
-            text: `Found ${matches.length} matches for '${nodeName}':\n\n${matchList}\n\n` +
-                  `To add a specific match, use the node ID (CURIE) with the regular node addition tools. ` +
-                  `The best match is: **${matches[0].label}** (${matches[0].curie})`,
+            text: fullResponse,
           },
         ],
       };
@@ -1410,6 +1455,104 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   `**Total Equivalent Identifiers**: ${equivalentIds.length}`,
           },
         ],
+      };
+
+    } else if (name === "addNodeByCurie") {
+      const { databaseContext, nodeId } = AddNodeByCurieArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Adding node by CURIE: ${nodeId}`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      
+      // 1. Normalize the node
+      const normalizerUrl = "https://nodenorm.transltr.io/1.5/get_normalized_nodes";
+      const queryParams = new URLSearchParams({ 
+        curie: nodeId, 
+        conflate: "true",
+        drug_chemical_conflate: "false",
+        description: "false",
+        individual_types: "false"
+      });
+      
+      console.error(`[${SERVICE_NAME}] Calling Node Normalizer API: ${normalizerUrl}?${queryParams}`);
+      const normResponse = await fetch(`${normalizerUrl}?${queryParams}`);
+      console.error(`[${SERVICE_NAME}] Node Normalizer API response status: ${normResponse.status}`);
+      
+      if (!normResponse.ok) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to normalize node '${nodeId}': ${normResponse.status} ${normResponse.statusText}`,
+            },
+          ],
+        };
+      }
+      
+      const normalizedData = await normResponse.json();
+      console.error(`[${SERVICE_NAME}] Got normalized data for ${Object.keys(normalizedData).length} nodes`);
+      
+      const nodeData = normalizedData[nodeId];
+      if (!nodeData) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Could not normalize ${nodeId}. The identifier may not be recognized by the Node Normalizer.`,
+            },
+          ],
+        };
+      }
+      
+      // 2. Add to graph
+      const preferredId = nodeData.id?.identifier || nodeId;
+      const label = nodeData.id?.label || nodeId;
+      const types = nodeData.type || [];
+      const semanticType = types[0]?.replace('biolink:', '') || 'Unknown';
+      
+      const nodeDataForGraph = {
+        id: preferredId,
+        label: label,
+        type: semanticType,
+        data: JSON.stringify({
+          equivalentIds: nodeData.equivalent_identifiers || [],
+          semanticTypes: types,
+          informationContent: nodeData.information_content || 0,
+          originalCurie: nodeId
+        }),
+        position: JSON.stringify({ x: 0, y: 0 })
+      };
+      
+      console.error(`[${SERVICE_NAME}] Node data prepared: ${JSON.stringify(nodeDataForGraph)}`);
+      console.error(`[${SERVICE_NAME}] Making API request to add node...`);
+      
+      const addResult = await makeAPIRequest('/nodes', databaseContext, {
+        method: 'POST',
+        body: JSON.stringify(nodeDataForGraph)
+      });
+      
+      console.error(`[${SERVICE_NAME}] Add node result: ${JSON.stringify(addResult)}`);
+      
+      if (!addResult || !addResult.success) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to add node '${label}' to the graph: ${addResult?.error || 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ Added **${label}** (${preferredId}) to the graph!\n` +
+                  `Type: ${semanticType}\n` +
+                  `Information Content: ${(nodeData.information_content || 0).toFixed(2)}%`,
+          },
+        ],
+        refreshGraph: true
       };
 
     } else {

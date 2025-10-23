@@ -137,7 +137,8 @@ interface CodeBlockAccumulator {
 }
 
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
-  const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
+  console.log('🔍 AssistantMarkdown: Component rendered with content:', content?.substring(0, 200));
+  const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow, addMessage, setIsLoading } = useChatStore();
 
   // Add debug logging
   // console.log('AssistantMarkdown received content:', {
@@ -146,16 +147,41 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
   //   isString: typeof content === 'string'
   // });
 
-  // Process content to properly format buttons and sections
+  // Process content and add fallback: convert LLM-emitted <button> rows into graphnode:add links
   const processContent = (rawContent: string): string => {
-    // Split content into sections and wrap each in a div
-    return rawContent
+    let transformed = rawContent;
+
+    // Fallback 1: Convert patterns like
+    //   <button>🔘 Add NAME</button> - <strong>CURIE</strong>\n   Type: TYPE | Score: ...
+    // into markdown link: [🔘 Add NAME](graphnode:add:CURIE:NAME:TYPE) - **CURIE**\n   Type: TYPE | Score: ...
+    transformed = transformed.replace(
+      /<button[^>]*>\s*🔘\s*Add\s*([^<]+?)\s*<\/button>\s*-\s*<strong>([^<]+)<\/strong>([\s\S]*?Type:\s*([^|\n]+))/gi,
+      (_m, name, curie, tail, type) => {
+        const encCurie = encodeURIComponent(curie.trim());
+        const encName = encodeURIComponent(String(name).trim());
+        const encType = encodeURIComponent(String(type).trim());
+        return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">🔘 Add ${name}</a> - <strong>${curie}</strong>${tail}`;
+      }
+    );
+
+    // Fallback 2: If we don't find a Type segment, still convert button+CURIE into a link with Unknown type
+    transformed = transformed.replace(
+      /<button[^>]*>\s*🔘\s*Add\s*([^<]+?)\s*<\/button>\s*-\s*<strong>([^<]+)<\/strong>/gi,
+      (_m, name, curie) => {
+        const encCurie = encodeURIComponent(String(curie).trim());
+        const encName = encodeURIComponent(String(name).trim());
+        const encType = encodeURIComponent('Unknown');
+        return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">🔘 Add ${name}</a> - <strong>${curie}</strong>`;
+      }
+    );
+
+    // Wrap sections in divs for spacing (post-transform)
+    return transformed
       .split(/(<button.*?<\/button>)/g)
       .map((section, _index) => {
         if (section.startsWith('<button')) {
           return `<div class="my-4">${section}</div>`;
         } else if (section.trim()) {
-          // Don't wrap sections that start with heading markers in divs
           if (section.trim().match(/^#+\s/)) {
             return section;
           }
@@ -229,6 +255,10 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       toggleArtifactWindow();
     }
   };
+
+  // Allow custom graphnode:add: links to pass through ReactMarkdown URL sanitization
+  const allowGraphnodeProtocol = (url?: string) =>
+    typeof url === 'string' && url.startsWith('graphnode:add:') ? url : url;
 
   // Clean up content by removing leading spaces while preserving markdown
   const markdownComponents = {
@@ -322,6 +352,8 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       <hr className="my-8 border-t border-gray-300 dark:border-gray-700" {...props} />
     ),
     a: ({node, href, children, ...props}: any) => {
+      console.log('🔍 AssistantMarkdown: Processing link:', { href, children: children?.[0] });
+      
       if (href?.startsWith('artifact:')) {
         const uuid = href.replace('artifact:', '');
         console.log('AssistantMarkdown: Processing artifact link with uuid:', uuid);
@@ -337,6 +369,49 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
             onClick={() => selectArtifact(uuid)}
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
+            {children}
+          </button>
+        );
+      }
+      if (href?.startsWith('graphnode:add:')) {
+        console.log('🎯 AssistantMarkdown: Processing graphnode link:', href);
+        const parts = href.replace('graphnode:add:', '').split(':');
+        console.log('🎯 AssistantMarkdown: Parsed parts:', parts);
+        const curie = decodeURIComponent(parts[0]);
+        const name = decodeURIComponent(parts[1]);
+        const type = decodeURIComponent(parts[2] || 'Unknown');
+        console.log('🎯 AssistantMarkdown: Decoded values:', { curie, name, type });
+        
+        const handleAddGraphNode = () => {
+          console.log('🚀 Button clicked! Adding node:', { curie, name, type });
+          
+          // Create user message that triggers the tool
+          const message = `Add node ${curie} (${name}) to the graph`;
+          console.log('🚀 Creating user message:', message);
+          
+          // Add as user message and trigger AI response
+          addMessage({
+            role: 'user',
+            content: message,
+            timestamp: new Date().toISOString()
+          });
+          
+          setIsLoading(true);
+          console.log('🚀 Set loading to true, message should appear in chat');
+          // The normal chat flow will handle calling the MCP tool
+        };
+        
+        console.log('🎯 AssistantMarkdown: Rendering graphnode button');
+        return (
+          <button
+            onClick={handleAddGraphNode}
+            className="inline-flex items-center gap-2 px-3 py-1.5 
+                      bg-green-50 hover:bg-green-100
+                      text-green-700 dark:bg-green-900/30 dark:text-green-300
+                      rounded-md border border-green-200 dark:border-green-800
+                      transition-colors duration-200 text-sm font-medium"
+          >
+            <span className="text-lg">🔘</span>
             {children}
           </button>
         );
@@ -413,6 +488,10 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
           children={cleanContent}
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeRaw as any]}
+          /* react-markdown v8 */
+          transformLinkUri={allowGraphnodeProtocol as any}
+          /* react-markdown v9 */
+          urlTransform={allowGraphnodeProtocol as any}
           components={{
             ...markdownComponents,
             button: ({node, ...props}: any) => {
