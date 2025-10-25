@@ -93,14 +93,14 @@ export class AnthropicVertexProvider implements LLMProvider {
     });
     
     // Set default model - use Vertex AI model names
-    this.defaultModel = options.model || 'claude-sonnet-4@20250514';
+    this.defaultModel = options.model || 'claude-sonnet-4-5';
     
     // Override the incoming model parameter if it's a non-Claude model
     let modelToUse = options.model;
     
     // If no model specified or it's not a Claude model, use the default
     if (!modelToUse || modelToUse.includes('gpt') || modelToUse.includes('gemini')) {
-      modelToUse = 'claude-sonnet-4@20250514';
+      modelToUse = 'claude-sonnet-4-5';
       console.log(`AnthropicVertexProvider: Overriding non-Claude model with default: ${modelToUse}`);
     }
     
