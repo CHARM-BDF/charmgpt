@@ -278,6 +278,18 @@
         "NODE_ENV": "development"
       },
       "description": "BioThings Explorer TRAPI query integration for Graph Mode"
+    },
+    "graphmode-arax-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeARAXMCP/dist/index.js"
+      ],
+      "timeout": 120000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "ARAX Pathfinder integration for Graph Mode - Find paths between biomedical entities"
     }
   }
 }

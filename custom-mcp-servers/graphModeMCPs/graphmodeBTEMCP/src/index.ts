@@ -149,6 +149,76 @@ function normalizeCategoryToBiolink(category: string): string {
 }
 
 /**
+ * Map common predicates to appropriate target node categories
+ */
+const PREDICATE_CATEGORY_MAP: Record<string, string> = {
+  'biolink:has_molecular_function': 'biolink:MolecularActivity',
+  'biolink:has_biological_process': 'biolink:BiologicalProcess',
+  'biolink:has_cellular_component': 'biolink:CellularComponent',
+  'biolink:involved_in': 'biolink:Pathway',
+  'biolink:participates_in': 'biolink:Pathway',
+  'biolink:regulates': 'biolink:Gene',
+  'biolink:positively_regulates': 'biolink:Gene',
+  'biolink:negatively_regulates': 'biolink:Gene',
+  'biolink:treats': 'biolink:Disease',
+  'biolink:associated_with': 'biolink:Disease',
+  'biolink:causes': 'biolink:Disease',
+  'biolink:affects': 'biolink:Gene',
+  'biolink:interacts_with': 'biolink:Protein',
+};
+
+/**
+ * Get suggested target category based on predicate
+ */
+function getSuggestedCategoryForPredicate(predicate: string): string | null {
+  return PREDICATE_CATEGORY_MAP[predicate] || null;
+}
+
+/**
+ * Validate TRAPI query structure
+ * Returns error details if invalid, null if valid
+ */
+function validateQueryGraph(queryGraph: any): { error: string; details: any } | null {
+  const nodes = queryGraph.nodes || {};
+  const edges = queryGraph.edges || {};
+  
+  // Check all edge references
+  for (const [edgeId, edge] of Object.entries(edges)) {
+    const edgeData = edge as any;
+    
+    // Check subject exists
+    if (!nodes[edgeData.subject]) {
+      return {
+        error: `Edge ${edgeId} references subject '${edgeData.subject}' which is not defined in nodes`,
+        details: {
+          edge_id: edgeId,
+          missing_node_id: edgeData.subject,
+          edge_reference: 'subject',
+          defined_nodes: Object.keys(nodes),
+          predicates: edgeData.predicates || []
+        }
+      };
+    }
+    
+    // Check object exists
+    if (!nodes[edgeData.object]) {
+      return {
+        error: `Edge ${edgeId} references object '${edgeData.object}' which is not defined in nodes`,
+        details: {
+          edge_id: edgeId,
+          missing_node_id: edgeData.object,
+          edge_reference: 'object',
+          defined_nodes: Object.keys(nodes),
+          predicates: edgeData.predicates || []
+        }
+      };
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Make API request to GraphMode backend database
  */
 async function makeAPIRequest(
@@ -854,7 +924,128 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   const tools = [
     {
       name: "query_bte",
-      description: "Query BioThings Explorer (BTE) using TRAPI query graph format. Supports finding relationships between biomedical entities (genes, diseases, drugs, variants, etc.). Supports batch queries with multiple entity IDs. Results are added to the current graph visualization.",
+      description: "Query BioThings Explorer (BTE) using TRAPI query graph format. " +
+        "Supports finding relationships between biomedical entities (genes, diseases, drugs, variants, etc.). " +
+        "Supports batch queries with multiple entity IDs. Results are added to the current graph visualization.\n\n" +
+        
+        "**CRITICAL QUERY STRUCTURE RULES:**\n" +
+        "1. ✓ ALWAYS define ALL nodes that are referenced in edges\n" +
+        "2. ✓ If an edge has subject='n0', then 'n0' MUST exist in the nodes object\n" +
+        "3. ✓ If an edge has object='n1', then 'n1' MUST exist in the nodes object\n" +
+        "4. ✓ Each node must have either 'ids' (for known entities) OR 'categories' (for entity types to find)\n\n" +
+        
+        "**COMMON QUERY PATTERNS:**\n\n" +
+        
+        "Pattern 1 - Find related entities:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['NCBIGene:4353'], categories: ['biolink:Gene'] },\n" +
+        "  n1: { categories: ['biolink:Disease'] }  // ← target node MUST be defined\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1' }  // ← Note: NO predicate for general queries\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "Pattern 2 - Find molecular functions:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['NCBIGene:4353'] },\n" +
+        "  n1: { categories: ['biolink:MolecularActivity'] }  // ← required for molecular functions\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1' }  // ← NO predicate needed\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "Pattern 3 - Find pathways:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['NCBIGene:4353'] },\n" +
+        "  n1: { categories: ['biolink:Pathway'] }  // ← required for pathways\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1' }  // ← NO predicate or use biolink:participates_in\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "**CRITICAL: Do NOT Assume Predicates Based on Node Types**\n" +
+        "- Default to NO predicate (omit predicates field entirely) or use biolink:related_to for general queries\n" +
+        "- ONLY use specific predicates when the user explicitly describes a relationship\n" +
+        "- ONLY use predicates from the known Biolink predicate list below\n" +
+        "- Example: 'Find genes related to MPO' → use categories only, NO predicate field\n" +
+        "- Example: 'Find genes that regulate MPO' → use biolink:regulates predicate\n" +
+        "- Example: 'Find molecular functions of MPO' → use biolink:MolecularActivity category, NO predicate\n\n" +
+        
+        "**COMMON PREDICATE MISTAKES:**\n" +
+        "❌ AVOID: biolink:has_molecular_function (not a valid predicate in most KGs)\n" +
+        "✓ USE: Just specify biolink:MolecularActivity as the target category\n" +
+        "❌ AVOID: biolink:has_pathway (not a valid predicate)\n" +
+        "✓ USE: biolink:Pathway as category with NO predicate or biolink:participates_in\n\n" +
+        
+        "**Known Biolink Predicates (use ONLY when user specifies relationship):**\n" +
+        "- biolink:related_to - General relationship (default if unsure)\n" +
+        "- biolink:regulates - Regulatory relationship\n" +
+        "- biolink:positively_regulates - Upregulation\n" +
+        "- biolink:negatively_regulates - Downregulation\n" +
+        "- biolink:treats - Drug treats disease\n" +
+        "- biolink:associated_with - General association\n" +
+        "- biolink:affects - Effect on target\n" +
+        "- biolink:interacts_with - Physical interaction\n" +
+        "- biolink:participates_in - Participation in process/pathway\n" +
+        "- biolink:causes - Causal relationship\n\n" +
+        
+        "**RELEVANT BIOLINK CATEGORIES:**\n" +
+        "Use these categories for target nodes (n1, n2, etc.):\n\n" +
+        
+        "Priority Entity Types (Drug Repurposing Focus):\n" +
+        "- biolink:Gene - Genes and drug targets (e.g., BRCA1, TP53, EGFR)\n" +
+        "- biolink:Protein - Protein targets and biomarkers\n" +
+        "- biolink:Drug - Approved drugs (preferred for drug queries)\n" +
+        "- biolink:SmallMolecule - Drug candidates and research compounds\n" +
+        "- biolink:ChemicalEntity - General drugs/compounds (parent of Drug/SmallMolecule)\n" +
+        "- biolink:Disease - Diseases, conditions, and indications\n" +
+        "- biolink:PhenotypicFeature - Phenotypes, symptoms, and clinical features\n\n" +
+        
+        "Functional Annotation Categories:\n" +
+        "- biolink:MolecularActivity - Molecular functions (enzymatic activity, binding, catalysis)\n" +
+        "- biolink:BiologicalProcess - Biological processes (apoptosis, signaling, metabolism)\n" +
+        "- biolink:Pathway - Signaling and metabolic pathways\n" +
+        "- biolink:CellularComponent - Subcellular locations (nucleus, mitochondria, membrane)\n\n" +
+        
+        "Additional Useful Categories:\n" +
+        "- biolink:Cell - Cell types for specificity analysis\n" +
+        "- biolink:AnatomicalEntity - Tissues, organs, anatomical structures\n" +
+        "- biolink:GeneFamily - Gene families and target classes\n" +
+        "- biolink:ProteinDomain - Protein functional domains\n\n" +
+        
+        "**CATEGORY SELECTION GUIDE:**\n" +
+        "- Find genes related to X → biolink:Gene (NO predicate)\n" +
+        "- Find diseases associated with X → biolink:Disease (NO predicate)\n" +
+        "- Find drugs for X → biolink:Drug or biolink:SmallMolecule (NO predicate)\n" +
+        "- Find what X does → biolink:MolecularActivity or biolink:BiologicalProcess (NO predicate)\n" +
+        "- Find pathways X is in → biolink:Pathway (NO predicate or biolink:participates_in)\n" +
+        "- Find where X is located → biolink:CellularComponent (NO predicate)\n" +
+        "- Find genes that regulate X → biolink:Gene (WITH biolink:regulates predicate)\n" +
+        "- Find drugs that treat X → biolink:Drug (WITH biolink:treats predicate)\n\n" +
+        
+        "**DRUG REPURPOSING TIP:** Prefer biolink:Drug or biolink:SmallMolecule over biolink:ChemicalEntity for more specific results.\n\n" +
+        
+        "**SELF-VALIDATION CHECKLIST:**\n" +
+        "Before calling this tool, verify:\n" +
+        "✓ All edge subjects exist as node IDs in the nodes object\n" +
+        "✓ All edge objects exist as node IDs in the nodes object\n" +
+        "✓ Target nodes use categories from the list above\n" +
+        "✓ Categories match the query intent (e.g., molecular functions → biolink:MolecularActivity)\n" +
+        "✓ Node IDs are consistent (e.g., if edge uses 'n1', nodes must have 'n1')\n" +
+        "✓ Predicates are ONLY used when user specifies a relationship\n\n" +
+        
+        "**COMMON MISTAKES TO AVOID:**\n" +
+        "❌ Missing target node: edges reference 'n1' but nodes only defines 'n0'\n" +
+        "❌ Wrong category: using biolink:Pathway for molecular functions (should be biolink:MolecularActivity)\n" +
+        "❌ Typo in node ID: edge uses 'n1' but nodes defines 'n_1'\n" +
+        "❌ Hallucinated predicate: inventing predicates like biolink:has_molecular_function\n" +
+        "❌ Unnecessary predicate: using specific predicate when user just said 'find related'",
       inputSchema: {
         type: "object",
         properties: {
@@ -969,7 +1160,65 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       console.error(`[${SERVICE_NAME}] Executing BTE query`);
       console.error(`[${SERVICE_NAME}] Query description:`, generateQueryDescription(queryParams.query_graph));
 
-      // Step 1: Query BTE
+      // VALIDATE QUERY STRUCTURE BEFORE SENDING
+      const validationError = validateQueryGraph(queryParams.query_graph);
+      if (validationError) {
+        console.error(`[${SERVICE_NAME}] Query validation failed:`, validationError);
+        
+        // Generate suggested fix
+        const missingNodeId = validationError.details.missing_node_id;
+        const predicates = validationError.details.predicates || [];
+        const firstPredicate = predicates[0];
+        const suggestedCategory = firstPredicate ? getSuggestedCategoryForPredicate(firstPredicate) : null;
+        
+        // Build corrected query example
+        const correctedQuery = JSON.parse(JSON.stringify(queryParams.query_graph));
+        if (!correctedQuery.nodes[missingNodeId]) {
+          correctedQuery.nodes[missingNodeId] = {
+            categories: suggestedCategory ? [suggestedCategory] : ['biolink:NamedThing']
+          };
+        }
+        
+        return {
+          content: [{
+            type: "text",
+            text: `❌ Query Construction Error
+
+**Problem:** ${validationError.error}
+
+**Details:**
+- Edge ID: ${validationError.details.edge_id}
+- Missing node: ${missingNodeId}
+- Reference type: ${validationError.details.edge_reference}
+- Defined nodes: ${validationError.details.defined_nodes.join(', ')}
+
+**How to Fix:**
+Add the missing node definition to your query. Based on your predicate '${firstPredicate || 'unknown'}', the target node should likely be:
+
+\`\`\`json
+"${missingNodeId}": {
+  "categories": ["${suggestedCategory || 'biolink:NamedThing'}"]
+}
+\`\`\`
+
+**Corrected Query Example:**
+\`\`\`json
+${JSON.stringify(correctedQuery, null, 2)}
+\`\`\`
+
+**Action Required:**
+Retry your query with the corrected structure above. Make sure ALL nodes referenced in edges are defined in the nodes object.
+
+**Validation Checklist:**
+✓ Does every edge subject exist in nodes?
+✓ Does every edge object exist in nodes?
+✓ Do target nodes have appropriate categories?`
+          }],
+          isError: true
+        };
+      }
+
+      // Step 1: Query BTE (validation passed)
       const trapiResponse = await makeBTERequest(queryParams.query_graph);
 
       // Step 2: Process response and create graph elements
@@ -1095,11 +1344,74 @@ The graph state has not been modified.`
       };
     }
 
+    // Check if this is a BTE API error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isBTEError = errorMessage.includes('BTE API error');
+    const isQueryNotTraversable = errorMessage.includes('QueryNotTraversable');
+    
+    if (isBTEError && isQueryNotTraversable) {
+      // Extract details from error message
+      const isInvalidQuery = errorMessage.includes('InvalidQueryGraphError');
+      
+      return {
+        content: [{
+          type: "text",
+          text: `❌ BTE Query Structure Error
+
+**Error Type:** Query Not Traversable
+**Status:** The query structure is invalid
+
+**What This Means:**
+The BTE API rejected your query because it has a structural problem. This usually means:
+- A node referenced in edges is not defined in the nodes object
+- An edge points to a non-existent node
+- The query graph is incomplete
+
+**Common Causes:**
+1. Missing target node definition (most common)
+2. Typo in node ID references
+3. Edge references wrong node ID
+
+**How to Fix:**
+1. Check that ALL nodes used in edges are defined in the nodes object
+2. Verify node IDs match exactly (case-sensitive)
+3. Ensure target nodes have appropriate categories
+
+**Example of Correct Structure:**
+\`\`\`json
+{
+  "nodes": {
+    "n0": { "ids": ["NCBIGene:4353"] },
+    "n1": { "categories": ["biolink:MolecularActivity"] }  ← MUST be defined
+  },
+  "edges": {
+    "e0": { "subject": "n0", "object": "n1" }  ← both n0 and n1 must exist above
+  }
+}
+\`\`\`
+
+**Recommended Action:**
+Review your query structure and ensure all referenced nodes are properly defined. Retry with the corrected query.
+
+**Original Error:**
+${errorMessage}`
+        }],
+        isError: true
+      };
+    }
+
+    // Generic error fallback
     return {
       content: [{
         type: "text",
-        text: `❌ BTE Query Failed:\n${error instanceof Error ? error.message : String(error)}`
-      }]
+        text: `❌ BTE Query Failed:\n${errorMessage}\n\n` +
+              `**Troubleshooting:**\n` +
+              `- Verify all nodes referenced in edges are defined\n` +
+              `- Check that node IDs match exactly\n` +
+              `- Ensure target nodes have appropriate categories\n` +
+              `- Review the query construction rules in the tool description`
+      }],
+      isError: true
     };
   }
 });

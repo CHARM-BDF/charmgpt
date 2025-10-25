@@ -886,11 +886,10 @@ async function processTranslatorData(
       // Get analyses
       const analyses = result.analyses || [];
 
-      // Go through all analyses and get edge bindings
+      // Go through all analyses and get edge bindings OR path bindings
       for (const analysis of analyses) {
+        // Handle edge-based results (traditional)
         const edgeBindings = analysis.edge_bindings || {};
-        
-        // Check for edge bindings
         for (const edgeBindingKey of Object.keys(edgeBindings)) {
           const edgeObjects = edgeBindings[edgeBindingKey];
           
@@ -908,6 +907,37 @@ async function processTranslatorData(
               databaseContext
             );
             totalEdgesProcessed++;
+          }
+        }
+
+        // Handle path-based results (new format with auxiliary graphs)
+        const pathBindings = analysis.path_bindings || {};
+        for (const [pathKey, pathBindingsArray] of Object.entries(pathBindings)) {
+          const pathBindingsList = Array.isArray(pathBindingsArray) ? pathBindingsArray : [];
+          for (const pathBinding of pathBindingsList) {
+            const pathId = pathBinding.id;
+            
+            // Check if this path ID exists in auxiliary graphs
+            if (auxiliaryGraphs[pathId]) {
+              const auxGraph = auxiliaryGraphs[pathId];
+              
+              if (auxGraph.edges) {
+                // Process all edges in this auxiliary graph
+                for (const edgeId of auxGraph.edges) {
+                  await collectEdgeData(
+                    edgeId,
+                    nodes,
+                    edges,
+                    auxiliaryGraphs,
+                    processedNodes,
+                    nodesToCreate,
+                    edgesToCreate,
+                    databaseContext
+                  );
+                  totalEdgesProcessed++;
+                }
+              }
+            }
           }
         }
       }

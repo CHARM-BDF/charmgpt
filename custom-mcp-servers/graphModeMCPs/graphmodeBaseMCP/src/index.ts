@@ -108,6 +108,7 @@ const AddNodeByNameArgumentsSchema = z.object({
   nodeName: z.string().min(1, "Node name is required").describe("The name or description of the node to add (e.g., 'breast cancer', 'BRCA1', 'insulin'). If you see a name with a CURIE like 'CDC25B (NCBIGene:994)', just use 'CDC25B'."),
   biolinkTypes: z.array(z.string()).optional().describe("Optional Biolink types to filter results (e.g., ['Disease', 'Gene'])"),
   autoAdd: z.boolean().optional().default(true).describe("If true and there's only one clear match, automatically add the node. If false, always return matches for user selection."),
+  species: z.string().optional().describe("Optional species filter for gene searches only. Use NCBITaxon ID (e.g., 'NCBITaxon:9606' for human). Ignored for non-gene entity types."),
 });
 
 // Schema for normalize node tool
@@ -125,6 +126,38 @@ const AddNodeByCurieArgumentsSchema = z.object({
   databaseContext: DatabaseContextSchema,
   nodeId: z.string().min(1, "Node CURIE is required").describe("The CURIE identifier to add (e.g., 'MONDO:0007254', 'NCBIGene:994')"),
 });
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Map of common species taxon IDs to friendly names
+ */
+const SPECIES_NAMES: Record<string, string> = {
+  'NCBITaxon:9606': 'Human',
+  'NCBITaxon:10090': 'Mouse',
+  'NCBITaxon:10116': 'Rat',
+  'NCBITaxon:7955': 'Zebrafish',
+  'NCBITaxon:8355': 'Xenopus', // Xenopus laevis
+  'NCBITaxon:8364': 'Xenopus', // Xenopus tropicalis
+};
+
+/**
+ * Get friendly species name from taxa array
+ * Returns the first recognized species, or null if none found
+ */
+function getSpeciesName(taxa: string[] | undefined): string | null {
+  if (!taxa || taxa.length === 0) return null;
+  
+  for (const taxon of taxa) {
+    if (SPECIES_NAMES[taxon]) {
+      return SPECIES_NAMES[taxon];
+    }
+  }
+  
+  return null;
+}
 
 // =============================================================================
 // SERVER SETUP
@@ -588,7 +621,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           "If there's only one clear match, automatically adds the node. " +
           "If there are multiple matches, returns the top 10 best matches with interactive buttons for user selection. " +
           "Supports filtering by Biolink types (e.g., 'Disease', 'Gene', 'Protein'). " +
-          "Use this for natural language node addition like 'add breast cancer' or 'add BRCA1 gene'. " +
+          "Supports species filtering for genes (e.g., 'NCBITaxon:9606' for human, 'NCBITaxon:10090' for mouse). " +
+          "Species filter only applies to gene searches and is ignored for other entity types. " +
+          "Use this for natural language node addition like 'add breast cancer' or 'add human BRCA1 gene'. " +
           "IMPORTANT: If you see a node name with a CURIE in parentheses like 'CDC25B (NCBIGene:994)', " +
           "just use the text part 'CDC25B' - do not include the CURIE in parentheses. " +
           "CRITICAL: When multiple matches are found, display the response exactly as returned - do not paraphrase or reformat the interactive buttons.",
@@ -619,6 +654,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "boolean",
               description: "If true and there's only one clear match, automatically add the node. If false, always return matches for user selection.",
               default: true,
+            },
+            species: {
+              type: "string",
+              description: "Optional species filter for gene searches only. Use NCBITaxon ID (e.g., 'NCBITaxon:9606' for human, 'NCBITaxon:10090' for mouse). Ignored for non-gene entity types.",
             },
           },
           required: ["databaseContext", "nodeName"],
@@ -1228,12 +1267,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
     } else if (name === "addNodeByName") {
-      const { databaseContext, nodeName, biolinkTypes, autoAdd } = AddNodeByNameArgumentsSchema.parse(args);
+      const { databaseContext, nodeName, biolinkTypes, autoAdd, species } = AddNodeByNameArgumentsSchema.parse(args);
       
       console.error(`[${SERVICE_NAME}] ===== ADD NODE BY NAME CALLED =====`);
       console.error(`[${SERVICE_NAME}] Adding node by name: ${nodeName}`);
       console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
       console.error(`[${SERVICE_NAME}] Biolink types: ${biolinkTypes?.join(', ') || 'none'}`);
+      console.error(`[${SERVICE_NAME}] Species: ${species || 'none'}`);
       console.error(`[${SERVICE_NAME}] Auto-add: ${autoAdd}`);
       
       // Call SRI Name Resolver API
@@ -1247,6 +1287,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       
       if (biolinkTypes && biolinkTypes.length > 0) {
         queryParams.set('biolink_type', biolinkTypes.join(','));
+      }
+      
+      // Only apply species filter if:
+      // 1. Species is specified AND
+      // 2. Either no biolink types specified OR genes are included in the types
+      const isGeneSearch = !biolinkTypes || 
+        biolinkTypes.length === 0 || 
+        biolinkTypes.some(type => 
+          type.toLowerCase() === 'gene' || 
+          type === 'biolink:Gene'
+        );
+      
+      if (species && isGeneSearch) {
+        queryParams.set('only_taxa', species);
+        console.error(`[${SERVICE_NAME}] Applying species filter for gene search: ${species}`);
+      } else if (species && !isGeneSearch) {
+        console.error(`[${SERVICE_NAME}] Ignoring species filter for non-gene search`);
       }
       
       console.error(`[${SERVICE_NAME}] Calling Name Resolver API: ${nameResolverUrl}?${queryParams}`);
@@ -1319,12 +1376,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
         }
         
+        const speciesName = getSpeciesName(match.taxa);
+        const speciesInfo = speciesName ? ` | Species: ${speciesName}` : '';
+
         return {
           content: [
             {
               type: "text",
               text: `✅ Successfully added node '${match.label}' (${match.curie}) to the graph. ` +
-                    `Type: ${match.types?.[0] || 'Unknown'}, Score: ${match.score || 'N/A'}`,
+                    `Type: ${match.types?.[0] || 'Unknown'}${speciesInfo}, Score: ${match.score || 'N/A'}`,
             },
           ],
           refreshGraph: true
@@ -1337,11 +1397,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const name = encodeURIComponent(match.label);
         const types = encodeURIComponent(match.types?.[0] || 'Unknown');
         
-        const linkText = `[🔘 Add ${match.label}](graphnode:add:${curie}:${name}:${types})`;
+        // Get species name if available
+        const speciesName = getSpeciesName(match.taxa);
+        const labelWithSpecies = speciesName ? `${match.label} (${speciesName})` : match.label;
+        
+        const linkText = `[🔘 Add ${labelWithSpecies}](graphnode:add:${curie}:${name}:${types})`;
         console.error(`[${SERVICE_NAME}] Generated link for ${match.label}: ${linkText}`);
         
+        // Show species in the details line as well if available
+        const speciesInfo = speciesName ? ` | Species: ${speciesName}` : '';
         return `${linkText} - **${match.curie}**\n` +
-               `   Type: ${match.types?.[0] || 'Unknown'} | Score: ${match.score || 'N/A'}`;
+               `   Type: ${match.types?.[0] || 'Unknown'} | Score: ${match.score || 'N/A'}${speciesInfo}`;
       }).join('\n\n');
       
       const fullResponse = `Found ${matches.length} matches for '${nodeName}':\n\n${matchList}\n\n` +

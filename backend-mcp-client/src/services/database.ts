@@ -18,28 +18,13 @@ export function getPrismaClient(): PrismaClient {
       log: [
         {
           emit: 'event',
-          level: 'query',
-        },
-        {
-          emit: 'event',
           level: 'error',
-        },
-        {
-          emit: 'event',
-          level: 'info',
         },
         {
           emit: 'event',
           level: 'warn',
         },
       ],
-    });
-    
-    // Add event listeners for detailed logging
-    prisma.$on('query', (e) => {
-      console.error('🔍 [DATABASE-QUERY]', e.query);
-      console.error('🔍 [DATABASE-QUERY] Params:', e.params);
-      console.error('🔍 [DATABASE-QUERY] Duration:', e.duration + 'ms');
     });
     
     prisma.$on('error', (e) => {
