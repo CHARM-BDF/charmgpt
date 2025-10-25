@@ -220,11 +220,92 @@ export class ChatService {
     );
     
     // Build the system prompt for formatter
-    const formatterSystemPrompt = this.buildSystemPromptWithContext(
+    let formatterSystemPrompt = this.buildSystemPromptWithContext(
       formattedHistory,
       [formatterToolDefinition],
       toolChoice
     );
+    
+    // Add explicit formatting instructions for Anthropic models
+    // This helps ensure proper structured responses, especially on Vertex AI
+    formatterSystemPrompt += `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL: RESPONSE FORMATTING REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You MUST use the response_formatter tool for ALL responses. Follow these rules exactly:
+
+1. CONVERSATION FIELD REQUIREMENTS:
+   - The 'conversation' field MUST be an array of objects
+   - NEVER return 'conversation' as a string or other type
+   - Each object in the array MUST have a 'type' field
+   - The 'type' field MUST be either "text" or "artifact"
+   - ALWAYS include at least one item in the conversation array
+
+2. FOR TEXT RESPONSES:
+   Use this structure:
+   {
+     "type": "text",
+     "content": "Your response text here in markdown format"
+   }
+
+3. FOR ARTIFACTS (code, diagrams, etc.):
+   Use this structure:
+   {
+     "type": "artifact",
+     "content": "Brief description of the artifact",
+     "artifact": {
+       "type": "application/vnd.ant.code",
+       "title": "Descriptive title",
+       "content": "The actual artifact content",
+       "language": "javascript"
+     }
+   }
+
+4. EXAMPLES OF CORRECT FORMAT:
+
+   Simple text response:
+   {
+     "thinking": "User asked a question, I'll provide a clear answer",
+     "conversation": [
+       {
+         "type": "text",
+         "content": "Here is my response..."
+       }
+     ]
+   }
+
+   Text with code artifact:
+   {
+     "thinking": "User needs code, I'll provide it as an artifact",
+     "conversation": [
+       {
+         "type": "text",
+         "content": "I've created the function you requested."
+       },
+       {
+         "type": "artifact",
+         "content": "Implementation of the requested function",
+         "artifact": {
+           "type": "application/vnd.ant.code",
+           "title": "User Authentication Function",
+           "content": "function authenticate(user) { ... }",
+           "language": "javascript"
+         }
+       }
+     ]
+   }
+
+5. WHAT NOT TO DO:
+   ❌ NEVER: { "conversation": "text string" }
+   ❌ NEVER: { "conversation": [] }
+   ❌ NEVER: { "conversation": [{ "content": "..." }] } // missing 'type'
+   ✅ ALWAYS: { "conversation": [{ "type": "text", "content": "..." }] }
+
+If you fail to follow these rules, your response will be rejected and cause an error.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
     
     // Log detailed information about what's being sent to the formatter LLM
     console.log(`🔍 [FORMATTER INPUT] === BEGIN FORMATTER INPUT LOG ===`);
