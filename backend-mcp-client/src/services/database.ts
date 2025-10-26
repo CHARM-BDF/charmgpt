@@ -11,8 +11,7 @@ export function getPrismaClient(): PrismaClient {
       process.env.DATABASE_URL = `file:${projectRoot}/backend-mcp-client/prisma/dev.db`;
     }
     
-    console.error('🔍 [DATABASE-DEBUG] DATABASE_URL:', process.env.DATABASE_URL);
-    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
+    // Database connection initialized
     
     prisma = new PrismaClient({
       log: [
@@ -55,20 +54,7 @@ export class GraphDatabaseService {
   }
 
   async getGraphProject(conversationId: string) {
-    console.error('🔍 [DATABASE-DEBUG] getGraphProject called with conversationId:', conversationId);
-    console.error('🔍 [DATABASE-DEBUG] Current DATABASE_URL:', process.env.DATABASE_URL);
-    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
-    
     try {
-      // First, let's test if we can connect to the database at all
-      console.error('🔍 [DATABASE-DEBUG] Testing database connection...');
-      const tableCount = await this.prisma.$queryRaw`SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'`;
-      console.error('🔍 [DATABASE-DEBUG] Table count result:', JSON.stringify(tableCount, (key, value) => typeof value === 'bigint' ? value.toString() : value));
-      
-      // List all tables
-      const tables = await this.prisma.$queryRaw`SELECT name FROM sqlite_master WHERE type='table'`;
-      console.error('🔍 [DATABASE-DEBUG] Available tables:', JSON.stringify(tables, (key, value) => typeof value === 'bigint' ? value.toString() : value));
-      
       const result = await this.prisma.graphProject.findUnique({
         where: { conversationId },
         include: {
@@ -81,8 +67,6 @@ export class GraphDatabaseService {
         },
       });
       
-      console.error('🔍 [DATABASE-DEBUG] getGraphProject result:', result ? 'Found project' : 'No project found');
-      
       // Handle BigInt serialization
       if (result) {
         const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
@@ -93,22 +77,12 @@ export class GraphDatabaseService {
       
       return result;
     } catch (error) {
-      console.error('❌ [DATABASE-DEBUG] getGraphProject error:', error);
-      console.error('❌ [DATABASE-DEBUG] Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        meta: error.meta
-      });
+      console.error('❌ [DATABASE] getGraphProject error:', error);
       throw error;
     }
   }
 
   async getAllGraphProjects() {
-    console.error('🔍 [DATABASE-DEBUG] getAllGraphProjects called');
-    console.error('🔍 [DATABASE-DEBUG] Current DATABASE_URL:', process.env.DATABASE_URL);
-    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
-    
     try {
       const result = await this.prisma.graphProject.findMany({
         include: {
@@ -122,8 +96,6 @@ export class GraphDatabaseService {
         orderBy: { createdAt: 'desc' },
       });
       
-      console.error('🔍 [DATABASE-DEBUG] getAllGraphProjects result count:', result.length);
-      
       // Handle BigInt serialization
       const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
         typeof value === 'bigint' ? value.toString() : value
@@ -131,13 +103,7 @@ export class GraphDatabaseService {
       
       return serializedResult;
     } catch (error) {
-      console.error('❌ [DATABASE-DEBUG] getAllGraphProjects error:', error);
-      console.error('❌ [DATABASE-DEBUG] Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        meta: error.meta
-      });
+      console.error('❌ [DATABASE] getAllGraphProjects error:', error);
       throw error;
     }
   }

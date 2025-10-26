@@ -17,6 +17,8 @@ import { ResponseFormatterAdapter } from './formatters/types';
 import { mergeKnowledgeGraphs, KnowledgeGraph } from '../../utils/knowledgeGraphUtils';
 import { systemPrompt } from './systemPrompt';
 import { toolCallingSystemPrompt } from './systemPrompt_tools';
+import { normalModeSystemPrompt } from './normalModeSystemPrompt';
+import { graphModeSystemPrompt } from './graphModeSystemPrompt';
 import fs from 'fs';
 import path from 'path';
 
@@ -229,11 +231,20 @@ export class ChatService {
       options.pinnedArtifacts // Pinned artifacts (including file references)
     );
     
+    // Check if this is a Graph Mode conversation
+    const isGraphMode = await this.checkIfGraphModeConversation(this.currentConversationId);
+    console.log(`🔍 [FORMATTER-PROMPT] Conversation ${this.currentConversationId} is Graph Mode: ${isGraphMode}`);
+    
+    // Use appropriate base prompt based on conversation mode
+    const basePrompt = isGraphMode ? graphModeSystemPrompt : normalModeSystemPrompt;
+    console.log(`🔍 [FORMATTER-PROMPT] Using ${isGraphMode ? 'graph' : 'normal'} mode system prompt`);
+    
     // Build the system prompt for formatter
     let formatterSystemPrompt = this.buildSystemPromptWithContext(
       formattedHistory,
       [formatterToolDefinition],
-      toolChoice
+      toolChoice,
+      basePrompt
     );
     
     // Add explicit formatting instructions for Anthropic models
@@ -548,10 +559,11 @@ If you fail to follow these rules, your response will be rejected and cause an e
   private buildSystemPromptWithContext(
     history: ProviderChatMessage[],
     tools: any[] = [],
-    toolChoice?: { type?: string; name: string }
+    toolChoice?: { type?: string; name: string },
+    baseSystemPrompt?: string
   ): string {
-    // Use the toolCallingSystemPrompt for the tool-calling phase
-    let updatedSystemPrompt = toolCallingSystemPrompt;
+    // Use provided base prompt or default to toolCallingSystemPrompt for tool-calling phase
+    let updatedSystemPrompt = baseSystemPrompt || toolCallingSystemPrompt;
 
     // Add message history
     if (history.length > 0) {
@@ -607,7 +619,14 @@ If you fail to follow these rules, your response will be rejected and cause an e
     
     // Use the systemPrompt for the formatting phase
     if (toolChoice?.name === 'response_formatter') {
-      updatedSystemPrompt = systemPrompt;
+      // If no baseSystemPrompt was provided, use the default systemPrompt
+      // Otherwise, keep the baseSystemPrompt that was passed in (normal or graph mode)
+      if (!baseSystemPrompt) {
+        console.log(`🔍 [FORMATTER-PROMPT] No baseSystemPrompt provided, using default systemPrompt`);
+        updatedSystemPrompt = systemPrompt;
+      } else {
+        console.log(`🔍 [FORMATTER-PROMPT] Using provided baseSystemPrompt (${baseSystemPrompt.substring(0, 100)}...)`);
+      }
     }
     
     return updatedSystemPrompt;
@@ -1484,11 +1503,16 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
         }
         
         // Execute the tool call
+        console.error(`🔍 [CHAT-SERVICE-TOOL-EXECUTION] About to call tool: ${serverName}:${toolName}`);
+        console.error(`🔍 [CHAT-SERVICE-TOOL-EXECUTION] Args:`, JSON.stringify(enhancedInput, null, 2));
+        
         const toolResult = await this.mcpService.callTool(
           serverName,
           toolName,
           enhancedInput
         );
+        
+        console.error(`🔍 [CHAT-SERVICE-TOOL-EXECUTION] Tool response received:`, JSON.stringify(toolResult, null, 2));
         
         // Log tool execution result
         logChatServiceToolCall('TOOL_EXECUTION_RESULT', {
@@ -1506,6 +1530,21 @@ Avoid calling the same tools with identical or very similar parameters. Focus on
         const textContent = Array.isArray(toolResult.content) 
           ? toolResult.content.find((item: any) => item.type === 'text')?.text 
           : toolResult.content;
+        
+        // 🔍 DETAILED MCP TOOL RESULT LOGGING (ChatService)
+        if (textContent && typeof textContent === 'string') {
+          console.error('\n🔍 ===== CHAT-SERVICE MCP TOOL RESULT RECEIVED =====');
+          console.error(`Tool: ${toolCall.name}`);
+          console.error(`Server: ${serverName}`);
+          console.error(`Tool Name: ${toolName}`);
+          console.error(`Content Length: ${textContent.length} characters`);
+          console.error(`Content Preview (first 500 chars):`);
+          console.error(textContent.substring(0, 500));
+          if (textContent.length > 500) {
+            console.error('... (truncated)');
+          }
+          console.error('===== END CHAT-SERVICE MCP TOOL RESULT =====\n');
+        }
         
         if (textContent && typeof textContent === 'string') {
           // Check for errors in the tool result

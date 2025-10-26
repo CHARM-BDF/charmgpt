@@ -290,6 +290,14 @@
         "NODE_ENV": "development"
       },
       "description": "ARAX Pathfinder integration for Graph Mode - Find paths between biomedical entities"
+    },
+    "kappa_writer": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/kappa-writer-mcp/dist/index.js"
+      ],
+      "timeout": 30000,
+      "description": "Kappa Writer MCP - Provides Kappa syntax validation and writing guidance"
     }
   }
 }

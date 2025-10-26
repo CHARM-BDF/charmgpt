@@ -15,6 +15,7 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
   const processMessage = useChatStore(state => state.processMessage);
   const createNewChat = useChatStore(state => state.startNewConversation);
   const setProjectConversationFlow = useChatStore(state => state.setProjectConversationFlow);
+  const isLoading = useChatStore(state => state.isLoading);
   const { selectedProjectId } = useProjectStore();
   const addConversationToProject = useProjectStore(state => state.addConversationToProject);
   
@@ -58,6 +59,12 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
     e.preventDefault();
     if (!localInput.trim()) return;
 
+    // Store the input content before clearing
+    const inputContent = localInput;
+
+    // Clear the input immediately when user submits
+    debouncedUpdate('');
+
     if (selectedProjectId) {
       const conversationName = `Conversation ${new Date().toLocaleString()}`;
       const conversationId = createNewChat(conversationName);
@@ -66,7 +73,7 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
         addConversationToProject(selectedProjectId, conversationId, conversationName);
         addMessage({
           role: 'user',
-          content: localInput
+          content: inputContent
         });
         
         // Set the flag to indicate we're continuing a project conversation
@@ -75,13 +82,12 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
         
         onBack?.();
         try {
-          await processMessage(localInput);
+          await processMessage(inputContent);
         } catch (error) {
           console.error('Error processing message:', error);
         }
       }
     }
-    debouncedUpdate('');
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -105,16 +111,23 @@ export const ProjectChatInput: React.FC<ProjectChatInputProps> = ({ storageServi
           onChange={(e) => debouncedUpdate(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          className="w-full p-3 
+          disabled={isLoading}
+          className={`w-full p-3 
                    border border-gray-200 dark:border-gray-700
                    rounded-lg
                    focus:ring-2 focus:ring-blue-500 focus:border-transparent
                    font-mono text-sm
-                   bg-white dark:bg-gray-800 
-                   text-gray-900 dark:text-gray-100
                    resize-none
-                   min-h-[48px]"
-          placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+                   min-h-[48px]
+                   ${isLoading 
+                     ? 'bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
+                     : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                   }`}
+          placeholder={
+            isLoading 
+              ? "Processing your message..."
+              : "Type a message... (Enter to send, Shift+Enter for new line)"
+          }
         />
       </form>
     </div>

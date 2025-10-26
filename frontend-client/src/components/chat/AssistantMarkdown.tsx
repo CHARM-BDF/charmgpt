@@ -137,7 +137,6 @@ interface CodeBlockAccumulator {
 }
 
 export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content }) => {
-  console.log('🔍 AssistantMarkdown: Component rendered with content:', content?.substring(0, 200));
   const { artifacts, selectArtifact, showArtifactWindow, toggleArtifactWindow } = useChatStore();
 
   // Add debug logging

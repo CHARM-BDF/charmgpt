@@ -13,12 +13,26 @@ interface ApiKeyStatus {
 }
 
 /**
- * Fetch API key availability from server
+ * Fetch API key availability from server with retry logic
  */
-export async function fetchApiKeyStatus(): Promise<ApiKeyStatus> {
+export async function fetchApiKeyStatus(retries: number = 3): Promise<ApiKeyStatus> {
   try {
     const response = await fetch('/api/api-keys/status');
-    const result = await response.json();
+    
+    // Check if response is ok
+    if (!response.ok) {
+      console.error(`API key status request failed with status: ${response.status}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    // Check if response has content
+    const text = await response.text();
+    if (!text) {
+      console.error('Empty response from API key status endpoint');
+      throw new Error('Empty response');
+    }
+    
+    const result = JSON.parse(text);
     
     if (result.success) {
       return result.data;
@@ -34,6 +48,14 @@ export async function fetchApiKeyStatus(): Promise<ApiKeyStatus> {
     }
   } catch (error) {
     console.error('Error fetching API key status:', error);
+    
+    // Retry if we have retries left and it's a network/server error
+    if (retries > 0 && (error instanceof TypeError || error.message.includes('HTTP'))) {
+      console.log(`Retrying API key status fetch, ${retries} attempts left...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      return fetchApiKeyStatus(retries - 1);
+    }
+    
     // Return default status on error
     return {
       anthropic: false,

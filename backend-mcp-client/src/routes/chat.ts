@@ -430,8 +430,15 @@ router.post('/', async (req: Request<{}, {}, {
             }
           }
           
+          console.error(`🔍 [TOOL-EXECUTION] Reached tool execution point for: ${serverName}:${toolName}`);
+          
           // Execute tool
+          console.error(`🔍 [TOOL-EXECUTION] About to call tool: ${serverName}:${toolName}`);
+          console.error(`🔍 [TOOL-EXECUTION] Args:`, JSON.stringify(toolArguments, null, 2));
+          
           const toolResult = await mcpService.callTool(serverName, toolName, toolArguments);
+          
+          console.error(`🔍 [TOOL-EXECUTION] Tool response received:`, JSON.stringify(toolResult, null, 2));
 
           logToolCall('MCP_RESPONSE', {
             serverName,
@@ -596,6 +603,25 @@ router.post('/', async (req: Request<{}, {}, {
               : undefined;
 
             if (textContentItem) {
+              // 🔍 DETAILED MCP TOOL RESULT LOGGING
+              console.error('\n🔍 ===== MCP TOOL RESULT RECEIVED =====');
+              console.error(`Tool: ${content.name}`);
+              
+              // Extract MCP server name from tool name (format: serverName-toolName)
+              const toolNameParts = content.name.split('-');
+              const mcpServer = toolNameParts.length > 1 ? toolNameParts[0] : 'unknown';
+              const toolName = toolNameParts.length > 1 ? toolNameParts.slice(1).join('-') : content.name;
+              
+              console.error(`MCP Server: ${mcpServer}`);
+              console.error(`Tool Name: ${toolName}`);
+              console.error(`Content Length: ${textContentItem.text.length} characters`);
+              console.error(`Content Preview (first 500 chars):`);
+              console.error(textContentItem.text.substring(0, 500));
+              if (textContentItem.text.length > 500) {
+                console.error('... (truncated)');
+              }
+              console.error('===== END MCP TOOL RESULT =====\n');
+              
               logToolCall('TEXT_CONTENT_FOUND', {
                 textContent: textContentItem.text,
                 contentLength: textContentItem.text.length
@@ -607,10 +633,11 @@ router.post('/', async (req: Request<{}, {}, {
                 console.log(`Query successful with ${md.nodeCount ?? 0} nodes${md.bothDirectionsSuccessful ? ' (both directions complete)' : ''}`);
               }
 
-              // Add tool result as user message (like working version)
+              // Add tool result as user message with MCP context (reuse variables from above)
+              const toolResultText = `[MCP: ${mcpServer} | Tool: ${toolName}]\n\n${textContentItem.text}`;
               messages.push({
                 role: 'user',
-                content: [{ type: 'text', text: textContentItem.text }]
+                content: [{ type: 'text', text: toolResultText }]
               });
               
               logToolCall('CONVERSATION_UPDATE_TOOL_RESULT', {
@@ -675,6 +702,27 @@ router.post('/', async (req: Request<{}, {}, {
 
     // Final phase: Response formatting
     sendStatusUpdate('Generating final response...');
+    
+    // 🔍 LOGGING: What's being passed to the summarizer
+    console.error('\n🔍 ===== DATA BEING PASSED TO SUMMARIZER =====');
+    console.error(`Total messages: ${messages.length}`);
+    console.error('Message breakdown:');
+    messages.forEach((msg, index) => {
+      console.error(`Message ${index + 1} (${msg.role}):`);
+      if (Array.isArray(msg.content)) {
+        msg.content.forEach((contentItem, contentIndex) => {
+          if (contentItem.type === 'text') {
+            console.error(`  Content ${contentIndex + 1} (text): ${contentItem.text.substring(0, 200)}${contentItem.text.length > 200 ? '...' : ''}`);
+          } else {
+            console.error(`  Content ${contentIndex + 1} (${contentItem.type}): ${JSON.stringify(contentItem).substring(0, 200)}...`);
+          }
+        });
+      } else {
+        console.error(`  Content: ${typeof msg.content === 'string' ? msg.content.substring(0, 200) + '...' : JSON.stringify(msg.content).substring(0, 200) + '...'}`);
+      }
+    });
+    console.error('===== END SUMMARIZER INPUT =====\n');
+    
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
@@ -740,6 +788,28 @@ router.post('/', async (req: Request<{}, {}, {
       }],
       tool_choice: { type: "tool", name: "response_formatter" }
     });
+
+    // 🔍 LOGGING: Summarizer's response
+    console.error('\n🔍 ===== SUMMARIZER RESPONSE RECEIVED =====');
+    console.error('Response type:', response.content[0].type);
+    if (response.content[0].type === 'tool_use') {
+      console.error('Tool used:', response.content[0].name);
+      console.error('Tool input preview:');
+      const toolInput = response.content[0].input;
+      if (toolInput && toolInput.conversation) {
+        console.error(`Conversation array length: ${toolInput.conversation.length}`);
+        toolInput.conversation.forEach((item, index) => {
+          console.error(`  Item ${index + 1} (${item.type}):`);
+          if (item.type === 'text') {
+            console.error(`    Content: ${item.content.substring(0, 200)}${item.content.length > 200 ? '...' : ''}`);
+          } else if (item.type === 'artifact') {
+            console.error(`    Artifact: ${item.artifact.type} - ${item.artifact.title}`);
+            console.error(`    Content: ${item.artifact.content.substring(0, 200)}${item.artifact.content.length > 200 ? '...' : ''}`);
+          }
+        });
+      }
+    }
+    console.error('===== END SUMMARIZER RESPONSE =====\n');
 
     // Process and validate response
     if (response.content[0].type !== 'tool_use') {

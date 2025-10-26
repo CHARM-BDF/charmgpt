@@ -9,6 +9,8 @@ const router = Router();
  */
 router.get('/status', (req, res) => {
   try {
+    console.log('[API-KEYS] Checking API key status...');
+    
     const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
     
     // Check if API keys are real (not placeholder values)
@@ -20,23 +22,24 @@ router.get('/status', (req, res) => {
       process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
       process.env.OPENAI_API_KEY.length > 20;
     
-    const hasRealGeminiKey = process.env.GEMINI_API_KEY && 
-      process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here' &&
-      process.env.GEMINI_API_KEY.length > 20;
+    // For Gemini, we use Google Cloud Project configuration, not a separate API key
+    const hasRealGeminiKey = !!process.env.GOOGLE_CLOUD_PROJECT;
     
     const keyStatus = {
       anthropic: useVertexAI || hasRealAnthropicKey,
       openai: hasRealOpenAIKey,
-      gemini: useVertexAI || hasRealGeminiKey,
+      gemini: hasRealGeminiKey,
       ollama: true // Ollama runs locally, always available
     };
 
+    console.log('[API-KEYS] Key status:', keyStatus);
+    
     res.json({
       success: true,
       data: keyStatus
     });
   } catch (error) {
-    console.error('Error checking API keys:', error);
+    console.error('[API-KEYS] Error checking API keys:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to check API key status'

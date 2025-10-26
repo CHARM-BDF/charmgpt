@@ -26,6 +26,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   const createNewChat = useChatStore(state => state.startNewConversation);
   const currentConversationId = useChatStore(state => state.currentConversationId);
   const conversations = useChatStore(state => state.conversations);
+  const isLoading = useChatStore(state => state.isLoading);
   const { selectedProjectId } = useProjectStore();
 
   // Graph Mode detection
@@ -184,6 +185,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     e.preventDefault();
     if (!localInput.trim()) return;
 
+    // Store the input content before clearing
+    const inputContent = localInput;
+    const inputAttachments = [...attachments];
+
+    // Clear the input and attachments immediately when user submits
+    handleInputChange('');
+    setAttachments([]);
+
     // Get the project conversation flow state
     const inProjectConversationFlow = useChatStore.getState().inProjectConversationFlow;
 
@@ -196,15 +205,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         // Add user message to chat store first
         addMessage({
           role: 'user',
-          content: localInput,
-          attachments: attachments.length > 0 ? [...attachments] : undefined
+          content: inputContent,
+          attachments: inputAttachments.length > 0 ? inputAttachments : undefined
         });
 
         // Transition to chat interface immediately
         onBack?.();
 
         try {
-          await processMessage(localInput, attachments.length > 0 ? attachments : undefined);
+          await processMessage(inputContent, inputAttachments.length > 0 ? inputAttachments : undefined);
         } catch (error) {
           console.error('ChatInput: Error processing message:', error);
         }
@@ -221,20 +230,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
       // Add message to current conversation (either existing or newly created)
       addMessage({
         role: 'user',
-        content: localInput,
-        attachments: attachments.length > 0 ? [...attachments] : undefined
+        content: inputContent,
+        attachments: inputAttachments.length > 0 ? inputAttachments : undefined
       });
 
       try {
-        await processMessage(localInput, attachments.length > 0 ? attachments : undefined);
+        await processMessage(inputContent, inputAttachments.length > 0 ? inputAttachments : undefined);
       } catch (error) {
         console.error('ChatInput: Error processing message:', error);
       }
     }
-
-    // Clear the input and attachments after sending
-    handleInputChange('');
-    setAttachments([]);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -327,21 +332,26 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            className="w-full min-h-[96px] p-3 
+            disabled={isLoading}
+            className={`w-full min-h-[96px] p-3 
                      border border-stone-200/80 dark:border-gray-600/80 
                      rounded-t-xl rounded-b-none
                      focus:ring-2 focus:ring-blue-500 focus:border-transparent
                      font-mono text-base
-                     bg-white dark:bg-gray-700 
-                     text-gray-900 dark:text-gray-100
                      block align-bottom m-0
                      leading-normal
                      resize-none
-                     shadow-inner"
+                     shadow-inner
+                     ${isLoading 
+                       ? 'bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
+                       : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                     }`}
             placeholder={
-              isGraphModeConversation 
-                ? "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files or nodes)"
-                : "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
+              isLoading 
+                ? "Processing your message..."
+                : isGraphModeConversation 
+                  ? "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files or nodes)"
+                  : "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
             }
           />
         </form>
