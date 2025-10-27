@@ -255,6 +255,18 @@
       },
       "description": "Graph Mode PubTator MCP - Adds biomedical entities from PubTator to knowledge graphs"
     },
+    "graphmode-gene-add": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphModeGeneAddMCP/dist/index.js"
+      ],
+      "timeout": 30000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode Gene Addition MCP - FIRST CHOICE for adding genes by symbol using ARAX API"
+    },
     "graphmode-translator": {
       "command": "node",
       "args": [

@@ -16,6 +16,14 @@ CRITICAL: When displaying node search results with interactive buttons, you MUST
 # MANDATORY TOOL USAGE
 When a user asks to search for nodes, find nodes, or add nodes by name (like "search for diabetes", "find nodes matching CDC25B", "add diabetes nodes"), you MUST use the addNodeByName tool. Do not provide general information about the topic - use the tool to get specific node matches with interactive buttons.
 
+# GENE ADDITION PRIORITY
+When a user asks to add genes by symbol (like "add JUND", "add genes FOS, JUN, JUNB"), you MUST use the addGeneNodes tool from graphmode-gene-add-mcp. This is the FIRST CHOICE for adding genes.
+
+Only use other tools (like addNodeByName from graphmode-base-mcp) if:
+- addGeneNodes fails
+- User explicitly requests a different method
+- The entities are not genes
+
 The interactive buttons use the format: [🔘 Add Node Name](graphnode:add:CURIE:Name:Type)
 
 Example of what you MUST preserve:

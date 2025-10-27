@@ -1009,7 +1009,7 @@ Note: ${nodeResult.skipped} duplicate entities were automatically skipped.`
               id: generateCompositeEdgeId(
                 databaseContext.conversationId,
                 'pubtator',
-                relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+                'infores:pubtator',
                 relation.e1,
                 mapRelationshipType(relation.type),
                 relation.e2
@@ -1020,8 +1020,9 @@ Note: ${nodeResult.skipped} duplicate entities were automatically skipped.`
               data: {
                 type: relation.type,
                 source: 'pubtator',
-                primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
-                publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
+                primary_source: 'infores:pubtator',
+                publications: [], // PubTator relations endpoint only provides counts, not actual PMIDs
+                publication_count: relation.pmid || 0 // Store the count as metadata
               }
             };
             
@@ -1130,7 +1131,7 @@ Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate 
           id: generateCompositeEdgeId(
             databaseContext.conversationId,
             'pubtator',
-            relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            'infores:pubtator',
             relation.e1,
             mapRelationshipType(relation.type),
             relation.e2
@@ -1141,8 +1142,9 @@ Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate 
           data: {
             type: relation.type,
             source: 'pubtator',
-            primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
-            publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
+            primary_source: 'infores:pubtator',
+            publications: [], // PubTator relations endpoint only provides counts, not actual PMIDs
+            publication_count: relation.pmid || 0 // Store the count as metadata
           }
         };
         
@@ -1265,7 +1267,7 @@ Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate 
           id: generateCompositeEdgeId(
             databaseContext.conversationId,
             'pubtator',
-            relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
+            'infores:pubtator',
             relation.e1,
             mapRelationshipType(relation.type),
             relation.e2
@@ -1276,8 +1278,9 @@ Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate 
           data: {
             type: relation.type,
             source: 'pubtator',
-            primary_source: relation.pmid ? `PMID:${relation.pmid}` : 'infores:pubtator',
-            publications: relation.pmid ? [`PMID:${relation.pmid}`] : []
+            primary_source: 'infores:pubtator',
+            publications: [], // PubTator relations endpoint only provides counts, not actual PMIDs
+            publication_count: relation.pmid || 0 // Store the count as metadata
           }
         };
         
