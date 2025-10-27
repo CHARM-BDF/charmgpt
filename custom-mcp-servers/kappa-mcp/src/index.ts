@@ -136,6 +136,12 @@ function formatKappaError(errorMessage: string, sourceCode?: string): string {
   }
   
   formattedError += `${suggestions}\n\n`;
+  
+  // Add the all-caps important message
+  formattedError += `## 🚨 VERY IMPORTANT: RETURN THE FULL CORRECTED CODE\n\n`;
+  formattedError += `**DO NOT JUST SHOW SUGGESTIONS - THE USER WANTS THE COMPLETE FIXED CODE RETURNED.**\n`;
+  formattedError += `**USE THE ERROR INFORMATION ABOVE TO REWRITE THE ENTIRE KAPPA CODE AND RETURN IT FIXED.**\n\n`;
+  
   formattedError += `**Need Help?** Use the \`get-kappa-syntax-guide\` tool for comprehensive Kappa syntax rules.`;
   
   return formattedError;

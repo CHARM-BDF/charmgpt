@@ -401,12 +401,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         artifacts: [
           {
             type: "markdown",
-            content: `# Corrected Kappa Code\n\n\`\`\`kappa\n${correctedCode}\n\`\`\`\n\n## Fixes Applied\n\n${hasErrors ? 'See the validation report above for details on fixes applied.' : 'No syntax errors found.'}`,
-            metadata: {
-              title: 'Corrected Kappa Code',
-              description: 'Kappa code with syntax fixes applied',
-              tags: ['kappa', 'corrected', 'syntax-fixed']
-            }
+            title: "Corrected Kappa Code",
+            content: `# Corrected Kappa Code\n\n\`\`\`kappa\n${correctedCode}\n\`\`\`\n\n## Fixes Applied\n\n${hasErrors ? 'See the validation report above for details on fixes applied.' : 'No syntax errors found.'}`
           }
         ]
       };
