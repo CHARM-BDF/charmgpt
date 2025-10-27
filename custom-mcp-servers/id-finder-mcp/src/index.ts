@@ -85,7 +85,7 @@ function debugLog(message: string, data?: any) {
 }
 
 // ARAX entity API configuration
-const ARAX_API_URL = "https://arax.ci.transltr.io/api/arax/v1.4/entity";
+const ARAX_API_URL = "https://arax.ncats.io/api/arax/v1.4/entity";
 
 // Define patterns for entity recognition
 const GENE_PATTERN = /\b[A-Z0-9]{2,}[A-Z0-9]*\b/g;
