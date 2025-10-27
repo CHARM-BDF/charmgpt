@@ -117,8 +117,8 @@ const AddNodesFromTextArgumentsSchema = z.object({
 const AddNodesFromEntityNetworkArgumentsSchema = z.object({
   query: z.string().min(1, "Search query is required"),
   concept: z.enum(["gene", "disease", "chemical", "species", "cellline", "variant"]),
-  max_entities: z.number().min(1).max(20).optional().default(5),
-  max_relations_per_entity: z.number().min(10).max(500).optional().default(100),
+  max_entities: z.number().min(1).max(50).optional().default(20),
+  max_relations_per_entity: z.number().min(10).max(500).optional().default(200),
   relationship_types: z.array(z.enum(["associate", "inhibit", "negative_correlate", "positive_correlate", "interact", "stimulate"])).optional(),
   databaseContext: DatabaseContextSchema,
 });
@@ -140,6 +140,16 @@ const FindAllRelatedEntitiesArgumentsSchema = z.object({
   relationshipTypes: z.array(z.enum(["associate", "inhibit", "negative_correlate", "positive_correlate", "interact", "stimulate"])).optional(),
   maxResults: z.number().min(1).max(100).optional().default(30),
   databaseContext: DatabaseContextSchema,
+});
+
+// Schema for findPublicationsForRelationship tool
+const FindPublicationsForRelationshipArgumentsSchema = z.object({
+  entity1Id: z.string().min(1, "Entity 1 ID is required"),
+  entity1Name: z.string().min(1, "Entity 1 name is required"),
+  entity2Id: z.string().min(1, "Entity 2 ID is required"),
+  entity2Name: z.string().min(1, "Entity 2 name is required"),
+  relationshipType: z.enum(["associate", "inhibit", "stimulate", "interact", "ANY"]).optional().default("ANY"),
+  maxResults: z.number().min(1).max(20).optional().default(10)
 });
 
 // =============================================================================
@@ -620,16 +630,16 @@ const tools = [
         max_entities: {
           type: "number",
           minimum: 1,
-          maximum: 20,
-          default: 5,
-          description: "Maximum number of entities to find (default: 5)"
+          maximum: 50,
+          default: 20,
+          description: "Maximum number of entities to find (default: 20)"
         },
         max_relations_per_entity: {
           type: "number",
           minimum: 10,
           maximum: 500,
-          default: 100,
-          description: "Maximum number of relationships per entity (default: 100)"
+          default: 200,
+          description: "Maximum number of relationships per entity (default: 200)"
         },
         relationship_types: {
           type: "array",
@@ -746,6 +756,45 @@ const tools = [
         }
       },
       required: ["sourceEntity", "sourceType", "databaseContext"]
+    }
+  },
+  {
+    name: "findPublicationsForRelationship",
+    description: "Find publications that discuss the relationship between two biomedical entities. Returns abstracts and bibliography in markdown format.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity1Id: {
+          type: "string",
+          description: "First entity ID (e.g., @GENE_MPO)"
+        },
+        entity1Name: {
+          type: "string",
+          description: "First entity name for display"
+        },
+        entity2Id: {
+          type: "string",
+          description: "Second entity ID (e.g., @DISEASE_Inflammation)"
+        },
+        entity2Name: {
+          type: "string",
+          description: "Second entity name for display"
+        },
+        relationshipType: {
+          type: "string",
+          enum: ["associate", "inhibit", "stimulate", "interact", "ANY"],
+          default: "ANY",
+          description: "Type of relationship to search for"
+        },
+        maxResults: {
+          type: "number",
+          minimum: 1,
+          maximum: 20,
+          default: 10,
+          description: "Maximum number of publications to return"
+        }
+      },
+      required: ["entity1Id", "entity1Name", "entity2Id", "entity2Name"]
     }
   }
 ];
@@ -1299,6 +1348,107 @@ Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate 
         }],
         refreshGraph: true
       };
+    }
+
+    if (name === "findPublicationsForRelationship") {
+      const queryParams = FindPublicationsForRelationshipArgumentsSchema.parse(args);
+      const { entity1Id, entity1Name, entity2Id, entity2Name, relationshipType = "ANY", maxResults = 10 } = queryParams;
+      
+      // Search for publications using PubTator search API
+      const searchQuery = `relations:${relationshipType}|${entity1Id}|${entity2Id}`;
+      const searchEndpoint = `/search/?text=${encodeURIComponent(searchQuery)}`;
+      
+      try {
+        const searchResults = await makePubTatorRequest(searchEndpoint);
+        
+        if (!searchResults || !searchResults.results || searchResults.results.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: `No publications found for the relationship between ${entity1Name} and ${entity2Name}.`
+            }]
+          };
+        }
+        
+        // Limit results
+        const publications = searchResults.results.slice(0, maxResults);
+        const pmids = publications.map((p: any) => p.pmid).filter((pmid: any) => pmid);
+        
+        if (pmids.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: `No valid PMIDs found in search results for the relationship between ${entity1Name} and ${entity2Name}.`
+            }]
+          };
+        }
+        
+        // Use the search results directly since they already contain all the metadata we need
+        const detailedPublications = publications.map((pub: any) => ({
+          pmid: pub.pmid,
+          title: pub.title || 'Untitled',
+          authors: pub.authors || [],
+          journal: pub.journal || '',
+          year: pub.date ? pub.date.split('-')[0] : '',
+          abstract: pub.text_hl ? pub.text_hl.replace(/@<m>|<\/m>@|@GENE_\d+|@DISEASE_\d+|@CHEMICAL_\d+|@@@/g, '') : ''
+        }));
+        
+        // Build markdown response
+        let response = `# Publications: ${entity1Name} and ${entity2Name}\n\n`;
+        response += `Found ${detailedPublications.length} publication(s) discussing the relationship between **${entity1Name}** and **${entity2Name}**.\n\n`;
+        response += `---\n\n`;
+        
+        // Add each publication with abstract
+        detailedPublications.forEach((pub: any, idx: number) => {
+          response += `## ${idx + 1}. ${pub.title || 'Untitled'}\n\n`;
+          response += `**PMID**: [${pub.pmid}](https://pubmed.ncbi.nlm.nih.gov/${pub.pmid})\n\n`;
+          
+          if (pub.authors && pub.authors.length > 0) {
+            response += `**Authors**: ${pub.authors.join(', ')}\n\n`;
+          }
+          
+          if (pub.journal) {
+            response += `**Journal**: ${pub.journal}`;
+            if (pub.year) {
+              response += ` (${pub.year})`;
+            }
+            response += `\n\n`;
+          }
+          
+          if (pub.abstract) {
+            response += `**Abstract**: ${pub.abstract}\n\n`;
+          }
+          
+          response += `---\n\n`;
+        });
+        
+        // Add numbered bibliography section with proper citations
+        response += `## References\n\n`;
+        detailedPublications.forEach((pub: any, idx: number) => {
+          const authors = pub.authors && pub.authors.length > 0 ? pub.authors.join(', ') : 'Unknown authors';
+          const title = pub.title || 'Untitled';
+          const journal = pub.journal || 'Unknown journal';
+          const year = pub.year || 'Unknown year';
+          const pmid = pub.pmid;
+          
+          response += `${idx + 1}. ${authors}. "${title}" *${journal}*. ${year}. [PMID: ${pmid}](https://pubmed.ncbi.nlm.nih.gov/${pmid})\n`;
+        });
+        
+        return {
+          content: [{
+            type: "text",
+            text: response
+          }]
+        };
+      } catch (error) {
+        console.error(`[${SERVICE_NAME}] Error finding publications:`, error);
+        return {
+          content: [{
+            type: "text",
+            text: `Error searching for publications: ${error instanceof Error ? error.message : 'Unknown error'}`
+          }]
+        };
+      }
     }
 
     throw new Error(`Unknown tool: ${name}`);
