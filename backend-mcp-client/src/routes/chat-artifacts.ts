@@ -102,7 +102,7 @@ router.post('/', async (req: Request<{}, {}, {
     // Extract request params
     const { 
       message, 
-      history, 
+      history = [], 
       modelProvider = 'anthropic',
       blockedServers = [],
       enabledTools = {},

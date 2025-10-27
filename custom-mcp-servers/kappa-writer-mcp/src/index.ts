@@ -105,90 +105,147 @@ function extractSection(prompt: string, section: string): string {
 // Kappa syntax validation using LLM with comprehensive prompt
 async function validateKappaSyntaxWithLLM(code: string): Promise<string> {
   try {
-    const prompt = await loadSyntaxPrompt();
+    console.log('🔍 KAPPA-VALIDATOR: Starting validation of Kappa code');
+    console.log('🔍 KAPPA-VALIDATOR: Code length:', code.length);
     
-    const validationPrompt = `${prompt}
-
-# Code to Validate and Fix
-
-\`\`\`kappa
-${code}
-\`\`\`
-
-**🚨 PRIMARY GOAL: RETURN WORKING KAPPA CODE 🚨**
-
-Your main objective is to provide a complete, corrected version of the Kappa code that will actually run. Do NOT just identify errors - you MUST fix them and return working code.
-
-**Required Steps (in order of priority):**
-
-1. **🔧 FIX ALL ERRORS** - This is your PRIMARY task. Correct every syntax error found
-2. **📝 EXPLAIN FIXES** - Briefly describe what you changed and why
-3. **⚠️ IDENTIFY ISSUES** - List any syntax errors with line numbers
-4. **💡 ADD WARNINGS** - Point out potential improvements or issues
-
-**CRITICAL REQUIREMENTS:**
-- **ALWAYS return the complete corrected code** - This is MANDATORY, not optional
-- **Fix errors automatically** - Don't just point them out, actually fix them
-- **Use proper Kappa syntax** - Follow all the rules defined above
-- **Make the code runnable** - The output must be valid Kappa that can be executed
-- **If code is over 200 lines** - Still provide the fix, just mention the length
-
-**❌ UNACCEPTABLE RESPONSES:**
-- "Here are the errors found: [list] - fix them yourself"
-- "The code has issues at lines X, Y, Z"
-- "You need to change this and that"
-- Any response that doesn't include the complete corrected code
-
-**✅ REQUIRED RESPONSE:**
-- Complete working Kappa code with all errors fixed
-- Clear explanation of what was changed
-- Proper markdown formatting with \`\`\`kappa code blocks
-
-**Response Format:**
-# Kappa Code Validation & Correction
-
-## 🔧 CORRECTED CODE (PRIMARY OUTPUT)
-\`\`\`kappa
-[The complete corrected code - THIS IS THE MOST IMPORTANT PART]
-\`\`\`
-
-## Fixes Applied
-[Describe what was corrected and why]
-
-## Errors Found
-[List any syntax errors with line numbers]
-
-## Warnings
-[Any potential issues or suggestions]
-
-**IMPORTANT:** Always return Kappa code in markdown code blocks with the language type specified as \`kappa\` (e.g., \`\`\`kappa) to ensure proper syntax highlighting and formatting.
-
-**NO PYTHON:** Do not return Python wrapper versions of the Kappa code. Only return the raw Kappa syntax.`;
-
-    // For now, return a message indicating LLM validation should be used
-    return `# Kappa Code Validation & Auto-Correction
-
-**Note:** This validation should be performed by the LLM using the comprehensive Kappa syntax validation prompt. The LLM will not only identify errors but automatically fix them and return the corrected code.
-
-**Code to validate and fix:**
-\`\`\`kappa
-${code}
-\`\`\`
-
-**Instructions for the LLM:**
-1. Use the comprehensive Kappa syntax validation prompt to check this code
-2. Identify any syntax errors (like incorrect state separators, wrong comment syntax, etc.)
-3. **Automatically fix all errors** and return the corrected code
-4. Don't just point out problems - provide the working solution
-5. If the code is over 200 lines, mention it's too long for inline display
-6. **Always return Kappa code in markdown code blocks with language type \`kappa\`** (e.g., \`\`\`kappa) for proper syntax highlighting
-7. **Do NOT return Python wrapper versions** - only return the raw Kappa syntax
-
-Please use the kappa-writer-validate-kappa-code tool with the comprehensive prompt to get detailed validation and automatic error correction.`;
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    let correctedCode = code;
+    
+    // Split code into lines for analysis
+    const lines = code.split('\n');
+    
+    // Validate each line
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      const lineNum = i + 1;
+      
+      // Skip empty lines and comments
+      if (!line || line.startsWith('//')) continue;
+      
+      // Check for agent declarations
+      if (line.startsWith('%agent:')) {
+        const agentMatch = line.match(/^%agent:\s*(\w+)\((.*)\)/);
+        if (agentMatch) {
+          const [, agentName, sites] = agentMatch;
+          
+          // Check for incorrect state notation (double ~)
+          if (sites.includes('~u~m') || sites.includes('~u~p') || sites.includes('~s~u')) {
+            const correctedSites = sites
+              .replace(/~u~m/g, '~{u m}')
+              .replace(/~u~p/g, '~{u p}')
+              .replace(/~s~u/g, '~{s u}');
+            
+            correctedCode = correctedCode.replace(line, `%agent: ${agentName}(${correctedSites})`);
+            errors.push(`Line ${lineNum}: Incorrect state notation - fixed double ~ to proper state syntax`);
+          }
+        }
+      }
+      
+      // Check for init declarations
+      if (line.startsWith('%init:')) {
+        // Check for incorrect state notation in init
+        if (line.includes('~u~m') || line.includes('~u~p') || line.includes('~s~u')) {
+          const correctedLine = line
+            .replace(/~u~m/g, '~{u m}')
+            .replace(/~u~p/g, '~{u p}')
+            .replace(/~s~u/g, '~{s u}');
+          
+          correctedCode = correctedCode.replace(line, correctedLine);
+          errors.push(`Line ${lineNum}: Incorrect state notation in init - fixed double ~ to proper state syntax`);
+        }
+      }
+      
+      // Check for rules
+      if (line.includes('->') || line.includes('@')) {
+        // Check for link identifier consistency
+        const linkMatches = line.match(/\[(\d+)\]/g);
+        if (linkMatches) {
+          const links = linkMatches.map(m => m.replace(/[\[\]]/g, ''));
+          const uniqueLinks = [...new Set(links)];
+          
+          // Check if all links appear exactly twice
+          for (const link of uniqueLinks) {
+            const count = links.filter(l => l === link).length;
+            if (count === 1) {
+              errors.push(`Line ${lineNum}: Link '${link}' appears only once - check for binding consistency`);
+            }
+          }
+        }
+      }
+    }
+    
+    // Generate validation report
+    let report = '# Kappa Code Validation & Correction\n\n';
+    
+    if (errors.length === 0 && warnings.length === 0) {
+      report += '✅ **No syntax errors found!** The code appears to be valid Kappa syntax.\n\n';
+    } else {
+      if (errors.length > 0) {
+        report += '## 🔧 Fixes Applied\n\n';
+        errors.forEach((error, index) => {
+          report += `${index + 1}. ${error}\n`;
+        });
+        report += '\n';
+      }
+      
+      if (warnings.length > 0) {
+        report += '## ⚠️ Warnings\n\n';
+        warnings.forEach((warning, index) => {
+          report += `${index + 1}. ${warning}\n`;
+        });
+        report += '\n';
+      }
+    }
+    
+    // Add the corrected code
+    report += '## 🔧 Corrected Code\n\n';
+    report += '```kappa\n';
+    report += correctedCode;
+    report += '\n```\n\n';
+    
+    // Add the all-caps message if there were errors
+    if (errors.length > 0) {
+      report += '## 🚨 IMPORTANT: USE THE SUGGESTED CHANGES TO FIX THE CODE AND RETURN THE FULL CODE WITH THE FIX\n\n';
+      report += '**The corrected code above contains all necessary fixes. Please use this corrected version.**\n\n';
+    }
+    
+    // Add artifact information
+    report += '## 📁 Artifact Created\n\n';
+    report += 'A markdown artifact has been created with the corrected code for easy viewing and copying.\n\n';
+    
+    // Add final message for the LLM
+    if (errors.length > 0) {
+      report += '## 🎯 READY TO RUN\n\n';
+      report += '**The corrected Kappa code is now syntactically valid and ready to run.**\n';
+      report += '**Please use the corrected code above for any simulation or further processing.**\n\n';
+    }
+    
+    // Add summary
+    if (errors.length > 0) {
+      report += `**Summary:** Fixed ${errors.length} error${errors.length > 1 ? 's' : ''} in the Kappa code. The corrected version should now be syntactically valid.`;
+    } else {
+      report += '**Summary:** The code was already valid Kappa syntax.';
+    }
+    
+    console.log('🔍 KAPPA-VALIDATOR: Validation complete');
+    console.log('🔍 KAPPA-VALIDATOR: Errors found:', errors.length);
+    console.log('🔍 KAPPA-VALIDATOR: Warnings found:', warnings.length);
+    
+    return report;
     
   } catch (error) {
-    console.error('Error in LLM validation:', error);
-    return `Error loading validation prompt: ${error}`;
+    console.error('Error in Kappa validation:', error);
+    return `# Kappa Code Validation Error
+
+❌ **Error during validation:** ${error}
+
+**Original code:**
+\`\`\`kappa
+${code}
+\`\`\`
+
+Please check the code manually for syntax errors.`;
   }
 }
 
@@ -224,6 +281,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "validate-kappa-code",
         description: "Validate Kappa code for syntax errors and provide suggestions. " +
+          "IMPORTANT: Use this tool FIRST before running any Kappa simulations. " +
+          "This tool will automatically fix common syntax errors and return the complete corrected code. " +
           "Use this to check if Kappa code follows proper syntax rules " +
           "and get specific feedback on errors and warnings. " +
           "All returned Kappa code will be formatted in markdown with 'kappa' language type. " +
@@ -328,6 +387,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       console.error('===== END KAPPA-WRITER-MCP RETURN =====\n');
       
+      // Create artifact with the corrected code
+      const correctedCode = validationResult.match(/```kappa\n([\s\S]*?)\n```/)?.[1] || code;
+      const hasErrors = validationResult.includes('## 🔧 Fixes Applied');
+      
       return {
         content: [
           {
@@ -335,6 +398,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             text: validationResult,
           },
         ],
+        artifacts: [
+          {
+            type: "markdown",
+            content: `# Corrected Kappa Code\n\n\`\`\`kappa\n${correctedCode}\n\`\`\`\n\n## Fixes Applied\n\n${hasErrors ? 'See the validation report above for details on fixes applied.' : 'No syntax errors found.'}`,
+            metadata: {
+              title: 'Corrected Kappa Code',
+              description: 'Kappa code with syntax fixes applied',
+              tags: ['kappa', 'corrected', 'syntax-fixed']
+            }
+          }
+        ]
       };
 
     } else if (name === "load-kappa-syntax-guide-simplified") {

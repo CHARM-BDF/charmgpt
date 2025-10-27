@@ -571,12 +571,16 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
                 const type = props['data-artifact-type'];
                 const title = props.children[0]?.toString().replace('📎 ', '');
                 
-                if (id && type && title) {
+                if (id && type) {
+                  // Get the actual artifact title from the store if the button title is undefined
+                  const artifact = artifacts.find(a => a.id === id);
+                  const actualTitle = (title && title !== 'undefined') ? title : (artifact?.title || 'Artifact');
+                  
                   return (
                     <ArtifactButton
                       id={id}
                       type={type}
-                      title={title}
+                      title={actualTitle}
                     />
                   );
                 }

@@ -459,6 +459,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "run_kappa_simulation",
         description: "Run a Kappa simulation using KaSim and generate CSV output for analysis. " +
+          "IMPORTANT: Always validate Kappa code with kappa_writer-validate-kappa-code BEFORE running simulation. " +
+          "This tool will fail if the Kappa code has syntax errors. Use kappa_writer-validate-kappa-code first to fix any syntax issues. " +
           "The CSV file will be automatically stored and can be used with Python MCP for plotting. " +
           "Kappa is a rule-based modeling language for systems biology. " +
           "All returned Kappa code will be formatted in markdown with 'kappa' language type. " +

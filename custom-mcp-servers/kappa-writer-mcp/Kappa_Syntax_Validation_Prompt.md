@@ -116,15 +116,86 @@ Example fix:
 
 **Why Critical:** Most programming languages don't require quotes for variable names, so this pattern contradicts training data.
 
+## 🚨 MEDIUM PRIORITY: Link Identifier Consistency
+**❌ COMMON MISTAKE:** Inconsistent link identifiers in rules
+```kappa
+// ❌ WRONG - Link '1' doesn't exist on left side
+'Wnt_LRP_complex_formation'
+    Wnt(binding[1]), LRP(Wnt_binding[.], phosphorylation{u}) ->
+    Wnt(binding[1]), LRP(Wnt_binding[1], phosphorylation{u}) @ 'k_complex'
+
+// ❌ WRONG - Trying to create bond with non-existent link
+'Frizzled_LRP_complex_formation'
+    Frizzled(Wnt_binding[1], LRP_binding[.]), 
+    LRP(Frizzled_binding[.], phosphorylation{u}) ->
+    Frizzled(Wnt_binding[1], LRP_binding[2]), 
+    LRP(Frizzled_binding[2], phosphorylation{u}) @ 'k_complex'
+```
+
+**✅ CORRECT:** Link identifiers must be consistent and exist where used
+```kappa
+// ✅ CORRECT - Both agents start unbound, then bind
+'Wnt_LRP_complex_formation'
+    Wnt(binding[.]), LRP(Wnt_binding[.], phosphorylation{u}) ->
+    Wnt(binding[1]), LRP(Wnt_binding[1], phosphorylation{u}) @ 'k_complex'
+
+// ✅ CORRECT - Frizzled already bound to Wnt, then binds LRP
+'Frizzled_LRP_complex_formation'
+    Frizzled(Wnt_binding[1], LRP_binding[.]), 
+    LRP(Frizzled_binding[.], phosphorylation{u}) ->
+    Frizzled(Wnt_binding[1], LRP_binding[2]), 
+    LRP(Frizzled_binding[2], phosphorylation{u}) @ 'k_complex'
+```
+
+**Error Message:** "The link 'X' occurs only one time in the mixture"
+**Cause:** Trying to use a link identifier that doesn't exist on the left side of the rule
+**Fix:** Ensure link identifiers are consistent - if you use `[1]` on one side of a bond, use `[1]` on the other side, and the link must exist in the context where it's being used
+
+**Why Critical:** This error is common when copying/modifying rules without understanding the link identifier system. Link identifiers must be consistent across the entire rule.
+
 ---
 
 ## 🔍 Key Rules Checklist (Check Before Submission)
 - [ ] **Comments:** All comments use `//` (C# standard), not `#` or `/* */`
 - [ ] **State Sites:** All states separated by spaces, not dots or commas
 - [ ] **Variables:** All variable names are quoted strings
+- [ ] **Link Identifiers:** All link identifiers are consistent and exist where used
 - [ ] **Intent Comments:** All sites have comments explaining binding vs state intent
 - [ ] **State Definitions:** All state abbreviations (u, m, p, etc.) are defined in comments
+- [ ] **Line Breaks:** Each agent declaration, rule, observable, and variable on its own line
 - [ ] **No training data conflicts:** Double-check against common programming patterns
+
+## 🚨 HIGH PRIORITY: Code Formatting and Line Breaks
+
+**❌ COMMON MISTAKE:** Putting multiple declarations on the same line
+```kappa
+%agent: Wnt(binding, modum) // Added lipid modification state %agent: Fz(wnt, lrp, dsh) // Frizzled receptor %agent: LRP(fz, axin, pup) // LRP co-receptor %agent: Axin(lrp, btcat, apc) // Scaffold protein %agent: APC(axin, btcat) // Tumor suppressor %agent: BetaCatenin(axin, apc, tcf, pup) // β-catenin %agent: TCF(btcat, gro) // Transcription factor %agent: Groucho(tcf) // Repressor
+```
+
+**✅ CORRECT:** Each declaration on its own line with proper spacing
+```kappa
+// Extended agents with additional sites and states
+%agent: Wnt(binding, modum)        // Added lipid modification state
+%agent: Fz(wnt, lrp, dsh)          // Frizzled receptor
+%agent: LRP(fz, axin, pup)         // LRP co-receptor
+%agent: Axin(lrp, btcat, apc)      // Scaffold protein
+%agent: APC(axin, btcat)           // Tumor suppressor
+%agent: BetaCatenin(axin, apc, tcf, pup)  // β-catenin
+%agent: TCF(btcat, gro)            // Transcription factor
+%agent: Groucho(tcf)               // Repressor
+```
+
+**Why Critical:** 
+- Kappa code is much more readable when each declaration is on its own line
+- Makes debugging and validation easier
+- Follows standard programming practices for code organization
+- Prevents confusion when multiple agents are declared together
+
+**Formatting Rules:**
+- Each `%agent:`, `%rule:`, `%obs:`, `%var:`, and `%init:` declaration gets its own line
+- Add blank lines between logical groups (agents, rules, observables, etc.)
+- Align comments for better readability
+- Use consistent indentation for multi-line rules
 
 ---
 
@@ -209,6 +280,7 @@ Before submitting any Kappa code, verify:
 - [ ] **Comments:** All comments use `//` (C# standard), not `#` or `/* */`
 - [ ] **State Sites:** All states separated by spaces, not dots or commas  
 - [ ] **Variables:** All variable names are quoted strings
+- [ ] **Link Identifiers:** All link identifiers are consistent and exist where used
 - [ ] **Intent Comments:** All sites have comments explaining binding vs state intent
 - [ ] **State Definitions:** All state abbreviations (u, m, p, etc.) are defined in comments
 - [ ] **No training data conflicts:** Double-check against common programming patterns
@@ -221,6 +293,8 @@ Before submitting any Kappa code, verify:
 - [ ] Variables are quoted and descriptive
 - [ ] No syntax errors in patterns
 - [ ] All agents can participate in reactions (no dead agents)
+- [ ] **Each declaration on its own line** (no cramming multiple declarations together)
+- [ ] **Proper spacing and line breaks** for readability
 
 ## Common Error Patterns to Avoid
 
@@ -244,6 +318,25 @@ Before submitting any Kappa code, verify:
 6. **Comment Syntax**: Use C# standard
    - ❌ `# comment` → ✅ `// comment`
    - ❌ `/* comment */` → ✅ `// comment`
+
+7. **Link Identifiers**: Must be consistent and exist where used
+   - ❌ `Wnt(binding[1]), LRP(wnt[.]) -> Wnt(binding[1]), LRP(wnt[1])` → ✅ `Wnt(binding[.]), LRP(wnt[.]) -> Wnt(binding[1]), LRP(wnt[1])`
+   - ❌ Error: "The link '1' occurs only one time in the mixture"
+
+8. **Code Formatting**: Each declaration on its own line
+   - ❌ `%agent: Wnt(binding) %agent: Fz(wnt) %agent: LRP(fz)` → ✅ Each on separate line
+   - ❌ `%rule: 'bind' Wnt(binding[.]), Fz(wnt[.]) -> Wnt(binding[1]), Fz(wnt[1]) %obs: |Wnt(binding[1])|` → ✅ Each on separate line
+   - ❌ Multiple declarations crammed together → ✅ Proper line breaks and spacing
+
+9. **Greek Letters in Biology**: Always spell out, never use Unicode
+   - ❌ `β_catenin` → ✅ `beta_catenin`
+   - ❌ `α_synuclein` → ✅ `alpha_synuclein`
+   - ❌ `κ_receptor` → ✅ `kappa_receptor`
+   - ❌ `δ_opioid` → ✅ `delta_opioid`
+   - ❌ `γ_aminobutyric` → ✅ `gamma_aminobutyric`
+   - ❌ `β_amyloid` → ✅ `beta_amyloid`
+   - ❌ `α_helix` → ✅ `alpha_helix`
+   - ❌ `κ_light_chain` → ✅ `kappa_light_chain`
 
 ## Validation Template
 

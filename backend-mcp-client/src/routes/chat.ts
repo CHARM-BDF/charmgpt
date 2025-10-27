@@ -2,7 +2,8 @@ import express, { Request, Response } from 'express';
 import 'dotenv/config';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { systemPrompt } from '../systemPrompt';
-import { MCPService, MCPLogMessage } from '../services/mcp';
+import { MCPService } from '../services/mcp';
+import { MCPLogMessage } from '../types/mcp';
 import { MessageService, ChatMessage } from '../services/message';
 import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
@@ -182,7 +183,7 @@ router.post('/', async (req: Request<{}, {}, {
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
-    const { message, history, blockedServers = [], enabledTools = {}, modelProvider = 'claude', pinnedGraph, pinnedArtifacts } = req.body;
+    const { message, history = [], blockedServers = [], enabledTools = {}, modelProvider = 'anthropic', pinnedGraph, pinnedArtifacts } = req.body;
     
     // Test the logging system
     logToolCall('SESSION_START', {
@@ -306,7 +307,52 @@ router.post('/', async (req: Request<{}, {}, {
       }
     }
 
-    // First phase: Sequential thinking and tool usage
+    // Redirect to ChatService for unified processing
+    console.log('🔄 CHAT-ROUTE: Redirecting to ChatService for unified processing');
+    logToolCall('REDIRECT_TO_CHAT_SERVICE', {
+      message: 'Using ChatService.processChat instead of direct MCP processing',
+      reason: 'Unified processing pipeline with retry logic'
+    });
+    
+    // Use ChatService for all processing
+    const chatService = req.app.locals.chatService;
+    if (!chatService) {
+      throw new Error('ChatService not available');
+    }
+    
+    // Convert the request to ChatService format
+    const chatServiceResult = await chatService.processChat(
+      message,
+      messages.map(msg => ({
+        role: msg.role,
+        content: Array.isArray(msg.content) 
+          ? msg.content.find(c => c.type === 'text')?.text || ''
+          : msg.content
+      })),
+      {
+        conversationId: conversationId,
+        modelProvider: modelProvider || 'anthropic',
+        blockedServers,
+        enabledTools,
+        pinnedArtifacts: pinnedArtifacts,
+        attachments: undefined, // Attachments not available in this route
+        temperature: 0.7,
+        maxTokens: 4000
+      },
+      sendStatusUpdate
+    );
+    
+    // Return the ChatService result directly
+    sendStatusUpdate('Formatting response...');
+    res.write(JSON.stringify({ 
+      type: 'result',
+      response: chatServiceResult,
+      timestamp: new Date().toISOString()
+    }) + '\n');
+    res.end();
+    
+    // Legacy code below (commented out for safety)
+    /*
     while (!isSequentialThinkingComplete) {
       logToolCall('LOOP_START', {
         iteration: 'Starting new tool calling iteration',
@@ -961,6 +1007,8 @@ router.post('/', async (req: Request<{}, {}, {
 
     // End the response
     res.end();
+  */
+  // End of legacy code
 
   } catch (error) {
     loggingService.logError(error as Error);
