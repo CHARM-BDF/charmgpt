@@ -918,6 +918,139 @@ function generateQueryDescription(queryGraph: any): string {
 }
 
 // =============================================================================
+// ANALYSIS FUNCTIONS
+// =============================================================================
+
+interface AnalysisResult {
+  totalNodes: number;
+  totalEdges: number;
+  categoryBreakdown: Array<{ category: string; count: number }>;
+  predicateBreakdown: Array<{ predicate: string; count: number }>;
+  topCombinations: Array<{ category: string; predicate: string; count: number }>;
+  insights: string[];
+}
+
+function analyzeComprehensiveResults(nodes: any, edges: any, sourceEntityId: string): AnalysisResult {
+  const nodeEntries = Object.values(nodes) as any[];
+  const edgeEntries = Object.values(edges) as any[];
+  
+  // Filter out the source entity from node count
+  const connectedNodes = nodeEntries.filter(node => 
+    !node.ids || !node.ids.includes(sourceEntityId)
+  );
+  
+  const totalNodes = connectedNodes.length;
+  const totalEdges = edgeEntries.length;
+  
+  // Category breakdown
+  const categoryCounts: { [key: string]: number } = {};
+  connectedNodes.forEach(node => {
+    if (node.categories) {
+      node.categories.forEach((category: string) => {
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      });
+    }
+  });
+  
+  const categoryBreakdown = Object.entries(categoryCounts)
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count);
+  
+  // Predicate breakdown
+  const predicateCounts: { [key: string]: number } = {};
+  edgeEntries.forEach(edge => {
+    if (edge.predicates) {
+      edge.predicates.forEach((predicate: string) => {
+        predicateCounts[predicate] = (predicateCounts[predicate] || 0) + 1;
+      });
+    } else {
+      predicateCounts['related_to'] = (predicateCounts['related_to'] || 0) + 1;
+    }
+  });
+  
+  const predicateBreakdown = Object.entries(predicateCounts)
+    .map(([predicate, count]) => ({ predicate, count }))
+    .sort((a, b) => b.count - a.count);
+  
+  // Category-Predicate combinations
+  const combinationCounts: { [key: string]: number } = {};
+  edgeEntries.forEach(edge => {
+    const predicates = edge.predicates || ['related_to'];
+    const subjectNode = nodes[edge.subject];
+    const objectNode = nodes[edge.object];
+    
+    if (subjectNode && objectNode) {
+      const subjectCategories = subjectNode.categories || [];
+      const objectCategories = objectNode.categories || [];
+      
+      predicates.forEach((predicate: string) => {
+        subjectCategories.forEach((subjectCat: string) => {
+          objectCategories.forEach((objectCat: string) => {
+            const key = `${objectCat} via ${predicate}`;
+            combinationCounts[key] = (combinationCounts[key] || 0) + 1;
+          });
+        });
+      });
+    }
+  });
+  
+  const topCombinations = Object.entries(combinationCounts)
+    .map(([key, count]) => {
+      const [category, predicate] = key.split(' via ');
+      return { category, predicate, count };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+  
+  // Generate insights
+  const insights: string[] = [];
+  
+  if (categoryBreakdown.length > 0) {
+    const topCategory = categoryBreakdown[0];
+    insights.push(`Most connected category: ${topCategory.category} (${topCategory.count} nodes)`);
+  }
+  
+  if (predicateBreakdown.length > 0) {
+    const topPredicate = predicateBreakdown[0];
+    insights.push(`Most common relationship: ${topPredicate.predicate} (${topPredicate.count} relationships)`);
+  }
+  
+  if (totalNodes > 100) {
+    insights.push(`High connectivity: ${totalNodes} connected nodes indicates extensive relationships`);
+  } else if (totalNodes < 10) {
+    insights.push(`Limited connectivity: ${totalNodes} connected nodes suggests specialized or rare entity`);
+  }
+  
+  const uniquePredicates = predicateBreakdown.length;
+  if (uniquePredicates > 20) {
+    insights.push(`Diverse relationships: ${uniquePredicates} different relationship types found`);
+  }
+  
+  const hasDiseaseConnections = categoryBreakdown.some(item => 
+    item.category.includes('Disease') || item.category.includes('Phenotypic')
+  );
+  if (hasDiseaseConnections) {
+    insights.push(`Disease associations found: Clinical relevance detected`);
+  }
+  
+  const hasDrugConnections = categoryBreakdown.some(item => 
+    item.category.includes('Drug') || item.category.includes('SmallMolecule') || item.category.includes('Chemical')
+  );
+  if (hasDrugConnections) {
+    insights.push(`Drug/chemical associations found: Therapeutic potential detected`);
+  }
+  
+  return {
+    totalNodes,
+    totalEdges,
+    categoryBreakdown,
+    predicateBreakdown,
+    topCombinations,
+    insights
+  };
+}
+
+// =============================================================================
 // TOOL DEFINITIONS
 // =============================================================================
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -969,6 +1102,84 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         "}\n" +
         "```\n\n" +
         
+        "Pattern 4 - Gene-Protein relationships:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['NCBIGene:4353'], categories: ['biolink:Gene'] },\n" +
+        "  n1: { categories: ['biolink:Protein'] }\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1', predicates: ['biolink:produces'] }  // Gene produces protein\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "Pattern 5 - Protein-Protein interactions:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['UniProtKB:P12345'], categories: ['biolink:Protein'] },\n" +
+        "  n1: { categories: ['biolink:Protein'] }\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1', predicates: ['biolink:physically_interacts_with'] }\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "Pattern 6 - Drug-target relationships:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['DrugBank:DB00001'], categories: ['biolink:Drug'] },\n" +
+        "  n1: { categories: ['biolink:Protein'] }\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1', predicates: ['biolink:affects'] }  // Drug affects protein\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "Pattern 7 - Gene regulation:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['NCBIGene:4353'], categories: ['biolink:Gene'] },\n" +
+        "  n1: { categories: ['biolink:Gene'] }\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1', predicates: ['biolink:regulates'] }  // Gene regulates gene\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "Pattern 8 - Molecular functions:\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['NCBIGene:4353'], categories: ['biolink:Gene'] },\n" +
+        "  n1: { categories: ['biolink:MolecularActivity'] }\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1', predicates: ['biolink:capable_of'] }  // Gene capable of activity\n" +
+        "}\n" +
+        "```\n\n" +
+        
+        "Pattern 9 - Default comprehensive query (when user says 'everything'):\n" +
+        "```\n" +
+        "nodes: {\n" +
+        "  n0: { ids: ['NCBIGene:4353'], categories: ['biolink:Gene'] },\n" +
+        "  n1: { categories: [\n" +
+        "    'biolink:BiologicalProcessOrActivity',\n" +
+        "    'biolink:Gene',\n" +
+        "    'biolink:Protein',\n" +
+        "    'biolink:GeneFamily',\n" +
+        "    'biolink:DiseaseOrPhenotypicFeature',\n" +
+        "    'biolink:AnatomicalEntity',\n" +
+        "    'biolink:RNAProduct',\n" +
+        "    'biolink:ChemicalMixture',\n" +
+        "    'biolink:SmallMolecule',\n" +
+        "    'biolink:Polypeptide',\n" +
+        "    'biolink:ProteinFamily'\n" +
+        "  ] }  // ← Default comprehensive category set\n" +
+        "},\n" +
+        "edges: {\n" +
+        "  e0: { subject: 'n0', object: 'n1' }  // ← NO predicate for comprehensive search\n" +
+        "}\n" +
+        "```\n\n" +
+        
         "**CRITICAL: Do NOT Assume Predicates Based on Node Types**\n" +
         "- Default to NO predicate (omit predicates field entirely) or use biolink:related_to for general queries\n" +
         "- ONLY use specific predicates when the user explicitly describes a relationship\n" +
@@ -977,32 +1188,159 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         "- Example: 'Find genes that regulate MPO' → use biolink:regulates predicate\n" +
         "- Example: 'Find molecular functions of MPO' → use biolink:MolecularActivity category, NO predicate\n\n" +
         
-        "**COMMON PREDICATE MISTAKES:**\n" +
-        "❌ AVOID: biolink:has_molecular_function (not a valid predicate in most KGs)\n" +
-        "✓ USE: Just specify biolink:MolecularActivity as the target category\n" +
-        "❌ AVOID: biolink:has_pathway (not a valid predicate)\n" +
-        "✓ USE: biolink:Pathway as category with NO predicate or biolink:participates_in\n\n" +
+        "**COMPREHENSIVE PREDICATE REFERENCE (use when user specifies relationship):**\n\n" +
         
-        "**Known Biolink Predicates (use ONLY when user specifies relationship):**\n" +
-        "- biolink:related_to - General relationship (default if unsure)\n" +
-        "- biolink:regulates - Regulatory relationship\n" +
-        "- biolink:positively_regulates - Upregulation\n" +
-        "- biolink:negatively_regulates - Downregulation\n" +
+        "**Most Common Predicates (use these first):**\n" +
+        "- biolink:affects - Causal/functional relationships\n" +
+        "- biolink:interacts_with - Molecular interactions\n" +
+        "- biolink:related_to - General relationships (default if unsure)\n" +
+        "- biolink:regulates - Regulatory relationships\n" +
+        "- biolink:causes - Causal relationships\n" +
+        "- biolink:disrupts - Disruptive effects\n" +
+        "- biolink:participates_in - Participation in processes/pathways\n" +
+        "- biolink:produces - Production relationships\n" +
+        "- biolink:correlated_with - Statistical correlations\n" +
+        "- biolink:associated_with - General associations\n\n" +
+        
+        "**Gene-Specific Predicates:**\n" +
+        "- biolink:coexpressed_with - Co-expression relationships\n" +
+        "- biolink:colocalizes_with - Co-localization\n" +
+        "- biolink:homologous_to - Homology relationships\n" +
+        "- biolink:orthologous_to - Orthology relationships\n" +
+        "- biolink:genetically_interacts_with - Genetic interactions\n" +
+        "- biolink:genetically_associated_with - Genetic associations\n" +
+        "- biolink:gene_product_of - Gene product relationships\n" +
+        "- biolink:produces - Gene produces protein/RNA\n" +
+        "- biolink:regulated_by - Being regulated by\n" +
+        "- biolink:derives_from - Derivation relationships\n" +
+        "- biolink:derives_into - Derivation into\n" +
+        "- biolink:positively_correlated_with - Positive correlations\n" +
+        "- biolink:negatively_correlated_with - Negative correlations\n" +
+        "- biolink:associated_with_increased_likelihood_of - Risk associations\n" +
+        "- biolink:associated_with_sensitivity_to - Sensitivity associations\n" +
+        "- biolink:associated_with_resistance_to - Resistance associations\n" +
+        "- biolink:biomarker_for - Biomarker relationships\n" +
+        "- biolink:capable_of - Functional capabilities\n" +
+        "- biolink:expressed_in - Expression relationships\n" +
+        "- biolink:located_in - Spatial relationships\n" +
+        "- biolink:occurs_in - Occurrence relationships\n" +
+        "- biolink:coexists_with - Co-existence\n" +
+        "- biolink:overlaps - Overlap relationships\n" +
+        "- biolink:part_of - Part relationships\n" +
+        "- biolink:has_part - Part-whole relationships\n" +
+        "- biolink:has_member - Membership relationships\n" +
+        "- biolink:has_participant - Participant relationships\n" +
+        "- biolink:has_input - Input relationships\n" +
+        "- biolink:in_complex_with - Complex formation\n" +
+        "- biolink:chemically_similar_to - Chemical similarity\n" +
+        "- biolink:close_match - Similarity relationships\n" +
+        "- biolink:same_as - Identity relationships\n" +
+        "- biolink:subclass_of - Hierarchical relationships\n" +
+        "- biolink:acts_upstream_of - Upstream relationships\n" +
+        "- biolink:acts_upstream_of_positive_effect - Positive upstream effects\n" +
+        "- biolink:acts_upstream_of_negative_effect - Negative upstream effects\n" +
+        "- biolink:acts_upstream_of_or_within - Upstream or within relationships\n" +
+        "- biolink:acts_upstream_of_or_within_positive_effect - Positive upstream/within effects\n" +
+        "- biolink:acts_upstream_of_or_within_negative_effect - Negative upstream/within effects\n" +
+        "- biolink:actively_involved_in - Active involvement\n" +
+        "- biolink:enables - Enabling relationships\n" +
+        "- biolink:contributes_to - Contribution relationships\n" +
+        "- biolink:catalyzes - Catalytic relationships\n" +
+        "- biolink:gene_associated_with_condition - Gene-disease associations\n" +
+        "- biolink:exacerbates_condition - Exacerbation relationships\n" +
+        "- biolink:contraindicated_in - Contraindication relationships\n" +
+        "- biolink:preventative_for_condition - Prevention relationships\n" +
+        "- biolink:predisposes_to_condition - Predisposition relationships\n" +
+        "- biolink:sensitivity_associated_with - Sensitivity associations\n" +
+        "- biolink:resistance_associated_with - Resistance associations\n" +
+        "- biolink:occurs_together_in_literature_with - Co-occurrence in literature\n" +
+        "- biolink:temporally_related_to - Temporal relationships\n\n" +
+        
+        "**Protein-Specific Predicates:**\n" +
+        "- biolink:physically_interacts_with - Physical interactions\n" +
+        "- biolink:directly_physically_interacts_with - Direct physical interactions\n" +
+        "- biolink:is_substrate_of - Being substrate of\n" +
+        "- biolink:has_substrate - Having substrate\n" +
+        "- biolink:is_active_ingredient_of - Being active ingredient of\n" +
+        "- biolink:has_active_ingredient - Having active ingredient\n" +
+        "- biolink:is_active_metabolite_of - Being active metabolite of\n" +
+        "- biolink:has_active_metabolite - Having active metabolite\n" +
+        "- biolink:is_sequence_variant_of - Sequence variant relationships\n" +
+        "- biolink:has_sequence_variant - Having sequence variants\n" +
+        "- biolink:is_output_of - Being output of\n" +
+        "- biolink:is_input_of - Being input of\n" +
+        "- biolink:regulated_by - Being regulated by\n" +
+        "- biolink:preceded_by - Being preceded by\n" +
+        "- biolink:assesses - Assessing relationships\n" +
+        "- biolink:is_assessed_by - Being assessed by\n" +
+        "- biolink:superclass_of - Parent class relationships\n" +
+        "- biolink:similar_to - Similarity relationships\n" +
+        "- biolink:increases_response_to - Response enhancement\n" +
+        "- biolink:decreases_response_to - Response reduction\n" +
+        "- biolink:response_affected_by - Response affected by\n" +
+        "- biolink:treats - Therapeutic relationships\n" +
+        "- biolink:treats_or_applied_or_studied_to_treat - Comprehensive therapeutic relationships\n" +
+        "- biolink:applied_to_treat - Applied to treat relationships\n" +
+        "- biolink:contraindicated_in - Contraindication relationships\n\n" +
+        
+        "**Therapeutic Focus Predicates:**\n" +
         "- biolink:treats - Drug treats disease\n" +
-        "- biolink:associated_with - General association\n" +
-        "- biolink:affects - Effect on target\n" +
-        "- biolink:interacts_with - Physical interaction\n" +
-        "- biolink:participates_in - Participation in process/pathway\n" +
-        "- biolink:causes - Causal relationship\n\n" +
+        "- biolink:treats_or_applied_or_studied_to_treat - Comprehensive therapeutic relationships\n" +
+        "- biolink:applied_to_treat - Applied to treat relationships\n" +
+        "- biolink:preventative_for_condition - Prevention relationships\n" +
+        "- biolink:predisposes_to_condition - Predisposition relationships\n\n" +
         
-        "**RELEVANT BIOLINK CATEGORIES:**\n" +
-        "Use these categories for target nodes (n1, n2, etc.):\n\n" +
+        "**Functional Relationship Predicates:**\n" +
+        "- biolink:enables - Enabling relationships\n" +
+        "- biolink:contributes_to - Contribution relationships\n" +
+        "- biolink:capable_of - Functional capabilities\n" +
+        "- biolink:catalyzes - Catalytic relationships\n" +
+        "- biolink:assesses - Assessment relationships\n\n" +
         
-        "Priority Entity Types (Drug Repurposing Focus):\n" +
-        "- biolink:Gene - Genes and drug targets (e.g., BRCA1, TP53, EGFR)\n" +
-        "- biolink:Protein - Protein targets and biomarkers\n" +
+        "**Hierarchical Relationship Predicates:**\n" +
+        "- biolink:subclass_of - Subclass relationships\n" +
+        "- biolink:superclass_of - Superclass relationships\n" +
+        "- biolink:part_of - Part relationships\n" +
+        "- biolink:has_part - Part-whole relationships\n" +
+        "- biolink:has_member - Membership relationships\n\n" +
+        
+        "**Interaction Type Predicates:**\n" +
+        "- biolink:physically_interacts_with - Physical interactions\n" +
+        "- biolink:directly_physically_interacts_with - Direct physical interactions\n" +
+        "- biolink:genetically_interacts_with - Genetic interactions\n" +
+        "- biolink:in_complex_with - Complex formation\n\n" +
+        
+        "**Response/Pharmacology Predicates:**\n" +
+        "- biolink:increases_response_to - Response enhancement\n" +
+        "- biolink:decreases_response_to - Response reduction\n" +
+        "- biolink:response_affected_by - Response affected by\n" +
+        "- biolink:sensitivity_associated_with - Sensitivity associations\n" +
+        "- biolink:resistance_associated_with - Resistance associations\n\n" +
+        
+        "**Literature/Co-occurrence Predicates:**\n" +
+        "- biolink:occurs_together_in_literature_with - Co-occurrence in literature\n" +
+        "- biolink:coexpressed_with - Co-expression relationships\n" +
+        "- biolink:colocalizes_with - Co-localization\n" +
+        "- biolink:coexists_with - Co-existence\n\n" +
+        
+        "**DEFAULT CATEGORY SET (when user says 'everything' or doesn't specify):**\n" +
+        "Use these 10 high-priority categories for comprehensive biomedical queries:\n\n" +
+        "1. biolink:BiologicalProcessOrActivity (27 associations) - Biological processes and activities\n" +
+        "2. biolink:Gene (1,041 associations) - Genes and genetic elements\n" +
+        "3. biolink:Protein (1,063 associations) - Proteins and protein targets\n" +
+        "4. biolink:GeneFamily (378 associations) - Gene families and target classes\n" +
+        "5. biolink:DiseaseOrPhenotypicFeature (732 associations) - Diseases and phenotypes\n" +
+        "6. biolink:AnatomicalEntity (638 associations) - Tissues, organs, anatomical structures\n" +
+        "7. biolink:RNAProduct (202 associations) - RNA molecules and transcripts\n" +
+        "8. biolink:ChemicalMixture (217 associations) - Chemical mixtures and complexes\n" +
+        "9. biolink:SmallMolecule (1,063 associations) - Small molecules and drug candidates\n" +
+        "10. biolink:Polypeptide (642 associations) - Polypeptides and peptide sequences\n" +
+        "11. biolink:ProteinFamily (12 associations) - Protein families and domains\n\n" +
+        
+        "**ADDITIONAL USEFUL CATEGORIES (when user specifies):**\n" +
+        "Use these for more specific queries:\n\n" +
+        "Drug and Chemical Categories:\n" +
         "- biolink:Drug - Approved drugs (preferred for drug queries)\n" +
-        "- biolink:SmallMolecule - Drug candidates and research compounds\n" +
         "- biolink:ChemicalEntity - General drugs/compounds (parent of Drug/SmallMolecule)\n" +
         "- biolink:Disease - Diseases, conditions, and indications\n" +
         "- biolink:PhenotypicFeature - Phenotypes, symptoms, and clinical features\n\n" +
@@ -1013,13 +1351,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         "- biolink:Pathway - Signaling and metabolic pathways\n" +
         "- biolink:CellularComponent - Subcellular locations (nucleus, mitochondria, membrane)\n\n" +
         
-        "Additional Useful Categories:\n" +
+        "Additional Specific Categories:\n" +
         "- biolink:Cell - Cell types for specificity analysis\n" +
-        "- biolink:AnatomicalEntity - Tissues, organs, anatomical structures\n" +
-        "- biolink:GeneFamily - Gene families and target classes\n" +
-        "- biolink:ProteinDomain - Protein functional domains\n\n" +
+        "- biolink:ProteinDomain - Protein functional domains\n" +
+        "- biolink:SequenceVariant - Genetic variants and mutations\n" +
+        "- biolink:Publication - Scientific publications and literature\n\n" +
         
         "**CATEGORY SELECTION GUIDE:**\n" +
+        "- User says 'everything' or doesn't specify → Use DEFAULT CATEGORY SET (11 categories above)\n" +
         "- Find genes related to X → biolink:Gene (NO predicate)\n" +
         "- Find diseases associated with X → biolink:Disease (NO predicate)\n" +
         "- Find drugs for X → biolink:Drug or biolink:SmallMolecule (NO predicate)\n" +
@@ -1027,7 +1366,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         "- Find pathways X is in → biolink:Pathway (NO predicate or biolink:participates_in)\n" +
         "- Find where X is located → biolink:CellularComponent (NO predicate)\n" +
         "- Find genes that regulate X → biolink:Gene (WITH biolink:regulates predicate)\n" +
-        "- Find drugs that treat X → biolink:Drug (WITH biolink:treats predicate)\n\n" +
+        "- Find drugs that treat X → biolink:Drug (WITH biolink:treats predicate)\n" +
+        "- Find proteins related to X → biolink:Protein (NO predicate)\n" +
+        "- Find gene families for X → biolink:GeneFamily (NO predicate)\n" +
+        "- Find anatomical structures for X → biolink:AnatomicalEntity (NO predicate)\n" +
+        "- Find RNA products for X → biolink:RNAProduct (NO predicate)\n" +
+        "- Find chemical mixtures for X → biolink:ChemicalMixture (NO predicate)\n" +
+        "- Find polypeptides for X → biolink:Polypeptide (NO predicate)\n" +
+        "- Find protein families for X → biolink:ProteinFamily (NO predicate)\n\n" +
         
         "**DRUG REPURPOSING TIP:** Prefer biolink:Drug or biolink:SmallMolecule over biolink:ChemicalEntity for more specific results.\n\n" +
         
@@ -1140,6 +1486,77 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           }
         },
         required: ["nodeIds", "databaseContext"]
+      }
+    },
+    {
+      name: "get_comprehensive_summary",
+      description: "Get a comprehensive summary of ALL connected nodes across ALL categories and predicates. " +
+        "This tool uses an open-ended query structure that finds every node connected to the specified entity, " +
+        "regardless of category or relationship type. Returns a detailed summary table showing the count of " +
+        "connected nodes broken down by category and predicate. Perfect for getting a complete overview " +
+        "of all relationships for a given entity.\n\n" +
+        
+        "**QUERY APPROACH:**\n" +
+        "- Uses open-ended query structure (is_set: false)\n" +
+        "- Finds ALL nodes connected to the specified entity\n" +
+        "- Covers ALL categories (not limited to default set)\n" +
+        "- Covers ALL predicates (not limited to specific types)\n" +
+        "- Provides truly comprehensive coverage\n\n" +
+        
+        "**OUTPUT FORMAT:**\n" +
+        "Returns a comprehensive summary table with:\n" +
+        "- Total nodes found\n" +
+        "- Breakdown by category (count per category)\n" +
+        "- Breakdown by predicate (count per predicate)\n" +
+        "- Category-Predicate matrix (count per category-predicate combination)\n" +
+        "- Top relationships by frequency\n\n" +
+        
+        "**USE CASES:**\n" +
+        "- Get complete overview of entity relationships\n" +
+        "- Identify most common relationship types\n" +
+        "- Discover unexpected connections\n" +
+        "- Generate comprehensive entity profiles\n" +
+        "- Analyze relationship patterns\n\n" +
+        
+        "**EXAMPLE:**\n" +
+        "Input: NCBIGene:4353 (BRCA1)\n" +
+        "Output: Summary table showing ALL categories of connected nodes with counts by predicate\n" +
+        "Query Structure:\n" +
+        "```\n" +
+        "{\n" +
+        "  \"nodes\": {\n" +
+        "    \"n0\": { \"is_set\": false },\n" +
+        "    \"n1\": { \"ids\": [\"NCBIGene:4353\"], \"categories\": [\"biolink:Gene\"] }\n" +
+        "  },\n" +
+        "  \"edges\": {\n" +
+        "    \"e0\": { \"subject\": \"n0\", \"object\": \"n1\" }\n" +
+        "  }\n" +
+        "}\n" +
+        "```",
+      inputSchema: {
+        type: "object",
+        properties: {
+          entityId: {
+            type: "string",
+            description: "The CURIE identifier of the entity to analyze (e.g., 'NCBIGene:4353', 'UniProtKB:P38398')"
+          },
+          entityCategory: {
+            type: "string",
+            description: "The Biolink category of the input entity (e.g., 'biolink:Gene', 'biolink:Protein')",
+            default: "biolink:Gene"
+          },
+          databaseContext: {
+            type: "object",
+            properties: {
+              conversationId: { type: "string" },
+              artifactId: { type: "string" },
+              apiBaseUrl: { type: "string" },
+              accessToken: { type: "string" }
+            },
+            required: ["conversationId"]
+          }
+        },
+        required: ["entityId", "databaseContext"]
       }
     }
   ];
@@ -1322,6 +1739,108 @@ ${summary}
 **Suggestions:**
 - Try again in a few minutes
 - Simplify the query (fewer seed nodes)
+- Check network connection
+
+The graph state has not been modified.`
+          }]
+        };
+      }
+    }
+
+    if (name === "get_comprehensive_summary") {
+      const queryParams = args as { entityId: string; entityCategory?: string; databaseContext: any };
+      const entityCategory = queryParams.entityCategory || "biolink:Gene";
+      
+      console.error(`[${SERVICE_NAME}] Executing comprehensive summary for ${queryParams.entityId} (${entityCategory})`);
+      
+      try {
+        // Create comprehensive query using the open-ended structure
+        // This queries for ALL categories and predicates connected to the entity
+        const queryGraph = {
+          nodes: {
+            n0: {
+              is_set: false  // This means "find all nodes connected to n1"
+            },
+            n1: {
+              ids: [queryParams.entityId],
+              categories: [entityCategory]
+            }
+          },
+          edges: {
+            e0: {
+              subject: "n0",
+              object: "n1"
+              // No predicates specified = all predicates
+            }
+          }
+        };
+
+        console.error(`[${SERVICE_NAME}] Querying BTE with comprehensive categories...`);
+        const trapiResponse = await makeBTERequest(queryGraph);
+        
+        if (!trapiResponse || !trapiResponse.message || !trapiResponse.message.knowledge_graph) {
+          throw new Error("Invalid BTE response structure");
+        }
+
+        const kg = trapiResponse.message.knowledge_graph;
+        const nodes = kg.nodes || {};
+        const edges = kg.edges || {};
+
+        // Analyze the results
+        const analysis = analyzeComprehensiveResults(nodes, edges, queryParams.entityId);
+        
+        // Add results to graph
+        await processTrapiResponse(trapiResponse, queryParams.databaseContext);
+
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Comprehensive Summary Complete!
+
+**Entity Analyzed:** ${queryParams.entityId} (${entityCategory})
+**Total Connected Nodes:** ${analysis.totalNodes}
+**Total Relationships:** ${analysis.totalEdges}
+
+## 📊 Summary by Category
+${analysis.categoryBreakdown.map(item => 
+  `- **${item.category}**: ${item.count} nodes`
+).join('\n')}
+
+## 🔗 Summary by Predicate  
+${analysis.predicateBreakdown.map(item => 
+  `- **${item.predicate}**: ${item.count} relationships`
+).join('\n')}
+
+## 📈 Top Category-Predicate Combinations
+${analysis.topCombinations.map(item => 
+  `- **${item.category}** via **${item.predicate}**: ${item.count} relationships`
+).join('\n')}
+
+## 🎯 Key Insights
+${analysis.insights.map(insight => `- ${insight}`).join('\n')}
+
+**Graph Updated:** All relationships have been added to the current graph visualization.`
+          }],
+          refreshGraph: true
+        };
+
+      } catch (error) {
+        console.error(`[${SERVICE_NAME}] Comprehensive summary failed:`, error);
+        return {
+          content: [{
+            type: "text",
+            text: `❌ Comprehensive Summary Failed
+
+**Error:** ${error instanceof Error ? error.message : 'Unknown error'}
+
+**Troubleshooting:**
+- BTE API may be temporarily unavailable
+- Entity ID may be invalid or not found
+- Network connectivity issues
+
+**Suggestions:**
+- Verify the entity ID is correct
+- Try again in a few minutes
 - Check network connection
 
 The graph state has not been modified.`

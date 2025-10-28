@@ -310,6 +310,18 @@
       ],
       "timeout": 30000,
       "description": "Kappa Writer MCP - Provides Kappa syntax validation and writing guidance"
+    },
+    "graphmode-metakg-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeMetaKG/dist/index.js"
+      ],
+      "timeout": 60000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode MetaKG MCP - Analyzes knowledge graph relationships using SmartAPI MetaKG registry"
     }
   }
 }
