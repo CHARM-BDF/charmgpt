@@ -265,6 +265,7 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const [hoveredEdge, setHoveredEdge] = useState<any>(null);
   const [pinnedEdgeCard, setPinnedEdgeCard] = useState<any>(null);
   const [cardPosition, setCardPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [tooltip, setTooltip] = useState({ visible: false, content: '', position: { x: 0, y: 0 } });
   
   // Collapsed cluster state - tracks which cluster groups are collapsed
   const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
@@ -1464,6 +1465,22 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       setCardPosition({ x, y });
     }
   };
+
+  // Handle node hover events
+  const handleNodePointerOver = (node: any, event: any) => {
+    const { clientX, clientY } = event;
+    const category = detectBestCategory(node.category || node.data?.category || '');
+    const nodeName = node.label || node.name || node.id;
+    setTooltip({
+      visible: true,
+      content: `${nodeName} (${category})`,
+      position: { x: clientX, y: clientY }
+    });
+  };
+
+  const handleNodePointerOut = () => {
+    setTooltip({ visible: false, content: '', position: { x: 0, y: 0 } });
+  };
   
   // Handle edge detail card pin toggle
   const handlePinEdgeCard = useCallback(() => {
@@ -1687,6 +1704,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          onNodePointerOver={handleNodePointerOver}
+          onNodePointerOut={handleNodePointerOut}
           onBackgroundClick={() => {
             console.log('🖱️ BACKGROUND CLICKED - Current rendered data:');
             console.log('📊 Rendered nodes:', (filteredNodes.length ? filteredNodes : graphData.nodes).length);
@@ -1742,6 +1761,20 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             );
           }}
         />
+        
+        {/* Node hover tooltip */}
+        {tooltip.visible && (
+          <div
+            className="fixed z-50 bg-gray-800 text-white text-sm px-3 py-2 rounded shadow-lg pointer-events-none"
+            style={{
+              left: `${tooltip.position.x + 10}px`,
+              top: `${tooltip.position.y + 10}px`,
+              transform: 'translate(0, -100%)'
+            }}
+          >
+            {tooltip.content}
+          </div>
+        )}
       </div>
     </div>
   );

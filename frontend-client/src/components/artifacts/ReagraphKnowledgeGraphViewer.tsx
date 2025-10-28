@@ -126,6 +126,7 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
   const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
+  const [tooltip, setTooltip] = useState({ visible: false, content: '', position: { x: 0, y: 0 } });
 
   // Category-based color assignment (matching GraphModeViewer)
   const categoryColors: Record<string, string> = {
@@ -1122,6 +1123,22 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
+  // Handle node hover events
+  const handleNodePointerOver = (node: any, event: any) => {
+    const { clientX, clientY } = event;
+    const category = detectBestCategory(node.category || node.data?.category || '');
+    const nodeName = node.label || node.name || node.id;
+    setTooltip({
+      visible: true,
+      content: `${nodeName} (${category})`,
+      position: { x: clientX, y: clientY }
+    });
+  };
+
+  const handleNodePointerOut = () => {
+    setTooltip({ visible: false, content: '', position: { x: 0, y: 0 } });
+  };
+
   // Notification popup component
   const NotificationPopup = () => {
     if (!notification.show) return null;
@@ -1263,6 +1280,8 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          onNodePointerOver={handleNodePointerOver}
+          onNodePointerOut={handleNodePointerOut}
           edgeOpacity={0.4}
           renderNode={({ node, size, color, opacity }) => {
             const isSeed = node.data?.seedNode;
@@ -1293,6 +1312,20 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
             );
           }}
         />
+        
+        {/* Node hover tooltip */}
+        {tooltip.visible && (
+          <div
+            className="fixed z-50 bg-gray-800 text-white text-sm px-3 py-2 rounded shadow-lg pointer-events-none"
+            style={{
+              left: `${tooltip.position.x + 10}px`,
+              top: `${tooltip.position.y + 10}px`,
+              transform: 'translate(0, -100%)'
+            }}
+          >
+            {tooltip.content}
+          </div>
+        )}
       </div>
     </div>
   );
