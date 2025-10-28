@@ -40,7 +40,7 @@ export class LLMService implements LLMServiceInterface {
   constructor(options: LLMServiceOptions = {}) {
     this.options = {
       provider: options.provider || 'anthropic',
-      model: options.model || 'claude-3-5-sonnet-20241022',
+      model: options.model || 'claude-haiku-4-5',
       temperature: options.temperature ?? 0.2,
       maxTokens: options.maxTokens || 4000,
       cacheResponses: options.cacheResponses ?? true
@@ -121,7 +121,7 @@ export class LLMService implements LLMServiceInterface {
       const useVertexAI = !!process.env.GOOGLE_CLOUD_PROJECT;
       
       if (providerName === 'anthropic') {
-        this.options.model = useVertexAI ? 'claude-sonnet-4@20250514' : 'claude-3-5-sonnet-20241022';
+        this.options.model = useVertexAI ? 'claude-haiku-4-5' : 'claude-haiku-4-5';
         console.log(`LLMService: Using default Anthropic model: ${this.options.model}${useVertexAI ? ' (Vertex AI)' : ''}`);
       } else if (providerName === 'openai') {
         this.options.model = 'gpt-4-turbo-preview';

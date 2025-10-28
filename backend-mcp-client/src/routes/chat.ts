@@ -387,7 +387,7 @@ router.post('/', async (req: Request<{}, {}, {
        });
       
       const toolResponse = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-haiku-4-5',
         max_tokens: 4000,
         messages: messageService.convertChatMessages(messages) as any,
         temperature: 0.7,
@@ -770,7 +770,7 @@ router.post('/', async (req: Request<{}, {}, {
     console.error('===== END SUMMARIZER INPUT =====\n');
     
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4000,
       messages: messageService.convertChatMessages(messages) as any,
       system: systemPrompt,

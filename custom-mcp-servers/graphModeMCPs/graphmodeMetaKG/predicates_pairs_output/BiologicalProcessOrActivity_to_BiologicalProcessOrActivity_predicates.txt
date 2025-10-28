@@ -1,0 +1,2 @@
+related_to
+subclass_of

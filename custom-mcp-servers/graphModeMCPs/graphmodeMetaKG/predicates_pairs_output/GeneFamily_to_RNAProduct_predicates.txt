@@ -1,0 +1,3 @@
+affects
+has_part
+interacts_with

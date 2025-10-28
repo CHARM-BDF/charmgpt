@@ -322,6 +322,18 @@
         "NODE_ENV": "development"
       },
       "description": "Graph Mode MetaKG MCP - Analyzes knowledge graph relationships using SmartAPI MetaKG registry"
+    },
+    "graphmode-bte-mcp-v2": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeBTEMCP2/dist/index.js"
+      ],
+      "timeout": 60000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "BTE MCP V2 - Simplified BioThings Explorer integration with fixed predicates and categories"
     }
   }
 }

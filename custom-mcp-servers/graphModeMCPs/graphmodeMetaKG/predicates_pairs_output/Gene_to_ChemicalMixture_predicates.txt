@@ -1,0 +1,9 @@
+affects
+close_match
+coexists_with
+has_part
+interacts_with
+physically_interacts_with
+produces
+related_to
+subclass_of

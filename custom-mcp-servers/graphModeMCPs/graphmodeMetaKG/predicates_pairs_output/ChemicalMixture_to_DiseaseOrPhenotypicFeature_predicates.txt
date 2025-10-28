@@ -1,0 +1,8 @@
+affects
+causes
+disrupts
+located_in
+predisposes_to_condition
+preventative_for_condition
+related_to
+treats_or_applied_or_studied_to_treat

@@ -1097,7 +1097,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, function (request, ex
                 sendStructuredLog(server, 'info', "[Pathfinder:".concat(requestId, "] Preparing LLM request with prompt data"), {
                     stage: "llm_request_preparation",
                     requestId: requestId,
-                    model: "claude-3-opus-20240229",
+                    model: "claude-haiku-4-5",
                     promptLength: {
                         system: generateSystemPrompt().length,
                         user: generateUserPrompt(sourceCurie_1, targetCurie_1).length
@@ -1112,7 +1112,7 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, function (request, ex
                         systemPrompt: systemPrompt,
                         responseFormat: 'text',
                         options: {
-                            model: "claude-3-opus-20240229"
+                            model: "claude-haiku-4-5"
                         }
                     })];
             case 29:

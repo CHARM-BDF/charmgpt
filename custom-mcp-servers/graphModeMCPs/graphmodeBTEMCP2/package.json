@@ -1,0 +1,23 @@
+{
+  "name": "@graphmode/bte-mcp-v2",
+  "version": "1.0.0",
+  "description": "Simplified BTE MCP for GraphMode - Version 2",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["mcp", "bte", "biothings", "graphmode", "trapi"],
+  "author": "GraphMode Team",
+  "license": "MIT"
+}

@@ -1,0 +1,16 @@
+actively_involved_in
+affects
+biomarker_for
+causes
+close_match
+coexists_with
+disrupts
+exacerbates_condition
+gene_associated_with_condition
+has_part
+interacts_with
+located_in
+predisposes_to_condition
+preventative_for_condition
+related_to
+treats_or_applied_or_studied_to_treat

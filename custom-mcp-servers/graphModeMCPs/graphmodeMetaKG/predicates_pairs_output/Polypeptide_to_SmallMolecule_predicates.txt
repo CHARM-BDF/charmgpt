@@ -1,0 +1,16 @@
+affected_by
+affects
+close_match
+coexists_with
+derives_from
+derives_into
+has_input
+has_member
+has_part
+interacts_with
+occurs_together_in_literature_with
+physically_interacts_with
+produces
+related_to
+same_as
+subclass_of

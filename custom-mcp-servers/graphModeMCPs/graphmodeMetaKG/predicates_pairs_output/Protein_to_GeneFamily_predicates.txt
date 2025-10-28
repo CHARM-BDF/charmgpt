@@ -1,0 +1,17 @@
+affects
+capable_of
+close_match
+coexists_with
+colocalizes_with
+derives_from
+directly_physically_interacts_with
+has_input
+has_part
+interacts_with
+overlaps
+physically_interacts_with
+positively_correlated_with
+produces
+regulates
+related_to
+subclass_of

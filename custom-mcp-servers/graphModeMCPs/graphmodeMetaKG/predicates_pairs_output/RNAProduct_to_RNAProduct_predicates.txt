@@ -1,0 +1,7 @@
+affects
+close_match
+coexists_with
+derives_from
+interacts_with
+related_to
+subclass_of

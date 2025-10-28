@@ -1,0 +1,5 @@
+affects
+disrupts
+located_in
+subclass_of
+treats_or_applied_or_studied_to_treat

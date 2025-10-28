@@ -1,0 +1,8 @@
+coexists_with
+has_output
+has_part
+interacts_with
+occurs_together_in_literature_with
+produces
+related_to
+subclass_of

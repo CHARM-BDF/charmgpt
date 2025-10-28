@@ -73,7 +73,7 @@ TOOL_JSON_2='{
 
 # Claude API request payload with multiple tools (input_schema directly)
 API_PAYLOAD_1='{
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-haiku-4-5",
   "max_tokens": 4000,
   "messages": [
     {
@@ -174,7 +174,7 @@ echo -e "\n\n${YELLOW}=== TEST 2: Format with input_schema under custom (from lo
 
 # Claude API request payload with custom wrapper
 API_PAYLOAD_2='{
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-haiku-4-5",
   "max_tokens": 4000,
   "messages": [
     {

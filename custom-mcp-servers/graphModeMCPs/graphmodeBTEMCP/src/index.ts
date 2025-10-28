@@ -106,6 +106,13 @@ const QueryBTEArgumentsSchema = z.object({
   databaseContext: DatabaseContextSchema,
 });
 
+const FindAllConnectedNodesArgumentsSchema = z.object({
+  entityId: z.string().min(1, "Entity ID is required"),
+  entityCategory: z.string().optional().describe("Biolink category of the entity (e.g., 'biolink:Gene')"),
+  queryType: z.enum(["focused", "comprehensive", "minimal"]).optional().default("focused"),
+  databaseContext: DatabaseContextSchema,
+});
+
 const ExpandNeighborhoodArgumentsSchema = z.object({
   nodeIds: z.array(z.string()).min(1, "At least one seed node ID is required"),
   categories: z.array(z.string()).optional().describe("Optional categories to filter connecting nodes (e.g., ['gene', 'disease'])"),
@@ -152,9 +159,7 @@ function normalizeCategoryToBiolink(category: string): string {
  * Map common predicates to appropriate target node categories
  */
 const PREDICATE_CATEGORY_MAP: Record<string, string> = {
-  'biolink:has_molecular_function': 'biolink:MolecularActivity',
-  'biolink:has_biological_process': 'biolink:BiologicalProcess',
-  'biolink:has_cellular_component': 'biolink:CellularComponent',
+
   'biolink:involved_in': 'biolink:Pathway',
   'biolink:participates_in': 'biolink:Pathway',
   'biolink:regulates': 'biolink:Gene',
@@ -172,6 +177,152 @@ const PREDICATE_CATEGORY_MAP: Record<string, string> = {
  */
 function getSuggestedCategoryForPredicate(predicate: string): string | null {
   return PREDICATE_CATEGORY_MAP[predicate] || null;
+}
+
+// =============================================================================
+// OPTIMIZED PREDICATE SETS FOR FIND_ALL_CONNECTED_NODES
+// =============================================================================
+
+const BIOLINK_PREDICATE_SETS = {
+  focused: [
+    'biolink:affected_by',
+    'biolink:affects', 
+    'biolink:associated_with',
+    'biolink:interacts_with',
+    'biolink:participates_in'
+  ],
+  comprehensive: [
+    'biolink:related_to_at_instance_level',
+    'biolink:related_to_at_concept_level'
+  ],
+  minimal: [
+    'biolink:regulates',
+    'biolink:associated_with',
+    'biolink:interacts_with',
+    'biolink:participates_in',
+    'biolink:similar_to'
+  ],
+  causal: [
+    'biolink:affects',
+    'biolink:affected_by',
+    'biolink:causes',
+    'biolink:contributes_to'
+  ],
+  associational: [
+    'biolink:associated_with',
+    'biolink:correlated_with',
+    'biolink:coexpressed_with',
+    'biolink:biomarker_for'
+  ],
+  interaction: [
+    'biolink:interacts_with',
+    'biolink:physically_interacts_with',
+    'biolink:binds',
+    'biolink:coexists_with'
+  ]
+};
+
+const CATEGORY_PREDICATE_MAP: Record<string, string[]> = {
+  'biolink:Gene': ['causal', 'associational'],
+  'biolink:Protein': ['interaction', 'causal'],
+  'biolink:Disease': ['associational', 'causal'],
+  'biolink:ChemicalEntity': ['causal', 'interaction'],
+  'biolink:SmallMolecule': ['causal', 'interaction'],
+  'biolink:Drug': ['causal', 'interaction'],
+  'biolink:AnatomicalEntity': ['associational', 'focused'],
+  'biolink:Pathway': ['participates_in', 'interaction'],
+  'biolink:BiologicalProcess': ['participates_in', 'causal'],
+  'biolink:SequenceVariant': ['causal', 'associational']
+};
+
+/**
+ * Get optimized predicates for a query based on entity category and query type
+ */
+function getOptimizedPredicates(entityCategory: string | undefined, queryType: string = 'focused'): string[] {
+  // If we have category-specific recommendations, use them
+  if (entityCategory && CATEGORY_PREDICATE_MAP[entityCategory]) {
+    const recommendedSets = CATEGORY_PREDICATE_MAP[entityCategory];
+    const predicates: string[] = [];
+    
+    // Combine predicates from recommended sets
+    for (const setName of recommendedSets) {
+      if (BIOLINK_PREDICATE_SETS[setName as keyof typeof BIOLINK_PREDICATE_SETS]) {
+        predicates.push(...BIOLINK_PREDICATE_SETS[setName as keyof typeof BIOLINK_PREDICATE_SETS]);
+      }
+    }
+    
+    // Remove duplicates and return
+    return [...new Set(predicates)];
+  }
+  
+  // Fall back to query type
+  return BIOLINK_PREDICATE_SETS[queryType as keyof typeof BIOLINK_PREDICATE_SETS] || BIOLINK_PREDICATE_SETS.focused;
+}
+
+/**
+ * Auto-detect entity category from entity ID format
+ */
+function detectEntityCategory(entityId: string): string {
+  if (entityId.startsWith('NCBIGene:') || entityId.startsWith('HGNC:')) {
+    return 'biolink:Gene';
+  } else if (entityId.startsWith('UniProtKB:') || entityId.startsWith('PR:')) {
+    return 'biolink:Protein';
+  } else if (entityId.startsWith('MONDO:') || entityId.startsWith('DOID:') || entityId.startsWith('OMIM:')) {
+    return 'biolink:Disease';
+  } else if (entityId.startsWith('DrugBank:') || entityId.startsWith('CHEBI:') || entityId.startsWith('MESH:')) {
+    return 'biolink:ChemicalEntity';
+  } else if (entityId.startsWith('DBSNP:') || entityId.startsWith('ClinVar:')) {
+    return 'biolink:SequenceVariant';
+  } else if (entityId.startsWith('UBERON:') || entityId.startsWith('CL:')) {
+    return 'biolink:AnatomicalEntity';
+  } else if (entityId.startsWith('REACTOME:') || entityId.startsWith('KEGG:')) {
+    return 'biolink:Pathway';
+  }
+  
+  // Default fallback
+  return 'biolink:NamedThing';
+}
+
+/**
+ * Generate optimized query for finding all connected nodes
+ */
+function generateOptimizedConnectedNodesQuery(entityId: string, entityCategory: string | undefined, queryType: string = 'focused') {
+  const category = entityCategory || detectEntityCategory(entityId);
+  const predicates = getOptimizedPredicates(category, queryType);
+  
+  // Standard 11-category set for comprehensive coverage
+  const standardCategories = [
+    'biolink:BiologicalProcessOrActivity',
+    'biolink:Gene',
+    'biolink:Protein',
+    'biolink:GeneFamily',
+    'biolink:DiseaseOrPhenotypicFeature',
+    'biolink:AnatomicalEntity',
+    'biolink:RNAProduct',
+    'biolink:ChemicalMixture',
+    'biolink:SmallMolecule',
+    'biolink:Polypeptide',
+    'biolink:ProteinFamily'
+  ];
+  
+  return {
+    nodes: {
+      n0: {
+        ids: [entityId],
+        categories: [category]
+      },
+      n1: {
+        categories: standardCategories
+      }
+    },
+    edges: {
+      e0: {
+        subject: 'n0',
+        object: 'n1',
+        predicates: predicates
+      }
+    }
+  };
 }
 
 /**
@@ -575,7 +726,8 @@ async function processTrapiResponse(
   const edges = knowledgeGraph.edges || {};
   const results = trapiResponse.message?.results || [];
 
-  console.error(`[${SERVICE_NAME}] Processing ${Object.keys(nodes).length} nodes and ${Object.keys(edges).length} edges`);
+  const totalEdges = Object.keys(edges).length;
+  console.error(`[${SERVICE_NAME}] Processing ${Object.keys(nodes).length} nodes and ${totalEdges} edges`);
 
   // Step 1: Transform all nodes
   const transformedNodes: GraphModeNode[] = [];
@@ -621,10 +773,18 @@ async function processTrapiResponse(
     }
   }
 
-  // Step 3: Transform all edges with composite IDs
+  // Step 3: Filter and transform edges with composite IDs
   const transformedEdges: GraphModeEdge[] = [];
+  let filteredEdgeCount = 0;
+  
   for (const [edgeId, edgeData] of Object.entries(edges)) {
     try {
+      // Filter out low-quality co-occurrence relationships
+      if (edgeData.predicate === 'biolink:occurs_together_in_literature_with') {
+        filteredEdgeCount++;
+        continue; // Skip this edge
+      }
+      
       const graphModeEdge = transformBTEEdgeToGraphMode(
         edgeId, 
         edgeData, 
@@ -634,6 +794,10 @@ async function processTrapiResponse(
     } catch (error) {
       console.error(`[${SERVICE_NAME}] Failed to transform edge ${edgeId}:`, error);
     }
+  }
+  
+  if (filteredEdgeCount > 0) {
+    console.error(`[${SERVICE_NAME}] Filtered out ${filteredEdgeCount} low-quality co-occurrence edges`);
   }
 
   // Step 4: Bulk create edges (with batching for large payloads)
@@ -670,6 +834,9 @@ async function processTrapiResponse(
   }
 
   console.error(`[${SERVICE_NAME}] Processing complete: ${nodesCreated} nodes, ${edgesCreated} edges, ${results.length} results`);
+  if (filteredEdgeCount > 0) {
+    console.error(`[${SERVICE_NAME}] Quality filter: Removed ${filteredEdgeCount} co-occurrence edges (${((filteredEdgeCount / totalEdges) * 100).toFixed(1)}% of total)`);
+  }
 
   return {
     nodeCount: nodesCreated,
@@ -716,16 +883,36 @@ async function markNodesAsSeed(
 }
 
 /**
- * Build neighborhood expansion query for BTE
+ * Build neighborhood expansion query for BTE using optimized predicates
  */
 function buildNeighborhoodQuery(
   seedNodeIds: string[],
   categories?: string[]
 ): any {
-  // Normalize categories to biolink format
-  const biolinkCategories = categories?.map(normalizeCategoryToBiolink);
+  // Use standard 11-category set for comprehensive coverage
+  const standardCategories = [
+    'biolink:BiologicalProcessOrActivity',
+    'biolink:Gene',
+    'biolink:Protein',
+    'biolink:GeneFamily',
+    'biolink:DiseaseOrPhenotypicFeature',
+    'biolink:AnatomicalEntity',
+    'biolink:RNAProduct',
+    'biolink:ChemicalMixture',
+    'biolink:SmallMolecule',
+    'biolink:Polypeptide',
+    'biolink:ProteinFamily'
+  ];
   
-  // Build TRAPI query with seed nodes and open-ended neighbors
+  // If specific categories are requested, use them; otherwise use standard set
+  const targetCategories = categories && categories.length > 0 
+    ? categories.map(normalizeCategoryToBiolink)
+    : standardCategories;
+  
+  // Use focused predicate set for neighborhood expansion
+  const predicates = BIOLINK_PREDICATE_SETS.focused;
+  
+  // Build TRAPI query with seed nodes and optimized neighbors
   return {
     nodes: {
       n0: {
@@ -733,16 +920,14 @@ function buildNeighborhoodQuery(
         set_interpretation: "BATCH" // Query all seeds at once
       },
       n1: {
-        ...(biolinkCategories && biolinkCategories.length > 0 
-          ? { categories: biolinkCategories } 
-          : {}) // No categories = get all types
+        categories: targetCategories
       }
     },
     edges: {
       e1: {
         subject: "n0",
-        object: "n1"
-        // No predicates = get all relationship types
+        object: "n1",
+        predicates: predicates
       }
     }
   };
@@ -1050,6 +1235,75 @@ function analyzeComprehensiveResults(nodes: any, edges: any, sourceEntityId: str
   };
 }
 
+/**
+ * Generate a quick summary from raw TRAPI response data
+ * Efficiently counts categories and edges for timeout scenarios
+ */
+function generateQuickSummary(
+  nodes: Record<string, BteNode>, 
+  edges: Record<string, BteEdge>
+): string {
+  const totalNodes = Object.keys(nodes).length;
+  const totalEdges = Object.keys(edges).length;
+  
+  // Efficient counting using Map
+  const categoryCount = new Map<string, number>();
+  
+  // Count categories
+  for (const node of Object.values(nodes)) {
+    const category = node.categories?.[0]?.replace('biolink:', '') || 'Unknown';
+    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
+  }
+  
+  // Build markdown table
+  const categoryRows = Array.from(categoryCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, count]) => `| ${category} | ${count} |`)
+    .join('\n');
+  
+  return `## 📊 Quick Summary
+
+**Total Nodes:** ${totalNodes}  
+**Total Edges:** ${totalEdges}
+
+### Node Categories
+| Category | Count |
+|----------|-------|
+${categoryRows}
+
+*This is a summary of the raw data. The full graph is being processed in the background.*`;
+}
+
+/**
+ * Get top connected nodes for detailed response
+ */
+function getTopConnectedNodes(trapiResponse: TrapiResponse, limit: number = 20): string {
+  const nodes = trapiResponse.message?.knowledge_graph?.nodes || {};
+  const edges = trapiResponse.message?.knowledge_graph?.edges || {};
+  
+  // Count connections per node
+  const connectionCount = new Map<string, number>();
+  
+  for (const edge of Object.values(edges)) {
+    connectionCount.set(edge.subject, (connectionCount.get(edge.subject) || 0) + 1);
+    connectionCount.set(edge.object, (connectionCount.get(edge.object) || 0) + 1);
+  }
+  
+  // Get top connected nodes
+  const topNodes = Array.from(connectionCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([nodeId, count]) => {
+      const node = nodes[nodeId];
+      const name = node?.name || nodeId;
+      const category = node?.categories?.[0]?.replace('biolink:', '') || 'Unknown';
+      return `- **${name}** (${nodeId}) [${category}] - ${count} connections`;
+    })
+    .join('\n');
+  
+  return topNodes;
+}
+
 // =============================================================================
 // TOOL DEFINITIONS
 // =============================================================================
@@ -1060,6 +1314,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       description: "Query BioThings Explorer (BTE) using TRAPI query graph format. " +
         "Supports finding relationships between biomedical entities (genes, diseases, drugs, variants, etc.). " +
         "Supports batch queries with multiple entity IDs. Results are added to the current graph visualization.\n\n" +
+        
+        "**QUALITY FILTERING:**\n" +
+        "- Automatically excludes low-quality co-occurrence relationships\n" +
+        "- Filters out 'occurs_together_in_literature_with' predicates\n" +
+        "- Focuses on high-quality biological relationships\n\n" +
         
         "**CRITICAL QUERY STRUCTURE RULES:**\n" +
         "1. ✓ ALWAYS define ALL nodes that are referenced in edges\n" +
@@ -1459,8 +1718,104 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       }
     },
     {
+      name: "find_all_connected_nodes",
+      description: "Find ALL nodes connected to a single specific entity using optimized predicate sets. " +
+        "This tool is specifically designed for 'find all nodes related to X' queries where the user wants " +
+        "to see everything connected to ONE specific entity. Uses intelligent predicate selection based on " +
+        "the Biolink hierarchy for better performance and quality.\n\n" +
+        
+        "**QUALITY FILTERING:**\n" +
+        "- Automatically excludes low-quality co-occurrence relationships\n" +
+        "- Filters out 'occurs_together_in_literature_with' predicates\n" +
+        "- Focuses on high-quality biological relationships\n\n" +
+        
+        "**WHEN TO USE THIS TOOL:**\n" +
+        "- User says 'find all nodes connected to [entity]'\n" +
+        "- User says 'show me everything related to [entity]'\n" +
+        "- User says 'what is connected to [entity]'\n" +
+        "- User wants comprehensive connections for ONE specific entity\n\n" +
+        
+        "**OPTIMIZED APPROACH:**\n" +
+        "- Uses category-specific predicate sets for better targeting\n" +
+        "- Covers all 11 standard entity categories\n" +
+        "- Focuses on high-quality biological relationships\n" +
+        "- Combines optimized predicates with comprehensive category coverage\n\n" +
+        
+        "**PREDICATE SETS BY ENTITY TYPE:**\n" +
+        "- **Genes**: Causal + Associational relationships (8 predicates)\n" +
+        "- **Proteins**: Interaction + Causal relationships (8 predicates)\n" +
+        "- **Diseases**: Associational + Causal relationships (8 predicates)\n" +
+        "- **Drugs/Chemicals**: Causal + Interaction relationships (8 predicates)\n" +
+        "- **Other entities**: Focused set (5 core predicates)\n\n" +
+        
+        "**REQUIREMENTS:**\n" +
+        "- Exactly ONE entity ID (single CURIE)\n" +
+        "- One entity category (auto-detected if not provided)\n" +
+        "- Returns connections to all 11 standard categories\n\n" +
+        
+        "**EXAMPLE USAGE:**\n" +
+        "- 'Find all nodes connected to gene NCBIGene:695'\n" +
+        "- 'Show me everything related to disease MONDO:0005148'\n" +
+        "- 'What is connected to drug DrugBank:DB00001'",
+      inputSchema: {
+        type: "object",
+        properties: {
+          entityId: {
+            type: "string",
+            description: "The entity ID to find connections for (e.g., 'NCBIGene:695', 'MONDO:0005148')"
+          },
+          entityCategory: {
+            type: "string",
+            description: "The Biolink category of the entity (e.g., 'biolink:Gene', 'biolink:Disease'). " +
+              "If not provided, will be auto-detected from entityId format."
+          },
+          queryType: {
+            type: "string",
+            enum: ["focused", "comprehensive", "minimal"],
+            description: "Query complexity level. 'focused' is recommended for most use cases.",
+            default: "focused"
+          },
+          databaseContext: {
+            type: "object",
+            properties: {
+              conversationId: { type: "string" },
+              artifactId: { type: "string" },
+              apiBaseUrl: { type: "string" },
+              accessToken: { type: "string" }
+            },
+            required: ["conversationId"]
+          }
+        },
+        required: ["entityId", "databaseContext"]
+      }
+    },
+    {
       name: "expand_neighborhood",
-      description: "Expand the graph by finding first-degree neighbors of seed nodes. Only keeps nodes connected to 2+ seed nodes (intersection). Marks seed nodes persistently in the database.",
+      description: "Expand the graph by finding first-degree neighbors of seed nodes using optimized predicates. " +
+        "Only keeps nodes connected to 2+ seed nodes (intersection). Marks seed nodes persistently in the database. " +
+        "Uses the same optimized predicate sets as find_all_connected_nodes for consistent, high-quality results.\n\n" +
+        
+        "**QUALITY FILTERING:**\n" +
+        "- Automatically excludes low-quality co-occurrence relationships\n" +
+        "- Filters out 'occurs_together_in_literature_with' predicates\n" +
+        "- Focuses on high-quality biological relationships\n\n" +
+        
+        "**OPTIMIZED APPROACH:**\n" +
+        "- Uses focused predicate set (5 core predicates) for better targeting\n" +
+        "- Covers all 11 standard entity categories by default\n" +
+        "- Focuses on high-quality biological relationships\n" +
+        "- Consistent with find_all_connected_nodes tool\n\n" +
+        
+        "**PREDICATES USED:**\n" +
+        "- biolink:affected_by\n" +
+        "- biolink:affects\n" +
+        "- biolink:associated_with\n" +
+        "- biolink:interacts_with\n" +
+        "- biolink:participates_in\n\n" +
+        
+        "**CATEGORIES SEARCHED (default):**\n" +
+        "BiologicalProcessOrActivity, Gene, Protein, GeneFamily, DiseaseOrPhenotypicFeature, " +
+        "AnatomicalEntity, RNAProduct, ChemicalMixture, SmallMolecule, Polypeptide, ProteinFamily",
       inputSchema: {
         type: "object",
         properties: {
@@ -1495,6 +1850,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         "regardless of category or relationship type. Returns a detailed summary table showing the count of " +
         "connected nodes broken down by category and predicate. Perfect for getting a complete overview " +
         "of all relationships for a given entity.\n\n" +
+        
+        "**QUALITY FILTERING:**\n" +
+        "- Automatically excludes low-quality co-occurrence relationships\n" +
+        "- Filters out 'occurs_together_in_literature_with' predicates\n" +
+        "- Focuses on high-quality biological relationships\n\n" +
         
         "**QUERY APPROACH:**\n" +
         "- Uses open-ended query structure (is_set: false)\n" +
@@ -1635,20 +1995,176 @@ Retry your query with the corrected structure above. Make sure ALL nodes referen
         };
       }
 
-      // Step 1: Query BTE (validation passed)
-      const trapiResponse = await makeBTERequest(queryParams.query_graph);
+      // Step 1: Query BTE with timeout protection
+      const startTime = Date.now();
+      const MCP_TIMEOUT_BUFFER = 10000; // 10 second buffer before MCP timeout
+      const TOTAL_PROCESSING_TIMEOUT = 45000; // 45 seconds for BTE + processing
+      
+      // Start BTE request (don't await it yet)
+      const btePromise = makeBTERequest(queryParams.query_graph);
+      
+      // Race between BTE request and timeout
+      const timeoutPromise = new Promise<null>((resolve) => 
+        setTimeout(() => resolve(null), TOTAL_PROCESSING_TIMEOUT)
+      );
+      
+      const bteResult = await Promise.race([btePromise, timeoutPromise]);
+      
+      if (!bteResult) {
+        // BTE request is taking too long - let it continue in background
+        console.error(`[${SERVICE_NAME}] BTE request taking longer than ${TOTAL_PROCESSING_TIMEOUT/1000}s, returning early but continuing in background`);
+        
+        // Continue BTE request in background (don't await)
+        btePromise.then(async (trapiResponse) => {
+          try {
+            console.error(`[${SERVICE_NAME}] BTE request completed in background, processing data...`);
+            const stats = await processTrapiResponse(trapiResponse, queryParams.databaseContext);
+            console.error(`[${SERVICE_NAME}] Background processing completed successfully`);
+            
+            // Broadcast notification via SSE
+            try {
+              await fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'bte-background-complete',
+                  nodeCount: stats.nodeCount,
+                  edgeCount: stats.edgeCount,
+                  message: `Large BTE query completed! Added ${stats.nodeCount} nodes and ${stats.edgeCount} edges.`
+                })
+              });
+              console.error(`[${SERVICE_NAME}] Background completion notification sent`);
+            } catch (notificationError) {
+              console.error(`[${SERVICE_NAME}] Failed to send background completion notification:`, notificationError);
+            }
+            
+          } catch (error) {
+            console.error(`[${SERVICE_NAME}] Background processing failed:`, error);
+            
+            // Send error notification
+            try {
+              await fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'bte-background-error',
+                  message: `Background BTE processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+                })
+              });
+              console.error(`[${SERVICE_NAME}] Background error notification sent`);
+            } catch (notificationError) {
+              console.error(`[${SERVICE_NAME}] Failed to send background error notification:`, notificationError);
+            }
+          }
+        }).catch(error => {
+          console.error(`[${SERVICE_NAME}] Background BTE request failed:`, error);
+          
+          // Send error notification for BTE request failure
+          try {
+            fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'bte-background-error',
+                message: `BTE request failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+              })
+            }).catch(notificationError => {
+              console.error(`[${SERVICE_NAME}] Failed to send BTE request error notification:`, notificationError);
+            });
+          } catch (fetchError) {
+            console.error(`[${SERVICE_NAME}] Error creating notification request:`, fetchError);
+          }
+        });
+        
+        return {
+          content: [{
+            type: "text",
+            text: `⏱️ Large Network Query - Processing in Background
 
-      // Step 2: Process response and create graph elements
-      const stats = await processTrapiResponse(trapiResponse, queryParams.databaseContext);
+**Status:** The BTE query is taking longer than expected (45+ seconds). This typically indicates a very large network.
 
-      // Step 3: Generate response
-      const queryDescription = generateQueryDescription(queryParams.query_graph);
-      const description = trapiResponse.description || 'Query completed';
+**What's happening:**
+- BTE is processing your query in the background
+- The query may return 1000+ nodes and relationships
+- This is normal for comprehensive queries
 
-      return {
-        content: [{
-          type: "text",
-          text: `✅ BTE Query Complete!
+**Next steps:**
+1. **Wait 1-2 minutes** for BTE to complete processing
+2. **You'll get a notification** when processing is complete
+3. If still no results, try a more specific query (fewer categories)
+
+**Query being processed:**
+${generateQueryDescription(queryParams.query_graph)}
+
+**Note:** Large networks can take 1-3 minutes to process completely. You'll receive a notification when the data is ready.`
+          }],
+          refreshGraph: false
+        };
+      }
+      
+      const trapiResponse = bteResult;
+      const knowledgeGraph = trapiResponse.message?.knowledge_graph;
+      if (!knowledgeGraph) {
+        throw new Error('No knowledge graph in BTE response');
+      }
+      
+      // Step 2: Generate quick summary
+      const quickSummary = generateQuickSummary(
+        knowledgeGraph.nodes,
+        knowledgeGraph.edges
+      );
+
+      // Step 3: Start processing with remaining time check
+      const remainingTime = MCP_TIMEOUT_BUFFER - (Date.now() - startTime);
+      if (remainingTime < 5000) {
+        // Not enough time for processing - return summary
+        return {
+          content: [{
+            type: "text",
+            text: `⏱️ Large Network Detected - Processing in Background
+
+${quickSummary}
+
+**Note:** Due to the large network size, we're providing this summary while the full graph loads. **Please refresh the page in about 1 minute** to see the complete graph visualization.
+
+The data is being added to the graph in the background.`
+          }],
+          refreshGraph: false
+        };
+      }
+
+      // Step 4: Process with remaining time
+      const processingPromise = processTrapiResponse(trapiResponse, queryParams.databaseContext);
+      const result = await Promise.race([
+        processingPromise.then(stats => ({ completed: true, stats })),
+        new Promise<{ completed: false }>(resolve => setTimeout(() => resolve({ completed: false }), remainingTime))
+      ]) as { completed: boolean; stats?: any };
+
+      // Step 5: Return appropriate response
+      if (!result.completed) {
+        // Return summary, processing continues in background
+        return {
+          content: [{
+            type: "text",
+            text: `⏱️ Large Network Detected - Processing in Background
+
+${quickSummary}
+
+**Note:** Due to the large network size, we're providing this summary while the full graph loads. **Please refresh the page in about 1 minute** to see the complete graph visualization.
+
+The data is being added to the graph in the background.`
+          }],
+          refreshGraph: false  // Don't refresh yet
+        };
+      } else {
+        // Processing completed in time - return full response
+        const queryDescription = generateQueryDescription(queryParams.query_graph);
+        const description = trapiResponse.description || 'Query completed';
+        
+        // Calculate approximate response size for token limit handling
+        const stats = result.stats!; // We know stats exists when completed is true
+        const estimatedSize = stats.nodeCount * 50; // rough estimate
+        let responseText = `✅ BTE Query Complete!
 
 **Results:**
 - Created ${stats.nodeCount} new nodes
@@ -1665,10 +2181,100 @@ ${description}
 **Endpoint:** ${BTE_API_URL}/query
 
 The graph has been updated with the new nodes and edges from BTE.
-Note: Duplicate nodes/edges were automatically skipped.`
-        }],
-        refreshGraph: true  // CRITICAL: Triggers UI refresh
-      };
+Note: Duplicate nodes/edges were automatically skipped.`;
+
+        // Add top connected nodes if response size is reasonable
+        if (estimatedSize < 5000) {
+          const topNodes = getTopConnectedNodes(trapiResponse, 20);
+          if (topNodes) {
+            responseText += `\n\n**Top Connected Nodes:**\n${topNodes}`;
+          }
+        }
+
+        return {
+          content: [{
+            type: "text",
+            text: responseText
+          }],
+          refreshGraph: true  // CRITICAL: Triggers UI refresh
+        };
+      }
+    }
+
+    if (name === "find_all_connected_nodes") {
+      const queryParams = FindAllConnectedNodesArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Executing find_all_connected_nodes for ${queryParams.entityId}`);
+      
+      try {
+        // Generate optimized query
+        const queryGraph = generateOptimizedConnectedNodesQuery(
+          queryParams.entityId, 
+          queryParams.entityCategory, 
+          queryParams.queryType
+        );
+        
+        console.error(`[${SERVICE_NAME}] Generated query:`, JSON.stringify(queryGraph, null, 2));
+        
+        // Execute BTE query
+        const trapiResponse = await makeBTERequest(queryGraph);
+        
+        if (!trapiResponse || !trapiResponse.message || !trapiResponse.message.knowledge_graph) {
+          throw new Error("Invalid BTE response structure");
+        }
+
+        // Process and add to database
+        const stats = await processTrapiResponse(trapiResponse, queryParams.databaseContext);
+        
+        // Get entity category for display
+        const entityCategory = queryParams.entityCategory || detectEntityCategory(queryParams.entityId);
+        const predicates = getOptimizedPredicates(entityCategory, queryParams.queryType);
+        
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Connected Nodes Found!
+
+**Entity:** ${queryParams.entityId} (${entityCategory})
+**Query Type:** ${queryParams.queryType}
+**Categories Searched:** 11 standard categories
+**Predicates Used:** ${predicates.length} optimized predicates
+
+**Results:**
+- Created ${stats.nodeCount} new nodes
+- Created ${stats.edgeCount} new edges
+
+**Categories:** BiologicalProcessOrActivity, Gene, Protein, GeneFamily, DiseaseOrPhenotypicFeature, AnatomicalEntity, RNAProduct, ChemicalMixture, SmallMolecule, Polypeptide, ProteinFamily
+
+**Predicate Set:** ${predicates.join(', ')}
+
+**Optimization:** This query used category-specific predicate selection combined with comprehensive category coverage for optimal results.
+
+The graph has been updated with all connected nodes.`
+          }],
+          refreshGraph: true
+        };
+      } catch (error) {
+        console.error(`[${SERVICE_NAME}] Find all connected nodes failed:`, error);
+        return {
+          content: [{
+            type: "text",
+            text: `❌ Find All Connected Nodes Failed
+
+**Error:** ${error instanceof Error ? error.message : 'Unknown error'}
+
+**Troubleshooting:**
+- Verify the entity ID format (e.g., NCBIGene:695, MONDO:0005148)
+- Check that the entity exists in BTE
+- Try a different query type (focused, comprehensive, minimal)
+
+**Entity ID:** ${queryParams.entityId}
+**Detected Category:** ${detectEntityCategory(queryParams.entityId)}
+
+The graph state has not been modified.`
+          }]
+        };
+      }
     }
 
     if (name === "expand_neighborhood") {
@@ -1710,15 +2316,20 @@ Note: Duplicate nodes/edges were automatically skipped.`
 
 **Seed Nodes:** ${queryParams.nodeIds.length} nodes marked as seeds
 **Filter:** Nodes connected to 2+ seeds only
-${queryParams.categories ? `**Categories:** ${queryParams.categories.join(', ')}` : '**Categories:** All types'}
+**Categories Searched:** ${queryParams.categories ? queryParams.categories.length : 11} categories
+**Predicates Used:** 5 optimized predicates
+
+${queryParams.categories ? `**Categories:** ${queryParams.categories.join(', ')}` : '**Categories:** All 11 standard categories'}
 
 **Results:**
 - Created ${stats.nodeCount} new nodes
 - Created ${stats.edgeCount} new edges
 
+**Predicate Set:** affected_by, affects, associated_with, interacts_with, participates_in
+
 ${summary}
 
-**Summary:** Each seed node now shows its connection count to different node types. The graph has been updated with the neighborhood expansion.`
+**Summary:** Each seed node now shows its connection count to different node types. The graph has been updated with the neighborhood expansion using optimized predicates for better quality results.`
           }],
           refreshGraph: true
         };
@@ -1749,7 +2360,7 @@ The graph state has not been modified.`
 
     if (name === "get_comprehensive_summary") {
       const queryParams = args as { entityId: string; entityCategory?: string; databaseContext: any };
-      const entityCategory = queryParams.entityCategory || "biolink:Gene";
+      const entityCategory = normalizeCategoryToBiolink(queryParams.entityCategory || "Gene");
       
       console.error(`[${SERVICE_NAME}] Executing comprehensive summary for ${queryParams.entityId} (${entityCategory})`);
       

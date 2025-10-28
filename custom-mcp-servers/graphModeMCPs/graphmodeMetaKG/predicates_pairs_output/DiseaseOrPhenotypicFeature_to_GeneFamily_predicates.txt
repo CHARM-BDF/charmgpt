@@ -1,0 +1,10 @@
+affects
+coexists_with
+has_input
+has_part
+has_participant
+interacts_with
+located_in
+occurs_in
+produces
+related_to
