@@ -99,8 +99,20 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
     }));
     
     // Enhanced logging for detailed response inspection
-    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Full response structure (first 500 chars):', 
-      JSON.stringify(response).substring(0, 500));
+    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Full response structure (first 1000 chars):', 
+      JSON.stringify(response).substring(0, 1000));
+    
+    // Log each content block individually for better debugging
+    if (response.content && Array.isArray(response.content)) {
+      response.content.forEach((block: any, index: number) => {
+        console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Content block ${index}:`, {
+          type: block.type,
+          name: block.name,
+          hasInput: !!block.input,
+          inputPreview: block.input ? JSON.stringify(block.input).substring(0, 200) + '...' : 'none'
+        });
+      });
+    }
     
     // Check if response has content
     if (!response.content || response.content.length === 0) {
@@ -123,15 +135,27 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
     
     // Log detailed information about tool block
     if (toolUseBlock) {
-      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found tool_use block with name:', toolUseBlock.name);
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found response_formatter tool use');
       console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Tool input structure:', JSON.stringify({
         hasThinking: !!toolUseBlock.input?.thinking,
         hasConversation: !!toolUseBlock.input?.conversation,
+        conversationType: typeof toolUseBlock.input?.conversation,
         isConversationArray: Array.isArray(toolUseBlock.input?.conversation),
-        conversationLength: Array.isArray(toolUseBlock.input?.conversation) 
-          ? toolUseBlock.input.conversation.length 
-          : 0
+        conversationLength: Array.isArray(toolUseBlock.input?.conversation) ? toolUseBlock.input.conversation.length : 0
       }));
+      
+      // Log the actual input content for debugging
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Raw tool input:', JSON.stringify(toolUseBlock.input, null, 2));
+    } else {
+      console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: No response_formatter tool use found in response');
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Available content blocks:', response.content.map((block: any) => ({
+        type: block.type,
+        name: block.name
+      })));
+    }
+    
+    if (toolUseBlock) {
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found response_formatter tool use');
       
       // Log a sample of the conversation content if available
       if (Array.isArray(toolUseBlock.input?.conversation) && toolUseBlock.input.conversation.length > 0) {

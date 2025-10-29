@@ -127,6 +127,12 @@ const AddNodeByCurieArgumentsSchema = z.object({
   nodeId: z.string().min(1, "Node CURIE is required").describe("The CURIE identifier to add (e.g., 'MONDO:0007254', 'NCBIGene:994')"),
 });
 
+// Schema for analyze node relationships tool
+const AnalyzeNodeRelationshipsArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  nodeId: z.string().min(1, "Node ID is required").describe("The ID of the node to analyze relationships for (e.g., 'NCBIGene:7157')"),
+});
+
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
@@ -375,6 +381,84 @@ function formatEdgeDetails(edge: any, nodes: any[]): string {
     `- Label: ${edge.label || 'No label'}\n` +
     `- Type: ${edge.type || 'No type'}\n` +
     `- Created: ${edge.createdAt}`;
+}
+
+function formatNodeRelationshipAnalysis(targetNode: any, connectedNodes: any[], edges: any[]): string {
+  if (!targetNode) {
+    return "Target node not found in the graph.";
+  }
+
+  if (connectedNodes.length === 0) {
+    return `**${targetNode.label}** (${targetNode.id})\n\nNo connections found in the graph.`;
+  }
+
+  // Group connected nodes by type
+  const nodesByType: { [key: string]: any[] } = {};
+  connectedNodes.forEach(node => {
+    const type = node.type || 'unknown';
+    if (!nodesByType[type]) {
+      nodesByType[type] = [];
+    }
+    nodesByType[type].push(node);
+  });
+
+  // Group edges by predicate/relationship type
+  const edgesByPredicate: { [key: string]: any[] } = {};
+  edges.forEach(edge => {
+    const predicate = edge.label || edge.type || 'unknown_relationship';
+    if (!edgesByPredicate[predicate]) {
+      edgesByPredicate[predicate] = [];
+    }
+    edgesByPredicate[predicate].push(edge);
+  });
+
+  // Build the analysis
+  let analysis = `**${targetNode.label}** (${targetNode.id})\n\n`;
+  analysis += `**Connected to ${connectedNodes.length} nodes total**\n\n`;
+
+  // Node type summary
+  analysis += `## Connected Node Types:\n`;
+  Object.entries(nodesByType).forEach(([type, nodes]) => {
+    analysis += `- **${type}**: ${nodes.length} nodes\n`;
+  });
+
+  analysis += `\n## Relationship Breakdown by Target Node Type:\n`;
+  
+  // Group edges by target node type, then by predicate
+  const edgesByTargetType: { [key: string]: { [key: string]: number } } = {};
+  
+  edges.forEach(edge => {
+    const connectedNode = connectedNodes.find(n => n.id === edge.source || n.id === edge.target);
+    if (connectedNode) {
+      const nodeType = connectedNode.type || 'unknown';
+      const predicate = edge.label || edge.type || 'unknown_relationship';
+      
+      if (!edgesByTargetType[nodeType]) {
+        edgesByTargetType[nodeType] = {};
+      }
+      edgesByTargetType[nodeType][predicate] = (edgesByTargetType[nodeType][predicate] || 0) + 1;
+    }
+  });
+
+  // Sort node types by total connections (descending)
+  const sortedNodeTypes = Object.entries(edgesByTargetType).sort((a, b) => {
+    const totalA = Object.values(a[1]).reduce((sum, count) => sum + count, 0);
+    const totalB = Object.values(b[1]).reduce((sum, count) => sum + count, 0);
+    return totalB - totalA;
+  });
+
+  sortedNodeTypes.forEach(([nodeType, predicates]) => {
+    const totalConnections = Object.values(predicates).reduce((sum, count) => sum + count, 0);
+    analysis += `\n### ${nodeType} (${totalConnections} connections)\n`;
+    
+    // Sort predicates by count (descending)
+    const sortedPredicates = Object.entries(predicates).sort((a, b) => b[1] - a[1]);
+    sortedPredicates.forEach(([predicate, count]) => {
+      analysis += `- **${predicate}**: ${count} connections\n`;
+    });
+  });
+
+  return analysis;
 }
 
 // =============================================================================
@@ -732,6 +816,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             nodeId: {
               type: "string",
               description: "The CURIE identifier (e.g., 'MONDO:0007254', 'NCBIGene:994')",
+            },
+          },
+          required: ["databaseContext", "nodeId"],
+        },
+      },
+      {
+        name: "analyzeNodeRelationships",
+        description: "Analyze the relationships and connections of a specific node in the graph. " +
+          "Returns detailed information about what types of nodes are connected to the target node " +
+          "and what types of relationships (predicates) exist between them. " +
+          "Use this when you want to understand the connectivity pattern of a specific node, " +
+          "such as 'show me all the relationships for gene TP53' or 'what types of nodes are connected to this disease'. " +
+          "This tool only analyzes existing connections - it does not modify the graph.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                artifactId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            nodeId: {
+              type: "string",
+              description: "The ID of the node to analyze relationships for (e.g., 'NCBIGene:7157', 'MONDO:0007254')",
             },
           },
           required: ["databaseContext", "nodeId"],
@@ -1621,6 +1734,81 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         refreshGraph: true
       };
 
+    } else if (name === "analyzeNodeRelationships") {
+      const { databaseContext, nodeId } = AnalyzeNodeRelationshipsArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Analyzing relationships for node: ${nodeId}`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      
+      // Get current graph state
+      const result = await makeAPIRequest('/state', databaseContext);
+      
+      if (!result || !result.success) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Failed to retrieve graph state from the database.",
+            },
+          ],
+        };
+      }
+      
+      const { nodes, edges } = result.data;
+      
+      if (!nodes || nodes.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "The graph is empty - no nodes to analyze.",
+            },
+          ],
+        };
+      }
+      
+      // Find the target node
+      const targetNode = nodes.find((n: any) => n.id === nodeId);
+      if (!targetNode) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Node '${nodeId}' not found in the graph. Please check the node ID and try again.`,
+            },
+          ],
+        };
+      }
+      
+      // Find all edges connected to this node
+      const connectedEdges = (edges || []).filter((edge: any) => 
+        edge.source === nodeId || edge.target === nodeId
+      );
+      
+      // Find all connected nodes
+      const connectedNodeIds = new Set<string>();
+      connectedEdges.forEach((edge: any) => {
+        if (edge.source === nodeId) {
+          connectedNodeIds.add(edge.target);
+        } else {
+          connectedNodeIds.add(edge.source);
+        }
+      });
+      
+      const connectedNodes = nodes.filter((n: any) => connectedNodeIds.has(n.id));
+      
+      // Format the analysis
+      const analysis = formatNodeRelationshipAnalysis(targetNode, connectedNodes, connectedEdges);
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: analysis,
+          },
+        ],
+      };
+
     } else {
       throw new Error(`Unknown tool: ${name}`);
     }
@@ -1658,7 +1846,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   console.error(`[${SERVICE_NAME}] Starting Graph Mode MCP Server`);
   console.error(`[${SERVICE_NAME}] Default API Base URL: ${DEFAULT_API_BASE_URL}`);
-  console.error(`[${SERVICE_NAME}] Available tools: removeNode, removeEdge, getGraphState, bulkRemoveNodes, bulkRemoveEdges, removeNodesByDegree, bulkRemoveNodesByType, addNodeByName, normalizeNode`);
+  console.error(`[${SERVICE_NAME}] Available tools: removeNode, removeEdge, getGraphState, bulkRemoveNodes, bulkRemoveEdges, removeNodesByDegree, bulkRemoveNodesByType, addNodeByName, normalizeNode, addNodeByCurie, analyzeNodeRelationships`);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
