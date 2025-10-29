@@ -4,11 +4,13 @@ A simplified version of the BioThings Explorer (BTE) MCP for GraphMode. This ver
 
 ## Features
 
-- **Single Tool**: `query_bte_getall` - one tool to rule them all
+- **Two Tools**: 
+  - `query_bte_getall` - comprehensive queries across all categories
+  - `query_bte_by_categories` - targeted queries for specific entity types
 - **Fixed Predicates**: 6 carefully selected predicates (no `associated_with`)
-- **Fixed Categories**: 11 standard biomedical categories
-- **Simple Input**: Just provide an entity ID
-- **No Configuration**: All parameters are fixed for consistency
+- **Flexible Categories**: Choose from 11 standard biomedical categories or query all
+- **Simple Input**: Just provide an entity ID (and categories for targeted queries)
+- **Smart Selection**: Tools guide LLM to choose the right approach
 
 ## Fixed Configuration
 
@@ -35,11 +37,36 @@ A simplified version of the BioThings Explorer (BTE) MCP for GraphMode. This ver
 
 ## Usage
 
-Simply provide an entity ID:
+### Comprehensive Query (All Categories)
+Use `query_bte_getall` when you want to explore ALL possible connections:
 
 ```
 query_bte_getall(entityId: "NCBIGene:695")
 ```
+
+### Targeted Query (Specific Categories)
+Use `query_bte_by_categories` when you want specific entity types:
+
+```
+query_bte_by_categories(
+  entityId: "MONDO:0005148", 
+  categories: ["biolink:Gene", "biolink:Protein"]
+)
+```
+
+## When to Use Each Tool
+
+### Use `query_bte_getall` when:
+- User asks for "all connections" or "everything related to X"
+- No specific entity types are mentioned
+- You want comprehensive network exploration
+- User says "find all genes, proteins, diseases, etc."
+
+### Use `query_bte_by_categories` when:
+- User specifies particular entity types ("genes", "proteins", "diseases")
+- User asks for "genes associated with X" or "proteins related to Y"
+- You want focused, targeted results
+- User mentions specific categories they're interested in
 
 ## Installation
 
@@ -67,11 +94,13 @@ Add to `backend-mcp-client/config/mcp_server_config.json`:
 
 ## Differences from V1
 
-- **Simplified**: Single tool instead of 4 tools
-- **Fixed Parameters**: No query customization
-- **Cleaner Code**: ~800 lines instead of ~2500 lines
+- **Two Focused Tools**: Instead of 4 complex tools, now has 2 clear-purpose tools
+- **Smart Selection**: Tools guide LLM to choose appropriate approach
+- **Fixed Parameters**: No complex query customization
+- **Cleaner Code**: ~1000 lines instead of ~2500 lines
 - **Focused**: Removes complex predicate selection logic
 - **Consistent**: Same results every time for same input
+- **Targeted Queries**: New ability to query specific entity types
 
 ## License
 

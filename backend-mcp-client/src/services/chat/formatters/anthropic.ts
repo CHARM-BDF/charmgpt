@@ -232,6 +232,17 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       if (!formatterOutput.conversation) {
         console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Missing conversation array - creating fallback');
         
+        // Log the complete formatter output to understand what's missing
+        console.error('🔍 DEBUG-ANTHROPIC-FORMATTER: Complete formatter output when conversation is missing:', JSON.stringify({
+          formatterOutput: formatterOutput,
+          keys: Object.keys(formatterOutput),
+          values: Object.values(formatterOutput),
+          types: Object.entries(formatterOutput).map(([key, value]) => ({ key, type: typeof value, isArray: Array.isArray(value) }))
+        }, null, 2));
+        
+        // Log the raw tool input for debugging
+        console.error('🔍 DEBUG-ANTHROPIC-FORMATTER: Raw tool input:', JSON.stringify(toolUseBlock.input, null, 2));
+        
         // Create a fallback conversation array with any available thinking
         return {
           thinking: formatterOutput.thinking || "Formatter output was incomplete",
@@ -245,6 +256,16 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       // If conversation is not an array, convert it to an array
       if (!Array.isArray(formatterOutput.conversation)) {
         console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Conversation is not an array - converting to array');
+        
+        // Log the conversation value and its type for debugging
+        console.error('🔍 DEBUG-ANTHROPIC-FORMATTER: Conversation value details:', {
+          value: formatterOutput.conversation,
+          type: typeof formatterOutput.conversation,
+          isArray: Array.isArray(formatterOutput.conversation),
+          isNull: formatterOutput.conversation === null,
+          isUndefined: formatterOutput.conversation === undefined,
+          stringLength: typeof formatterOutput.conversation === 'string' ? formatterOutput.conversation.length : 'N/A'
+        });
         
         // Convert string or object conversation to array
         if (typeof formatterOutput.conversation === 'string') {

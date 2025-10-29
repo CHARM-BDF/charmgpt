@@ -110,6 +110,12 @@ const QueryBTEArgumentsSchema = z.object({
   databaseContext: DatabaseContextSchema,
 });
 
+const QueryBTEByCategoriesSchema = z.object({
+  entityId: z.string().min(1, "Entity ID is required"),
+  categories: z.array(z.string()).min(1, "At least one category is required"),
+  databaseContext: DatabaseContextSchema,
+});
+
 // =============================================================================
 // SERVER SETUP
 // =============================================================================
@@ -140,6 +146,22 @@ function buildSimplifiedQuery(entityId: string) {
     nodes: {
       n0: { ids: [entityId] },
       n1: { categories: FIXED_CATEGORIES }
+    },
+    edges: {
+      e0: {
+        subject: 'n0',
+        object: 'n1',
+        predicates: FIXED_PREDICATES
+      }
+    }
+  };
+}
+
+function buildCategorySpecificQuery(entityId: string, categories: string[]) {
+  return {
+    nodes: {
+      n0: { ids: [entityId] },
+      n1: { categories: categories }
     },
     edges: {
       e0: {
@@ -455,6 +477,11 @@ async function processTrapiResponse(
 
   const totalEdges = Object.keys(edges).length;
   console.error(`[${SERVICE_NAME}] Processing ${Object.keys(nodes).length} nodes and ${totalEdges} edges`);
+  console.error(`[${SERVICE_NAME}] Database context:`, {
+    conversationId: databaseContext.conversationId,
+    apiBaseUrl: databaseContext.apiBaseUrl,
+    hasAccessToken: !!databaseContext.accessToken
+  });
 
   // Step 1: Transform all nodes
   const transformedNodes: GraphModeNode[] = [];
@@ -484,11 +511,13 @@ async function processTrapiResponse(
         const batch = batches[i];
         console.error(`[${SERVICE_NAME}] Processing node batch ${i + 1}/${batches.length} (${batch.length} nodes)`);
         
+        console.error(`[${SERVICE_NAME}] Making bulk nodes API request for batch ${i + 1}...`);
         const nodeResult = await makeAPIRequest('/nodes/bulk', databaseContext, {
           method: 'POST',
           body: JSON.stringify({ nodes: batch })
         });
         
+        console.error(`[${SERVICE_NAME}] Bulk nodes API response:`, nodeResult);
         nodesCreated += nodeResult.created || 0;
         console.error(`[${SERVICE_NAME}] Batch ${i + 1}: created ${nodeResult.created || 0} nodes (${nodeResult.skipped || 0} skipped)`);
       }
@@ -544,11 +573,13 @@ async function processTrapiResponse(
         const batch = batches[i];
         console.error(`[${SERVICE_NAME}] Processing edge batch ${i + 1}/${batches.length} (${batch.length} edges)`);
         
+        console.error(`[${SERVICE_NAME}] Making bulk edges API request for batch ${i + 1}...`);
         const edgeResult = await makeAPIRequest('/edges/bulk', databaseContext, {
           method: 'POST',
           body: JSON.stringify({ edges: batch })
         });
         
+        console.error(`[${SERVICE_NAME}] Bulk edges API response:`, edgeResult);
         edgesCreated += edgeResult.created || 0;
         console.error(`[${SERVICE_NAME}] Batch ${i + 1}: created ${edgeResult.created || 0} edges (${edgeResult.skipped || 0} skipped)`);
       }
@@ -579,8 +610,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   const tools = [
     {
       name: "query_bte_getall",
-      description: "Query BTE for all connected nodes using fixed predicates and categories. " +
-        "Simply provide an entity ID (e.g., 'NCBIGene:695', 'MONDO:0005148').\n\n" +
+      description: "Query BTE for ALL available entity types using fixed predicates and categories. " +
+        "Use this tool when querying for comprehensive connections across all biomedical categories. " +
+        "Do NOT use if user specifies particular categories (genes, proteins, diseases, etc.).\n\n" +
         "**Fixed Predicates:** affected_by, affects, interacts_with, participates_in, derives_from, derives_into\n" +
         "**Fixed Categories:** 10 standard biomedical categories\n" +
         "**Usage:** Just provide the entity ID - all other parameters are fixed.",
@@ -603,6 +635,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           }
         },
         required: ["entityId", "databaseContext"]
+      }
+    },
+    {
+      name: "query_bte_by_categories",
+      description: "Query BTE for connections to SPECIFIC entity types. Use this when user specifies particular categories like 'genes', 'proteins', 'diseases', etc.\n\n" +
+        "**Fixed Predicates:** affected_by, affects, interacts_with, participates_in, derives_from, derives_into\n" +
+        "**Selectable Categories:** Choose from 11 biomedical categories\n" +
+        "**Important:** At least 1 category MUST be selected.\n" +
+        "**Example:** Get all genes connected to MONDO:0005148",
+      inputSchema: {
+        type: "object",
+        properties: {
+          entityId: {
+            type: "string",
+            description: "The entity ID to find connections for"
+          },
+          categories: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: FIXED_CATEGORIES
+            },
+            minItems: 1,
+            description: "Select specific categories to query (at least 1 required)"
+          },
+          databaseContext: {
+            type: "object",
+            properties: {
+              conversationId: { type: "string" },
+              artifactId: { type: "string" },
+              apiBaseUrl: { type: "string" },
+              accessToken: { type: "string" }
+            },
+            required: ["conversationId"]
+          }
+        },
+        required: ["entityId", "categories", "databaseContext"]
       }
     }
   ];
@@ -792,6 +861,213 @@ The data is being added to the graph in the background.`
 
 **Predicates Used:** ${FIXED_PREDICATES.join(', ')}
 **Categories Searched:** 10 standard biomedical categories
+
+**Source:** BioThings Explorer (BTE)
+**Endpoint:** ${BTE_API_URL}/query
+
+The graph has been updated with the new nodes and edges from BTE.
+Note: Duplicate nodes/edges were automatically skipped.`
+          }],
+          refreshGraph: true  // CRITICAL: Triggers UI refresh
+        };
+      }
+    }
+
+    if (name === "query_bte_by_categories") {
+      const queryParams = QueryBTEByCategoriesSchema.parse(args);
+
+      // Validate categories are from FIXED_CATEGORIES
+      const invalidCategories = queryParams.categories.filter(cat => !FIXED_CATEGORIES.includes(cat));
+      if (invalidCategories.length > 0) {
+        throw new Error(`Invalid categories: ${invalidCategories.join(', ')}. Must be from: ${FIXED_CATEGORIES.join(', ')}`);
+      }
+
+      console.error(`[${SERVICE_NAME}] Executing category-specific BTE query for ${queryParams.entityId} with categories: ${queryParams.categories.join(', ')}`);
+
+      // Step 1: Build category-specific query
+      const queryGraph = buildCategorySpecificQuery(queryParams.entityId, queryParams.categories);
+      
+      // Step 2: Query BTE with timeout protection
+      const startTime = Date.now();
+      const MCP_TIMEOUT_BUFFER = 10000; // 10 second buffer before MCP timeout
+      const TOTAL_PROCESSING_TIMEOUT = 45000; // 45 seconds for BTE + processing
+      
+      // Start BTE request (don't await it yet)
+      const btePromise = makeBTERequest(queryGraph);
+      
+      // Race between BTE request and timeout
+      const timeoutPromise = new Promise<null>((resolve) => 
+        setTimeout(() => resolve(null), TOTAL_PROCESSING_TIMEOUT)
+      );
+      
+      const bteResult = await Promise.race([btePromise, timeoutPromise]);
+      
+      if (!bteResult) {
+        // BTE request is taking too long - let it continue in background
+        console.error(`[${SERVICE_NAME}] BTE request taking longer than ${TOTAL_PROCESSING_TIMEOUT/1000}s, returning early but continuing in background`);
+        
+        // Continue BTE request in background (don't await)
+        console.error(`[${SERVICE_NAME}] Starting background BTE request processing...`);
+        btePromise.then(async (trapiResponse) => {
+          try {
+            console.error(`[${SERVICE_NAME}] BTE request completed in background, processing data...`);
+            console.error(`[${SERVICE_NAME}] Background response stats:`, {
+              nodeCount: Object.keys(trapiResponse.message?.knowledge_graph?.nodes || {}).length,
+              edgeCount: Object.keys(trapiResponse.message?.knowledge_graph?.edges || {}).length,
+              resultCount: trapiResponse.message?.results?.length || 0,
+            });
+            
+            const stats = await processTrapiResponse(trapiResponse, queryParams.databaseContext);
+            console.error(`[${SERVICE_NAME}] Background processing completed successfully:`, stats);
+            
+            // Broadcast notification via SSE
+            try {
+              console.error(`[${SERVICE_NAME}] Sending background completion notification...`);
+              const notificationResponse = await fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'bte-background-complete',
+                  nodeCount: stats.nodeCount,
+                  edgeCount: stats.edgeCount,
+                  message: `Targeted BTE query completed! Added ${stats.nodeCount} nodes and ${stats.edgeCount} edges for categories: ${queryParams.categories.join(', ')}.`
+                })
+              });
+              console.error(`[${SERVICE_NAME}] Background completion notification response:`, notificationResponse.status, notificationResponse.statusText);
+            } catch (notificationError) {
+              console.error(`[${SERVICE_NAME}] Failed to send background completion notification:`, notificationError);
+            }
+            
+          } catch (error) {
+            console.error(`[${SERVICE_NAME}] Background processing failed:`, error);
+            console.error(`[${SERVICE_NAME}] Background processing error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+            
+            // Send error notification
+            try {
+              console.error(`[${SERVICE_NAME}] Sending background error notification...`);
+              const errorResponse = await fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'bte-background-error',
+                  message: `Background BTE processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+                })
+              });
+              console.error(`[${SERVICE_NAME}] Background error notification response:`, errorResponse.status, errorResponse.statusText);
+            } catch (notificationError) {
+              console.error(`[${SERVICE_NAME}] Failed to send background error notification:`, notificationError);
+            }
+          }
+        }).catch(error => {
+          console.error(`[${SERVICE_NAME}] Background BTE request failed:`, error);
+          console.error(`[${SERVICE_NAME}] Background BTE request error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+        });
+        
+        return {
+          content: [{
+            type: "text",
+            text: `⏱️ Large Targeted Query - Processing in Background
+
+**Status:** The BTE query is taking longer than expected (45+ seconds). This typically indicates a very large network.
+
+**What's happening:**
+- BTE is processing your targeted query in the background
+- The query may return 1000+ nodes and relationships
+- This is normal for comprehensive targeted queries
+
+**Next steps:**
+1. **Wait 1-2 minutes** for BTE to complete processing
+2. **You'll get a notification** when processing is complete
+3. If still no results, try a more specific query
+
+**Entity:** ${queryParams.entityId}
+**Target Categories:** ${queryParams.categories.join(', ')}
+**Predicates:** ${FIXED_PREDICATES.join(', ')}
+
+**Note:** Large networks can take 1-3 minutes to process completely. You'll receive a notification when the data is ready.`
+          }],
+          refreshGraph: false
+        };
+      }
+      
+      const trapiResponse = bteResult;
+      const knowledgeGraph = trapiResponse.message?.knowledge_graph;
+      if (!knowledgeGraph) {
+        throw new Error('No knowledge graph in BTE response');
+      }
+      
+      // Step 3: Start processing with remaining time check
+      const remainingTime = MCP_TIMEOUT_BUFFER - (Date.now() - startTime);
+      if (remainingTime < 5000) {
+        // Not enough time for processing - return summary
+        const totalNodes = Object.keys(knowledgeGraph.nodes).length;
+        const totalEdges = Object.keys(knowledgeGraph.edges).length;
+        
+        return {
+          content: [{
+            type: "text",
+            text: `⏱️ Large Targeted Network Detected - Processing in Background
+
+**Entity:** ${queryParams.entityId}
+**Target Categories:** ${queryParams.categories.join(', ')}
+**Total Nodes:** ${totalNodes}
+**Total Edges:** ${totalEdges}
+
+**Note:** Due to the large network size, we're providing this summary while the full graph loads. **Please refresh the page in about 1 minute** to see the complete graph visualization.
+
+The data is being added to the graph in the background.`
+          }],
+          refreshGraph: false
+        };
+      }
+
+      // Step 4: Process with remaining time
+      const processingPromise = processTrapiResponse(trapiResponse, queryParams.databaseContext);
+      const result = await Promise.race([
+        processingPromise.then(stats => ({ completed: true, stats })),
+        new Promise<{ completed: false }>(resolve => setTimeout(() => resolve({ completed: false }), remainingTime))
+      ]) as { completed: boolean; stats?: any };
+
+      // Step 5: Return appropriate response
+      if (!result.completed) {
+        // Return summary, processing continues in background
+        const totalNodes = Object.keys(knowledgeGraph.nodes).length;
+        const totalEdges = Object.keys(knowledgeGraph.edges).length;
+        
+        return {
+          content: [{
+            type: "text",
+            text: `⏱️ Large Targeted Network Detected - Processing in Background
+
+**Entity:** ${queryParams.entityId}
+**Target Categories:** ${queryParams.categories.join(', ')}
+**Total Nodes:** ${totalNodes}
+**Total Edges:** ${totalEdges}
+
+**Note:** Due to the large network size, we're providing this summary while the full graph loads. **Please refresh the page in about 1 minute** to see the complete graph visualization.
+
+The data is being added to the graph in the background.`
+          }],
+          refreshGraph: false  // Don't refresh yet
+        };
+      } else {
+        // Processing completed in time - return full response
+        const stats = result.stats!; // We know stats exists when completed is true
+        
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Targeted BTE Query Complete!
+
+**Entity:** ${queryParams.entityId}
+**Target Categories:** ${queryParams.categories.join(', ')}
+**Results:**
+- Created ${stats.nodeCount} new nodes
+- Created ${stats.edgeCount} new edges
+- Found ${stats.resultCount} result paths
+
+**Predicates Used:** ${FIXED_PREDICATES.join(', ')}
+**Categories Searched:** ${queryParams.categories.length} selected categories
 
 **Source:** BioThings Explorer (BTE)
 **Endpoint:** ${BTE_API_URL}/query
