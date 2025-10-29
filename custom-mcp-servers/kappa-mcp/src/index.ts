@@ -303,8 +303,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   logger.info(`Received tool execution request for tool: ${request.params.name}`);
   
+  // Extract args outside try block so it's accessible in catch
+  const { name, arguments: args } = request.params;
+  
   try {
-    const { name, arguments: args } = request.params;
 
     if (name !== "run_kappa_simulation") {
       logger.error(`Unknown tool requested: ${name}`);
@@ -398,11 +400,49 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
     
+    // Build error response with artifacts to show the failed model
+    const artifacts = [];
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Include the Kappa model code as an artifact if it was provided
+    if (args && typeof args === "object" && "ka" in args) {
+      artifacts.push({
+        id: crypto.randomUUID(),
+        artifactId: crypto.randomUUID(),
+        type: "code",
+        title: "Failed Kappa Model",
+        content: args.ka as string,
+        language: "kappa",
+        timestamp: new Date(),
+        position: artifacts.length,
+        metadata: {
+          editorView: true,
+          status: "failed",
+          error: errorMessage
+        }
+      });
+    }
+    
+    // Add error details as markdown artifact
+    artifacts.push({
+      id: crypto.randomUUID(),
+      artifactId: crypto.randomUUID(),
+      type: "text/markdown",
+      title: "Simulation Error",
+      content: `# Simulation Failed\n\n**Error:** ${errorMessage}\n\n${args && "l" in args ? `**Simulation limit:** ${args.l} time units\n` : ""}${args && "p" in args ? `**Plot period:** ${args.p}\n` : ""}\n\nPlease check your Kappa model syntax and try again.`,
+      timestamp: new Date(),
+      position: artifacts.length
+    });
+    
+    logger.info(`Returning error response with ${artifacts.length} artifacts`);
+    logger.debug("Error artifacts:", JSON.stringify(artifacts.map(a => ({ title: a.title, type: a.type })), null, 2));
+    
     return {
       content: [{
         type: "text",
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
+        text: `Error: ${errorMessage}`
       }],
+      artifacts,
       isError: true,
     };
   }
