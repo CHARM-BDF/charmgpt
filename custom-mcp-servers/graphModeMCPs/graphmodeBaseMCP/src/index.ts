@@ -1514,13 +1514,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const speciesName = getSpeciesName(match.taxa);
         const labelWithSpecies = speciesName ? `${match.label} (${speciesName})` : match.label;
         
-        const linkText = `[🔘 Add ${labelWithSpecies}](graphnode:add:${curie}:${name}:${types})`;
+        // Convert to title case (capitalize each word)
+        const titleCaseLabel = labelWithSpecies
+          .split(' ')
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        
+        const linkText = `[**ADD**](graphnode:add:${curie}:${name}:${types})`;
         console.error(`[${SERVICE_NAME}] Generated link for ${match.label}: ${linkText}`);
         
-        // Show species in the details line as well if available
-        const speciesInfo = speciesName ? ` | Species: ${speciesName}` : '';
-        return `${linkText} - **${match.curie}**\n` +
-               `   Type: ${match.types?.[0] || 'Unknown'} | Score: ${match.score || 'N/A'}${speciesInfo}`;
+        return `${linkText} **${titleCaseLabel}** (${match.curie})`;
       }).join('\n\n');
       
       const fullResponse = `Found ${matches.length} matches for '${nodeName}':\n\n${matchList}\n\n` +

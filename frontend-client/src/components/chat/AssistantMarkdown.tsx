@@ -151,26 +151,15 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
     let transformed = rawContent;
 
     // Fallback 1: Convert patterns like
-    //   <button>🔘 Add NAME</button> - <strong>CURIE</strong>\n   Type: TYPE | Score: ...
-    // into markdown link: [🔘 Add NAME](graphnode:add:CURIE:NAME:TYPE) - **CURIE**\n   Type: TYPE | Score: ...
+    //   <button>**ADD**</button> <strong>NAME</strong> (CURIE)
+    // into markdown link: [**ADD**](graphnode:add:CURIE:NAME:TYPE) **NAME** (CURIE)
     transformed = transformed.replace(
-      /<button[^>]*>\s*🔘\s*Add\s*([^<]+?)\s*<\/button>\s*-\s*<strong>([^<]+)<\/strong>([\s\S]*?Type:\s*([^|\n]+))/gi,
-      (_m, name, curie, tail, type) => {
+      /<button[^>]*>\s*\*\*ADD\*\*\s*<\/button>\s*<strong>([^<]+)<\/strong>\s*\(([^)]+)\)/gi,
+      (_m, name, curie) => {
         const encCurie = encodeURIComponent(curie.trim());
         const encName = encodeURIComponent(String(name).trim());
-        const encType = encodeURIComponent(String(type).trim());
-        return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">🔘 Add ${name}</a> - <strong>${curie}</strong>${tail}`;
-      }
-    );
-
-    // Fallback 2: If we don't find a Type segment, still convert button+CURIE into a link with Unknown type
-    transformed = transformed.replace(
-      /<button[^>]*>\s*🔘\s*Add\s*([^<]+?)\s*<\/button>\s*-\s*<strong>([^<]+)<\/strong>/gi,
-      (_m, name, curie) => {
-        const encCurie = encodeURIComponent(String(curie).trim());
-        const encName = encodeURIComponent(String(name).trim());
         const encType = encodeURIComponent('Unknown');
-        return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">🔘 Add ${name}</a> - <strong>${curie}</strong>`;
+        return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">**ADD**</a> <strong>${name}</strong> (${curie})`;
       }
     );
 
@@ -479,12 +468,11 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
           <button
             onClick={handleAddGraphNode}
             className="inline-flex items-center gap-2 px-3 py-1.5 
-                      bg-green-50 hover:bg-green-100
-                      text-green-700 dark:bg-green-900/30 dark:text-green-300
-                      rounded-md border border-green-200 dark:border-green-800
+                      bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600
+                      text-gray-800 dark:text-gray-200
+                      rounded-md border border-gray-300 dark:border-gray-600
                       transition-colors duration-200 text-sm font-medium"
           >
-            <span className="text-lg">🔘</span>
             {children}
           </button>
         );

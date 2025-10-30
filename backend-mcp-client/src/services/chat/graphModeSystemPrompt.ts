@@ -24,16 +24,14 @@ Only use other tools (like addNodeByName from graphmode-base-mcp) if:
 - User explicitly requests a different method
 - The entities are not genes
 
-The interactive buttons use the format: [🔘 Add Node Name](graphnode:add:CURIE:Name:Type)
+The interactive buttons use the format: [**ADD**](graphnode:add:CURIE:Name:Type) **Node Name** (CURIE)
 
 Example of what you MUST preserve:
 Found 3 matches for 'diabetes':
 
-[🔘 Add Type 2 Diabetes](graphnode:add:MONDO:0005148:Type%202%20Diabetes:Disease) - **MONDO:0005148**
-   Type: Disease | Score: 0.95
+[**ADD**](graphnode:add:MONDO:0005148:Type%202%20Diabetes:Disease) **Type 2 Diabetes** (MONDO:0005148)
 
-[🔘 Add Diabetes Mellitus](graphnode:add:DOID:9351:Diabetes%20Mellitus:Disease) - **DOID:9351**
-   Type: Disease | Score: 0.87
+[**ADD**](graphnode:add:DOID:9351:Diabetes%20Mellitus:Disease) **Diabetes Mellitus** (DOID:9351)
 
 Click any button to add that node to the graph.
 

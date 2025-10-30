@@ -214,15 +214,15 @@ const processContent = (rawContent: string): string => {
   let transformed = rawContent;
 
   // Convert patterns like
-  //   <button>🔘 Add NAME</button> - <strong>CURIE</strong>\n   Type: TYPE | Score: ...
-  // into markdown link: [🔘 Add NAME](graphnode:add:CURIE:NAME:TYPE) - **CURIE**\n   Type: TYPE | Score: ...
+  //   <button>**ADD**</button> <strong>NAME</strong> (CURIE)
+  // into markdown link: [**ADD**](graphnode:add:CURIE:NAME:TYPE) **NAME** (CURIE)
   transformed = transformed.replace(
-    /<button[^>]*>\s*🔘\s*Add\s*([^<]+?)\s*<\/button>\s*-\s*<strong>([^<]+)<\/strong>([\s\S]*?Type:\s*([^|\n]+))/gi,
-    (_m, name, curie, tail, type) => {
+    /<button[^>]*>\s*\*\*ADD\*\*\s*<\/button>\s*<strong>([^<]+)<\/strong>\s*\(([^)]+)\)/gi,
+    (_m, name, curie) => {
       const encCurie = encodeURIComponent(curie.trim());
       const encName = encodeURIComponent(String(name).trim());
-      const encType = encodeURIComponent(String(type).trim());
-      return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">🔘 Add ${name}</a> - <strong>${curie}</strong>${tail}`;
+      const encType = encodeURIComponent('Unknown');
+      return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">**ADD**</a> <strong>${name}</strong> (${curie})`;
     }
   );
 }
