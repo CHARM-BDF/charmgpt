@@ -5,7 +5,7 @@ import * as fsSync from 'fs';
 import { setupPythonEnvironment, cleanupPythonEnvironment, TEMP_DIR, LOGS_DIR } from './env.js';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
+import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution, UPLOADS_DIR } from "../shared/mcpCodeUtils.js";
 
 
 const execAsync = promisify(exec);
@@ -27,6 +27,120 @@ try {
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
+}
+
+// Add helper function for Python file resolution utilities
+function getPythonHelperCode(): string {
+  return `
+import os
+import json
+import pandas as pd
+from pathlib import Path
+
+# File resolution helper
+def _load_file_mapping():
+    """Load mapping of original filenames to UUIDs from metadata"""
+    metadata_dir = '/app/metadata'
+    uploads_dir = '/app/uploads'
+    mapping = {}
+    
+    if not os.path.exists(metadata_dir):
+        return mapping
+    
+    for meta_file in os.listdir(metadata_dir):
+        if meta_file.endswith('.json'):
+            try:
+                with open(os.path.join(metadata_dir, meta_file), 'r') as f:
+                    metadata = json.load(f)
+                    original_name = metadata.get('description') or metadata.get('originalFilename')
+                    if original_name:
+                        file_id = meta_file.replace('.json', '')
+                        file_path = os.path.join(uploads_dir, file_id)
+                        if os.path.exists(file_path):
+                            mapping[original_name] = file_path
+            except:
+                continue
+    
+    return mapping
+
+# Global file mapping
+_FILE_MAPPING = _load_file_mapping()
+
+def resolve_file(filename):
+    """Resolve a filename to its actual path (supports both UUID and original name)"""
+    # If it's already a valid path, return it
+    if os.path.exists(filename):
+        return filename
+    
+    # Check if it's in the mapping
+    if filename in _FILE_MAPPING:
+        return _FILE_MAPPING[filename]
+    
+    # Check uploads directory directly
+    uploads_path = os.path.join('/app/uploads', filename)
+    if os.path.exists(uploads_path):
+        return uploads_path
+    
+    # Not found - provide helpful error message
+    available_files = list(_FILE_MAPPING.keys())
+    error_msg = f"File not found: '{filename}'\n\n"
+    error_msg += f"🔍 DEBUGGING INFO:\n"
+    error_msg += f"- Looking for file: '{filename}'\n"
+    error_msg += f"- Search locations:\n"
+    error_msg += f"  1. Direct path: {filename}\n"
+    error_msg += f"  2. File mapping: {filename in _FILE_MAPPING}\n"
+    error_msg += f"  3. Uploads directory: /app/uploads/{filename}\n"
+    error_msg += f"- Available files ({len(available_files)} total):\n"
+    for i, file in enumerate(available_files[:10], 1):
+        error_msg += f"  {i}. {file}\n"
+    if len(available_files) > 10:
+        error_msg += f"  ... and {len(available_files) - 10} more files\n"
+    error_msg += f"\n💡 SUGGESTIONS:\n"
+    error_msg += f"- Use list_available_files() to see all available files\n"
+    error_msg += f"- Check if the filename is spelled correctly\n"
+    error_msg += f"- Make sure the file was uploaded through the UI\n"
+    
+    raise FileNotFoundError(error_msg)
+
+def list_available_files():
+    """List all available files with their original names"""
+    print("Available files:")
+    for original_name, path in _FILE_MAPPING.items():
+        size = os.path.getsize(path)
+        print(f"  - {original_name} ({size:,} bytes)")
+    return list(_FILE_MAPPING.keys())
+
+# Override pandas read functions to use resolve_file
+_original_read_csv = pd.read_csv
+_original_read_excel = pd.read_excel
+
+def read_csv(filepath_or_buffer, *args, **kwargs):
+    """Pandas read_csv with automatic file resolution"""
+    if isinstance(filepath_or_buffer, str):
+        try:
+            filepath_or_buffer = resolve_file(filepath_or_buffer)
+        except FileNotFoundError as e:
+            print(f"❌ ERROR: Cannot load CSV file '{filepath_or_buffer}'")
+            print(str(e))
+            raise
+    return _original_read_csv(filepath_or_buffer, *args, **kwargs)
+
+def read_excel(io, *args, **kwargs):
+    """Pandas read_excel with automatic file resolution"""
+    if isinstance(io, str):
+        try:
+            io = resolve_file(io)
+        except FileNotFoundError as e:
+            print(f"❌ ERROR: Cannot load Excel file '{io}'")
+            print(str(e))
+            raise
+    return _original_read_excel(io, *args, **kwargs)
+
+# Monkey-patch pandas
+pd.read_csv = read_csv
+pd.read_excel = read_excel
+
+`;
 }
 
 // Add helper function for code transformation
@@ -131,6 +245,8 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
       '--rm',  // Remove container after execution
       '-v', `${path.dirname(hostScriptPath)}:${CONTAINER_TEMP_DIR}`,
       '-v', `${LOGS_DIR}:${CONTAINER_LOGS_DIR}`,
+      '-v', `${UPLOADS_DIR}:/app/uploads:ro`,  // Add this - read-only uploads
+      '-v', `${path.join(UPLOADS_DIR, 'metadata')}:/app/metadata:ro`,  // Add this - read-only metadata
       '-w', CONTAINER_TEMP_DIR,  // Set working directory
       '--memory', '256m',  // Memory limit
       '--cpus', '1.0',     // CPU limit
@@ -241,7 +357,10 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     }
     
     // Transform code to handle file operations
-    const code = transformPythonCode(originalCode, logger);
+    const transformedCode = transformPythonCode(originalCode, logger);
+    
+    // Prepend helper code
+    const code = getPythonHelperCode() + '\n\n' + transformedCode;
     
     // Log if code was transformed or files were added
     if (code !== originalCode) {

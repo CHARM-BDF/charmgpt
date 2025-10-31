@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
 import { ConversationList } from './ConversationList';
+import { FileEntry } from '../../types/fileManagement';
 // @ts-ignore - Heroicons type definitions mismatch
-import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon, BeakerIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ChevronRightIcon, FolderIcon, ArrowsPointingOutIcon, BeakerIcon, TrashIcon, CpuChipIcon, DocumentIcon } from '@heroicons/react/24/outline';
 
 interface ConversationDrawerProps {
   onShowProjects?: () => void;
@@ -22,6 +23,8 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const [isExpanded, setIsExpanded] = useState(false); // Track expanded/collapsed state
   const [isBulkEditMode, setIsBulkEditMode] = useState(false);
   const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
+  const [pythonFiles, setPythonFiles] = useState<FileEntry[]>([]);
+  const [showPythonFiles, setShowPythonFiles] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const { startNewConversation, switchConversation, conversations, deleteConversation } = useChatStore();
   const { projects } = useProjectStore();
@@ -54,6 +57,37 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isExpanded]);
+
+  // Load Python-accessible files
+  useEffect(() => {
+    const loadPythonFiles = async () => {
+      try {
+        // Call the storage API to get all files
+        const response = await fetch('/api/storage/files');
+        if (response.ok) {
+          const files = await response.json();
+          // Filter for files that would be accessible to Python-MCP
+          const pythonAccessibleFiles = files.filter((file: FileEntry) => 
+            file.name.endsWith('.csv') || 
+            file.name.endsWith('.xlsx') || 
+            file.name.endsWith('.json') || 
+            file.name.endsWith('.txt') ||
+            file.name.endsWith('.parquet')
+          );
+          setPythonFiles(pythonAccessibleFiles);
+        }
+      } catch (error) {
+        console.error('Error loading Python files:', error);
+      }
+    };
+    
+    loadPythonFiles();
+    
+    // Optional: Set up interval to refresh files periodically
+    const intervalId = setInterval(loadPythonFiles, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleNewConversation = () => {
     const newId = startNewConversation();
@@ -410,6 +444,64 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 </span>
               </button>
             </div>
+          </div>
+
+          {/* Python Files section */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <div 
+                className="flex items-center gap-2 cursor-pointer group/title hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                onClick={() => setShowPythonFiles(!showPythonFiles)}
+              >
+                <CpuChipIcon className="w-6 h-6 opacity-80 group-hover/title:opacity-100 group-hover/title:text-blue-500 dark:group-hover/title:text-blue-400 transition-all" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover/title:text-blue-600 dark:group-hover/title:text-blue-400 transition-colors">
+                  Python Files
+                </h2>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  ({pythonFiles.length})
+                </span>
+              </div>
+              <button
+                onClick={() => setShowPythonFiles(!showPythonFiles)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                title={showPythonFiles ? "Hide files" : "Show files"}
+              >
+                <svg 
+                  className={`w-4 h-4 transition-transform ${showPythonFiles ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+            
+            {showPythonFiles && (
+              <div className="ml-8 space-y-1 max-h-48 overflow-y-auto">
+                {pythonFiles.length === 0 ? (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                    No files available for Python analysis
+                  </div>
+                ) : (
+                  pythonFiles.map((file) => (
+                    <div 
+                      key={file.id}
+                      className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                      title={`${file.name} (${Math.round(file.size / 1024)} KB)`}
+                    >
+                      <DocumentIcon className="w-4 h-4 text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                        {Math.round(file.size / 1024)} KB
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
           
           {/* Conversation list */}
