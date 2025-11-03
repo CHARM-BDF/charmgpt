@@ -67,11 +67,62 @@ export class GraphDatabaseService {
         },
       });
       
-      // Handle BigInt serialization
+      // Handle BigInt serialization and parse JSON string fields
       if (result) {
         const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
           typeof value === 'bigint' ? value.toString() : value
         ));
+        
+        // Parse node data and position fields from JSON strings
+        if (serializedResult.nodes) {
+          serializedResult.nodes = serializedResult.nodes.map((node: any) => {
+            let parsedData = node.data;
+            let parsedPosition = node.position;
+            
+            try {
+              if (typeof node.data === 'string' && node.data.trim()) {
+                parsedData = JSON.parse(node.data);
+              }
+            } catch (e) {
+              console.error('Error parsing node data:', e, node.data);
+            }
+            
+            try {
+              if (typeof node.position === 'string' && node.position.trim()) {
+                parsedPosition = JSON.parse(node.position);
+              }
+            } catch (e) {
+              console.error('Error parsing node position:', e, node.position);
+            }
+            
+            return {
+              ...node,
+              data: parsedData,
+              position: parsedPosition
+            };
+          });
+        }
+        
+        // Parse edge data fields from JSON strings
+        if (serializedResult.edges) {
+          serializedResult.edges = serializedResult.edges.map((edge: any) => {
+            let parsedData = edge.data;
+            
+            try {
+              if (typeof edge.data === 'string' && edge.data.trim()) {
+                parsedData = JSON.parse(edge.data);
+              }
+            } catch (e) {
+              console.error('Error parsing edge data:', e, edge.data);
+            }
+            
+            return {
+              ...edge,
+              data: parsedData
+            };
+          });
+        }
+        
         return serializedResult;
       }
       
@@ -96,12 +147,66 @@ export class GraphDatabaseService {
         orderBy: { createdAt: 'desc' },
       });
       
-      // Handle BigInt serialization
+      // Handle BigInt serialization and parse JSON string fields
       const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
         typeof value === 'bigint' ? value.toString() : value
       ));
       
-      return serializedResult;
+      // Parse node data and position fields from JSON strings
+      const processedResult = serializedResult.map((project: any) => {
+        if (project.nodes) {
+          project.nodes = project.nodes.map((node: any) => {
+            let parsedData = node.data;
+            let parsedPosition = node.position;
+            
+            try {
+              if (typeof node.data === 'string' && node.data.trim()) {
+                parsedData = JSON.parse(node.data);
+              }
+            } catch (e) {
+              console.error('Error parsing node data:', e, node.data);
+            }
+            
+            try {
+              if (typeof node.position === 'string' && node.position.trim()) {
+                parsedPosition = JSON.parse(node.position);
+              }
+            } catch (e) {
+              console.error('Error parsing node position:', e, node.position);
+            }
+            
+            return {
+              ...node,
+              data: parsedData,
+              position: parsedPosition
+            };
+          });
+        }
+        
+        // Parse edge data fields from JSON strings
+        if (project.edges) {
+          project.edges = project.edges.map((edge: any) => {
+            let parsedData = edge.data;
+            
+            try {
+              if (typeof edge.data === 'string' && edge.data.trim()) {
+                parsedData = JSON.parse(edge.data);
+              }
+            } catch (e) {
+              console.error('Error parsing edge data:', e, edge.data);
+            }
+            
+            return {
+              ...edge,
+              data: parsedData
+            };
+          });
+        }
+        
+        return project;
+      });
+      
+      return processedResult;
     } catch (error) {
       console.error('❌ [DATABASE] getAllGraphProjects error:', error);
       throw error;
@@ -350,6 +455,23 @@ export class GraphDatabaseService {
     });
   }
 
+  async updateEdge(edgeId: string, graphId: string, updates: { label?: string; type?: string; data?: any }) {
+    // Serialize data field as JSON string for SQLite
+    const serializedUpdates: any = { ...updates };
+    if (updates.data !== undefined) {
+      // Only serialize if it's not already a string
+      serializedUpdates.data = typeof updates.data === 'string' ? updates.data : JSON.stringify(updates.data);
+    }
+    
+    return await this.prisma.graphEdge.updateMany({
+      where: { 
+        id: edgeId,
+        graphId: graphId
+      },
+      data: serializedUpdates,
+    });
+  }
+
   // State Management for Undo/Redo
   async saveState(graphId: string, command: string, snapshot: any) {
     return await this.prisma.graphState.create({
@@ -450,6 +572,45 @@ export class GraphDatabaseService {
       }
     }
     return result;
+  }
+
+  async bulkUpdateEdges(edges: any[]) {
+    // Update edges one by one since Prisma doesn't support bulk updates with different data
+    let updated = 0;
+    let failed = 0;
+    
+    for (const edge of edges) {
+      try {
+        const { id, graphId, ...updateData } = edge;
+        
+        // Serialize data field if needed
+        const serializedUpdateData: any = { ...updateData };
+        if (updateData.data !== undefined) {
+          serializedUpdateData.data = typeof updateData.data === 'string' 
+            ? updateData.data 
+            : JSON.stringify(updateData.data);
+        }
+        
+        const result = await this.prisma.graphEdge.updateMany({
+          where: {
+            id: id,
+            graphId: graphId
+          },
+          data: serializedUpdateData
+        });
+        
+        if (result.count > 0) {
+          updated++;
+        } else {
+          failed++;
+        }
+      } catch (error: any) {
+        console.error(`Error updating edge ${edge.id}:`, error);
+        failed++;
+      }
+    }
+    
+    return { updated, failed, total: edges.length };
   }
 
   async disconnect() {
