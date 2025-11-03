@@ -104,8 +104,8 @@ const AddNodesFromPMIDsArgumentsSchema = z.object({
   databaseContext: DatabaseContextSchema,
 });
 
-// Schema for addNodesFromText tool
-const AddNodesFromTextArgumentsSchema = z.object({
+// Schema for addNodesAndEdgesFromText tool
+const AddNodesAndEdgesFromTextArgumentsSchema = z.object({
   text: z.string().min(1, "Text is required").max(100000, "Text too long (max 100,000 characters)"),
   concepts: z.array(z.enum(["gene", "disease", "chemical", "species", "mutation", "cellline", "snp", "protein"]))
     .optional()
@@ -187,6 +187,245 @@ const AddNodesByNameArgumentsSchema = z.object({
 // =============================================================================
 // PUBTATOR API FUNCTIONS
 // =============================================================================
+/**
+ * Submit text for annotation using PubTator's RESTful endpoint (for free text)
+ * This uses the legacy RESTful endpoint since PubTator3 doesn't have a direct POST /annotations/ endpoint
+ */
+async function annotateTextRESTful(text: string, bioconcepts: string[]): Promise<any> {
+  const RESTFUL_BASE_URL = "https://www.ncbi.nlm.nih.gov/CBBresearch/Lu/Demo/RESTful";
+  
+  // Step 1: Submit text for annotation
+  // Convert concepts array to comma-separated string (PubTator expects comma-separated or single value)
+  // Use all concepts joined with comma, or just the first if we need a single value
+  const bioconcept = bioconcepts.length > 0 ? bioconcepts.join(',') : 'Gene,Disease,Chemical';
+  
+  const submitUrl = `${RESTFUL_BASE_URL}/request.cgi`;
+  const submitBody = new URLSearchParams({
+    text: text,
+    bioconcept: bioconcept
+  });
+
+  const submitResponse = await fetch(submitUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: submitBody.toString()
+  });
+
+  if (!submitResponse.ok) {
+    throw new Error(`Failed to submit text for annotation: ${submitResponse.status} ${submitResponse.statusText}`);
+  }
+
+  const sessionData = await submitResponse.json();
+  const sessionId = sessionData.id;
+
+  if (!sessionId) {
+    throw new Error('No session ID returned from PubTator annotation service');
+  }
+
+  // Step 2: Poll for results (with timeout)
+  const maxAttempts = 30; // Try for up to 30 seconds
+  const pollInterval = 2000; // 2 seconds between attempts (give more time for processing)
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // Wait before first attempt (except first one)
+    if (attempt > 0) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    
+    const retrieveUrl = `${RESTFUL_BASE_URL}/retrieve.cgi`;
+    const retrieveBody = new URLSearchParams({
+      id: sessionId
+    });
+
+    try {
+      const retrieveResponse = await fetch(retrieveUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: retrieveBody.toString()
+      });
+
+      // If 404, result is not ready yet (expected during processing)
+      if (retrieveResponse.status === 404) {
+        continue;
+      }
+
+      // If 400, might be invalid session ID or request format issue
+      if (retrieveResponse.status === 400) {
+        const errorText = await retrieveResponse.text();
+        // Check if it's an HTML error page (means endpoint rejected request)
+        if (errorText.includes('400 Error') || errorText.includes('Bad Request')) {
+          // Wait a bit more and retry, might be timing issue
+          if (attempt < maxAttempts - 1) {
+            continue;
+          }
+          throw new Error(`Invalid request to PubTator service. The session may have expired or the endpoint may not be available. Status: 400`);
+        }
+        throw new Error(`Bad request to PubTator service: ${errorText.substring(0, 200)}`);
+      }
+
+      if (!retrieveResponse.ok) {
+        const errorText = await retrieveResponse.text();
+        throw new Error(`Failed to retrieve annotation results: ${retrieveResponse.status} ${retrieveResponse.statusText}. ${errorText.substring(0, 200)}`);
+      }
+
+      // Check content type - might be HTML error or JSON
+      const contentType = retrieveResponse.headers.get('content-type') || '';
+      const responseText = await retrieveResponse.text();
+      
+      // If HTML, it's likely an error page
+      if (contentType.includes('text/html') || responseText.trim().startsWith('<!')) {
+        if (attempt < maxAttempts - 1) {
+          continue; // Retry if we haven't exhausted attempts
+        }
+        throw new Error(`PubTator service returned HTML error page. The endpoint may not be available or the session expired.`);
+      }
+
+      // Try to parse as JSON (BioC format)
+      try {
+        const biocData = JSON.parse(responseText);
+        return biocData;
+      } catch (parseError) {
+        // If not JSON, might be other format - check if it looks like BioC
+        if (responseText.includes('collection') || responseText.includes('documents') || responseText.includes('passages')) {
+          // Might be valid but not JSON - try parsing differently
+          throw new Error(`Unexpected response format from PubTator service. Expected JSON but got: ${contentType}`);
+        }
+        throw new Error(`Failed to parse PubTator response as JSON. Response: ${responseText.substring(0, 200)}`);
+      }
+    } catch (error: any) {
+      // If it's a 404 or "not ready" error, continue polling
+      if (error.message?.includes('404') || error.message?.includes('not ready')) {
+        continue;
+      }
+      // If it's a network error, retry
+      if (error.message?.includes('fetch') || error.message?.includes('network')) {
+        if (attempt < maxAttempts - 1) {
+          continue;
+        }
+      }
+      throw error;
+    }
+  }
+
+  throw new Error('Timeout waiting for annotation results after 30 attempts');
+}
+
+// Parse BioC JSON format for free text (no PMID required)
+function parseBiocJsonForText(biocData: any): ParsedPublication[] {
+  // RESTful endpoint returns BioC format, may be in different structure than PubTator3 export
+  // Check for common BioC structures
+  const documents = biocData?.PubTator3 || biocData?.documents || (biocData?.collection ? [biocData.collection] : []);
+  
+  // If it's a single document object, wrap it
+  let docsToProcess: any[] = [];
+  if (Array.isArray(documents)) {
+    docsToProcess = documents;
+  } else if (documents && typeof documents === 'object') {
+    docsToProcess = [documents];
+  } else if (biocData && typeof biocData === 'object' && !biocData.PubTator3 && !biocData.documents && !biocData.collection) {
+    // Might be a direct document object
+    docsToProcess = [biocData];
+  }
+  
+  if (docsToProcess.length === 0) {
+    console.error(`[${SERVICE_NAME}] parseBiocJsonForText: No documents found. Data structure:`, {
+      dataKeys: biocData ? Object.keys(biocData) : [],
+      dataType: typeof biocData,
+      isArray: Array.isArray(biocData)
+    });
+    return [];
+  }
+
+  const publications: ParsedPublication[] = [];
+
+  for (const doc of docsToProcess) {
+    // For free text, we don't require a PMID - use empty string or generated ID
+    let pmid = '';
+    if (doc.infons?.article_id_pmid) {
+      pmid = doc.infons.article_id_pmid;
+    } else if (doc.id && doc.id.match(/\d+/)) {
+      pmid = doc.id;
+    } else {
+      pmid = 'text_' + Date.now(); // Generate a temporary ID for text annotations
+    }
+
+    let textContent = '';
+    const entities: Map<string, { id: string; name: string; type: string; pubtatorId: string }> = new Map();
+
+    // Process all passages (for free text, we want all content)
+    for (const passage of doc.passages || []) {
+      const passageType = passage.infons?.type || '';
+      
+      // Collect all text content
+      if (passage.text) {
+        textContent += passage.text + ' ';
+      }
+
+      // Extract entity annotations from all passages
+      for (const annotation of passage.annotations || []) {
+        const entityType = annotation.infons?.type?.toLowerCase() || '';
+        const entityId = annotation.infons?.identifier || annotation.id || '';
+        const entityName = annotation.text || '';
+        
+        // Skip if we don't have enough info
+        if (!entityId || !entityName || !entityType) continue;
+
+        // Create PubTator ID format (e.g., @GENE_123)
+        const pubtatorId = `@${entityType.toUpperCase()}_${entityId}`;
+
+        // Use PubTator ID as key to avoid duplicates
+        if (!entities.has(pubtatorId)) {
+          entities.set(pubtatorId, {
+            id: pubtatorId,
+            name: entityName,
+            type: entityType,
+            pubtatorId: pubtatorId
+          });
+        }
+      }
+    }
+
+    // Extract document-level relations (PRE-EXTRACTED by PubTator)
+    const relations: ParsedPublicationRelation[] = [];
+    if (doc.relations && Array.isArray(doc.relations)) {
+      for (const relation of doc.relations) {
+        const relationType = relation.infons?.type || '';
+        const role1 = relation.infons?.role1;
+        const role2 = relation.infons?.role2;
+        
+        // Skip if missing required data
+        if (!relationType || !role1?.accession || !role2?.accession) {
+          continue;
+        }
+
+        relations.push({
+          type: relationType,
+          entity1Id: role1.accession,
+          entity1Name: role1.name || role1.accession,
+          entity1Type: role1.type?.toLowerCase() || '',
+          entity2Id: role2.accession,
+          entity2Name: role2.name || role2.accession,
+          entity2Type: role2.type?.toLowerCase() || '',
+          score: relation.infons?.score
+        });
+      }
+    }
+
+    publications.push({
+      pmid,
+      abstract: textContent.trim(),
+      entities: Array.from(entities.values()),
+      relations: relations.length > 0 ? relations : undefined
+    });
+  }
+
+  return publications;
+}
+
 // Make PubTator API request
 async function makePubTatorRequest(
   endpoint: string, 
@@ -966,8 +1205,8 @@ const tools = [
     }
   },
   {
-    name: "addNodesFromText",
-    description: "Extract biomedical entities from free text and add them as nodes to the Graph Mode knowledge graph. Uses PubTator's text annotation service to identify genes, diseases, chemicals, and other entities.",
+    name: "addNodesAndEdgesFromText",
+    description: "Extract biomedical entities and their relationships from free text and add them to the Graph Mode knowledge graph. Uses PubTator's text annotation service to identify genes, diseases, chemicals, and other entities, as well as relationships between them. Note: This tool uses PubTator's legacy RESTful endpoint which may be unreliable or unavailable. If this tool fails, consider using findPublicationsByTerm to search for publications containing your text, then addNodesFromPMIDs to extract entities from specific publications.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1053,7 +1292,7 @@ const tools = [
   },
   {
     name: "findRelatedEntities",
-    description: "Find all entities of a specific type that are related to a given entity (e.g., find all genes related to FAM177A1). Uses PubTator's relationship database to discover connections and adds them to the Graph Mode knowledge graph.",
+    description: "Find all entities of a specific type that are related to a given entity (e.g., find all genes related to a specific gene, or all diseases related to a chemical). Uses PubTator's relationship database to discover connections and adds them to the Graph Mode knowledge graph.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1408,70 +1647,110 @@ Note: ${nodeResult.skipped} duplicate nodes and ${edgeResult.skipped} duplicate 
       };
     }
 
-    if (name === "addNodesFromText") {
-      const queryParams = AddNodesFromTextArgumentsSchema.parse(args);
+    if (name === "addNodesAndEdgesFromText") {
+      const queryParams = AddNodesAndEdgesFromTextArgumentsSchema.parse(args);
       const { text, concepts, databaseContext } = queryParams;
 
-      // console.error(`[${SERVICE_NAME}] Processing text of length ${text.length} for concepts: ${concepts.join(', ')}`);
+      try {
+        // Annotate text with PubTator using RESTful endpoint (PubTator3 doesn't have POST /annotations/)
+        // This returns BioC JSON format
+        const biocData = await annotateTextRESTful(text, concepts);
 
-      // Annotate text with PubTator
-      const endpoint = '/annotations/';
-      const body = {
-        text: text,
-        concepts: concepts
-      };
+        // Parse BioC JSON format (same format as publication export)
+        // For free text, we'll treat it as a single document without PMID
+        const parsedPublications = parseBiocJsonForText(biocData);
 
-      const annotations = await makePubTatorRequest(endpoint, 'POST', body);
+        if (parsedPublications.length === 0 || parsedPublications[0].entities.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: "No biomedical entities found in the provided text."
+            }]
+          };
+        }
 
-      if (!annotations || !annotations.annotations) {
+        // Collect nodes and edges for bulk creation
+        const nodesToCreate: Omit<NodeData, 'id'>[] = [];
+        const edgesToCreate: EdgeData[] = [];
+        const processedEntities = new Set<string>();
+
+        // Process entities from parsed publication
+        const pub = parsedPublications[0];
+        for (const entity of pub.entities) {
+          if (!concepts.includes(entity.type as any)) continue;
+          if (processedEntities.has(entity.pubtatorId)) continue;
+
+          const entityType = getEntityType(entity.type);
+          const nodeData: Omit<NodeData, 'id'> = {
+            label: entity.name,
+            type: entityType.type,
+            data: {
+              pubtatorId: entity.pubtatorId,
+              source: 'pubtator',
+              entityType: entity.type
+            },
+            position: {
+              x: Math.random() * 800 + 100,
+              y: Math.random() * 600 + 100
+            }
+          };
+
+          nodesToCreate.push(nodeData);
+          processedEntities.add(entity.pubtatorId);
+        }
+
+        // Process relations if available
+        if (pub.relations && pub.relations.length > 0) {
+          for (const relation of pub.relations) {
+            // Only create edges if both entities were found in the text
+            if (processedEntities.has(relation.entity1Id) && processedEntities.has(relation.entity2Id)) {
+              const edgeData: EdgeData = {
+                id: generateCompositeEdgeId(
+                  databaseContext.conversationId,
+                  'pubtator',
+                  'infores:pubtator',
+                  relation.entity1Id,
+                  mapRelationshipType(relation.type),
+                  relation.entity2Id
+                ),
+                source: relation.entity1Id,
+                target: relation.entity2Id,
+                label: mapRelationshipType(relation.type),
+                data: {
+                  type: relation.type,
+                  source: 'pubtator',
+                  primary_source: 'infores:pubtator',
+                  publications: [] // Free text doesn't have PMIDs
+                }
+              };
+              edgesToCreate.push(edgeData);
+            }
+          }
+        }
+
+        // Bulk create nodes
+        const nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
+        
+        // Bulk create edges
+        const edgeResult = await bulkCreateEdgesInDatabase(edgesToCreate, databaseContext);
+
         return {
           content: [{
             type: "text",
-            text: "No biomedical entities found in the provided text."
+            text: `Successfully added ${nodeResult.created} biomedical entities and ${edgeResult.created} relationships from the text to the Graph Mode knowledge graph.
+Note: ${nodeResult.skipped} duplicate entities and ${edgeResult.skipped} duplicate relationships were automatically skipped.`
+          }],
+          refreshGraph: true
+        };
+      } catch (error) {
+        console.error(`[${SERVICE_NAME}] Error annotating text:`, error);
+        return {
+          content: [{
+            type: "text",
+            text: `Error processing text: ${error instanceof Error ? error.message : 'Unknown error'}. The PubTator text annotation service may be temporarily unavailable.`
           }]
         };
       }
-
-      // Collect nodes for bulk creation
-      const nodesToCreate: Omit<NodeData, 'id'>[] = [];
-      const processedEntities = new Set<string>();
-
-      // Process entities
-      for (const entity of annotations.annotations) {
-        if (!concepts.includes(entity.type)) continue;
-        if (processedEntities.has(entity.id)) continue;
-
-        const entityType = getEntityType(entity.type);
-        const nodeData: Omit<NodeData, 'id'> = {
-          label: entity.name,
-          type: entityType.type,
-          data: {
-            pubtatorId: entity.id,
-            source: 'pubtator',
-            entityType: entity.type,
-            mentions: entity.mentions || []
-          },
-          position: {
-            x: Math.random() * 800 + 100,
-            y: Math.random() * 600 + 100
-          }
-        };
-
-        nodesToCreate.push(nodeData);
-        processedEntities.add(entity.id);
-      }
-
-      // Bulk create nodes
-      const nodeResult = await bulkCreateNodesInDatabase(nodesToCreate, databaseContext);
-
-      return {
-        content: [{
-          type: "text",
-          text: `Successfully added ${nodeResult.created} biomedical entities from the text to the Graph Mode knowledge graph.
-Note: ${nodeResult.skipped} duplicate entities were automatically skipped.`
-        }],
-        refreshGraph: true
-      };
     }
 
     if (name === "addNodesByName") {
