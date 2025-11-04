@@ -795,9 +795,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // Step 3: Start processing with remaining time check
       const remainingTime = MCP_TIMEOUT_BUFFER - (Date.now() - startTime);
       if (remainingTime < 5000) {
-        // Not enough time for processing - return summary
+        // Not enough time for processing - start background processing and return summary
         const totalNodes = Object.keys(knowledgeGraph.nodes).length;
         const totalEdges = Object.keys(knowledgeGraph.edges).length;
+        
+        // CRITICAL: Start background processing even when returning early
+        console.error(`[${SERVICE_NAME}] Not enough time remaining (${remainingTime}ms), starting background processing...`);
+        processTrapiResponse(trapiResponse, queryParams.databaseContext).then(async (stats) => {
+          console.error(`[${SERVICE_NAME}] Background processing completed successfully:`, stats);
+          
+          // Broadcast notification via SSE
+          try {
+            await fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'bte-background-complete',
+                nodeCount: stats.nodeCount,
+                edgeCount: stats.edgeCount,
+                message: `Large BTE query completed! Added ${stats.nodeCount} nodes and ${stats.edgeCount} edges.`
+              })
+            });
+          } catch (notificationError) {
+            console.error(`[${SERVICE_NAME}] Failed to send background completion notification:`, notificationError);
+          }
+        }).catch(error => {
+          console.error(`[${SERVICE_NAME}] Background processing failed:`, error);
+          
+          // Send error notification
+          try {
+            fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'bte-background-error',
+                message: `Background BTE processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+              })
+            });
+          } catch (notificationError) {
+            console.error(`[${SERVICE_NAME}] Failed to send background error notification:`, notificationError);
+          }
+        });
         
         return {
           content: [{
@@ -999,9 +1037,47 @@ Note: Duplicate nodes/edges were automatically skipped.`
       // Step 3: Start processing with remaining time check
       const remainingTime = MCP_TIMEOUT_BUFFER - (Date.now() - startTime);
       if (remainingTime < 5000) {
-        // Not enough time for processing - return summary
+        // Not enough time for processing - start background processing and return summary
         const totalNodes = Object.keys(knowledgeGraph.nodes).length;
         const totalEdges = Object.keys(knowledgeGraph.edges).length;
+        
+        // CRITICAL: Start background processing even when returning early
+        console.error(`[${SERVICE_NAME}] Not enough time remaining (${remainingTime}ms), starting background processing...`);
+        processTrapiResponse(trapiResponse, queryParams.databaseContext).then(async (stats) => {
+          console.error(`[${SERVICE_NAME}] Background processing completed successfully:`, stats);
+          
+          // Broadcast notification via SSE
+          try {
+            await fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'bte-background-complete',
+                nodeCount: stats.nodeCount,
+                edgeCount: stats.edgeCount,
+                message: `Targeted BTE query completed! Added ${stats.nodeCount} nodes and ${stats.edgeCount} edges for categories: ${queryParams.categories.join(', ')}.`
+              })
+            });
+          } catch (notificationError) {
+            console.error(`[${SERVICE_NAME}] Failed to send background completion notification:`, notificationError);
+          }
+        }).catch(error => {
+          console.error(`[${SERVICE_NAME}] Background processing failed:`, error);
+          
+          // Send error notification
+          try {
+            fetch(`${queryParams.databaseContext.apiBaseUrl}/api/graph/${queryParams.databaseContext.conversationId}/broadcast`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'bte-background-error',
+                message: `Background BTE processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+              })
+            });
+          } catch (notificationError) {
+            console.error(`[${SERVICE_NAME}] Failed to send background error notification:`, notificationError);
+          }
+        });
         
         return {
           content: [{
