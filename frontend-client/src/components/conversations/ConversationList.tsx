@@ -192,8 +192,14 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const { conversations, currentConversationId, switchConversation, renameConversation, deleteConversation } = useChatStore();
   
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this conversation?')) {
+    console.log('🗑️ Delete button clicked for conversation:', id);
+    const confirmResult = window.confirm('Are you sure you want to delete this conversation?');
+    console.log('🗑️ Confirm dialog result:', confirmResult);
+    if (confirmResult) {
+      console.log('🗑️ Deleting conversation:', id);
       deleteConversation(id);
+    } else {
+      console.log('🗑️ Delete cancelled');
     }
   };
 
