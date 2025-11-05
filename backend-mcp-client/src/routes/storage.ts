@@ -141,38 +141,65 @@ router.get('/files', async (req: Request, res: Response) => {
     const uploadDir = path.join(process.cwd(), 'uploads');
     const metadataDir = path.join(uploadDir, 'metadata');
     const requestedTags = req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : [req.query.tags]) : [];
+    const cleanupOrphaned = req.query.cleanupOrphaned === 'true';
 
     if (!fs.existsSync(uploadDir)) {
       return res.json([]);
     }
 
     const files = await fs.promises.readdir(uploadDir);
-    const fileEntries = await Promise.all(
-      files
-        .filter(file => !file.endsWith('.json') && file !== 'metadata')
-        .map(async file => {
-          const stats = await fs.promises.stat(path.join(uploadDir, file));
-          let metadata: FileMetadata = {};
-          try {
-            const metadataContent = await fs.promises.readFile(
-              path.join(metadataDir, `${file}.json`),
-              'utf-8'
-            );
-            metadata = JSON.parse(metadataContent);
-          } catch (error) {
-            // Ignore metadata read errors
+    const actualFileIds = new Set(
+      files.filter(file => !file.endsWith('.json') && file !== 'metadata')
+    );
+
+    // Cleanup orphaned metadata files if requested
+    if (cleanupOrphaned && fs.existsSync(metadataDir)) {
+      try {
+        const metadataFiles = await fs.promises.readdir(metadataDir);
+        let cleanedCount = 0;
+        for (const metadataFile of metadataFiles) {
+          if (metadataFile.endsWith('.json')) {
+            const fileId = metadataFile.replace('.json', '');
+            if (!actualFileIds.has(fileId)) {
+              const metadataPath = path.join(metadataDir, metadataFile);
+              await fs.promises.unlink(metadataPath);
+              cleanedCount++;
+            }
           }
-          return {
-            id: file,
-            name: metadata.description || file,
-            path: `/uploads/${file}`,
-            size: stats.size,
-            created: stats.birthtime,
-            modified: stats.mtime,
-            metadata,
-            tags: metadata.tags || []
-          };
-        })
+        }
+        if (cleanedCount > 0) {
+          loggingService.log('info', `Cleaned up ${cleanedCount} orphaned metadata files`);
+        }
+      } catch (error) {
+        loggingService.logError(error as Error);
+        // Continue even if cleanup fails
+      }
+    }
+
+    const fileEntries = await Promise.all(
+      Array.from(actualFileIds).map(async file => {
+        const stats = await fs.promises.stat(path.join(uploadDir, file));
+        let metadata: FileMetadata = {};
+        try {
+          const metadataContent = await fs.promises.readFile(
+            path.join(metadataDir, `${file}.json`),
+            'utf-8'
+          );
+          metadata = JSON.parse(metadataContent);
+        } catch (error) {
+          // Ignore metadata read errors
+        }
+        return {
+          id: file,
+          name: metadata.description || file,
+          path: `/uploads/${file}`,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime,
+          metadata,
+          tags: metadata.tags || []
+        };
+      })
     );
 
     // Filter by tags if any are requested

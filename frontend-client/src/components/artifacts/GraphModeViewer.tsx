@@ -267,6 +267,9 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const [cardPosition, setCardPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [tooltip, setTooltip] = useState({ visible: false, content: '', position: { x: 0, y: 0 } });
   
+  // Track hovered node for edge highlighting
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  
   // Collapsed cluster state - tracks which cluster groups are collapsed
   const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
   
@@ -1476,10 +1479,14 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       content: `${nodeName} (${category})`,
       position: { x: clientX, y: clientY }
     });
+    // Set hovered node ID for edge highlighting
+    setHoveredNodeId(node.id);
   };
 
   const handleNodePointerOut = () => {
     setTooltip({ visible: false, content: '', position: { x: 0, y: 0 } });
+    // Clear hovered node ID
+    setHoveredNodeId(null);
   };
   
   // Handle edge detail card pin toggle
@@ -1729,8 +1736,28 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             console.log('  - graphData.nodes.length:', graphData.nodes.length);
             console.log('  - graphData.edges.length:', graphData.edges.length);
           }}
-          edgeOpacity={0.4}
+          edgeOpacity={(edge: any) => {
+            // Use higher opacity for edges connected to hovered node
+            if (hoveredNodeId && (edge.source === hoveredNodeId || edge.target === hoveredNodeId)) {
+              return 1.0; // Full opacity for highlighted edges
+            }
+            return 0.4; // Default opacity for other edges
+          }}
           clusterAttribute={clusterNodes ? "clusterGroup" : undefined}
+          edgeColor={(edge: any) => {
+            // Highlight edges connected to the hovered node
+            if (hoveredNodeId && (edge.source === hoveredNodeId || edge.target === hoveredNodeId)) {
+              return '#3b82f6'; // Bright blue for highlighted edges
+            }
+            return edge.color || '#888'; // Default edge color
+          }}
+          edgeSize={(edge: any) => {
+            // Make edges thicker when connected to hovered node
+            if (hoveredNodeId && (edge.source === hoveredNodeId || edge.target === hoveredNodeId)) {
+              return Math.max(edge.size || 2, 3); // At least 3px for highlighted edges
+            }
+            return edge.size || 2;
+          }}
           renderNode={({ node, size, color, opacity }) => {
             const isSeed = node.data?.seedNode;
             

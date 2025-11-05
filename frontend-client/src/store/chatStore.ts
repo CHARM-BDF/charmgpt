@@ -110,6 +110,12 @@ export interface ChatState extends ConversationState {
   
   // Add function to create artifact from file attachment
   createArtifactFromAttachment: (attachment: FileAttachment, storageService: any) => Promise<string | null>;
+
+  // Pinned files functions (per-conversation)
+  pinFile: (file: FileAttachment) => void;
+  unpinFile: (fileId: string) => void;
+  getPinnedFiles: () => FileAttachment[];
+  isPinnedFile: (fileId: string) => boolean;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -1575,6 +1581,65 @@ export const useChatStore = create<ChatState>()(
             console.error('Failed to create artifact from attachment:', error);
             return null;
           }
+        },
+
+        // Pinned files functions (per-conversation)
+        pinFile: (file: FileAttachment) => {
+          const currentId = get().currentConversationId;
+          if (!currentId) return;
+
+          set(state => {
+            const conversation = state.conversations[currentId];
+            if (!conversation) return state;
+
+            const currentPinned = conversation.pinnedFiles || [];
+            // Avoid duplicates
+            if (currentPinned.some(f => f.id === file.id)) return state;
+
+            return {
+              conversations: {
+                ...state.conversations,
+                [currentId]: {
+                  ...conversation,
+                  pinnedFiles: [...currentPinned, file]
+                }
+              }
+            };
+          });
+        },
+
+        unpinFile: (fileId: string) => {
+          const currentId = get().currentConversationId;
+          if (!currentId) return;
+
+          set(state => {
+            const conversation = state.conversations[currentId];
+            if (!conversation) return state;
+
+            const currentPinned = conversation.pinnedFiles || [];
+            return {
+              conversations: {
+                ...state.conversations,
+                [currentId]: {
+                  ...conversation,
+                  pinnedFiles: currentPinned.filter(f => f.id !== fileId)
+                }
+              }
+            };
+          });
+        },
+
+        getPinnedFiles: () => {
+          const currentId = get().currentConversationId;
+          if (!currentId) return [];
+
+          const conversation = get().conversations[currentId];
+          return conversation?.pinnedFiles || [];
+        },
+
+        isPinnedFile: (fileId: string) => {
+          const pinnedFiles = get().getPinnedFiles();
+          return pinnedFiles.some(f => f.id === fileId);
         },
       };
     },

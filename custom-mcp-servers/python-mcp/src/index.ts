@@ -150,11 +150,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   
   } catch (error) {
     logger.error("Error during tool execution:", error);
+    
+    // Extract Python-specific error details if available
+    const errorObj = error as any;
+    let errorText = '';
+    
+    if (errorObj.pythonError) {
+      // Python execution error with full traceback
+      errorText = errorObj.message || `Python execution failed`;
+      
+      // Add the Python error/traceback (this is the most important part)
+      if (errorObj.pythonError.trim()) {
+        errorText += '\n\n' + '--- Python Error/Traceback ---\n' + errorObj.pythonError;
+      }
+      
+      // Add stdout if it exists and is different from stderr
+      if (errorObj.stdout && errorObj.stdout.trim() && 
+          errorObj.stdout.trim() !== errorObj.pythonError.trim()) {
+        errorText += '\n\n' + '--- Standard Output ---\n' + errorObj.stdout;
+      }
+      
+      // Add exit code if available
+      if (errorObj.exitCode !== undefined) {
+        errorText += `\n\nExit code: ${errorObj.exitCode}`;
+      }
+      
+      // Add timeout indicator if applicable
+      if (errorObj.isTimeout) {
+        errorText += '\n\n⚠️ Execution timed out after 30 seconds';
+      }
+    } else {
+      // Generic error (e.g., argument validation, Docker setup)
+      errorText = error instanceof Error ? error.message : String(error);
+      
+      // Include stack trace for non-Python errors to help with debugging
+      if (error instanceof Error && error.stack && process.env.DEBUG) {
+        errorText += '\n\n--- Stack Trace ---\n' + error.stack;
+      }
+    }
+    
     return {
       content: [
         {
           type: "text",
-          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          text: errorText,
         },
       ],
       isError: true,

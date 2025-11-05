@@ -334,6 +334,18 @@
         "NODE_ENV": "development"
       },
       "description": "BTE MCP V2 - Simplified BioThings Explorer integration with fixed predicates and categories"
+    },
+    "graphmode-gene-enrichment": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeGeneEnrichmentMCP/dist/index.js"
+      ],
+      "timeout": 120000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode Gene Enrichment MCP - Performs gene enrichment analysis and adds enriched pathways/terms to the graph"
     }
   }
 }

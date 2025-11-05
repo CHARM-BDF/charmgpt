@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, KeyboardEvent, useState, ClipboardEvent } from 'react';
+import React, { useRef, useEffect, KeyboardEvent, useState, ClipboardEvent, useCallback } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { useProjectStore } from '../../store/projectStore';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
@@ -27,6 +27,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   const currentConversationId = useChatStore(state => state.currentConversationId);
   const conversations = useChatStore(state => state.conversations);
   const isLoading = useChatStore(state => state.isLoading);
+  const pinFile = useChatStore(state => state.pinFile);
+  const getPinnedFiles = useChatStore(state => state.getPinnedFiles);
   const { selectedProjectId } = useProjectStore();
 
   // Graph Mode detection
@@ -50,6 +52,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   // File attachments state
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
+  // File preview state for showing filename in textarea
+  const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
+
   // Update local input when chatInput changes from elsewhere
   useEffect(() => {
     if (chatInput !== localInput) {
@@ -63,14 +68,94 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
     fileRefState: { isActive, query, position },
     handleInputChange: handleFileRefInputChange,
     handleFileSelect,
+    handleFilePreview,
     closeFileRef
   } = useFileReference({
     inputRef: textareaRef as React.RefObject<HTMLTextAreaElement>,
     onFileSelect: (file: FileEntry, position: number) => {
-      const before = localInput.slice(0, position - query.length - 1); // -1 for @
-      const after = localInput.slice(position);
-      const newInput = `${before}@${file.name}${after}`;
-      handleInputChange(newInput);
+      console.log('🎯 onFileSelect CALLED with file:', file?.name, 'position:', position);
+      console.log('🎯 Current localInput:', localInput);
+      console.log('🎯 Current textarea cursor:', textareaRef.current?.selectionStart);
+
+      // Pin the file to the conversation
+      const fileAttachment: FileAttachment = {
+        id: file.id,
+        name: file.name,
+        size: file.size,
+        type: file.mimeType,
+        varName: file.name.split('.')[0]
+      };
+
+      pinFile(fileAttachment);
+      console.log('📌 File pinned to conversation:', file.name);
+
+      // Clear preview state and close popup immediately
+      setPreviewFile(null);
+      closeFileRef();
+
+      // Get the current cursor position from the textarea
+      const cursorPosition = textareaRef.current?.selectionStart || localInput.length;
+      console.log('🎯 Using cursor position:', cursorPosition);
+      const textBeforeCursor = localInput.slice(0, cursorPosition);
+      const textAfterCursor = localInput.slice(cursorPosition);
+      console.log('🎯 Text before cursor:', textBeforeCursor);
+      console.log('🎯 Text after cursor:', textAfterCursor);
+
+      // Find the last @ symbol before cursor
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+      console.log('🎯 Last @ index:', lastAtIndex);
+
+      if (lastAtIndex !== -1) {
+        // Replace from @ to cursor with @filename and add space
+        const before = localInput.slice(0, lastAtIndex);
+        const after = textAfterCursor;
+        const newInput = `${before}@${file.name} ${after}`;
+
+        console.log('handleFileSelect inserting file at mention:', {
+          before,
+          after,
+          newInput,
+          lastAtIndex,
+          cursorPosition
+        });
+
+        // Update input - we need to temporarily skip file reference detection
+        setLocalInput(newInput);
+        updateChatInput(newInput, false);
+
+        // Set cursor position after the inserted filename and ensure focus
+        setTimeout(() => {
+          if (textareaRef.current) {
+            const newCursorPos = lastAtIndex + file.name.length + 2; // +1 for @, +1 for space
+            textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+            textareaRef.current.focus();
+          }
+        }, 0);
+      } else {
+        // Fallback: just insert at cursor
+        const newInput = `${textBeforeCursor}@${file.name} ${textAfterCursor}`;
+        console.log('handleFileSelect inserting file at cursor:', {
+          textBeforeCursor,
+          textAfterCursor,
+          newInput
+        });
+
+        setLocalInput(newInput);
+        updateChatInput(newInput, false);
+
+        // Ensure focus and cursor position after insertion
+        setTimeout(() => {
+          if (textareaRef.current) {
+            const newCursorPos = cursorPosition + file.name.length + 2;
+            textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+            textareaRef.current.focus();
+          }
+        }, 0);
+      }
+    },
+    onFilePreview: (file: FileEntry | null) => {
+      // Just update the preview file state - don't modify the actual input
+      setPreviewFile(file);
     }
   });
 
@@ -118,15 +203,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
   // Update the input handling to be immediate instead of debounced
   const handleInputChange = (value: string) => {
+    // Clear preview state when user types
+    if (previewFile) {
+      setPreviewFile(null);
+    }
+
     setLocalInput(value);
-    
+
     // Handle graph references (only in Graph Mode) - takes precedence over file references
     if (isGraphModeConversation) {
       handleGraphRefInputChange(value);
     } else {
       handleFileRefInputChange(value);
     }
-    
+
     updateChatInput(value, false);
   };
 
@@ -187,9 +277,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
 
     // Store the input content before clearing
     const inputContent = localInput;
-    const inputAttachments = [...attachments];
 
-    // Clear the input and attachments immediately when user submits
+    // Merge paper clip attachments with pinned files
+    const pinnedFiles = getPinnedFiles();
+    const inputAttachments = [...attachments, ...pinnedFiles];
+
+    console.log('📤 [SUBMIT-DEBUG] Current conversation ID:', currentConversationId);
+    console.log('📤 [SUBMIT-DEBUG] Pinned files from store:', pinnedFiles);
+    console.log('📤 [SUBMIT-DEBUG] Paper clip attachments:', attachments);
+    console.log('📤 Submitting message with attachments:', {
+      paperClipAttachments: attachments.length,
+      pinnedFiles: pinnedFiles.length,
+      totalAttachments: inputAttachments.length,
+      files: inputAttachments.map(a => a.name)
+    });
+
+    // Clear the input and paper clip attachments (but keep pinned files)
     handleInputChange('');
     setAttachments([]);
 
@@ -243,8 +346,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Don't submit if graph reference popup is active
-    if (e.key === 'Enter' && !e.shiftKey && !graphRefState.isActive) {
+    // If file reference popup is active, let it handle Enter/Arrow keys
+    if (isActive && (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Escape')) {
+      // Don't prevent default - let the popup handle it
+      // But we need to manually trigger the popup's handler
+      console.log('⌨️ ChatInput: Key pressed while popup active:', e.key);
+      return; // Let the event bubble or be handled by popup
+    }
+    
+    // Don't submit if file reference popup is active
+    if (e.key === 'Enter' && !e.shiftKey && !graphRefState.isActive && !isActive) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -276,7 +387,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
         
         <div className="flex relative">
         {/* File Reference Popup (only when NOT in Graph Mode) */}
-        {!isGraphModeConversation && isActive && position && selectedProjectId ? (
+        {!isGraphModeConversation && isActive && position ? (
           <div
             className="absolute z-[9999] bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
             style={{
@@ -295,6 +406,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
               query={query}
               position={position}
               onSelect={handleFileSelect}
+              onPreview={handleFilePreview}
               onClose={closeFileRef}
               projectId={selectedProjectId}
               storageService={storageService}
@@ -326,34 +438,64 @@ export const ChatInput: React.FC<ChatInputProps> = ({ storageService, onBack }) 
               className="relative"
             />
           </div>
-          <textarea
-            ref={textareaRef}
-            value={localInput}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            disabled={isLoading}
-            className={`w-full min-h-[96px] p-3 
-                     border border-stone-200/80 dark:border-gray-600/80 
-                     rounded-t-xl rounded-b-none
-                     focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                     font-mono text-base
-                     block align-bottom m-0
-                     leading-normal
-                     resize-none
-                     shadow-inner
-                     ${isLoading 
-                       ? 'bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
-                       : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
-                     }`}
-            placeholder={
-              isLoading 
-                ? "Processing your message..."
-                : isGraphModeConversation 
-                  ? "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files or nodes)"
-                  : "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
-            }
-          />
+          <div className="relative w-full">
+            <textarea
+              ref={textareaRef}
+              value={localInput}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              disabled={isLoading}
+              className={`w-full min-h-[96px] p-3 
+                       border border-stone-200/80 dark:border-gray-600/80 
+                       rounded-t-xl rounded-b-none
+                       focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                       font-mono text-base
+                       block align-bottom m-0
+                       leading-normal
+                       resize-none
+                       shadow-inner
+                       ${isLoading 
+                         ? 'bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
+                         : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                       }`}
+              style={{ color: previewFile ? 'transparent' : undefined }}
+              placeholder={
+                isLoading 
+                  ? "Processing your message..."
+                  : isGraphModeConversation 
+                    ? "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files or nodes)"
+                    : "Type a message... (Enter to send, Shift+Enter for new line, @ to reference files)"
+              }
+            />
+            {previewFile && localInput && (() => {
+              const cursorPosition = textareaRef.current?.selectionStart || localInput.length;
+              const textBeforeCursor = localInput.slice(0, cursorPosition);
+              const textAfterCursor = localInput.slice(cursorPosition);
+              const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+              if (lastAtIndex === -1) return null;
+
+              const beforeAt = localInput.slice(0, lastAtIndex);
+              const previewText = `${beforeAt}@${previewFile.name} ${textAfterCursor}`;
+
+              return (
+                <div
+                  className="absolute inset-0 pointer-events-none p-3 font-mono text-base leading-normal whitespace-pre-wrap break-words overflow-hidden"
+                  style={{
+                    color: 'inherit',
+                    fontSize: 'inherit',
+                    lineHeight: 'inherit',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <span>{beforeAt}</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">@{previewFile.name}</span>
+                  <span> {textAfterCursor}</span>
+                </div>
+              );
+            })()}
+          </div>
         </form>
         </div>
       </div>

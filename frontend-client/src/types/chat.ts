@@ -82,6 +82,7 @@ export interface Conversation {
   metadata: ConversationMetadata;
   messages: MessageWithThinking[];
   artifacts: Artifact[];
+  pinnedFiles?: FileAttachment[]; // Files pinned for this conversation
 }
 
 export interface ConversationState {

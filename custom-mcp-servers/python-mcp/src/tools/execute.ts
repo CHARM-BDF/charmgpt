@@ -83,23 +83,28 @@ def resolve_file(filename):
     
     # Not found - provide helpful error message
     available_files = list(_FILE_MAPPING.keys())
-    error_msg = f"File not found: '{filename}'\n\n"
-    error_msg += f"🔍 DEBUGGING INFO:\n"
-    error_msg += f"- Looking for file: '{filename}'\n"
-    error_msg += f"- Search locations:\n"
-    error_msg += f"  1. Direct path: {filename}\n"
-    error_msg += f"  2. File mapping: {filename in _FILE_MAPPING}\n"
-    error_msg += f"  3. Uploads directory: /app/uploads/{filename}\n"
-    error_msg += f"- Available files ({len(available_files)} total):\n"
+    filename_repr = repr(filename)
+    parts = []
+    parts.append("File not found: " + str(filename_repr))
+    parts.append("")
+    parts.append("🔍 DEBUGGING INFO:")
+    parts.append("- Looking for file: " + str(filename_repr))
+    parts.append("- Search locations:")
+    parts.append("  1. Direct path: " + str(filename_repr))
+    parts.append("  2. File mapping: " + str(filename in _FILE_MAPPING))
+    parts.append("  3. Uploads directory: /app/uploads/" + str(filename_repr))
+    parts.append("- Available files (" + str(len(available_files)) + " total):")
     for i, file in enumerate(available_files[:10], 1):
-        error_msg += f"  {i}. {file}\n"
+        parts.append("  " + str(i) + ". " + str(repr(file)))
     if len(available_files) > 10:
-        error_msg += f"  ... and {len(available_files) - 10} more files\n"
-    error_msg += f"\n💡 SUGGESTIONS:\n"
-    error_msg += f"- Use list_available_files() to see all available files\n"
-    error_msg += f"- Check if the filename is spelled correctly\n"
-    error_msg += f"- Make sure the file was uploaded through the UI\n"
-    
+        parts.append("  ... and " + str(len(available_files) - 10) + " more files")
+    parts.append("")
+    parts.append("💡 SUGGESTIONS:")
+    parts.append("- Use list_available_files() to see all available files")
+    parts.append("- Check if the filename is spelled correctly")
+    parts.append("- Make sure the file was uploaded through the UI")
+    newline = chr(10)
+    error_msg = newline.join(parts)
     raise FileNotFoundError(error_msg)
 
 def list_available_files():
@@ -118,9 +123,9 @@ def read_csv(filepath_or_buffer, *args, **kwargs):
     """Pandas read_csv with automatic file resolution"""
     if isinstance(filepath_or_buffer, str):
         try:
-            filepath_or_buffer = resolve_file(filepath_or_buffer)
+            resolved_path = resolve_file(filepath_or_buffer)
+            filepath_or_buffer = resolved_path
         except FileNotFoundError as e:
-            print(f"❌ ERROR: Cannot load CSV file '{filepath_or_buffer}'")
             print(str(e))
             raise
     return _original_read_csv(filepath_or_buffer, *args, **kwargs)
@@ -129,9 +134,9 @@ def read_excel(io, *args, **kwargs):
     """Pandas read_excel with automatic file resolution"""
     if isinstance(io, str):
         try:
-            io = resolve_file(io)
+            resolved_path = resolve_file(io)
+            io = resolved_path
         except FileNotFoundError as e:
-            print(f"❌ ERROR: Cannot load Excel file '{io}'")
             print(str(e))
             raise
     return _original_read_excel(io, *args, **kwargs)
@@ -292,41 +297,61 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
           if (!logger.isClosed) logger.log('Docker container exited successfully');
           resolve(output.trim());
         } else {
-          // Construct detailed error message
-          const errorMessage = [
-            `Docker container exited with code ${code}`,
-            'Command:',
-            `docker ${dockerArgs.join(' ')}`,
+          // Construct detailed error with all Python output
+          // Prioritize stderr (Python errors/tracebacks) over stdout
+          const pythonError = errorOutput || output || '(no error output)';
+          
+          // Build comprehensive error message
+          let errorMessage = [
+            '❌ Python Execution Error',
+            `Exit code: ${code}`,
             '',
-            'Error output:',
-            errorOutput || '(no error output)',
+            '--- Python Error Output (stderr) ---',
+            pythonError,
             '',
-            'Standard output:',
-            output || '(no standard output)',
           ].join('\n');
+          
+          // Add stdout if it exists and is different from stderr
+          if (output && output.trim() && output.trim() !== pythonError.trim()) {
+            errorMessage += [
+              '--- Standard Output (stdout) ---',
+              output,
+              '',
+            ].join('\n');
+          }
 
           if (!logger.isClosed) logger.log(`Docker execution failed:\n${errorMessage}`);
-          reject(new Error(errorMessage));
+          
+          // Create error with additional properties for better error handling
+          const error = new Error(errorMessage) as any;
+          error.pythonError = pythonError;
+          error.stdout = output;
+          error.stderr = errorOutput;
+          error.exitCode = code;
+          reject(error);
         }
       });
 
       // Handle timeout
       const timeoutId = setTimeout(() => {
         dockerProcess.kill();
+        const pythonError = errorOutput || output || '(no error output)';
         const timeoutMessage = [
-          'Docker execution timed out after 30 seconds',
-          'Command:',
-          `docker ${dockerArgs.join(' ')}`,
+          '⏱️ Python Execution Timeout',
+          'Execution exceeded 30 seconds and was terminated',
           '',
-          'Partial output:',
-          output || '(no output)',
-          '',
-          'Error output:',
-          errorOutput || '(no error output)',
+          '--- Partial Python Output ---',
+          pythonError,
         ].join('\n');
         
         if (!logger.isClosed) logger.log(timeoutMessage);
-        reject(new Error(timeoutMessage));
+        
+        const error = new Error(timeoutMessage) as any;
+        error.pythonError = pythonError;
+        error.stdout = output;
+        error.stderr = errorOutput;
+        error.isTimeout = true;
+        reject(error);
       }, 30000); // 30 seconds timeout
 
       // Clean up timeout on success or error
@@ -449,6 +474,15 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   } catch (error) {
     // Attempt cleanup even if execution failed
     logger.log(`Execution error: ${error}`);
+    
+    // If it's already a Python error with details, preserve those
+    const errorObj = error as any;
+    if (errorObj.pythonError || errorObj.isTimeout) {
+      // This is a Python execution error with full details - just propagate it
+      throw error;
+    }
+    
+    // For other errors (Docker setup, file I/O, etc.), add context
     try {
       await cleanupPythonEnvironment();
       if (scriptPath) {
@@ -462,7 +496,16 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       logger.log(`Cleanup error: ${cleanupError}`);
     }
 
-    // Let the error propagate up to be handled by the MCP server
+    // Enhance error message with context if it doesn't have Python details
+    if (!errorObj.pythonError && !errorObj.isTimeout) {
+      const enhancedError = new Error(
+        `Python execution setup failed: ${error instanceof Error ? error.message : String(error)}`
+      ) as any;
+      enhancedError.originalError = error;
+      throw enhancedError;
+    }
+
+    // For Python errors with details, just propagate them as-is
     throw error;
   } finally {
     logger.close();

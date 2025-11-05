@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useRef } from 'react';
 import { APIStorageService } from '../../services/fileManagement/APIStorageService';
 import { FileAttachment } from '@charm-mcp/shared';
+import { useProjectStore } from '../../store/projectStore';
 
 interface FileUploadProps {
   storageService: APIStorageService;
@@ -23,6 +24,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { selectedProjectId } = useProjectStore();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -112,7 +114,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         const arrayBuffer = await file.arrayBuffer();
         const content = new Uint8Array(arrayBuffer);
         
-        // Create metadata
+        // Create metadata with project tag if project is selected
+        const tags = ['uploaded', 'chat'];
+        if (selectedProjectId) {
+          tags.push(`project:${selectedProjectId}`);
+        }
+        
         const metadata = {
           description: file.name,
           schema: {
@@ -121,7 +128,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             encoding: 'utf-8',
             sampleData: ''
           },
-          tags: ['uploaded', 'chat']
+          tags
         };
 
         // Upload file using createFile method
