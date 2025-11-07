@@ -224,15 +224,18 @@ async function annotateTextRESTful(text: string, bioconcepts: string[]): Promise
     throw new Error('No session ID returned from PubTator annotation service');
   }
 
+  console.error(`[PubTator] Submitted text for annotation. Session ID: ${sessionId}`);
+
   // Step 2: Poll for results (with timeout)
   const maxAttempts = 30; // Try for up to 30 seconds
   const pollInterval = 2000; // 2 seconds between attempts (give more time for processing)
-  
+  const initialWait = 3000; // Wait 3 seconds before first attempt to give API time to process
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // Wait before first attempt (except first one)
-    if (attempt > 0) {
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    }
+    // IMPORTANT: Always wait before attempting retrieval to give PubTator time to process
+    // Use longer wait on first attempt
+    const waitTime = attempt === 0 ? initialWait : pollInterval;
+    await new Promise(resolve => setTimeout(resolve, waitTime));
     
     const retrieveUrl = `${RESTFUL_BASE_URL}/retrieve.cgi`;
     const retrieveBody = new URLSearchParams({
@@ -248,21 +251,31 @@ async function annotateTextRESTful(text: string, bioconcepts: string[]): Promise
         body: retrieveBody.toString()
       });
 
-      // If 404, result is not ready yet (expected during processing)
+      // If 404, result is not ready yet (expected during processing - per PubTator API docs)
       if (retrieveResponse.status === 404) {
+        console.error(`[PubTator] Attempt ${attempt + 1}/${maxAttempts}: Result not ready yet (404), will retry...`);
         continue;
       }
 
-      // If 400, might be invalid session ID or request format issue
+      // If 400, might be invalid session ID, expired session, or request format issue
+      // The API sometimes returns 400 during processing, so we retry with exponential backoff
       if (retrieveResponse.status === 400) {
         const errorText = await retrieveResponse.text();
+        console.error(`[PubTator] Attempt ${attempt + 1}/${maxAttempts}: Got 400 error`);
+
         // Check if it's an HTML error page (means endpoint rejected request)
         if (errorText.includes('400 Error') || errorText.includes('Bad Request')) {
-          // Wait a bit more and retry, might be timing issue
-          if (attempt < maxAttempts - 1) {
+          // If this is early in our attempts, the session might just need more time
+          if (attempt < 3) {
+            console.error(`[PubTator] Early 400 error, session might need more processing time. Retrying...`);
             continue;
           }
-          throw new Error(`Invalid request to PubTator service. The session may have expired or the endpoint may not be available. Status: 400`);
+          // After several attempts, if still getting 400, the session is likely invalid/expired
+          if (attempt < maxAttempts - 1) {
+            console.error(`[PubTator] Continuing to retry despite 400 error (attempt ${attempt + 1}/${maxAttempts})`);
+            continue;
+          }
+          throw new Error(`PubTator API returned 400 error after ${maxAttempts} attempts. The session may have expired, the endpoint may be unavailable, or the request format is incorrect. Session ID: ${sessionId}`);
         }
         throw new Error(`Bad request to PubTator service: ${errorText.substring(0, 200)}`);
       }
@@ -287,6 +300,7 @@ async function annotateTextRESTful(text: string, bioconcepts: string[]): Promise
       // Try to parse as JSON (BioC format)
       try {
         const biocData = JSON.parse(responseText);
+        console.error(`[PubTator] Successfully retrieved and parsed annotation results after ${attempt + 1} attempt(s)`);
         return biocData;
       } catch (parseError) {
         // If not JSON, might be other format - check if it looks like BioC
@@ -758,23 +772,26 @@ function parseBiocJson(biocData: any): ParsedPublication[] {
       // Extract entity annotations - ONLY from title and abstract passages
       if (allowedPassageTypes.includes(passageType.toLowerCase())) {
         for (const annotation of passage.annotations || []) {
-          const entityType = annotation.infons?.type?.toLowerCase() || '';
-          const entityId = annotation.infons?.identifier || annotation.id || '';
-          const entityName = annotation.text || '';
+          // BioC JSON structure: annotation.infons contains accession (PubTator ID), name, type
+          const pubtatorId = annotation.infons?.accession || '';
+          const entityName = annotation.infons?.name || annotation.text || '';
+          const entityType = (annotation.infons?.type || '').toLowerCase();
           
-          // Skip if we don't have enough info
-          if (!entityId || !entityName || !entityType) continue;
+          // Skip if we don't have enough info (need at least pubtatorId or name+type)
+          if (!pubtatorId && (!entityName || !entityType)) continue;
 
-          // Create PubTator ID format (e.g., @GENE_123)
-          const pubtatorId = `@${entityType.toUpperCase()}_${entityId}`;
+          // If we have accession (PubTator ID), use it directly; otherwise construct it
+          const finalPubtatorId = pubtatorId || (entityType ? `@${entityType.toUpperCase()}_${annotation.infons?.identifier || annotation.id || 'unknown'}` : '');
+          
+          if (!finalPubtatorId) continue;
 
           // Use PubTator ID as key to avoid duplicates
-          if (!entities.has(pubtatorId)) {
-            entities.set(pubtatorId, {
-              id: pubtatorId,
+          if (!entities.has(finalPubtatorId)) {
+            entities.set(finalPubtatorId, {
+              id: finalPubtatorId,
               name: entityName,
               type: entityType,
-              pubtatorId: pubtatorId
+              pubtatorId: finalPubtatorId
             });
           }
         }
@@ -1555,81 +1572,88 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // console.error(`[${SERVICE_NAME}] Processing ${pmids.length} PMIDs for concepts: ${concepts.join(', ')}`);
 
+      // Use bulk export endpoint instead of individual annotation endpoints
+      // This endpoint works more reliably and includes relations
+      const exportEndpoint = `/publications/export/biocjson?pmids=${pmids.join(',')}&full=true`;
+      const biocData = await makePubTatorRequest(exportEndpoint);
+
+      // Parse BioC JSON to extract entities and relations
+      const parsedPublications = parseBiocJson(biocData);
+
+      if (parsedPublications.length === 0) {
+        return {
+          content: [{
+            type: "text",
+            text: `No annotations found for the provided PMIDs: ${pmids.join(', ')}. The publications may not be available in PubTator.`
+          }]
+        };
+      }
+
       // Collect all nodes and edges first
       const nodesToCreate: Omit<NodeData, 'id'>[] = [];
       const edgesToCreate: EdgeData[] = [];
       const processedEntities = new Set<string>();
 
-      for (const pmid of pmids) {
-        try {
-          // Get annotations for this PMID
-          const endpoint = `/annotations/PMID:${pmid}`;
-          const annotations = await makePubTatorRequest(endpoint);
+      // Process each parsed publication
+      for (const pub of parsedPublications) {
+        const pmid = pub.pmid;
 
-          if (!annotations || !annotations.annotations) {
-            console.error(`[${SERVICE_NAME}] No annotations found for PMID: ${pmid}`);
-            continue;
-          }
+        // Collect entities from this publication
+        for (const entity of pub.entities) {
+          // Filter by requested concepts (entity.type is lowercase like "disease", "chemical")
+          if (!concepts.includes(entity.type as any)) continue;
+          if (processedEntities.has(entity.pubtatorId)) continue;
 
-          // Collect entities
-          for (const entity of annotations.annotations) {
-            if (!concepts.includes(entity.type)) continue;
-            if (processedEntities.has(entity.id)) continue;
+          const entityType = getEntityType(entity.type);
+          const nodeData: Omit<NodeData, 'id'> = {
+            label: entity.name,
+            type: entityType.type,
+            data: {
+              pubtatorId: entity.pubtatorId,
+              source: 'pubtator',
+              pmid: pmid,
+              entityType: entity.type
+            },
+            position: {
+              x: Math.random() * 800 + 100,
+              y: Math.random() * 600 + 100
+            }
+          };
 
-            const entityType = getEntityType(entity.type);
-            const nodeData: Omit<NodeData, 'id'> = {
-              label: entity.name,
-              type: entityType.type,
-              data: {
-                pubtatorId: entity.id,
-                source: 'pubtator',
-                pmid: pmid,
-                entityType: entity.type,
-                mentions: entity.mentions || []
-              },
-              position: {
-                x: Math.random() * 800 + 100,
-                y: Math.random() * 600 + 100
-              }
-            };
+          nodesToCreate.push(nodeData);
+          processedEntities.add(entity.pubtatorId);
+        }
 
-            nodesToCreate.push(nodeData);
-            processedEntities.add(entity.id);
-          }
+        // Collect relations from this publication
+        if (pub.relations && pub.relations.length > 0) {
+          for (const relation of pub.relations) {
+            // Only create edges if both entities were processed (match concepts filter)
+            const entity1Processed = processedEntities.has(relation.entity1Id);
+            const entity2Processed = processedEntities.has(relation.entity2Id);
 
-          // Collect relations
-          if (annotations.relations) {
-            for (const relation of annotations.relations) {
-              if (processedEntities.has(relation.e1) && processedEntities.has(relation.e2)) {
-                const edgeData: EdgeData = {
-                  id: generateCompositeEdgeId(
-                    databaseContext.conversationId,
-                    'pubtator',
-                    pmid ? `PMID:${pmid}` : 'infores:pubtator',
-                    relation.e1,
-                    mapRelationshipType(relation.type),
-                    relation.e2
-                  ),
-                  source: relation.e1,
-                  target: relation.e2,
-                  label: mapRelationshipType(relation.type),
-                  data: {
-                    type: relation.type,
-                    source: 'pubtator',
-                    primary_source: pmid ? `PMID:${pmid}` : 'infores:pubtator',
-                    publications: pmid ? [`PMID:${pmid}`] : []
-                  }
-                };
-                edgesToCreate.push(edgeData);
-              }
+            if (entity1Processed && entity2Processed) {
+              const edgeData: EdgeData = {
+                id: generateCompositeEdgeId(
+                  databaseContext.conversationId,
+                  'pubtator',
+                  `PMID:${pmid}`,
+                  relation.entity1Id,
+                  mapRelationshipType(relation.type),
+                  relation.entity2Id
+                ),
+                source: relation.entity1Id,
+                target: relation.entity2Id,
+                label: mapRelationshipType(relation.type),
+                data: {
+                  type: relation.type,
+                  source: 'pubtator',
+                  primary_source: `PMID:${pmid}`,
+                  publications: [`PMID:${pmid}`]
+                }
+              };
+              edgesToCreate.push(edgeData);
             }
           }
-
-          // Rate limiting
-          await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_MS));
-
-        } catch (error) {
-          console.error(`[${SERVICE_NAME}] Error processing PMID ${pmid}:`, error);
         }
       }
 
