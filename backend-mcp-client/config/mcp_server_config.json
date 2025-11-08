@@ -80,6 +80,14 @@
         "NCBI_TOOL_EMAIL": "${NCBI_TOOL_EMAIL}"
       }
     },
+    "clinicaltrials-gov": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/clinicalTrialGov-mcp/dist/index.js"
+      ],
+      "timeout": 60000,
+      "description": "ClinicalTrials.gov MCP - Search clinical trials database with detailed design, intervention, and dosing information"
+    },
     "gene-fetcher": {
       "command": "node",
       "args": [
