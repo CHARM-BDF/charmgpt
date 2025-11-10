@@ -1,0 +1,75 @@
+
+version: 0.0.0
+
+tool:
+  name: CHARM-GPT
+  repo_url: https://github.com/CHARM-BDF/charmgpt
+  tool_homepage: https://github.com/CHARM-BDF/charmgpt
+  documentation_url: https://github.com/CHARM-BDF/charmgpt/blob/main/README.md
+  tool_type: WebApp
+
+llm:
+  usesLlm: true
+  modelsSupported:
+    - anthropic
+  modelsRequired:
+    - anthropic
+  bringOwnKey: true
+
+input:
+  - name: Text chat interface
+    dataCategory: Text interface that can chat with LLM or upload data
+    dataClass: unstructured-text
+    dataType: User natural language
+    format:
+      - txt
+    dataStandard:
+      - User natural language
+    proprietary: false
+    source: 
+
+output:
+  - name: multi-modal output
+    dataCategory: text, Code, data or data analysis images
+    dataClass: unstructured-text
+    dataType: text, Code, data or data analysis images
+    format:
+      - txt
+    dataStandard:
+      - None
+    proprietary: false
+    source: 
+
+license:
+  license_type: MIT
+  link: https://github.com/CHARM-BDF/CHARM-README/blob/main/license.txt
+
+funding:
+  source: ASKEM ARPA-H
+  agreement: Not specified
+  link: https://arpa-h.gov/
+
+domains:
+  - data science
+
+credit:
+  - name: UAB Team
+    role: Developer
+    org: University of Alabama at Birmingham
+    url: https://www.uab.edu/medicine/pmi/
+
+target_users:
+  primary_user:
+    user_type: researcher
+    technical_literacy_level:
+      - novice
+    biomedical_literacy_level:
+      - intermediate
+
+maturity:
+  beginning_maturity: 1
+  current_maturity: 3
+
+media: []
+
+collaborations: []
