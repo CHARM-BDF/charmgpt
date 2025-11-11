@@ -12,4 +12,4 @@ jobs:
   validate-tool:
     uses: ARPA-H-BDF/bdfkb-schema/.github/workflows/ci-validate.yaml@main
     with:
-      python-version: '3.11'
+      python-version: '3.12'
