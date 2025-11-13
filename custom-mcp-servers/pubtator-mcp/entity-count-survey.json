@@ -1,0 +1,571 @@
+{
+  "timestamp": "2025-11-13T05:45:05.303Z",
+  "totalEntities": 72,
+  "distribution": {
+    "0": 2,
+    "1-10": 0,
+    "11-100": 1,
+    "101-1000": 2,
+    "1001-10000": 7,
+    "10001-100000": 22,
+    "100000+": 38
+  },
+  "entityCounts": [
+    {
+      "entityName": "patients",
+      "count": 10914760,
+      "status": "success",
+      "type": "Species",
+      "id": "9606"
+    },
+    {
+      "entityName": "cancer",
+      "count": 5206540,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Neoplasms"
+    },
+    {
+      "entityName": "Neoplasms",
+      "count": 5068944,
+      "status": "success",
+      "type": "unknown",
+      "id": "@DISEASE_Neoplasms"
+    },
+    {
+      "entityName": "mouse",
+      "count": 2652449,
+      "status": "success",
+      "type": "Species",
+      "id": "10090"
+    },
+    {
+      "entityName": "inflammatory",
+      "count": 2071600,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Inflammation"
+    },
+    {
+      "entityName": "oxygen",
+      "count": 1576520,
+      "status": "success",
+      "type": "Chemical",
+      "id": "@CHEMICAL_Oxygen"
+    },
+    {
+      "entityName": "lipid",
+      "count": 1315918,
+      "status": "success",
+      "type": "Chemical",
+      "id": "@CHEMICAL_Lipids"
+    },
+    {
+      "entityName": "Lipids",
+      "count": 1314355,
+      "status": "success",
+      "type": "unknown",
+      "id": "@CHEMICAL_Lipids"
+    },
+    {
+      "entityName": "hypertension",
+      "count": 1141648,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Hypertension"
+    },
+    {
+      "entityName": "Hypertension",
+      "count": 1141648,
+      "status": "success",
+      "type": "unknown",
+      "id": "@DISEASE_Hypertension"
+    },
+    {
+      "entityName": "Cardiovascular disease",
+      "count": 1038347,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Cardiovascular_Diseases"
+    },
+    {
+      "entityName": "calcium",
+      "count": 962936,
+      "status": "success",
+      "type": "Chemical",
+      "id": "@CHEMICAL_Calcium"
+    },
+    {
+      "entityName": "breast cancer",
+      "count": 882017,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Breast_Neoplasms"
+    },
+    {
+      "entityName": "Breast Neoplasms",
+      "count": 880693,
+      "status": "success",
+      "type": "unknown",
+      "id": "@DISEASE_Breast_Neoplasms"
+    },
+    {
+      "entityName": "cholesterol",
+      "count": 612386,
+      "status": "success",
+      "type": "Chemical",
+      "id": "@CHEMICAL_Cholesterol"
+    },
+    {
+      "entityName": "TNF",
+      "count": 572678,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_TNF"
+    },
+    {
+      "entityName": "chromosome 4",
+      "count": 538053,
+      "status": "success",
+      "type": "Chromosome",
+      "id": "4"
+    },
+    {
+      "entityName": "chronic liver disease",
+      "count": 498340,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Liver_Diseases"
+    },
+    {
+      "entityName": "hypoxia",
+      "count": 435975,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Hypoxia"
+    },
+    {
+      "entityName": "Hypoxia",
+      "count": 435975,
+      "status": "success",
+      "type": "unknown",
+      "id": "@DISEASE_Hypoxia"
+    },
+    {
+      "entityName": "prostate cancer",
+      "count": 425407,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Prostatic_Neoplasms"
+    },
+    {
+      "entityName": "colorectal cancer",
+      "count": 418034,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Colorectal_Neoplasms"
+    },
+    {
+      "entityName": "Pig",
+      "count": 378644,
+      "status": "success",
+      "type": "Species",
+      "id": "9823"
+    },
+    {
+      "entityName": "Psychiatric disorders",
+      "count": 358781,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Mental_Disorders"
+    },
+    {
+      "entityName": "O2",
+      "count": 357696,
+      "status": "success",
+      "type": "Chemical",
+      "id": "-"
+    },
+    {
+      "entityName": "CD8",
+      "count": 311117,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_CD8A"
+    },
+    {
+      "entityName": "interleukin (IL)-8",
+      "count": 295936,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_CXCL8"
+    },
+    {
+      "entityName": "IL-1beta",
+      "count": 290888,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_IL1B"
+    },
+    {
+      "entityName": "LPS",
+      "count": 260278,
+      "status": "success",
+      "type": "Chemical",
+      "id": "@CHEMICAL_Lipopolysaccharides"
+    },
+    {
+      "entityName": "tumorigenesis",
+      "count": 244784,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Carcinogenesis"
+    },
+    {
+      "entityName": "chromosome abnormalities",
+      "count": 229372,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Chromosome_Aberrations"
+    },
+    {
+      "entityName": "autoimmune disorders",
+      "count": 213658,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Autoimmune_Diseases"
+    },
+    {
+      "entityName": "hypoxic",
+      "count": 193648,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Hypoxia_Brain"
+    },
+    {
+      "entityName": "APP",
+      "count": 186056,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_APP"
+    },
+    {
+      "entityName": "Doxorubicin",
+      "count": 167235,
+      "status": "success",
+      "type": "unknown",
+      "id": "@CHEMICAL_Doxorubicin"
+    },
+    {
+      "entityName": "autism",
+      "count": 139383,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Autistic_Disorder"
+    },
+    {
+      "entityName": "STAT3",
+      "count": 122415,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_STAT3"
+    },
+    {
+      "entityName": "zebrafish",
+      "count": 112844,
+      "status": "success",
+      "type": "Species",
+      "id": "7955"
+    },
+    {
+      "entityName": "PSA",
+      "count": 97788,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_NPEPPS"
+    },
+    {
+      "entityName": "TLR4",
+      "count": 97220,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_TLR4"
+    },
+    {
+      "entityName": "neurodevelopmental disorder",
+      "count": 85969,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Developmental_Disabilities"
+    },
+    {
+      "entityName": "hypercholesterolemia",
+      "count": 79744,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Hypercholesterolemia"
+    },
+    {
+      "entityName": "Hypercholesterolemia",
+      "count": 79744,
+      "status": "success",
+      "type": "unknown",
+      "id": "@DISEASE_Hypercholesterolemia"
+    },
+    {
+      "entityName": "autosomal recessive disorder",
+      "count": 68801,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Genetic_Diseases_Inborn"
+    },
+    {
+      "entityName": "APOE",
+      "count": 68012,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_APOE"
+    },
+    {
+      "entityName": "atherosclerotic lesions",
+      "count": 67111,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Atherosclerosis"
+    },
+    {
+      "entityName": "transforming growth factor (TGF)-beta1",
+      "count": 61120,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_TGFB1"
+    },
+    {
+      "entityName": "docetaxel",
+      "count": 60735,
+      "status": "success",
+      "type": "Chemical",
+      "id": "@CHEMICAL_Docetaxel"
+    },
+    {
+      "entityName": "multiple sclerosis brain lesions",
+      "count": 47671,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Brain_Diseases"
+    },
+    {
+      "entityName": "Intracranial Arterial Diseases",
+      "count": 32754,
+      "status": "success",
+      "type": "unknown",
+      "id": "@DISEASE_Intracranial_Arterial_Diseases"
+    },
+    {
+      "entityName": "Cohen syndrome",
+      "count": 31664,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Cohen_syndrome"
+    },
+    {
+      "entityName": "Simvastatin",
+      "count": 28770,
+      "status": "success",
+      "type": "unknown",
+      "id": "@CHEMICAL_Simvastatin"
+    },
+    {
+      "entityName": "APOB",
+      "count": 24212,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_APOB"
+    },
+    {
+      "entityName": "LPA",
+      "count": 23736,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_LPA"
+    },
+    {
+      "entityName": "primary biliary cholangitis",
+      "count": 19903,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Liver_Cirrhosis_Biliary"
+    },
+    {
+      "entityName": "GRP78",
+      "count": 18617,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_HSPA5"
+    },
+    {
+      "entityName": "ABCB1",
+      "count": 16529,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_ABCB1"
+    },
+    {
+      "entityName": "recurrent miscarriages",
+      "count": 14072,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Abortion_Habitual"
+    },
+    {
+      "entityName": "C. trachomatis infection",
+      "count": 13350,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Infections"
+    },
+    {
+      "entityName": "MMP1",
+      "count": 12691,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_MMP1"
+    },
+    {
+      "entityName": "NFKB1",
+      "count": 9355,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_NFKB1"
+    },
+    {
+      "entityName": "HNF4A",
+      "count": 6173,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_HNF4A"
+    },
+    {
+      "entityName": "TFPI",
+      "count": 4737,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_TFPI"
+    },
+    {
+      "entityName": "ABCC2",
+      "count": 4509,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_ABCC2"
+    },
+    {
+      "entityName": "neurogenetic disorders",
+      "count": 3937,
+      "status": "success",
+      "type": "Disease",
+      "id": "@DISEASE_Heredodegenerative_Disorders_Nervous_System"
+    },
+    {
+      "entityName": "SORT1",
+      "count": 1804,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_SORT1"
+    },
+    {
+      "entityName": "SERPINB2",
+      "count": 1681,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_SERPINB2"
+    },
+    {
+      "entityName": "CELSR2",
+      "count": 901,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_CELSR2"
+    },
+    {
+      "entityName": "PSRC1",
+      "count": 581,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_PSRC1"
+    },
+    {
+      "entityName": "FAM177A1",
+      "count": 97,
+      "status": "success",
+      "type": "Gene",
+      "id": "@GENE_FAM177A1"
+    },
+    {
+      "entityName": "LOC103350067",
+      "count": 0,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_LOC103350067"
+    },
+    {
+      "entityName": "LOC100343047",
+      "count": 0,
+      "status": "success",
+      "type": "unknown",
+      "id": "@GENE_LOC100343047"
+    }
+  ],
+  "statistics": {
+    "byType": {
+      "Species": {
+        "count": 4,
+        "totalPublications": 14058697,
+        "min": 112844,
+        "max": 10914760,
+        "avg": 3514674
+      },
+      "Disease": {
+        "count": 25,
+        "totalPublications": 13929756,
+        "min": 3937,
+        "max": 5206540,
+        "avg": 557190
+      },
+      "unknown": {
+        "count": 22,
+        "totalPublications": 9427555,
+        "min": 0,
+        "max": 5068944,
+        "avg": 428525
+      },
+      "Chemical": {
+        "count": 7,
+        "totalPublications": 5146469,
+        "min": 60735,
+        "max": 1576520,
+        "avg": 735210
+      },
+      "Gene": {
+        "count": 13,
+        "totalPublications": 1951416,
+        "min": 97,
+        "max": 572678,
+        "avg": 150109
+      },
+      "Chromosome": {
+        "count": 1,
+        "totalPublications": 538053,
+        "min": 538053,
+        "max": 538053,
+        "avg": 538053
+      }
+    },
+    "overall": {
+      "totalPublications": 45051946,
+      "averageCount": 625721,
+      "maxCount": 10914760,
+      "minCount": 0
+    }
+  }
+}

@@ -1,0 +1,2717 @@
+{
+  "searchTerm": "FAM177A1",
+  "timestamp": "2025-11-13T03:38:21.196Z",
+  "papers": {
+    "total": 97,
+    "processed": 97,
+    "pmids": [
+      "40113264",
+      "40616090",
+      "39910069",
+      "40965441",
+      "40773142",
+      "39931577",
+      "40356703",
+      "39929803",
+      "39331042",
+      "38767059",
+      "39531071",
+      "38585781",
+      "38370830",
+      "38312638",
+      "38307941",
+      "38887549",
+      "39811671",
+      "38354534",
+      "38809509",
+      "39033271",
+      "38439105",
+      "38187698",
+      "36825008",
+      "37298537",
+      "37954266",
+      "37923804",
+      "36842095",
+      "36833332",
+      "37873185",
+      "37107578",
+      "38835414",
+      "37373375",
+      "37674018",
+      "37260775",
+      "36292782",
+      "34793335",
+      "35729261",
+      "35615376",
+      "35358850",
+      "35368672",
+      "35650446",
+      "36699197",
+      "34799425",
+      "34659352",
+      "33800722",
+      "34957696",
+      "34367665",
+      "34573324",
+      "33748106",
+      "34033851",
+      "33431980",
+      "33531649",
+      "33954041",
+      "37313193",
+      "32327684",
+      "33033935",
+      "32762010",
+      "33510937",
+      "32272486",
+      "32998289",
+      "33383836",
+      "32106598",
+      "35117826",
+      "32403323",
+      "32973863",
+      "31101113",
+      "31109152",
+      "31618895",
+      "30365065",
+      "31757200",
+      "30805606",
+      "31749827",
+      "31877761",
+      "29514802",
+      "29630609",
+      "29228969",
+      "27903962",
+      "28901463",
+      "27488439",
+      "27322207",
+      "27822437",
+      "27653551",
+      "25558065",
+      "25884336",
+      "25884485",
+      "24515752",
+      "25909443",
+      "25069957",
+      "25373456",
+      "24602487",
+      "24489651",
+      "23100282",
+      "23874591",
+      "24416592",
+      "22294186",
+      "21199582",
+      "20136554"
+    ],
+    "sample": [
+      {
+        "pmid": 40113264,
+        "title": "Integration of transcriptomics and long-read genomics prioritizes structural variants in rare disease",
+        "journal": "Genome Res",
+        "date": "2025-03-20T00:00:00Z"
+      },
+      {
+        "pmid": 40616090,
+        "title": "Proteomic discovery analysis of quantitatively assessed emphysema in the general population. The MESA Lung Study",
+        "journal": "Respir Res",
+        "date": "2025-07-04T00:00:00Z"
+      },
+      {
+        "pmid": 39910069,
+        "title": "Massively parallel variant-to-function mapping determines functional regulatory variants of non-small cell lung cancer",
+        "journal": "Nat Commun",
+        "date": "2025-02-06T00:00:00Z"
+      },
+      {
+        "pmid": 40965441,
+        "title": "E2-regulated transcriptome complexity revealed by long-read direct RNA sequencing: from isoform discovery to truncated proteins",
+        "journal": "RNA Biol",
+        "date": "2025-12-01T00:00:00Z"
+      },
+      {
+        "pmid": 40773142,
+        "title": "A pan-cancer comparative analysis of the cancer genome atlas transcriptomic TIL-immune signatures",
+        "journal": "Cancer Immunol Immunother",
+        "date": "2025-08-07T00:00:00Z"
+      },
+      {
+        "pmid": 39931577,
+        "title": "Proteomic and serologic assessments of responses to mRNA-1273 and BNT162b2 vaccines in human recipient sera",
+        "journal": "Front Immunol",
+        "date": "2025-01-27T00:00:00Z"
+      },
+      {
+        "pmid": 40356703,
+        "title": "VPS13 and bridge-like lipid transporters, mechanisms, and mysteries",
+        "journal": "Front Neurosci",
+        "date": "2025-04-28T00:00:00Z"
+      },
+      {
+        "pmid": 39929803,
+        "title": "Single-cell RNA sequencing defines distinct disease subtypes and reveals hypo-responsiveness to interferon in asymptomatic Waldenstrom's Macroglobulinemia",
+        "journal": "Nat Commun",
+        "date": "2025-02-10T00:00:00Z"
+      },
+      {
+        "pmid": 39331042,
+        "title": "VPS13B is localized at the interface between Golgi cisternae and is a functional partner of FAM177A1.",
+        "journal": "J Cell Biol",
+        "date": "2024-12-02T00:00:00Z"
+      },
+      {
+        "pmid": 38767059,
+        "title": "Loss of function of FAM177A1, a Golgi complex localized protein, causes a novel neurodevelopmental disorder.",
+        "journal": "Genet Med",
+        "date": "2024-05-16T00:00:00Z"
+      }
+    ]
+  },
+  "nodes": {
+    "total": 512,
+    "byType": {
+      "Disease": 157,
+      "Chromosome": 7,
+      "Gene": 259,
+      "Species": 32,
+      "Chemical": 38,
+      "CellLine": 13,
+      "Variant": 6
+    },
+    "topNodes": [
+      {
+        "id": "9606",
+        "name": "patients",
+        "type": "Species",
+        "publicationCount": 48,
+        "publications": [
+          20136554,
+          21199582,
+          23100282,
+          24416592,
+          24489651,
+          25069957,
+          25909443,
+          27322207,
+          27488439,
+          27822437,
+          27903962,
+          29228969,
+          29630609,
+          30365065,
+          30805606,
+          31109152,
+          31618895,
+          31749827,
+          31757200,
+          31877761,
+          32327684,
+          32403323,
+          32998289,
+          33033935,
+          33800722,
+          33954041,
+          34033851,
+          34793335,
+          34799425,
+          34957696,
+          35117826,
+          35358850,
+          36825008,
+          36833332,
+          37107578,
+          37260775,
+          37298537,
+          37313193,
+          38370830,
+          38439105,
+          38585781,
+          38767059,
+          38887549,
+          39033271,
+          39811671,
+          39929803,
+          39931577,
+          40113264
+        ]
+      },
+      {
+        "id": "@DISEASE_Neoplasms",
+        "name": "cancer",
+        "type": "Disease",
+        "publicationCount": 22,
+        "publications": [
+          22294186,
+          24416592,
+          24489651,
+          25069957,
+          25884336,
+          25884485,
+          27322207,
+          30365065,
+          31757200,
+          32403323,
+          32998289,
+          33748106,
+          33954041,
+          34793335,
+          37298537,
+          37873185,
+          37954266,
+          38307941,
+          38312638,
+          39811671,
+          39929803,
+          40773142
+        ]
+      },
+      {
+        "id": "@GENE_FAM177A1",
+        "name": "FAM177A1",
+        "type": "Gene",
+        "publicationCount": 13,
+        "publications": [
+          20136554,
+          25558065,
+          27488439,
+          29228969,
+          34659352,
+          34799425,
+          36825008,
+          38187698,
+          38585781,
+          38767059,
+          39331042,
+          40113264,
+          40616090
+        ]
+      },
+      {
+        "id": "@DISEASE_Inflammation",
+        "name": "inflammatory",
+        "type": "Disease",
+        "publicationCount": 12,
+        "publications": [
+          27488439,
+          29630609,
+          32327684,
+          32973863,
+          33383836,
+          33954041,
+          34799425,
+          35117826,
+          35358850,
+          36699197,
+          37373375,
+          39931577
+        ]
+      },
+      {
+        "id": "@CHEMICAL_Lipids",
+        "name": "lipid",
+        "type": "Chemical",
+        "publicationCount": 9,
+        "publications": [
+          23100282,
+          25909443,
+          29630609,
+          32762010,
+          34659352,
+          38187698,
+          39331042,
+          39531071,
+          40356703
+        ]
+      },
+      {
+        "id": "-",
+        "name": "O2",
+        "type": "Chemical",
+        "publicationCount": 9,
+        "publications": [
+          24489651,
+          30805606,
+          31618895,
+          31877761,
+          32327684,
+          34367665,
+          36825008,
+          38354534,
+          39811671
+        ]
+      },
+      {
+        "id": "10090",
+        "name": "mouse",
+        "type": "Species",
+        "publicationCount": 9,
+        "publications": [
+          24602487,
+          27653551,
+          32272486,
+          35358850,
+          36842095,
+          38307941,
+          38312638,
+          38887549,
+          39033271
+        ]
+      },
+      {
+        "id": "@DISEASE_Developmental_Disabilities",
+        "name": "neurodevelopmental disorder",
+        "type": "Disease",
+        "publicationCount": 7,
+        "publications": [
+          24602487,
+          37107578,
+          37313193,
+          38187698,
+          38585781,
+          39331042,
+          40113264
+        ]
+      },
+      {
+        "id": "@GENE_TNF",
+        "name": "TNF",
+        "type": "Gene",
+        "publicationCount": 5,
+        "publications": [
+          23874591,
+          29630609,
+          34033851,
+          36699197,
+          36833332
+        ]
+      },
+      {
+        "id": "@GENE_NFKB1",
+        "name": "NFKB1",
+        "type": "Gene",
+        "publicationCount": 5,
+        "publications": [
+          27488439,
+          33383836,
+          34799425,
+          37373375,
+          38354534
+        ]
+      },
+      {
+        "id": "@DISEASE_Heredodegenerative_Disorders_Nervous_System",
+        "name": "neurogenetic disorders",
+        "type": "Disease",
+        "publicationCount": 4,
+        "publications": [
+          25558065,
+          25884485,
+          37313193,
+          40356703
+        ]
+      },
+      {
+        "id": "@GENE_IL1B",
+        "name": "IL-1beta",
+        "type": "Gene",
+        "publicationCount": 4,
+        "publications": [
+          29630609,
+          34799425,
+          35615376,
+          36699197
+        ]
+      },
+      {
+        "id": "@GENE_CD8A",
+        "name": "CD8",
+        "type": "Gene",
+        "publicationCount": 4,
+        "publications": [
+          34793335,
+          39033271,
+          39811671,
+          40773142
+        ]
+      },
+      {
+        "id": "@DISEASE_Genetic_Diseases_Inborn",
+        "name": "autosomal recessive disorder",
+        "type": "Disease",
+        "publicationCount": 4,
+        "publications": [
+          34957696,
+          37313193,
+          38585781,
+          40113264
+        ]
+      },
+      {
+        "id": "@DISEASE_Autoimmune_Diseases",
+        "name": "autoimmune disorders",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          20136554,
+          34033851,
+          36833332
+        ]
+      },
+      {
+        "id": "@GENE_CXCL8",
+        "name": "interleukin (IL)-8",
+        "type": "Gene",
+        "publicationCount": 3,
+        "publications": [
+          21199582,
+          35117826,
+          35615376
+        ]
+      },
+      {
+        "id": "@DISEASE_Breast_Neoplasms",
+        "name": "breast cancer",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          24489651,
+          29228969,
+          40965441
+        ]
+      },
+      {
+        "id": "@DISEASE_Hypoxia",
+        "name": "hypoxia",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          24489651,
+          27653551,
+          34367665
+        ]
+      },
+      {
+        "id": "@DISEASE_Autistic_Disorder",
+        "name": "autism",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          24602487,
+          33431980,
+          37107578
+        ]
+      },
+      {
+        "id": "@DISEASE_Colorectal_Neoplasms",
+        "name": "colorectal cancer",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          25069957,
+          32403323,
+          34793335
+        ]
+      },
+      {
+        "id": "9823",
+        "name": "Pig",
+        "type": "Species",
+        "publicationCount": 3,
+        "publications": [
+          32106598,
+          32973863,
+          33800722
+        ]
+      },
+      {
+        "id": "@GENE_STAT3",
+        "name": "STAT3",
+        "type": "Gene",
+        "publicationCount": 3,
+        "publications": [
+          32106598,
+          32998289,
+          35117826
+        ]
+      },
+      {
+        "id": "@DISEASE_Liver_Cirrhosis_Biliary",
+        "name": "primary biliary cholangitis",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          34033851,
+          36825008,
+          36833332
+        ]
+      },
+      {
+        "id": "@DISEASE_Liver_Diseases",
+        "name": "chronic liver disease",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          34033851,
+          36825008,
+          36833332
+        ]
+      },
+      {
+        "id": "@DISEASE_Cohen_syndrome",
+        "name": "Cohen syndrome",
+        "type": "Disease",
+        "publicationCount": 3,
+        "publications": [
+          38187698,
+          39331042,
+          39531071
+        ]
+      },
+      {
+        "id": "7955",
+        "name": "zebrafish",
+        "type": "Species",
+        "publicationCount": 3,
+        "publications": [
+          38187698,
+          38767059,
+          39331042
+        ]
+      },
+      {
+        "id": "@DISEASE_Atherosclerosis",
+        "name": "atherosclerotic lesions",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          21199582,
+          40616090
+        ]
+      },
+      {
+        "id": "@GENE_TGFB1",
+        "name": "transforming growth factor (TGF)-beta1",
+        "type": "Gene",
+        "publicationCount": 2,
+        "publications": [
+          21199582,
+          28901463
+        ]
+      },
+      {
+        "id": "@GENE_APOE",
+        "name": "APOE",
+        "type": "Gene",
+        "publicationCount": 2,
+        "publications": [
+          23100282,
+          37260775
+        ]
+      },
+      {
+        "id": "@DISEASE_Hypertension",
+        "name": "hypertension",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          23874591,
+          38354534
+        ]
+      },
+      {
+        "id": "@DISEASE_Hypercholesterolemia",
+        "name": "hypercholesterolemia",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          23874591,
+          34659352
+        ]
+      },
+      {
+        "id": "@CHEMICAL_Cholesterol",
+        "name": "cholesterol",
+        "type": "Chemical",
+        "publicationCount": 2,
+        "publications": [
+          23874591,
+          24602487
+        ]
+      },
+      {
+        "id": "@GENE_HNF4A",
+        "name": "HNF4A",
+        "type": "Gene",
+        "publicationCount": 2,
+        "publications": [
+          23874591,
+          32403323
+        ]
+      },
+      {
+        "id": "@DISEASE_Hypoxia_Brain",
+        "name": "hypoxic",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          24489651,
+          27653551
+        ]
+      },
+      {
+        "id": "@DISEASE_Cardiovascular_Diseases",
+        "name": "Cardiovascular disease",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          24515752,
+          34659352
+        ]
+      },
+      {
+        "id": "@DISEASE_Chromosome_Aberrations",
+        "name": "chromosome abnormalities",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          25373456,
+          37260775
+        ]
+      },
+      {
+        "id": "4",
+        "name": "chromosome 4",
+        "type": "Chromosome",
+        "publicationCount": 2,
+        "publications": [
+          25373456,
+          39910069
+        ]
+      },
+      {
+        "id": "@DISEASE_Infections",
+        "name": "C. trachomatis infection",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          25909443,
+          38439105
+        ]
+      },
+      {
+        "id": "@DISEASE_Abortion_Habitual",
+        "name": "recurrent miscarriages",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          27488439,
+          37260775
+        ]
+      },
+      {
+        "id": "@CHEMICAL_Oxygen",
+        "name": "oxygen",
+        "type": "Chemical",
+        "publicationCount": 2,
+        "publications": [
+          27653551,
+          34367665
+        ]
+      },
+      {
+        "id": "@CHEMICAL_Docetaxel",
+        "name": "docetaxel",
+        "type": "Chemical",
+        "publicationCount": 2,
+        "publications": [
+          27822437,
+          37954266
+        ]
+      },
+      {
+        "id": "@DISEASE_Prostatic_Neoplasms",
+        "name": "prostate cancer",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          27822437,
+          27903962
+        ]
+      },
+      {
+        "id": "@GENE_NPEPPS",
+        "name": "PSA",
+        "type": "Gene",
+        "publicationCount": 2,
+        "publications": [
+          27903962,
+          35117826
+        ]
+      },
+      {
+        "id": "@CHEMICAL_Calcium",
+        "name": "calcium",
+        "type": "Chemical",
+        "publicationCount": 2,
+        "publications": [
+          29630609,
+          34957696
+        ]
+      },
+      {
+        "id": "@GENE_HSPA5",
+        "name": "GRP78",
+        "type": "Gene",
+        "publicationCount": 2,
+        "publications": [
+          29630609,
+          31101113
+        ]
+      },
+      {
+        "id": "@DISEASE_Carcinogenesis",
+        "name": "tumorigenesis",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          30365065,
+          32998289
+        ]
+      },
+      {
+        "id": "@DISEASE_Mental_Disorders",
+        "name": "Psychiatric disorders",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          31877761,
+          33800722
+        ]
+      },
+      {
+        "id": "@DISEASE_Brain_Diseases",
+        "name": "multiple sclerosis brain lesions",
+        "type": "Disease",
+        "publicationCount": 2,
+        "publications": [
+          32272486,
+          35358850
+        ]
+      },
+      {
+        "id": "@CHEMICAL_Lipopolysaccharides",
+        "name": "LPS",
+        "type": "Chemical",
+        "publicationCount": 2,
+        "publications": [
+          32973863,
+          35117826
+        ]
+      },
+      {
+        "id": "@GENE_TLR4",
+        "name": "TLR4",
+        "type": "Gene",
+        "publicationCount": 2,
+        "publications": [
+          32973863,
+          35117826
+        ]
+      }
+    ],
+    "publicationCountDistribution": {
+      "1": 441,
+      "2-5": 63,
+      "6-10": 4,
+      "11-20": 2,
+      "21-50": 2,
+      ">50": 0
+    }
+  },
+  "edges": {
+    "total": 306,
+    "byType": {
+      "Association": 224,
+      "Positive_Correlation": 52,
+      "Negative_Correlation": 28,
+      "Bind": 2
+    },
+    "sample": [
+      {
+        "source": "@CHEMICAL_Lipids",
+        "target": "@GENE_PSRC1",
+        "type": "Association",
+        "sourceName": "Lipids",
+        "targetName": "PSRC1",
+        "publications": [
+          23100282
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Lipids",
+        "target": "@GENE_SORT1",
+        "type": "Association",
+        "sourceName": "Lipids",
+        "targetName": "SORT1",
+        "publications": [
+          23100282
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Lipids",
+        "target": "@GENE_ABCC2",
+        "type": "Association",
+        "sourceName": "Lipids",
+        "targetName": "ABCC2",
+        "publications": [
+          23100282
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Lipids",
+        "target": "@CHEMICAL_Simvastatin",
+        "type": "Association",
+        "sourceName": "Lipids",
+        "targetName": "Simvastatin",
+        "publications": [
+          23100282
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Lipids",
+        "target": "@GENE_CELSR2",
+        "type": "Association",
+        "sourceName": "Lipids",
+        "targetName": "CELSR2",
+        "publications": [
+          23100282
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Lipids",
+        "target": "@GENE_LPA",
+        "type": "Association",
+        "sourceName": "Lipids",
+        "targetName": "LPA",
+        "publications": [
+          23100282
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Simvastatin",
+        "target": "@GENE_APOB",
+        "type": "Association",
+        "sourceName": "Simvastatin",
+        "targetName": "APOB",
+        "publications": [
+          23100282
+        ]
+      },
+      {
+        "source": "@DISEASE_Hypertension",
+        "target": "@GENE_MMP1",
+        "type": "Positive_Correlation",
+        "sourceName": "Hypertension",
+        "targetName": "MMP1",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@DISEASE_Hypertension",
+        "target": "@GENE_APP",
+        "type": "Positive_Correlation",
+        "sourceName": "Hypertension",
+        "targetName": "APP",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@DISEASE_Intracranial_Arterial_Diseases",
+        "target": "@GENE_HNF4A",
+        "type": "Association",
+        "sourceName": "Intracranial Arterial Diseases",
+        "targetName": "HNF4A",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@DISEASE_Hypercholesterolemia",
+        "target": "@GENE_HNF4A",
+        "type": "Positive_Correlation",
+        "sourceName": "Hypercholesterolemia",
+        "targetName": "HNF4A",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@DISEASE_Hypertension",
+        "target": "@GENE_LOC103350067",
+        "type": "Negative_Correlation",
+        "sourceName": "Hypertension",
+        "targetName": "LOC103350067",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@DISEASE_Hypertension",
+        "target": "@GENE_LOC100343047",
+        "type": "Positive_Correlation",
+        "sourceName": "Hypertension",
+        "targetName": "LOC100343047",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@DISEASE_Hypertension",
+        "target": "@GENE_SERPINB2",
+        "type": "Positive_Correlation",
+        "sourceName": "Hypertension",
+        "targetName": "SERPINB2",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@DISEASE_Hypertension",
+        "target": "@GENE_HNF4A",
+        "type": "Positive_Correlation",
+        "sourceName": "Hypertension",
+        "targetName": "HNF4A",
+        "publications": [
+          23874591
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Doxorubicin",
+        "target": "@DISEASE_Breast_Neoplasms",
+        "type": "Negative_Correlation",
+        "sourceName": "Doxorubicin",
+        "targetName": "Breast Neoplasms",
+        "publications": [
+          24489651
+        ]
+      },
+      {
+        "source": "@DISEASE_Neoplasms",
+        "target": "@GENE_ABCB1",
+        "type": "Association",
+        "sourceName": "Neoplasms",
+        "targetName": "ABCB1",
+        "publications": [
+          24489651
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Doxorubicin",
+        "target": "@GENE_ABCB1",
+        "type": "Negative_Correlation",
+        "sourceName": "Doxorubicin",
+        "targetName": "ABCB1",
+        "publications": [
+          24489651
+        ]
+      },
+      {
+        "source": "@DISEASE_Breast_Neoplasms",
+        "target": "@GENE_TFPI",
+        "type": "Association",
+        "sourceName": "Breast Neoplasms",
+        "targetName": "TFPI",
+        "publications": [
+          24489651
+        ]
+      },
+      {
+        "source": "@CHEMICAL_Doxorubicin",
+        "target": "@DISEASE_Hypoxia",
+        "type": "Association",
+        "sourceName": "Doxorubicin",
+        "targetName": "Hypoxia",
+        "publications": [
+          24489651
+        ]
+      }
+    ]
+  },
+  "coOccurrences": {
+    "total": 89,
+    "minPublications": 2,
+    "topPairs": [
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Neoplasms",
+          "name": "cancer",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 13,
+        "publications": [
+          24416592,
+          24489651,
+          25069957,
+          27322207,
+          30365065,
+          31757200,
+          32403323,
+          32998289,
+          33954041,
+          34793335,
+          37298537,
+          39811671,
+          39929803
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "coOccurrenceCount": 8,
+        "publications": [
+          20136554,
+          27488439,
+          29228969,
+          34799425,
+          36825008,
+          38585781,
+          38767059,
+          40113264
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Inflammation",
+          "name": "inflammatory",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 8,
+        "publications": [
+          27488439,
+          29630609,
+          32327684,
+          33954041,
+          34799425,
+          35117826,
+          35358850,
+          39931577
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "-",
+          "name": "O2",
+          "type": "Chemical"
+        },
+        "coOccurrenceCount": 7,
+        "publications": [
+          24489651,
+          30805606,
+          31618895,
+          31877761,
+          32327684,
+          36825008,
+          39811671
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@DISEASE_Developmental_Disabilities",
+          "name": "neurodevelopmental disorder",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 4,
+        "publications": [
+          38187698,
+          38585781,
+          39331042,
+          40113264
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Developmental_Disabilities",
+          "name": "neurodevelopmental disorder",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 4,
+        "publications": [
+          37107578,
+          37313193,
+          38585781,
+          40113264
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Genetic_Diseases_Inborn",
+          "name": "autosomal recessive disorder",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 4,
+        "publications": [
+          34957696,
+          37313193,
+          38585781,
+          40113264
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_NFKB1",
+          "name": "NFKB1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@DISEASE_Inflammation",
+          "name": "inflammatory",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 4,
+        "publications": [
+          27488439,
+          33383836,
+          34799425,
+          37373375
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@CHEMICAL_Lipids",
+          "name": "lipid",
+          "type": "Chemical"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          34659352,
+          38187698,
+          39331042
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "7955",
+          "name": "zebrafish",
+          "type": "Species"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          38187698,
+          38767059,
+          39331042
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Autoimmune_Diseases",
+          "name": "autoimmune disorders",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          20136554,
+          34033851,
+          36833332
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@CHEMICAL_Lipids",
+          "name": "lipid",
+          "type": "Chemical"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          23100282,
+          25909443,
+          29630609
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_TNF",
+          "name": "TNF",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          29630609,
+          34033851,
+          36833332
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "10090",
+          "name": "mouse",
+          "type": "Species"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          35358850,
+          38887549,
+          39033271
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Colorectal_Neoplasms",
+          "name": "colorectal cancer",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          25069957,
+          32403323,
+          34793335
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Liver_Cirrhosis_Biliary",
+          "name": "primary biliary cholangitis",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          34033851,
+          36825008,
+          36833332
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Liver_Diseases",
+          "name": "chronic liver disease",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          34033851,
+          36825008,
+          36833332
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_CD8A",
+          "name": "CD8",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          34793335,
+          39033271,
+          39811671
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Neoplasms",
+          "name": "cancer",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@DISEASE_Colorectal_Neoplasms",
+          "name": "colorectal cancer",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          25069957,
+          32403323,
+          34793335
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Neoplasms",
+          "name": "cancer",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@GENE_CD8A",
+          "name": "CD8",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          34793335,
+          39811671,
+          40773142
+        ]
+      },
+      {
+        "node1": {
+          "id": "@CHEMICAL_Lipids",
+          "name": "lipid",
+          "type": "Chemical"
+        },
+        "node2": {
+          "id": "@DISEASE_Cohen_syndrome",
+          "name": "Cohen syndrome",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          38187698,
+          39331042,
+          39531071
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Developmental_Disabilities",
+          "name": "neurodevelopmental disorder",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@DISEASE_Genetic_Diseases_Inborn",
+          "name": "autosomal recessive disorder",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          37313193,
+          38585781,
+          40113264
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Inflammation",
+          "name": "inflammatory",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@GENE_IL1B",
+          "name": "IL-1beta",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          29630609,
+          34799425,
+          36699197
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Liver_Cirrhosis_Biliary",
+          "name": "primary biliary cholangitis",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@DISEASE_Liver_Diseases",
+          "name": "chronic liver disease",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 3,
+        "publications": [
+          34033851,
+          36825008,
+          36833332
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@GENE_NFKB1",
+          "name": "NFKB1",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          27488439,
+          34799425
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@DISEASE_Inflammation",
+          "name": "inflammatory",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          27488439,
+          34799425
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@DISEASE_Genetic_Diseases_Inborn",
+          "name": "autosomal recessive disorder",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          38585781,
+          40113264
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@GENE_LOC101882151",
+          "name": "VPS13B",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          38187698,
+          39331042
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@DISEASE_Cohen_syndrome",
+          "name": "Cohen syndrome",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          38187698,
+          39331042
+        ]
+      },
+      {
+        "node1": {
+          "id": "@GENE_FAM177A1",
+          "name": "FAM177A1",
+          "type": "Gene"
+        },
+        "node2": {
+          "id": "@CHEMICAL_Brefeldin_A",
+          "name": "Brefeldin A",
+          "type": "Chemical"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          38187698,
+          39331042
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_CXCL8",
+          "name": "interleukin (IL)-8",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          21199582,
+          35117826
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_APOE",
+          "name": "APOE",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          23100282,
+          37260775
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Breast_Neoplasms",
+          "name": "breast cancer",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          24489651,
+          29228969
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Infections",
+          "name": "C. trachomatis infection",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          25909443,
+          38439105
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_NFKB1",
+          "name": "NFKB1",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          27488439,
+          34799425
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Abortion_Habitual",
+          "name": "recurrent miscarriages",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          27488439,
+          37260775
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Prostatic_Neoplasms",
+          "name": "prostate cancer",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          27822437,
+          27903962
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_NPEPPS",
+          "name": "PSA",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          27903962,
+          35117826
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@CHEMICAL_Calcium",
+          "name": "calcium",
+          "type": "Chemical"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          29630609,
+          34957696
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_IL1B",
+          "name": "IL-1beta",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          29630609,
+          34799425
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Carcinogenesis",
+          "name": "tumorigenesis",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          30365065,
+          32998289
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Mental_Disorders",
+          "name": "Psychiatric disorders",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          31877761,
+          33800722
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_STAT3",
+          "name": "STAT3",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          32998289,
+          35117826
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@GENE_IL6",
+          "name": "IL-6",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          32998289,
+          35117826
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Intellectual_Disability",
+          "name": "intellectual disability",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          37107578,
+          37313193
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Pathological_Conditions_Anatomical",
+          "name": "autosomal recessive conditions",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          37260775,
+          38370830
+        ]
+      },
+      {
+        "node1": {
+          "id": "9606",
+          "name": "patients",
+          "type": "Species"
+        },
+        "node2": {
+          "id": "@DISEASE_Disease",
+          "name": "disease",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          38370830,
+          38585781
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Autoimmune_Diseases",
+          "name": "autoimmune disorders",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@GENE_TNF",
+          "name": "TNF",
+          "type": "Gene"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          34033851,
+          36833332
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Autoimmune_Diseases",
+          "name": "autoimmune disorders",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@DISEASE_Liver_Cirrhosis_Biliary",
+          "name": "primary biliary cholangitis",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          34033851,
+          36833332
+        ]
+      },
+      {
+        "node1": {
+          "id": "@DISEASE_Autoimmune_Diseases",
+          "name": "autoimmune disorders",
+          "type": "Disease"
+        },
+        "node2": {
+          "id": "@DISEASE_Liver_Diseases",
+          "name": "chronic liver disease",
+          "type": "Disease"
+        },
+        "coOccurrenceCount": 2,
+        "publications": [
+          34033851,
+          36833332
+        ]
+      }
+    ],
+    "byCount": {
+      "2": 65,
+      "3-5": 20,
+      "6-10": 3,
+      "11-20": 1,
+      ">20": 0
+    }
+  },
+  "databases": {
+    "total": 6,
+    "list": [
+      "cvcl",
+      "litvar",
+      "ncbi_gene",
+      "ncbi_mesh",
+      "ncbi_taxonomy",
+      "omim"
+    ],
+    "byDatabase": {
+      "cvcl": 13,
+      "litvar": 6,
+      "ncbi_gene": 258,
+      "ncbi_mesh": 179,
+      "ncbi_taxonomy": 19,
+      "omim": 4
+    }
+  },
+  "omim": {
+    "total": 4,
+    "entries": [
+      {
+        "id": "@DISEASE_204690",
+        "name": "enamel-renal syndrome"
+      },
+      {
+        "id": "@DISEASE_211750",
+        "name": "C/CA"
+      },
+      {
+        "id": "@DISEASE_603933",
+        "name": "proliferative retinopathy"
+      },
+      {
+        "id": "@DISEASE_614878",
+        "name": "immune dysregulation"
+      }
+    ]
+  },
+  "mesh": {
+    "total": 179,
+    "entries": [
+      {
+        "id": "@CHEMICAL_3_deoxyglucosone",
+        "name": "3-deoxyglucosone"
+      },
+      {
+        "id": "@CHEMICAL_4_methylcoumarin_7_O_sulfamate",
+        "name": "COUMATE"
+      },
+      {
+        "id": "@CHEMICAL_Adenosine_Triphosphate",
+        "name": "ATP"
+      },
+      {
+        "id": "@CHEMICAL_Alcohols",
+        "name": "alcohol"
+      },
+      {
+        "id": "@CHEMICAL_Brefeldin_A",
+        "name": "Brefeldin A"
+      },
+      {
+        "id": "@CHEMICAL_Calcium",
+        "name": "calcium"
+      },
+      {
+        "id": "@CHEMICAL_Carbamazepine",
+        "name": "Carbamazepine"
+      },
+      {
+        "id": "@CHEMICAL_Cholesterol",
+        "name": "cholesterol"
+      },
+      {
+        "id": "@CHEMICAL_Cisplatin",
+        "name": "cisplatin"
+      },
+      {
+        "id": "@CHEMICAL_Copper",
+        "name": "Copper"
+      },
+      {
+        "id": "@CHEMICAL_Cuprizone",
+        "name": "cuprizone"
+      },
+      {
+        "id": "@CHEMICAL_Docetaxel",
+        "name": "docetaxel"
+      },
+      {
+        "id": "@CHEMICAL_Doxorubicin",
+        "name": "doxorubicin"
+      },
+      {
+        "id": "@CHEMICAL_Estradiol",
+        "name": "17beta-oestradiol"
+      },
+      {
+        "id": "@CHEMICAL_Fluorescein_5_isothiocyanate",
+        "name": "FITC"
+      },
+      {
+        "id": "@CHEMICAL_gamma_Aminobutyric_Acid",
+        "name": "GABA"
+      },
+      {
+        "id": "@CHEMICAL_Gemcitabine",
+        "name": "gemcitabine"
+      },
+      {
+        "id": "@CHEMICAL_Glucose",
+        "name": "glucose"
+      },
+      {
+        "id": "@CHEMICAL_Glutamic_Acid",
+        "name": "glutamate"
+      },
+      {
+        "id": "@CHEMICAL_Glutathione",
+        "name": "glutathione"
+      },
+      {
+        "id": "@CHEMICAL_Glyoxal",
+        "name": "glyoxal"
+      },
+      {
+        "id": "@CHEMICAL_Hydrogen_Peroxide",
+        "name": "H2O2"
+      },
+      {
+        "id": "@CHEMICAL_Levonorgestrel",
+        "name": "levonorgestrel"
+      },
+      {
+        "id": "@CHEMICAL_Lipids",
+        "name": "lipid"
+      },
+      {
+        "id": "@CHEMICAL_Lipopolysaccharides",
+        "name": "LPS"
+      },
+      {
+        "id": "@CHEMICAL_Oxygen",
+        "name": "oxygen"
+      },
+      {
+        "id": "@CHEMICAL_Paclitaxel",
+        "name": "paclitaxel"
+      },
+      {
+        "id": "@CHEMICAL_Phospholipids",
+        "name": "phospholipids"
+      },
+      {
+        "id": "@CHEMICAL_Poly_I_C",
+        "name": "PolyIC"
+      },
+      {
+        "id": "@CHEMICAL_Pyruvaldehyde",
+        "name": "methylglyoxal"
+      },
+      {
+        "id": "@CHEMICAL_Serotonin",
+        "name": "serotonin"
+      },
+      {
+        "id": "@CHEMICAL_Simvastatin",
+        "name": "simvastatin"
+      },
+      {
+        "id": "@CHEMICAL_Steroids",
+        "name": "steroid"
+      },
+      {
+        "id": "@CHEMICAL_Superoxides",
+        "name": "superoxide anion"
+      },
+      {
+        "id": "@CHEMICAL_Tetracycline",
+        "name": "tetracycline"
+      },
+      {
+        "id": "@CHEMICAL_Tetracyclines",
+        "name": "tetracyclines"
+      },
+      {
+        "id": "@CHEMICAL_Zymosan",
+        "name": "zymosan"
+      },
+      {
+        "id": "@DISEASE_Abnormalities_Drug_Induced",
+        "name": "serotonergic abnormalities"
+      },
+      {
+        "id": "@DISEASE_Abortion_Habitual",
+        "name": "recurrent miscarriages"
+      },
+      {
+        "id": "@DISEASE_Alzheimer_Disease",
+        "name": "Alzheimer's disease"
+      },
+      {
+        "id": "@DISEASE_Aneuploidy",
+        "name": "aneuploidy"
+      },
+      {
+        "id": "@DISEASE_Anxiety",
+        "name": "anxiety"
+      },
+      {
+        "id": "@DISEASE_Arthritis",
+        "name": "oligoarthritis"
+      },
+      {
+        "id": "@DISEASE_Arthritis_Juvenile",
+        "name": "juvenile idiopathic arthritis"
+      },
+      {
+        "id": "@DISEASE_Atherosclerosis",
+        "name": "atherosclerotic lesions"
+      },
+      {
+        "id": "@DISEASE_Attention_Deficit_Disorder_with_Hyperactivity",
+        "name": "ADHD"
+      },
+      {
+        "id": "@DISEASE_Autism_Spectrum_Disorder",
+        "name": "ASD"
+      },
+      {
+        "id": "@DISEASE_Autistic_Disorder",
+        "name": "autism"
+      },
+      {
+        "id": "@DISEASE_Autoimmune_Diseases",
+        "name": "autoimmune disorders"
+      },
+      {
+        "id": "@DISEASE_Bipolar_Disorder",
+        "name": "Bipolar Spectrum Disorders"
+      },
+      {
+        "id": "@DISEASE_Blindness",
+        "name": "blindness"
+      },
+      {
+        "id": "@DISEASE_Blood_Coagulation_Disorders",
+        "name": "blood and bleeding disorders"
+      },
+      {
+        "id": "@DISEASE_Bone_Marrow_Diseases",
+        "name": "bone marrow (BM) lymphoma"
+      },
+      {
+        "id": "@DISEASE_Brain_Diseases",
+        "name": "multiple sclerosis brain lesions"
+      },
+      {
+        "id": "@DISEASE_Brain_Injuries",
+        "name": "brain injury"
+      },
+      {
+        "id": "@DISEASE_Breast_Neoplasms",
+        "name": "breast cancer"
+      },
+      {
+        "id": "@DISEASE_Calcinosis",
+        "name": "ectopic calcification"
+      },
+      {
+        "id": "@DISEASE_Carcinogenesis",
+        "name": "tumorigenesis"
+      },
+      {
+        "id": "@DISEASE_Carcinoma_Hepatocellular",
+        "name": "Hepatocellular Carcinoma"
+      },
+      {
+        "id": "@DISEASE_Carcinoma_Non_Small_Cell_Lung",
+        "name": "non-small cell lung cancer"
+      },
+      {
+        "id": "@DISEASE_Carcinoma_Pancreatic_Ductal",
+        "name": "pancreatic ductal adenocarcinoma"
+      },
+      {
+        "id": "@DISEASE_Cardiomegaly",
+        "name": "cardiac hypertrophy"
+      },
+      {
+        "id": "@DISEASE_Cardiomyopathy_Restrictive",
+        "name": "repetitive and restrictive behaviors"
+      },
+      {
+        "id": "@DISEASE_Cardiovascular_Diseases",
+        "name": "Cardiovascular disease"
+      },
+      {
+        "id": "@DISEASE_Cell_Transformation_Viral",
+        "name": "leukemic transformation"
+      },
+      {
+        "id": "@DISEASE_Cerebral_Arterial_Diseases",
+        "name": "Atherosclerotic stenosis of cerebral arteries or intracranial large artery disease"
+      },
+      {
+        "id": "@DISEASE_Cerebral_Intraventricular_Hemorrhage",
+        "name": "intraventricular hemorrhage"
+      },
+      {
+        "id": "@DISEASE_Chlamydia_Infections",
+        "name": "Chlamydia trachomatis Infection"
+      },
+      {
+        "id": "@DISEASE_Cholangiocarcinoma",
+        "name": "Cholangiocarcinoma"
+      },
+      {
+        "id": "@DISEASE_Chromosome_14_trisomy",
+        "name": "trisomy 14"
+      },
+      {
+        "id": "@DISEASE_Chromosome_22_monosome_mosaic",
+        "name": "monosomy 22"
+      },
+      {
+        "id": "@DISEASE_Chromosome_7_trisomy_mosaic",
+        "name": "trisomy 7"
+      },
+      {
+        "id": "@DISEASE_Chromosome_Aberrations",
+        "name": "chromosome abnormalities"
+      },
+      {
+        "id": "@DISEASE_Chronobiology_Disorders",
+        "name": "Circadian rhythm disruptions"
+      },
+      {
+        "id": "@DISEASE_Cognition_Disorders",
+        "name": "cognitive impairments"
+      },
+      {
+        "id": "@DISEASE_Cohen_syndrome",
+        "name": "Cohen syndrome"
+      },
+      {
+        "id": "@DISEASE_Colorectal_Neoplasms",
+        "name": "colorectal cancer"
+      },
+      {
+        "id": "@DISEASE_Communication_Disorders",
+        "name": "deficits in communication and social interaction"
+      },
+      {
+        "id": "@DISEASE_Congenital_Hereditary_and_Neonatal_Diseases_and_Abnormalities",
+        "name": "disorders"
+      },
+      {
+        "id": "@DISEASE_Conversion_Disorder",
+        "name": "function"
+      },
+      {
+        "id": "@DISEASE_Corneal_Neovascularization",
+        "name": "neovascularization"
+      },
+      {
+        "id": "@DISEASE_Coronary_Artery_Disease",
+        "name": "coronary artery disease"
+      },
+      {
+        "id": "@DISEASE_Death",
+        "name": "death"
+      },
+      {
+        "id": "@DISEASE_Dementia",
+        "name": "dementia"
+      },
+      {
+        "id": "@DISEASE_Demyelinating_Diseases",
+        "name": "demyelination"
+      },
+      {
+        "id": "@DISEASE_Depressive_Disorder",
+        "name": "depression"
+      },
+      {
+        "id": "@DISEASE_Dermatitis_Atopic",
+        "name": "atopic dermatitis"
+      },
+      {
+        "id": "@DISEASE_Developmental_Disabilities",
+        "name": "neurodevelopmental disorder"
+      },
+      {
+        "id": "@DISEASE_Diabetes_Mellitus",
+        "name": "diabetes"
+      },
+      {
+        "id": "@DISEASE_Diabetes_Mellitus_Type_2",
+        "name": "Type 2 Diabetes"
+      },
+      {
+        "id": "@DISEASE_Disease",
+        "name": "disease"
+      },
+      {
+        "id": "@DISEASE_Drug_Hypersensitivity",
+        "name": "Drug hypersensitivity"
+      },
+      {
+        "id": "@DISEASE_Embryo_Loss",
+        "name": "embryonic lethality"
+      },
+      {
+        "id": "@DISEASE_Emphysema",
+        "name": "emphysema"
+      },
+      {
+        "id": "@DISEASE_Epilepsy",
+        "name": "epilepsy"
+      },
+      {
+        "id": "@DISEASE_Eye_Diseases",
+        "name": "eye diseases"
+      },
+      {
+        "id": "@DISEASE_Fetal_Death",
+        "name": "demise"
+      },
+      {
+        "id": "@DISEASE_Fetal_Growth_Retardation",
+        "name": "selective intrauterine growth restriction"
+      },
+      {
+        "id": "@DISEASE_Fibrosis",
+        "name": "cirrhosis"
+      },
+      {
+        "id": "@DISEASE_Frailty",
+        "name": "frailty"
+      },
+      {
+        "id": "@DISEASE_Gastrointestinal_Stromal_Tumors",
+        "name": "gastrointestinal stromal tumors"
+      },
+      {
+        "id": "@DISEASE_Genee_Wiedemann_syndrome",
+        "name": "genes and"
+      },
+      {
+        "id": "@DISEASE_Genetic_Diseases_Inborn",
+        "name": "autosomal recessive disorder"
+      },
+      {
+        "id": "@DISEASE_Genital_Diseases",
+        "name": "genital and ocular diseases"
+      },
+      {
+        "id": "@DISEASE_Granulosa_Cell_Tumor",
+        "name": "GCTs"
+      },
+      {
+        "id": "@DISEASE_Granulosa_cell_tumor_of_the_ovary",
+        "name": "GCT"
+      },
+      {
+        "id": "@DISEASE_Head_and_Neck_Neoplasms",
+        "name": "head-and-neck cancer"
+      },
+      {
+        "id": "@DISEASE_Heart_Failure",
+        "name": "heart failure"
+      },
+      {
+        "id": "@DISEASE_Hematologic_Neoplasms",
+        "name": "blood cancers"
+      },
+      {
+        "id": "@DISEASE_Hepatitis_C",
+        "name": "PT"
+      },
+      {
+        "id": "@DISEASE_Heredodegenerative_Disorders_Nervous_System",
+        "name": "neurogenetic disorders"
+      },
+      {
+        "id": "@DISEASE_Hydrocephalus",
+        "name": "hydrocephalus"
+      },
+      {
+        "id": "@DISEASE_Hypercholesterolemia",
+        "name": "hypercholesterolemia"
+      },
+      {
+        "id": "@DISEASE_Hyperlipoproteinemia_Type_II",
+        "name": "hypercholesterolemic"
+      },
+      {
+        "id": "@DISEASE_Hypertension",
+        "name": "hypertension"
+      },
+      {
+        "id": "@DISEASE_Hypertensive_Retinopathy",
+        "name": "retinopathy"
+      },
+      {
+        "id": "@DISEASE_Hypopharyngeal_Neoplasms",
+        "name": "hypopharyngeal cancer"
+      },
+      {
+        "id": "@DISEASE_Hypoxia",
+        "name": "hypoxia"
+      },
+      {
+        "id": "@DISEASE_Hypoxia_Brain",
+        "name": "hypoxic"
+      },
+      {
+        "id": "@DISEASE_Infections",
+        "name": "C. trachomatis infection"
+      },
+      {
+        "id": "@DISEASE_Inflammation",
+        "name": "inflammatory"
+      },
+      {
+        "id": "@DISEASE_Intellectual_Disability",
+        "name": "intellectual disability"
+      },
+      {
+        "id": "@DISEASE_Intracranial_Arterial_Diseases",
+        "name": "ICLAD"
+      },
+      {
+        "id": "@DISEASE_Intracranial_Hypertension",
+        "name": "intracranial pressure"
+      },
+      {
+        "id": "@DISEASE_Kininogen_Deficiency_High_Molecular_Weight_and_Low_Molecular_Weight",
+        "name": "molecular abnormalities"
+      },
+      {
+        "id": "@DISEASE_Leukemia",
+        "name": "leukemia"
+      },
+      {
+        "id": "@DISEASE_Leukemia_Myelogenous_Chronic_BCR_ABL_Positive",
+        "name": "Chronic Myeloid Leukemia"
+      },
+      {
+        "id": "@DISEASE_Liver_Cirrhosis_Biliary",
+        "name": "primary biliary cholangitis"
+      },
+      {
+        "id": "@DISEASE_Liver_Diseases",
+        "name": "chronic liver disease"
+      },
+      {
+        "id": "@DISEASE_Lupus_Erythematosus_Systemic",
+        "name": "systemic lupus erythematosus"
+      },
+      {
+        "id": "@DISEASE_Macular_Degeneration",
+        "name": "age-related macular degeneration"
+      },
+      {
+        "id": "@DISEASE_Mastitis",
+        "name": "Subclinical Mastitis"
+      },
+      {
+        "id": "@DISEASE_Memory_Disorders",
+        "name": "memory deficits"
+      },
+      {
+        "id": "@DISEASE_Mental_Disorders",
+        "name": "Psychiatric disorders"
+      },
+      {
+        "id": "@DISEASE_Mental_Retardation_Autosomal_Recessive_1",
+        "name": "intellectual impairment"
+      },
+      {
+        "id": "@DISEASE_Microvascular_Angina",
+        "name": "microvascular thrombosis"
+      },
+      {
+        "id": "@DISEASE_Monosomy",
+        "name": "monosomy"
+      },
+      {
+        "id": "@DISEASE_Mucocutaneous_Lymph_Node_Syndrome",
+        "name": "Kawasaki Disease"
+      },
+      {
+        "id": "@DISEASE_Multiple_Sclerosis",
+        "name": "multiple sclerosis"
+      },
+      {
+        "id": "@DISEASE_Neoplasms",
+        "name": "cancer"
+      },
+      {
+        "id": "@DISEASE_Nephrocalcinosis",
+        "name": "nephrocalcinosis"
+      },
+      {
+        "id": "@DISEASE_Nerve_Degeneration",
+        "name": "neuronal degeneration"
+      },
+      {
+        "id": "@DISEASE_Neurodegenerative_Diseases",
+        "name": "neurodegeneration"
+      },
+      {
+        "id": "@DISEASE_Neurofibroma_Plexiform",
+        "name": "plexiform neurofibromas"
+      },
+      {
+        "id": "@DISEASE_Neurofibromatosis_1",
+        "name": "NF1 tumours"
+      },
+      {
+        "id": "@DISEASE_Neurofibrosarcoma",
+        "name": "MPNSTs"
+      },
+      {
+        "id": "@DISEASE_Neurologic_Manifestations",
+        "name": "neurological disorders"
+      },
+      {
+        "id": "@DISEASE_Obesity",
+        "name": "obesity"
+      },
+      {
+        "id": "@DISEASE_Opioid_Related_Disorders",
+        "name": "opioid use disorder"
+      },
+      {
+        "id": "@DISEASE_Ovarian_Neoplasms",
+        "name": "ovarian granulosa cell tumors"
+      },
+      {
+        "id": "@DISEASE_Pancreatic_Neoplasms",
+        "name": "pancreatic cancer"
+      },
+      {
+        "id": "@DISEASE_Paramyxoviridae_Infections",
+        "name": "caprine parainfluenza virus type 3 infection"
+      },
+      {
+        "id": "@DISEASE_Pathological_Conditions_Anatomical",
+        "name": "autosomal recessive conditions"
+      },
+      {
+        "id": "@DISEASE_Peripheral_Nervous_System_Neoplasms",
+        "name": "malignant peripheral nerve sheath tumours"
+      },
+      {
+        "id": "@DISEASE_Precancerous_Conditions",
+        "name": "carcinogenic"
+      },
+      {
+        "id": "@DISEASE_Prostatic_Hyperplasia",
+        "name": "benign prostatic hyperplasia"
+      },
+      {
+        "id": "@DISEASE_Prostatic_Neoplasms",
+        "name": "prostate cancer"
+      },
+      {
+        "id": "@DISEASE_Pulmonary_Disease_Chronic_Obstructive",
+        "name": "chronic obstructive pulmonary disease"
+      },
+      {
+        "id": "@DISEASE_Pulmonary_Emphysema",
+        "name": "Pulmonary emphysema"
+      },
+      {
+        "id": "@DISEASE_Renal_Insufficiency",
+        "name": "synaptic failure"
+      },
+      {
+        "id": "@DISEASE_Respiratory_Tract_Diseases",
+        "name": "respiratory tract disease"
+      },
+      {
+        "id": "@DISEASE_Retinal_Degeneration",
+        "name": "Age-Related Retinal Degeneration"
+      },
+      {
+        "id": "@DISEASE_Retinal_Dystrophies",
+        "name": "retinal dystrophy"
+      },
+      {
+        "id": "@DISEASE_Schizophrenia",
+        "name": "schizophrenia"
+      },
+      {
+        "id": "@DISEASE_Sex_Cord_Gonadal_Stromal_Tumors",
+        "name": "sex cord-stromal tumors"
+      },
+      {
+        "id": "@DISEASE_Skin_Diseases",
+        "name": "inflammatory skin diseases"
+      },
+      {
+        "id": "@DISEASE_Smoldering_Multiple_Myeloma",
+        "name": "Smoldering Myeloma"
+      },
+      {
+        "id": "@DISEASE_Squamous_Cell_Carcinoma_of_Head_and_Neck",
+        "name": "head and neck squamous carcinoma"
+      },
+      {
+        "id": "@DISEASE_Stevens_Johnson_Syndrome",
+        "name": "Stevens Johnson Syndrome"
+      },
+      {
+        "id": "@DISEASE_Stomach_Neoplasms",
+        "name": "gastric cancer"
+      },
+      {
+        "id": "@DISEASE_Stroke",
+        "name": "stroke"
+      },
+      {
+        "id": "@DISEASE_Systemic_Vasculitis",
+        "name": "systemic vasculitis"
+      },
+      {
+        "id": "@DISEASE_Thiopurine_S_methyltranferase_deficiency",
+        "name": "ASMT deficiency"
+      },
+      {
+        "id": "@DISEASE_Thoracic_Outlet_Syndrome",
+        "name": "neurovascular"
+      },
+      {
+        "id": "@DISEASE_Trisomy",
+        "name": "Autosomal trisomy"
+      },
+      {
+        "id": "@DISEASE_Tuberculosis",
+        "name": "Tuberculosis"
+      },
+      {
+        "id": "@DISEASE_Urologic_Diseases",
+        "name": "urologic disease"
+      },
+      {
+        "id": "@DISEASE_Vascular_System_Injuries",
+        "name": "Vascular damage"
+      },
+      {
+        "id": "@DISEASE_Waldenstrom_Macroglobulinemia",
+        "name": "Waldenstrom's Macroglobulinemia"
+      }
+    ]
+  }
+}

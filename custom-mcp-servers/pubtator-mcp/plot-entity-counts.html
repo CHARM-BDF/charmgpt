@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Entity Publication Count Distribution</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .chart-container {
+            margin: 30px 0;
+            position: relative;
+            height: 800px;
+        }
+        .summary {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .summary h2 {
+            margin-top: 0;
+            color: #555;
+        }
+        .summary p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Entity Publication Count Distribution (Capped at 1M)</h1>
+        
+        <div class="summary">
+            <h2>Summary Statistics</h2>
+            <p id="summary-stats"></p>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="barChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="histogramChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="scatterChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Wait for DOM and Chart.js to load
+        function initCharts() {
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js not loaded');
+                document.getElementById('summary-stats').innerHTML = '<strong>Error:</strong> Chart.js library failed to load. Please check your internet connection.';
+                return;
+            }
+            
+        // Embedded data (to avoid CORS issues when opening file directly)
+        const surveyData = {
+        "timestamp": "2025-11-13T05:45:05.303Z",
+        "totalEntities": 72,
+        "distribution": {
+                "0": 2,
+                "1-10": 0,
+                "11-100": 1,
+                "101-1000": 2,
+                "1001-10000": 7,
+                "10001-100000": 22,
+                "100000+": 38
+        },
+        "entityCounts": [
+                {
+                        "entityName": "patients",
+                        "count": 10914760,
+                        "status": "success",
+                        "type": "Species",
+                        "id": "9606"
+                },
+                {
+                        "entityName": "cancer",
+                        "count": 5206540,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Neoplasms"
+                },
+                {
+                        "entityName": "Neoplasms",
+                        "count": 5068944,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@DISEASE_Neoplasms"
+                },
+                {
+                        "entityName": "mouse",
+                        "count": 2652449,
+                        "status": "success",
+                        "type": "Species",
+                        "id": "10090"
+                },
+                {
+                        "entityName": "inflammatory",
+                        "count": 2071600,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Inflammation"
+                },
+                {
+                        "entityName": "oxygen",
+                        "count": 1576520,
+                        "status": "success",
+                        "type": "Chemical",
+                        "id": "@CHEMICAL_Oxygen"
+                },
+                {
+                        "entityName": "lipid",
+                        "count": 1315918,
+                        "status": "success",
+                        "type": "Chemical",
+                        "id": "@CHEMICAL_Lipids"
+                },
+                {
+                        "entityName": "Lipids",
+                        "count": 1314355,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@CHEMICAL_Lipids"
+                },
+                {
+                        "entityName": "hypertension",
+                        "count": 1141648,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Hypertension"
+                },
+                {
+                        "entityName": "Hypertension",
+                        "count": 1141648,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@DISEASE_Hypertension"
+                },
+                {
+                        "entityName": "Cardiovascular disease",
+                        "count": 1038347,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Cardiovascular_Diseases"
+                },
+                {
+                        "entityName": "calcium",
+                        "count": 962936,
+                        "status": "success",
+                        "type": "Chemical",
+                        "id": "@CHEMICAL_Calcium"
+                },
+                {
+                        "entityName": "breast cancer",
+                        "count": 882017,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Breast_Neoplasms"
+                },
+                {
+                        "entityName": "Breast Neoplasms",
+                        "count": 880693,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@DISEASE_Breast_Neoplasms"
+                },
+                {
+                        "entityName": "cholesterol",
+                        "count": 612386,
+                        "status": "success",
+                        "type": "Chemical",
+                        "id": "@CHEMICAL_Cholesterol"
+                },
+                {
+                        "entityName": "TNF",
+                        "count": 572678,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_TNF"
+                },
+                {
+                        "entityName": "chromosome 4",
+                        "count": 538053,
+                        "status": "success",
+                        "type": "Chromosome",
+                        "id": "4"
+                },
+                {
+                        "entityName": "chronic liver disease",
+                        "count": 498340,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Liver_Diseases"
+                },
+                {
+                        "entityName": "hypoxia",
+                        "count": 435975,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Hypoxia"
+                },
+                {
+                        "entityName": "Hypoxia",
+                        "count": 435975,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@DISEASE_Hypoxia"
+                },
+                {
+                        "entityName": "prostate cancer",
+                        "count": 425407,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Prostatic_Neoplasms"
+                },
+                {
+                        "entityName": "colorectal cancer",
+                        "count": 418034,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Colorectal_Neoplasms"
+                },
+                {
+                        "entityName": "Pig",
+                        "count": 378644,
+                        "status": "success",
+                        "type": "Species",
+                        "id": "9823"
+                },
+                {
+                        "entityName": "Psychiatric disorders",
+                        "count": 358781,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Mental_Disorders"
+                },
+                {
+                        "entityName": "O2",
+                        "count": 357696,
+                        "status": "success",
+                        "type": "Chemical",
+                        "id": "-"
+                },
+                {
+                        "entityName": "CD8",
+                        "count": 311117,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_CD8A"
+                },
+                {
+                        "entityName": "interleukin (IL)-8",
+                        "count": 295936,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_CXCL8"
+                },
+                {
+                        "entityName": "IL-1beta",
+                        "count": 290888,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_IL1B"
+                },
+                {
+                        "entityName": "LPS",
+                        "count": 260278,
+                        "status": "success",
+                        "type": "Chemical",
+                        "id": "@CHEMICAL_Lipopolysaccharides"
+                },
+                {
+                        "entityName": "tumorigenesis",
+                        "count": 244784,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Carcinogenesis"
+                },
+                {
+                        "entityName": "chromosome abnormalities",
+                        "count": 229372,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Chromosome_Aberrations"
+                },
+                {
+                        "entityName": "autoimmune disorders",
+                        "count": 213658,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Autoimmune_Diseases"
+                },
+                {
+                        "entityName": "hypoxic",
+                        "count": 193648,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Hypoxia_Brain"
+                },
+                {
+                        "entityName": "APP",
+                        "count": 186056,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_APP"
+                },
+                {
+                        "entityName": "Doxorubicin",
+                        "count": 167235,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@CHEMICAL_Doxorubicin"
+                },
+                {
+                        "entityName": "autism",
+                        "count": 139383,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Autistic_Disorder"
+                },
+                {
+                        "entityName": "STAT3",
+                        "count": 122415,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_STAT3"
+                },
+                {
+                        "entityName": "zebrafish",
+                        "count": 112844,
+                        "status": "success",
+                        "type": "Species",
+                        "id": "7955"
+                },
+                {
+                        "entityName": "PSA",
+                        "count": 97788,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_NPEPPS"
+                },
+                {
+                        "entityName": "TLR4",
+                        "count": 97220,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_TLR4"
+                },
+                {
+                        "entityName": "neurodevelopmental disorder",
+                        "count": 85969,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Developmental_Disabilities"
+                },
+                {
+                        "entityName": "hypercholesterolemia",
+                        "count": 79744,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Hypercholesterolemia"
+                },
+                {
+                        "entityName": "Hypercholesterolemia",
+                        "count": 79744,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@DISEASE_Hypercholesterolemia"
+                },
+                {
+                        "entityName": "autosomal recessive disorder",
+                        "count": 68801,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Genetic_Diseases_Inborn"
+                },
+                {
+                        "entityName": "APOE",
+                        "count": 68012,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_APOE"
+                },
+                {
+                        "entityName": "atherosclerotic lesions",
+                        "count": 67111,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Atherosclerosis"
+                },
+                {
+                        "entityName": "transforming growth factor (TGF)-beta1",
+                        "count": 61120,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_TGFB1"
+                },
+                {
+                        "entityName": "docetaxel",
+                        "count": 60735,
+                        "status": "success",
+                        "type": "Chemical",
+                        "id": "@CHEMICAL_Docetaxel"
+                },
+                {
+                        "entityName": "multiple sclerosis brain lesions",
+                        "count": 47671,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Brain_Diseases"
+                },
+                {
+                        "entityName": "Intracranial Arterial Diseases",
+                        "count": 32754,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@DISEASE_Intracranial_Arterial_Diseases"
+                },
+                {
+                        "entityName": "Cohen syndrome",
+                        "count": 31664,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Cohen_syndrome"
+                },
+                {
+                        "entityName": "Simvastatin",
+                        "count": 28770,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@CHEMICAL_Simvastatin"
+                },
+                {
+                        "entityName": "APOB",
+                        "count": 24212,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_APOB"
+                },
+                {
+                        "entityName": "LPA",
+                        "count": 23736,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_LPA"
+                },
+                {
+                        "entityName": "primary biliary cholangitis",
+                        "count": 19903,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Liver_Cirrhosis_Biliary"
+                },
+                {
+                        "entityName": "GRP78",
+                        "count": 18617,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_HSPA5"
+                },
+                {
+                        "entityName": "ABCB1",
+                        "count": 16529,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_ABCB1"
+                },
+                {
+                        "entityName": "recurrent miscarriages",
+                        "count": 14072,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Abortion_Habitual"
+                },
+                {
+                        "entityName": "C. trachomatis infection",
+                        "count": 13350,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Infections"
+                },
+                {
+                        "entityName": "MMP1",
+                        "count": 12691,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_MMP1"
+                },
+                {
+                        "entityName": "NFKB1",
+                        "count": 9355,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_NFKB1"
+                },
+                {
+                        "entityName": "HNF4A",
+                        "count": 6173,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_HNF4A"
+                },
+                {
+                        "entityName": "TFPI",
+                        "count": 4737,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_TFPI"
+                },
+                {
+                        "entityName": "ABCC2",
+                        "count": 4509,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_ABCC2"
+                },
+                {
+                        "entityName": "neurogenetic disorders",
+                        "count": 3937,
+                        "status": "success",
+                        "type": "Disease",
+                        "id": "@DISEASE_Heredodegenerative_Disorders_Nervous_System"
+                },
+                {
+                        "entityName": "SORT1",
+                        "count": 1804,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_SORT1"
+                },
+                {
+                        "entityName": "SERPINB2",
+                        "count": 1681,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_SERPINB2"
+                },
+                {
+                        "entityName": "CELSR2",
+                        "count": 901,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_CELSR2"
+                },
+                {
+                        "entityName": "PSRC1",
+                        "count": 581,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_PSRC1"
+                },
+                {
+                        "entityName": "FAM177A1",
+                        "count": 97,
+                        "status": "success",
+                        "type": "Gene",
+                        "id": "@GENE_FAM177A1"
+                },
+                {
+                        "entityName": "LOC103350067",
+                        "count": 0,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_LOC103350067"
+                },
+                {
+                        "entityName": "LOC100343047",
+                        "count": 0,
+                        "status": "success",
+                        "type": "unknown",
+                        "id": "@GENE_LOC100343047"
+                }
+        ],
+        "statistics": {
+                "byType": {
+                        "Species": {
+                                "count": 4,
+                                "totalPublications": 14058697,
+                                "min": 112844,
+                                "max": 10914760,
+                                "avg": 3514674
+                        },
+                        "Disease": {
+                                "count": 25,
+                                "totalPublications": 13929756,
+                                "min": 3937,
+                                "max": 5206540,
+                                "avg": 557190
+                        },
+                        "unknown": {
+                                "count": 22,
+                                "totalPublications": 9427555,
+                                "min": 0,
+                                "max": 5068944,
+                                "avg": 428525
+                        },
+                        "Chemical": {
+                                "count": 7,
+                                "totalPublications": 5146469,
+                                "min": 60735,
+                                "max": 1576520,
+                                "avg": 735210
+                        },
+                        "Gene": {
+                                "count": 13,
+                                "totalPublications": 1951416,
+                                "min": 97,
+                                "max": 572678,
+                                "avg": 150109
+                        },
+                        "Chromosome": {
+                                "count": 1,
+                                "totalPublications": 538053,
+                                "min": 538053,
+                                "max": 538053,
+                                "avg": 538053
+                        }
+                },
+                "overall": {
+                        "totalPublications": 45051946,
+                        "averageCount": 625721,
+                        "maxCount": 10914760,
+                        "minCount": 0
+                }
+        }
+};
+
+                // Process data - cap at 1M
+                const entities = surveyData.entityCounts
+                    .map(e => ({
+                        name: e.entityName,
+                        count: Math.min(e.count, 1000000),
+                        type: e.type || 'unknown',
+                        originalCount: e.count
+                    }))
+                    .sort((a, b) => b.count - a.count);
+
+                // Calculate summary statistics
+                const total = entities.length;
+                const capped = entities.filter(e => e.originalCount >= 1000000).length;
+                const mean = Math.round(entities.reduce((sum, e) => sum + e.count, 0) / total);
+                const sortedCounts = entities.map(e => e.count).sort((a, b) => a - b);
+                const median = sortedCounts[Math.floor(sortedCounts.length / 2)];
+                const min = Math.min(...entities.map(e => e.count));
+                const max = Math.max(...entities.map(e => e.count));
+
+                document.getElementById('summary-stats').innerHTML = `
+                    <strong>Total entities:</strong> ${total}<br>
+                    <strong>Entities at 1M cap:</strong> ${capped}<br>
+                    <strong>Mean count (capped):</strong> ${mean.toLocaleString()}<br>
+                    <strong>Median count:</strong> ${median.toLocaleString()}<br>
+                    <strong>Min count:</strong> ${min.toLocaleString()}<br>
+                    <strong>Max count (capped):</strong> ${max.toLocaleString()}
+                `;
+
+                // Color mapping by type
+                const typeColors = {
+                    'Gene': 'rgba(54, 162, 235, 0.7)',
+                    'Disease': 'rgba(255, 99, 132, 0.7)',
+                    'Chemical': 'rgba(255, 206, 86, 0.7)',
+                    'Species': 'rgba(75, 192, 192, 0.7)',
+                    'Chromosome': 'rgba(153, 102, 255, 0.7)',
+                    'unknown': 'rgba(201, 203, 207, 0.7)'
+                };
+
+                // Chart 1: Top 30 Bar Chart
+                const top30 = entities.slice(0, 30);
+                // Truncate long names for display but keep full name in tooltip
+                const labelNames = top30.map(e => {
+                    const name = e.name;
+                    return name.length > 35 ? name.substring(0, 32) + '...' : name;
+                });
+                new Chart(document.getElementById('barChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labelNames,
+                        datasets: [{
+                            label: 'Publication Count (capped at 1M)',
+                            data: top30.map(e => e.count),
+                            backgroundColor: top30.map(e => typeColors[e.type] || typeColors.unknown),
+                            borderColor: top30.map(e => typeColors[e.type] || typeColors.unknown).map(c => c.replace('0.7', '1')),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Top 30 Entities by Publication Count',
+                                font: { size: 16, weight: 'bold' }
+                            },
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(context) {
+                                        return top30[context[0].dataIndex].name; // Show full name in tooltip
+                                    },
+                                    label: function(context) {
+                                        const entity = top30[context.dataIndex];
+                                        const label = entity.originalCount >= 1000000 
+                                            ? `1M+ (actual: ${entity.originalCount.toLocaleString()})`
+                                            : entity.count.toLocaleString();
+                                        return `${entity.type}: ${label} publications`;
+                                    }
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                left: 250,
+                                right: 20,
+                                top: 10,
+                                bottom: 10
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    font: {
+                                        size: 11
+                                    },
+                                    maxRotation: 0,
+                                    minRotation: 0,
+                                    padding: 10,
+                                    autoSkip: false
+                                },
+                                afterBuildTicks: function(scale) {
+                                    // Ensure all ticks are shown
+                                    scale.ticks = scale.ticks.map((tick, index) => ({
+                                        value: tick.value,
+                                        label: tick.label
+                                    }));
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Publication Count (capped at 1M)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value >= 1000000 ? '1M+' : value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Chart 2: Histogram
+                const bins = [
+                    { label: '0-10', min: 0, max: 10 },
+                    { label: '11-100', min: 11, max: 100 },
+                    { label: '101-1K', min: 101, max: 1000 },
+                    { label: '1K-10K', min: 1001, max: 10000 },
+                    { label: '10K-100K', min: 10001, max: 100000 },
+                    { label: '100K-500K', min: 100001, max: 500000 },
+                    { label: '500K-1M+', min: 500001, max: 1000000 }
+                ];
+
+                const binCounts = bins.map(bin => 
+                    entities.filter(e => e.count >= bin.min && e.count <= bin.max).length
+                );
+
+                new Chart(document.getElementById('histogramChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: bins.map(b => b.label),
+                        datasets: [{
+                            label: 'Number of Entities',
+                            data: binCounts,
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Distribution of Publication Counts',
+                                font: { size: 16, weight: 'bold' }
+                            },
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.parsed.y} entities`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Number of Entities'
+                                },
+                                beginAtZero: true
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Publication Count Range'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Chart 3: Scatter Plot (log scale)
+                new Chart(document.getElementById('scatterChart'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: Object.keys(typeColors).map(type => {
+                            const typeEntities = entities.filter(e => e.type === type);
+                            return {
+                                label: type,
+                                data: typeEntities.map((e, idx) => ({
+                                    x: entities.indexOf(e),
+                                    y: e.count,
+                                    entity: e.name
+                                })),
+                                backgroundColor: typeColors[type],
+                                borderColor: typeColors[type].replace('0.7', '1'),
+                                pointRadius: 5,
+                                pointHoverRadius: 7
+                            };
+                        })
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Publication Counts by Rank (All Entities)',
+                                font: { size: 16, weight: 'bold' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(context) {
+                                        const point = context[0];
+                                        const entity = entities[point.dataIndex];
+                                        return entity ? entity.name : '';
+                                    },
+                                    label: function(context) {
+                                        const entity = entities[context.dataIndex];
+                                        const label = entity.originalCount >= 1000000 
+                                            ? `1M+ (actual: ${entity.originalCount.toLocaleString()})`
+                                            : entity.count.toLocaleString();
+                                        return `${entity.type}: ${label} publications`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Entity Rank'
+                                },
+                                type: 'linear'
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Publication Count (capped at 1M)'
+                                },
+                                type: 'logarithmic',
+                                min: 1,
+                                max: 1000000
+                            }
+                        }
+                    }
+                });
+        } // End initCharts
+        
+        // Wait for Chart.js to load, then initialize
+        function waitForChart() {
+            if (typeof Chart !== 'undefined') {
+                initCharts();
+            } else {
+                setTimeout(waitForChart, 100);
+            }
+        }
+        
+        // Run when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', waitForChart);
+        } else {
+            // DOM already loaded
+            waitForChart();
+        }
+    </script>
+</body>
+</html>
+

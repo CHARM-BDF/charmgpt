@@ -1,0 +1,550 @@
+{
+  "timestamp": "2025-11-13T06:10:21.530Z",
+  "filterCriteria": {
+    "maxPublications": 1000000,
+    "minCoOccurrence": 2
+  },
+  "summary": {
+    "totalEntitiesFiltered": 59,
+    "entitiesInGroups": 17,
+    "isolatedEntities": 0,
+    "totalGroups": 4,
+    "totalCoOccurringPairs": 20
+  },
+  "groups": [
+    {
+      "groupId": 1,
+      "size": 7,
+      "weight": 24,
+      "entities": [
+        {
+          "name": "FAM177A1",
+          "type": "Gene",
+          "publicationCount": 13
+        },
+        {
+          "name": "neurodevelopmental disorder",
+          "type": "Disease",
+          "publicationCount": 7
+        },
+        {
+          "name": "autosomal recessive disorder",
+          "type": "Disease",
+          "publicationCount": 4
+        },
+        {
+          "name": "autism",
+          "type": "Disease",
+          "publicationCount": 3
+        },
+        {
+          "name": "Cohen syndrome",
+          "type": "Disease",
+          "publicationCount": 3
+        },
+        {
+          "name": "zebrafish",
+          "type": "Species",
+          "publicationCount": 3
+        },
+        {
+          "name": "NFKB1",
+          "type": "Gene",
+          "publicationCount": 5
+        }
+      ],
+      "connections": [
+        {
+          "entity1": "FAM177A1",
+          "entity2": "neurodevelopmental disorder",
+          "coOccurrenceCount": 4,
+          "publications": [
+            38187698,
+            38585781,
+            39331042,
+            40113264
+          ]
+        },
+        {
+          "entity1": "FAM177A1",
+          "entity2": "zebrafish",
+          "coOccurrenceCount": 3,
+          "publications": [
+            38187698,
+            38767059,
+            39331042
+          ]
+        },
+        {
+          "entity1": "neurodevelopmental disorder",
+          "entity2": "autosomal recessive disorder",
+          "coOccurrenceCount": 3,
+          "publications": [
+            37313193,
+            38585781,
+            40113264
+          ]
+        },
+        {
+          "entity1": "FAM177A1",
+          "entity2": "autosomal recessive disorder",
+          "coOccurrenceCount": 2,
+          "publications": [
+            38585781,
+            40113264
+          ]
+        },
+        {
+          "entity1": "FAM177A1",
+          "entity2": "Cohen syndrome",
+          "coOccurrenceCount": 2,
+          "publications": [
+            38187698,
+            39331042
+          ]
+        },
+        {
+          "entity1": "FAM177A1",
+          "entity2": "NFKB1",
+          "coOccurrenceCount": 2,
+          "publications": [
+            27488439,
+            34799425
+          ]
+        },
+        {
+          "entity1": "neurodevelopmental disorder",
+          "entity2": "autism",
+          "coOccurrenceCount": 2,
+          "publications": [
+            24602487,
+            37107578
+          ]
+        },
+        {
+          "entity1": "neurodevelopmental disorder",
+          "entity2": "Cohen syndrome",
+          "coOccurrenceCount": 2,
+          "publications": [
+            38187698,
+            39331042
+          ]
+        },
+        {
+          "entity1": "neurodevelopmental disorder",
+          "entity2": "zebrafish",
+          "coOccurrenceCount": 2,
+          "publications": [
+            38187698,
+            39331042
+          ]
+        },
+        {
+          "entity1": "Cohen syndrome",
+          "entity2": "zebrafish",
+          "coOccurrenceCount": 2,
+          "publications": [
+            38187698,
+            39331042
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": 2,
+      "size": 5,
+      "weight": 15,
+      "entities": [
+        {
+          "name": "TNF",
+          "type": "Gene",
+          "publicationCount": 5
+        },
+        {
+          "name": "IL-1beta",
+          "type": "Gene",
+          "publicationCount": 4
+        },
+        {
+          "name": "autoimmune disorders",
+          "type": "Disease",
+          "publicationCount": 3
+        },
+        {
+          "name": "primary biliary cholangitis",
+          "type": "Disease",
+          "publicationCount": 3
+        },
+        {
+          "name": "chronic liver disease",
+          "type": "Disease",
+          "publicationCount": 3
+        }
+      ],
+      "connections": [
+        {
+          "entity1": "primary biliary cholangitis",
+          "entity2": "chronic liver disease",
+          "coOccurrenceCount": 3,
+          "publications": [
+            34033851,
+            36825008,
+            36833332
+          ]
+        },
+        {
+          "entity1": "TNF",
+          "entity2": "IL-1beta",
+          "coOccurrenceCount": 2,
+          "publications": [
+            29630609,
+            36699197
+          ]
+        },
+        {
+          "entity1": "TNF",
+          "entity2": "autoimmune disorders",
+          "coOccurrenceCount": 2,
+          "publications": [
+            34033851,
+            36833332
+          ]
+        },
+        {
+          "entity1": "TNF",
+          "entity2": "primary biliary cholangitis",
+          "coOccurrenceCount": 2,
+          "publications": [
+            34033851,
+            36833332
+          ]
+        },
+        {
+          "entity1": "TNF",
+          "entity2": "chronic liver disease",
+          "coOccurrenceCount": 2,
+          "publications": [
+            34033851,
+            36833332
+          ]
+        },
+        {
+          "entity1": "autoimmune disorders",
+          "entity2": "primary biliary cholangitis",
+          "coOccurrenceCount": 2,
+          "publications": [
+            34033851,
+            36833332
+          ]
+        },
+        {
+          "entity1": "autoimmune disorders",
+          "entity2": "chronic liver disease",
+          "coOccurrenceCount": 2,
+          "publications": [
+            34033851,
+            36833332
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": 3,
+      "size": 3,
+      "weight": 4,
+      "entities": [
+        {
+          "name": "O2",
+          "type": "Chemical",
+          "publicationCount": 9
+        },
+        {
+          "name": "hypoxia",
+          "type": "Disease",
+          "publicationCount": 3
+        },
+        {
+          "name": "hypoxic",
+          "type": "Disease",
+          "publicationCount": 2
+        }
+      ],
+      "connections": [
+        {
+          "entity1": "O2",
+          "entity2": "hypoxia",
+          "coOccurrenceCount": 2,
+          "publications": [
+            24489651,
+            34367665
+          ]
+        },
+        {
+          "entity1": "hypoxia",
+          "entity2": "hypoxic",
+          "coOccurrenceCount": 2,
+          "publications": [
+            24489651,
+            27653551
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": 4,
+      "size": 2,
+      "weight": 2,
+      "entities": [
+        {
+          "name": "LPS",
+          "type": "Chemical",
+          "publicationCount": 2
+        },
+        {
+          "name": "TLR4",
+          "type": "Gene",
+          "publicationCount": 2
+        }
+      ],
+      "connections": [
+        {
+          "entity1": "LPS",
+          "entity2": "TLR4",
+          "coOccurrenceCount": 2,
+          "publications": [
+            32973863,
+            35117826
+          ]
+        }
+      ]
+    }
+  ],
+  "isolatedEntities": [],
+  "allCoOccurringPairs": [
+    {
+      "entity1": "FAM177A1",
+      "entity2": "neurodevelopmental disorder",
+      "type1": "Gene",
+      "type2": "Disease",
+      "coOccurrenceCount": 4,
+      "publications": [
+        38187698,
+        38585781,
+        39331042,
+        40113264
+      ]
+    },
+    {
+      "entity1": "FAM177A1",
+      "entity2": "zebrafish",
+      "type1": "Gene",
+      "type2": "Species",
+      "coOccurrenceCount": 3,
+      "publications": [
+        38187698,
+        38767059,
+        39331042
+      ]
+    },
+    {
+      "entity1": "neurodevelopmental disorder",
+      "entity2": "autosomal recessive disorder",
+      "type1": "Disease",
+      "type2": "Disease",
+      "coOccurrenceCount": 3,
+      "publications": [
+        37313193,
+        38585781,
+        40113264
+      ]
+    },
+    {
+      "entity1": "primary biliary cholangitis",
+      "entity2": "chronic liver disease",
+      "type1": "Disease",
+      "type2": "Disease",
+      "coOccurrenceCount": 3,
+      "publications": [
+        34033851,
+        36825008,
+        36833332
+      ]
+    },
+    {
+      "entity1": "FAM177A1",
+      "entity2": "NFKB1",
+      "type1": "Gene",
+      "type2": "Gene",
+      "coOccurrenceCount": 2,
+      "publications": [
+        27488439,
+        34799425
+      ]
+    },
+    {
+      "entity1": "FAM177A1",
+      "entity2": "autosomal recessive disorder",
+      "type1": "Gene",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        38585781,
+        40113264
+      ]
+    },
+    {
+      "entity1": "FAM177A1",
+      "entity2": "Cohen syndrome",
+      "type1": "Gene",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        38187698,
+        39331042
+      ]
+    },
+    {
+      "entity1": "O2",
+      "entity2": "hypoxia",
+      "type1": "Chemical",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        24489651,
+        34367665
+      ]
+    },
+    {
+      "entity1": "neurodevelopmental disorder",
+      "entity2": "autism",
+      "type1": "Disease",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        24602487,
+        37107578
+      ]
+    },
+    {
+      "entity1": "neurodevelopmental disorder",
+      "entity2": "Cohen syndrome",
+      "type1": "Disease",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        38187698,
+        39331042
+      ]
+    },
+    {
+      "entity1": "neurodevelopmental disorder",
+      "entity2": "zebrafish",
+      "type1": "Disease",
+      "type2": "Species",
+      "coOccurrenceCount": 2,
+      "publications": [
+        38187698,
+        39331042
+      ]
+    },
+    {
+      "entity1": "TNF",
+      "entity2": "IL-1beta",
+      "type1": "Gene",
+      "type2": "Gene",
+      "coOccurrenceCount": 2,
+      "publications": [
+        29630609,
+        36699197
+      ]
+    },
+    {
+      "entity1": "TNF",
+      "entity2": "autoimmune disorders",
+      "type1": "Gene",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        34033851,
+        36833332
+      ]
+    },
+    {
+      "entity1": "TNF",
+      "entity2": "primary biliary cholangitis",
+      "type1": "Gene",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        34033851,
+        36833332
+      ]
+    },
+    {
+      "entity1": "TNF",
+      "entity2": "chronic liver disease",
+      "type1": "Gene",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        34033851,
+        36833332
+      ]
+    },
+    {
+      "entity1": "autoimmune disorders",
+      "entity2": "primary biliary cholangitis",
+      "type1": "Disease",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        34033851,
+        36833332
+      ]
+    },
+    {
+      "entity1": "autoimmune disorders",
+      "entity2": "chronic liver disease",
+      "type1": "Disease",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        34033851,
+        36833332
+      ]
+    },
+    {
+      "entity1": "hypoxia",
+      "entity2": "hypoxic",
+      "type1": "Disease",
+      "type2": "Disease",
+      "coOccurrenceCount": 2,
+      "publications": [
+        24489651,
+        27653551
+      ]
+    },
+    {
+      "entity1": "Cohen syndrome",
+      "entity2": "zebrafish",
+      "type1": "Disease",
+      "type2": "Species",
+      "coOccurrenceCount": 2,
+      "publications": [
+        38187698,
+        39331042
+      ]
+    },
+    {
+      "entity1": "LPS",
+      "entity2": "TLR4",
+      "type1": "Chemical",
+      "type2": "Gene",
+      "coOccurrenceCount": 2,
+      "publications": [
+        32973863,
+        35117826
+      ]
+    }
+  ]
+}
