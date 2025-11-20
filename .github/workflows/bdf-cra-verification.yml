@@ -1,0 +1,15 @@
+name: BDF Charles River Analytics - Verification and Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  
+
+jobs:
+  validate-tool:
+    uses: ARPA-H-BDF/bdfkb-schema/.github/workflows/ci-validate.yaml@main
+    with:
+      python-version: '3.12'
