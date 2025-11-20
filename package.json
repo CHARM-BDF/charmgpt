@@ -6,9 +6,9 @@
         "kill-ports": "lsof -ti:3001,5173,5555 | xargs kill -9 2>/dev/null || true",
         "start": "./start-with-timestamp.sh",
         "start:original": "npm run kill-ports && concurrently -n \"VITE,SERVER,PRISMA\" -c \"blue,green,yellow\" \"npm run dev --workspace=frontend-client\" \"npm run server:dev --workspace=backend-mcp-client\" \"npm run db:studio --workspace=backend-mcp-client\"",
-        "build:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Building $dir...\" && npm run build); fi; done",
-        "dev:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Starting $dir...\" && npm run dev); fi; done",
-        "install:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Installing dependencies for $dir...\" && npm install); fi; done",
+        "build:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Building $dir...\" && npm run build); fi; done; for dir in custom-mcp-servers/graphModeMCPs/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Building $dir...\" && npm run build); fi; done",
+        "dev:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Starting $dir...\" && npm run dev); fi; done; for dir in custom-mcp-servers/graphModeMCPs/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Starting $dir...\" && npm run dev); fi; done",
+        "install:mcp-servers": "for dir in custom-mcp-servers/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Installing dependencies for $dir...\" && npm install); fi; done; for dir in custom-mcp-servers/graphModeMCPs/*; do if [ -f \"$dir/package.json\" ]; then (cd \"$dir\" && echo \"Installing dependencies for $dir...\" && npm install); fi; done",
         "build:all": "npm run build:mcp-servers && npm run build",
         "test:system": "npm run test:e2e --workspace=system-tests"
     },
