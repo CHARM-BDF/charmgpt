@@ -15,6 +15,7 @@ import storageRouter from './routes/storage';
 import llmRoutes from './routes/api/internal/llm';
 import apiKeysRouter from './routes/api-keys';
 import graphRouter from './routes/graph';
+import graphNotificationsRouter from './routes/graph-notifications';
 import { MCPService, MCPLogMessage } from './services/mcp';
 import { LoggingService } from './services/logging';
 import { LLMService } from './services/llm';
@@ -133,6 +134,7 @@ app.use('/api/storage', storageRouter);
 app.use('/api/internal/llm', llmRoutes); // Mount LLM API routes
 app.use('/api/api-keys', apiKeysRouter); // Mount API keys route
 app.use('/api/graph', graphRouter); // Mount Graph Mode API routes
+app.use('/api/graph', graphNotificationsRouter); // Mount Graph Notifications SSE routes
 
 // Add new endpoint for server names
 app.get('/api/server-names', (req, res) => {

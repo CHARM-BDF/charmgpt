@@ -1,0 +1,122 @@
+Subject,Object,Predicate_Count,Total_Associations
+Biological Process Or Activity,Biological Process Or Activity,       2,0
+Biological Process Or Activity,Gene Or Protein (Gene),       1,0
+Biological Process Or Activity,Gene Or Protein (Protein),       2,0
+Biological Process Or Activity,Gene Family,       1,0
+Biological Process Or Activity,Disease Or Phenotypic Feature,       1,0
+Biological Process Or Activity,Anatomical Entity,       1,0
+Biological Process Or Activity,RNA Product,       1,0
+Biological Process Or Activity,Chemical Mixture,       1,0
+Biological Process Or Activity,Small Molecule,       2,0
+Biological Process Or Activity,Polypeptide,       1,0
+Biological Process Or Activity,Protein Family,       1,0
+Gene Or Protein (Gene),Biological Process Or Activity,       9,0
+Gene Or Protein (Gene),Gene Or Protein (Gene),      52,0
+Gene Or Protein (Gene),Gene Or Protein (Protein),      45,0
+Gene Or Protein (Gene),Gene Family,      17,0
+Gene Or Protein (Gene),Disease Or Phenotypic Feature,      31,0
+Gene Or Protein (Gene),Anatomical Entity,      29,0
+Gene Or Protein (Gene),RNA Product,       9,0
+Gene Or Protein (Gene),Chemical Mixture,       9,0
+Gene Or Protein (Gene),Small Molecule,      43,0
+Gene Or Protein (Gene),Polypeptide,      32,0
+Gene Or Protein (Gene),Protein Family,       1,0
+Gene Or Protein (Protein),Biological Process Or Activity,       3,0
+Gene Or Protein (Protein),Gene Or Protein (Gene),      44,0
+Gene Or Protein (Protein),Gene Or Protein (Protein),      60,0
+Gene Or Protein (Protein),Gene Family,      17,0
+Gene Or Protein (Protein),Disease Or Phenotypic Feature,      31,0
+Gene Or Protein (Protein),Anatomical Entity,      29,0
+Gene Or Protein (Protein),RNA Product,       9,0
+Gene Or Protein (Protein),Chemical Mixture,      11,0
+Gene Or Protein (Protein),Small Molecule,      48,0
+Gene Or Protein (Protein),Polypeptide,      30,0
+Gene Or Protein (Protein),Protein Family,       2,0
+Gene Family,Biological Process Or Activity,       1,0
+Gene Family,Gene Or Protein (Gene),      19,0
+Gene Family,Gene Or Protein (Protein),      19,0
+Gene Family,Gene Family,       9,0
+Gene Family,Disease Or Phenotypic Feature,      16,0
+Gene Family,Anatomical Entity,      10,0
+Gene Family,RNA Product,       3,0
+Gene Family,Chemical Mixture,       3,0
+Gene Family,Small Molecule,      15,0
+Gene Family,Polypeptide,      14,0
+Gene Family,Protein Family,       1,0
+Disease Or Phenotypic Feature,Biological Process Or Activity,       1,0
+Disease Or Phenotypic Feature,Gene Or Protein (Gene),      21,0
+Disease Or Phenotypic Feature,Gene Or Protein (Protein),      20,0
+Disease Or Phenotypic Feature,Gene Family,      10,0
+Disease Or Phenotypic Feature,Disease Or Phenotypic Feature,      36,0
+Disease Or Phenotypic Feature,Anatomical Entity,      25,0
+Disease Or Phenotypic Feature,RNA Product,       2,0
+Disease Or Phenotypic Feature,Chemical Mixture,       2,0
+Disease Or Phenotypic Feature,Small Molecule,      21,0
+Disease Or Phenotypic Feature,Polypeptide,      17,0
+Disease Or Phenotypic Feature,Protein Family,       1,0
+Anatomical Entity,Biological Process Or Activity,       1,0
+Anatomical Entity,Gene Or Protein (Gene),      22,0
+Anatomical Entity,Gene Or Protein (Protein),      20,0
+Anatomical Entity,Gene Family,       7,0
+Anatomical Entity,Disease Or Phenotypic Feature,      21,0
+Anatomical Entity,Anatomical Entity,      34,0
+Anatomical Entity,RNA Product,       2,0
+Anatomical Entity,Chemical Mixture,       8,0
+Anatomical Entity,Small Molecule,      26,0
+Anatomical Entity,Polypeptide,      15,0
+Anatomical Entity,Protein Family,       1,0
+RNA Product,Biological Process Or Activity,       1,0
+RNA Product,Gene Or Protein (Gene),      10,0
+RNA Product,Gene Or Protein (Protein),      10,0
+RNA Product,Gene Family,       1,0
+RNA Product,Disease Or Phenotypic Feature,       8,0
+RNA Product,Anatomical Entity,       5,0
+RNA Product,RNA Product,       7,0
+RNA Product,Chemical Mixture,       2,0
+RNA Product,Small Molecule,       8,0
+RNA Product,Polypeptide,       9,0
+RNA Product,Protein Family,       1,0
+Chemical Mixture,Biological Process Or Activity,       1,0
+Chemical Mixture,Gene Or Protein (Gene),       7,0
+Chemical Mixture,Gene Or Protein (Protein),      10,0
+Chemical Mixture,Gene Family,       3,0
+Chemical Mixture,Disease Or Phenotypic Feature,       8,0
+Chemical Mixture,Anatomical Entity,       7,0
+Chemical Mixture,RNA Product,       1,0
+Chemical Mixture,Chemical Mixture,       7,0
+Chemical Mixture,Small Molecule,      11,0
+Chemical Mixture,Polypeptide,       9,0
+Chemical Mixture,Protein Family,       1,0
+Small Molecule,Biological Process Or Activity,       2,0
+Small Molecule,Gene Or Protein (Gene),      50,0
+Small Molecule,Gene Or Protein (Protein),      53,0
+Small Molecule,Gene Family,      16,0
+Small Molecule,Disease Or Phenotypic Feature,      31,0
+Small Molecule,Anatomical Entity,      30,0
+Small Molecule,RNA Product,       9,0
+Small Molecule,Chemical Mixture,      13,0
+Small Molecule,Small Molecule,      45,0
+Small Molecule,Polypeptide,      24,0
+Small Molecule,Protein Family,       4,0
+Polypeptide,Biological Process Or Activity,       1,0
+Polypeptide,Gene Or Protein (Gene),      32,0
+Polypeptide,Gene Or Protein (Protein),      30,0
+Polypeptide,Gene Family,      11,0
+Polypeptide,Disease Or Phenotypic Feature,      23,0
+Polypeptide,Anatomical Entity,      22,0
+Polypeptide,RNA Product,       9,0
+Polypeptide,Chemical Mixture,       9,0
+Polypeptide,Small Molecule,      16,0
+Polypeptide,Polypeptide,      27,0
+Polypeptide,Protein Family,       1,0
+Protein Family,Biological Process Or Activity,       1,0
+Protein Family,Gene Or Protein (Gene),       1,0
+Protein Family,Gene Or Protein (Protein),       2,0
+Protein Family,Gene Family,       1,0
+Protein Family,Disease Or Phenotypic Feature,       1,0
+Protein Family,Anatomical Entity,       1,0
+Protein Family,RNA Product,       1,0
+Protein Family,Chemical Mixture,       1,0
+Protein Family,Small Molecule,       4,0
+Protein Family,Polypeptide,       1,0
+Protein Family,Protein Family,       1,0

@@ -1,0 +1,11 @@
+{
+  "name": "arax-tests",
+  "version": "1.0.0",
+  "description": "Test scripts for ARAX API",
+  "scripts": {
+    "simple": "node simple-test.js",
+    "streaming": "node streaming-test.js",
+    "full": "node test-arax-api.js",
+    "all": "npm run simple && echo '---' && npm run streaming && echo '---' && npm run full"
+  }
+}

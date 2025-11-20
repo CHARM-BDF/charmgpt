@@ -99,8 +99,20 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
     }));
     
     // Enhanced logging for detailed response inspection
-    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Full response structure (first 500 chars):', 
-      JSON.stringify(response).substring(0, 500));
+    console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Full response structure (first 1000 chars):', 
+      JSON.stringify(response).substring(0, 1000));
+    
+    // Log each content block individually for better debugging
+    if (response.content && Array.isArray(response.content)) {
+      response.content.forEach((block: any, index: number) => {
+        console.log(`🔍 DEBUG-ANTHROPIC-FORMATTER: Content block ${index}:`, {
+          type: block.type,
+          name: block.name,
+          hasInput: !!block.input,
+          inputPreview: block.input ? JSON.stringify(block.input).substring(0, 200) + '...' : 'none'
+        });
+      });
+    }
     
     // Check if response has content
     if (!response.content || response.content.length === 0) {
@@ -123,15 +135,27 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
     
     // Log detailed information about tool block
     if (toolUseBlock) {
-      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found tool_use block with name:', toolUseBlock.name);
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found response_formatter tool use');
       console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Tool input structure:', JSON.stringify({
         hasThinking: !!toolUseBlock.input?.thinking,
         hasConversation: !!toolUseBlock.input?.conversation,
+        conversationType: typeof toolUseBlock.input?.conversation,
         isConversationArray: Array.isArray(toolUseBlock.input?.conversation),
-        conversationLength: Array.isArray(toolUseBlock.input?.conversation) 
-          ? toolUseBlock.input.conversation.length 
-          : 0
+        conversationLength: Array.isArray(toolUseBlock.input?.conversation) ? toolUseBlock.input.conversation.length : 0
       }));
+      
+      // Log the actual input content for debugging
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Raw tool input:', JSON.stringify(toolUseBlock.input, null, 2));
+    } else {
+      console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: No response_formatter tool use found in response');
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Available content blocks:', response.content.map((block: any) => ({
+        type: block.type,
+        name: block.name
+      })));
+    }
+    
+    if (toolUseBlock) {
+      console.log('🔍 DEBUG-ANTHROPIC-FORMATTER: Found response_formatter tool use');
       
       // Log a sample of the conversation content if available
       if (Array.isArray(toolUseBlock.input?.conversation) && toolUseBlock.input.conversation.length > 0) {
@@ -208,6 +232,17 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       if (!formatterOutput.conversation) {
         console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Missing conversation array - creating fallback');
         
+        // Log the complete formatter output to understand what's missing
+        console.error('🔍 DEBUG-ANTHROPIC-FORMATTER: Complete formatter output when conversation is missing:', JSON.stringify({
+          formatterOutput: formatterOutput,
+          keys: Object.keys(formatterOutput),
+          values: Object.values(formatterOutput),
+          types: Object.entries(formatterOutput).map(([key, value]) => ({ key, type: typeof value, isArray: Array.isArray(value) }))
+        }, null, 2));
+        
+        // Log the raw tool input for debugging
+        console.error('🔍 DEBUG-ANTHROPIC-FORMATTER: Raw tool input:', JSON.stringify(toolUseBlock.input, null, 2));
+        
         // Create a fallback conversation array with any available thinking
         return {
           thinking: formatterOutput.thinking || "Formatter output was incomplete",
@@ -221,6 +256,16 @@ export class AnthropicResponseFormatterAdapter implements ResponseFormatterAdapt
       // If conversation is not an array, convert it to an array
       if (!Array.isArray(formatterOutput.conversation)) {
         console.warn('⚠️ DEBUG-ANTHROPIC-FORMATTER: Conversation is not an array - converting to array');
+        
+        // Log the conversation value and its type for debugging
+        console.error('🔍 DEBUG-ANTHROPIC-FORMATTER: Conversation value details:', {
+          value: formatterOutput.conversation,
+          type: typeof formatterOutput.conversation,
+          isArray: Array.isArray(formatterOutput.conversation),
+          isNull: formatterOutput.conversation === null,
+          isUndefined: formatterOutput.conversation === undefined,
+          stringLength: typeof formatterOutput.conversation === 'string' ? formatterOutput.conversation.length : 'N/A'
+        });
         
         // Convert string or object conversation to array
         if (typeof formatterOutput.conversation === 'string') {

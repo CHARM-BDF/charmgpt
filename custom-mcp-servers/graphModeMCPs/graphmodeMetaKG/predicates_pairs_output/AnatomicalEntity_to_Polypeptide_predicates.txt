@@ -1,0 +1,15 @@
+affected_by
+affects
+close_match
+coexists_with
+correlated_with
+derives_from
+has_part
+interacts_with
+lacks_part
+location_of
+occurs_together_in_literature_with
+produced_by
+produces
+related_to
+subclass_of

@@ -10,7 +10,7 @@
 export interface LLMServiceOptions {
   /** The LLM provider to use */
   provider?: 'anthropic' | 'openai' | 'gemini' | 'ollama';
-  /** The model to use (defaults to claude-3-5-sonnet-20241022) */
+  /** The model to use (defaults to claude-haiku-4-5) */
   model?: string;
   /** Temperature setting for controlling randomness (0.0 to 1.0) */
   temperature?: number;

@@ -1,0 +1,2 @@
+interacts_with
+subclass_of

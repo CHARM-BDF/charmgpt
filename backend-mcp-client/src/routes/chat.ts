@@ -2,7 +2,8 @@ import express, { Request, Response } from 'express';
 import 'dotenv/config';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { systemPrompt } from '../systemPrompt';
-import { MCPService, MCPLogMessage } from '../services/mcp';
+import { MCPService } from '../services/mcp';
+import { MCPLogMessage } from '../types/mcp';
 import { MessageService, ChatMessage } from '../services/message';
 import { ArtifactService, BinaryOutput } from '../services/artifact';
 import { LoggingService } from '../services/logging';
@@ -182,7 +183,7 @@ router.post('/', async (req: Request<{}, {}, {
     // Log the incoming request (this will create a new chat log session)
     loggingService.logRequest(req);
 
-    const { message, history, blockedServers = [], enabledTools = {}, modelProvider = 'claude', pinnedGraph, pinnedArtifacts } = req.body;
+    const { message, history = [], blockedServers = [], enabledTools = {}, modelProvider = 'anthropic', pinnedGraph, pinnedArtifacts } = req.body;
     
     // Test the logging system
     logToolCall('SESSION_START', {
@@ -306,7 +307,52 @@ router.post('/', async (req: Request<{}, {}, {
       }
     }
 
-    // First phase: Sequential thinking and tool usage
+    // Redirect to ChatService for unified processing
+    console.log('🔄 CHAT-ROUTE: Redirecting to ChatService for unified processing');
+    logToolCall('REDIRECT_TO_CHAT_SERVICE', {
+      message: 'Using ChatService.processChat instead of direct MCP processing',
+      reason: 'Unified processing pipeline with retry logic'
+    });
+    
+    // Use ChatService for all processing
+    const chatService = req.app.locals.chatService;
+    if (!chatService) {
+      throw new Error('ChatService not available');
+    }
+    
+    // Convert the request to ChatService format
+    const chatServiceResult = await chatService.processChat(
+      message,
+      messages.map(msg => ({
+        role: msg.role,
+        content: Array.isArray(msg.content) 
+          ? msg.content.find(c => c.type === 'text')?.text || ''
+          : msg.content
+      })),
+      {
+        conversationId: conversationId,
+        modelProvider: modelProvider || 'anthropic',
+        blockedServers,
+        enabledTools,
+        pinnedArtifacts: pinnedArtifacts,
+        attachments: undefined, // Attachments not available in this route
+        temperature: 0.7,
+        maxTokens: 4000
+      },
+      sendStatusUpdate
+    );
+    
+    // Return the ChatService result directly
+    sendStatusUpdate('Formatting response...');
+    res.write(JSON.stringify({ 
+      type: 'result',
+      response: chatServiceResult,
+      timestamp: new Date().toISOString()
+    }) + '\n');
+    res.end();
+    
+    // Legacy code below (commented out for safety)
+    /*
     while (!isSequentialThinkingComplete) {
       logToolCall('LOOP_START', {
         iteration: 'Starting new tool calling iteration',
@@ -341,7 +387,7 @@ router.post('/', async (req: Request<{}, {}, {
        });
       
       const toolResponse = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-haiku-4-5',
         max_tokens: 4000,
         messages: messageService.convertChatMessages(messages) as any,
         temperature: 0.7,
@@ -430,8 +476,15 @@ router.post('/', async (req: Request<{}, {}, {
             }
           }
           
+          console.error(`🔍 [TOOL-EXECUTION] Reached tool execution point for: ${serverName}:${toolName}`);
+          
           // Execute tool
+          console.error(`🔍 [TOOL-EXECUTION] About to call tool: ${serverName}:${toolName}`);
+          console.error(`🔍 [TOOL-EXECUTION] Args:`, JSON.stringify(toolArguments, null, 2));
+          
           const toolResult = await mcpService.callTool(serverName, toolName, toolArguments);
+          
+          console.error(`🔍 [TOOL-EXECUTION] Tool response received:`, JSON.stringify(toolResult, null, 2));
 
           logToolCall('MCP_RESPONSE', {
             serverName,
@@ -596,6 +649,25 @@ router.post('/', async (req: Request<{}, {}, {
               : undefined;
 
             if (textContentItem) {
+              // 🔍 DETAILED MCP TOOL RESULT LOGGING
+              console.error('\n🔍 ===== MCP TOOL RESULT RECEIVED =====');
+              console.error(`Tool: ${content.name}`);
+              
+              // Extract MCP server name from tool name (format: serverName-toolName)
+              const toolNameParts = content.name.split('-');
+              const mcpServer = toolNameParts.length > 1 ? toolNameParts[0] : 'unknown';
+              const toolName = toolNameParts.length > 1 ? toolNameParts.slice(1).join('-') : content.name;
+              
+              console.error(`MCP Server: ${mcpServer}`);
+              console.error(`Tool Name: ${toolName}`);
+              console.error(`Content Length: ${textContentItem.text.length} characters`);
+              console.error(`Content Preview (first 500 chars):`);
+              console.error(textContentItem.text.substring(0, 500));
+              if (textContentItem.text.length > 500) {
+                console.error('... (truncated)');
+              }
+              console.error('===== END MCP TOOL RESULT =====\n');
+              
               logToolCall('TEXT_CONTENT_FOUND', {
                 textContent: textContentItem.text,
                 contentLength: textContentItem.text.length
@@ -607,10 +679,11 @@ router.post('/', async (req: Request<{}, {}, {
                 console.log(`Query successful with ${md.nodeCount ?? 0} nodes${md.bothDirectionsSuccessful ? ' (both directions complete)' : ''}`);
               }
 
-              // Add tool result as user message (like working version)
+              // Add tool result as user message with MCP context (reuse variables from above)
+              const toolResultText = `[MCP: ${mcpServer} | Tool: ${toolName}]\n\n${textContentItem.text}`;
               messages.push({
                 role: 'user',
-                content: [{ type: 'text', text: textContentItem.text }]
+                content: [{ type: 'text', text: toolResultText }]
               });
               
               logToolCall('CONVERSATION_UPDATE_TOOL_RESULT', {
@@ -675,8 +748,29 @@ router.post('/', async (req: Request<{}, {}, {
 
     // Final phase: Response formatting
     sendStatusUpdate('Generating final response...');
+    
+    // 🔍 LOGGING: What's being passed to the summarizer
+    console.error('\n🔍 ===== DATA BEING PASSED TO SUMMARIZER =====');
+    console.error(`Total messages: ${messages.length}`);
+    console.error('Message breakdown:');
+    messages.forEach((msg, index) => {
+      console.error(`Message ${index + 1} (${msg.role}):`);
+      if (Array.isArray(msg.content)) {
+        msg.content.forEach((contentItem, contentIndex) => {
+          if (contentItem.type === 'text') {
+            console.error(`  Content ${contentIndex + 1} (text): ${contentItem.text.substring(0, 200)}${contentItem.text.length > 200 ? '...' : ''}`);
+          } else {
+            console.error(`  Content ${contentIndex + 1} (${contentItem.type}): ${JSON.stringify(contentItem).substring(0, 200)}...`);
+          }
+        });
+      } else {
+        console.error(`  Content: ${typeof msg.content === 'string' ? msg.content.substring(0, 200) + '...' : JSON.stringify(msg.content).substring(0, 200) + '...'}`);
+      }
+    });
+    console.error('===== END SUMMARIZER INPUT =====\n');
+    
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4000,
       messages: messageService.convertChatMessages(messages) as any,
       system: systemPrompt,
@@ -740,6 +834,28 @@ router.post('/', async (req: Request<{}, {}, {
       }],
       tool_choice: { type: "tool", name: "response_formatter" }
     });
+
+    // 🔍 LOGGING: Summarizer's response
+    console.error('\n🔍 ===== SUMMARIZER RESPONSE RECEIVED =====');
+    console.error('Response type:', response.content[0].type);
+    if (response.content[0].type === 'tool_use') {
+      console.error('Tool used:', response.content[0].name);
+      console.error('Tool input preview:');
+      const toolInput = response.content[0].input;
+      if (toolInput && toolInput.conversation) {
+        console.error(`Conversation array length: ${toolInput.conversation.length}`);
+        toolInput.conversation.forEach((item, index) => {
+          console.error(`  Item ${index + 1} (${item.type}):`);
+          if (item.type === 'text') {
+            console.error(`    Content: ${item.content.substring(0, 200)}${item.content.length > 200 ? '...' : ''}`);
+          } else if (item.type === 'artifact') {
+            console.error(`    Artifact: ${item.artifact.type} - ${item.artifact.title}`);
+            console.error(`    Content: ${item.artifact.content.substring(0, 200)}${item.artifact.content.length > 200 ? '...' : ''}`);
+          }
+        });
+      }
+    }
+    console.error('===== END SUMMARIZER RESPONSE =====\n');
 
     // Process and validate response
     if (response.content[0].type !== 'tool_use') {
@@ -891,6 +1007,8 @@ router.post('/', async (req: Request<{}, {}, {
 
     // End the response
     res.end();
+  */
+  // End of legacy code
 
   } catch (error) {
     loggingService.logError(error as Error);

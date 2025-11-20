@@ -1,0 +1,131 @@
+# SmartAPI MetaKG - Predicates by Category Pairs
+
+This directory contains the unique predicates available for each pair of categories in the SmartAPI MetaKG.
+
+## Files:
+- `{subject}_to_{object}_predicates.txt` - List of unique predicates for each category pair
+- `SUMMARY.md` - This summary file
+- `matrix.csv` - Predicate count matrix (CSV format)
+
+## Category Pairs:
+- **Biological Process Or Activity** → **Biological Process Or Activity**:        2 predicates
+- **Biological Process Or Activity** → **Gene Or Protein (Gene)**:        1 predicates
+- **Biological Process Or Activity** → **Gene Or Protein (Protein)**:        2 predicates
+- **Biological Process Or Activity** → **Gene Family**:        1 predicates
+- **Biological Process Or Activity** → **Disease Or Phenotypic Feature**:        1 predicates
+- **Biological Process Or Activity** → **Anatomical Entity**:        1 predicates
+- **Biological Process Or Activity** → **RNA Product**:        1 predicates
+- **Biological Process Or Activity** → **Chemical Mixture**:        1 predicates
+- **Biological Process Or Activity** → **Small Molecule**:        2 predicates
+- **Biological Process Or Activity** → **Polypeptide**:        1 predicates
+- **Biological Process Or Activity** → **Protein Family**:        1 predicates
+- **Gene Or Protein (Gene)** → **Biological Process Or Activity**:        9 predicates
+- **Gene Or Protein (Gene)** → **Gene Or Protein (Gene)**:       52 predicates
+- **Gene Or Protein (Gene)** → **Gene Or Protein (Protein)**:       45 predicates
+- **Gene Or Protein (Gene)** → **Gene Family**:       17 predicates
+- **Gene Or Protein (Gene)** → **Disease Or Phenotypic Feature**:       31 predicates
+- **Gene Or Protein (Gene)** → **Anatomical Entity**:       29 predicates
+- **Gene Or Protein (Gene)** → **RNA Product**:        9 predicates
+- **Gene Or Protein (Gene)** → **Chemical Mixture**:        9 predicates
+- **Gene Or Protein (Gene)** → **Small Molecule**:       43 predicates
+- **Gene Or Protein (Gene)** → **Polypeptide**:       32 predicates
+- **Gene Or Protein (Gene)** → **Protein Family**:        1 predicates
+- **Gene Or Protein (Protein)** → **Biological Process Or Activity**:        3 predicates
+- **Gene Or Protein (Protein)** → **Gene Or Protein (Gene)**:       44 predicates
+- **Gene Or Protein (Protein)** → **Gene Or Protein (Protein)**:       60 predicates
+- **Gene Or Protein (Protein)** → **Gene Family**:       17 predicates
+- **Gene Or Protein (Protein)** → **Disease Or Phenotypic Feature**:       31 predicates
+- **Gene Or Protein (Protein)** → **Anatomical Entity**:       29 predicates
+- **Gene Or Protein (Protein)** → **RNA Product**:        9 predicates
+- **Gene Or Protein (Protein)** → **Chemical Mixture**:       11 predicates
+- **Gene Or Protein (Protein)** → **Small Molecule**:       48 predicates
+- **Gene Or Protein (Protein)** → **Polypeptide**:       30 predicates
+- **Gene Or Protein (Protein)** → **Protein Family**:        2 predicates
+- **Gene Family** → **Biological Process Or Activity**:        1 predicates
+- **Gene Family** → **Gene Or Protein (Gene)**:       19 predicates
+- **Gene Family** → **Gene Or Protein (Protein)**:       19 predicates
+- **Gene Family** → **Gene Family**:        9 predicates
+- **Gene Family** → **Disease Or Phenotypic Feature**:       16 predicates
+- **Gene Family** → **Anatomical Entity**:       10 predicates
+- **Gene Family** → **RNA Product**:        3 predicates
+- **Gene Family** → **Chemical Mixture**:        3 predicates
+- **Gene Family** → **Small Molecule**:       15 predicates
+- **Gene Family** → **Polypeptide**:       14 predicates
+- **Gene Family** → **Protein Family**:        1 predicates
+- **Disease Or Phenotypic Feature** → **Biological Process Or Activity**:        1 predicates
+- **Disease Or Phenotypic Feature** → **Gene Or Protein (Gene)**:       21 predicates
+- **Disease Or Phenotypic Feature** → **Gene Or Protein (Protein)**:       20 predicates
+- **Disease Or Phenotypic Feature** → **Gene Family**:       10 predicates
+- **Disease Or Phenotypic Feature** → **Disease Or Phenotypic Feature**:       36 predicates
+- **Disease Or Phenotypic Feature** → **Anatomical Entity**:       25 predicates
+- **Disease Or Phenotypic Feature** → **RNA Product**:        2 predicates
+- **Disease Or Phenotypic Feature** → **Chemical Mixture**:        2 predicates
+- **Disease Or Phenotypic Feature** → **Small Molecule**:       21 predicates
+- **Disease Or Phenotypic Feature** → **Polypeptide**:       17 predicates
+- **Disease Or Phenotypic Feature** → **Protein Family**:        1 predicates
+- **Anatomical Entity** → **Biological Process Or Activity**:        1 predicates
+- **Anatomical Entity** → **Gene Or Protein (Gene)**:       22 predicates
+- **Anatomical Entity** → **Gene Or Protein (Protein)**:       20 predicates
+- **Anatomical Entity** → **Gene Family**:        7 predicates
+- **Anatomical Entity** → **Disease Or Phenotypic Feature**:       21 predicates
+- **Anatomical Entity** → **Anatomical Entity**:       34 predicates
+- **Anatomical Entity** → **RNA Product**:        2 predicates
+- **Anatomical Entity** → **Chemical Mixture**:        8 predicates
+- **Anatomical Entity** → **Small Molecule**:       26 predicates
+- **Anatomical Entity** → **Polypeptide**:       15 predicates
+- **Anatomical Entity** → **Protein Family**:        1 predicates
+- **RNA Product** → **Biological Process Or Activity**:        1 predicates
+- **RNA Product** → **Gene Or Protein (Gene)**:       10 predicates
+- **RNA Product** → **Gene Or Protein (Protein)**:       10 predicates
+- **RNA Product** → **Gene Family**:        1 predicates
+- **RNA Product** → **Disease Or Phenotypic Feature**:        8 predicates
+- **RNA Product** → **Anatomical Entity**:        5 predicates
+- **RNA Product** → **RNA Product**:        7 predicates
+- **RNA Product** → **Chemical Mixture**:        2 predicates
+- **RNA Product** → **Small Molecule**:        8 predicates
+- **RNA Product** → **Polypeptide**:        9 predicates
+- **RNA Product** → **Protein Family**:        1 predicates
+- **Chemical Mixture** → **Biological Process Or Activity**:        1 predicates
+- **Chemical Mixture** → **Gene Or Protein (Gene)**:        7 predicates
+- **Chemical Mixture** → **Gene Or Protein (Protein)**:       10 predicates
+- **Chemical Mixture** → **Gene Family**:        3 predicates
+- **Chemical Mixture** → **Disease Or Phenotypic Feature**:        8 predicates
+- **Chemical Mixture** → **Anatomical Entity**:        7 predicates
+- **Chemical Mixture** → **RNA Product**:        1 predicates
+- **Chemical Mixture** → **Chemical Mixture**:        7 predicates
+- **Chemical Mixture** → **Small Molecule**:       11 predicates
+- **Chemical Mixture** → **Polypeptide**:        9 predicates
+- **Chemical Mixture** → **Protein Family**:        1 predicates
+- **Small Molecule** → **Biological Process Or Activity**:        2 predicates
+- **Small Molecule** → **Gene Or Protein (Gene)**:       50 predicates
+- **Small Molecule** → **Gene Or Protein (Protein)**:       53 predicates
+- **Small Molecule** → **Gene Family**:       16 predicates
+- **Small Molecule** → **Disease Or Phenotypic Feature**:       31 predicates
+- **Small Molecule** → **Anatomical Entity**:       30 predicates
+- **Small Molecule** → **RNA Product**:        9 predicates
+- **Small Molecule** → **Chemical Mixture**:       13 predicates
+- **Small Molecule** → **Small Molecule**:       45 predicates
+- **Small Molecule** → **Polypeptide**:       24 predicates
+- **Small Molecule** → **Protein Family**:        4 predicates
+- **Polypeptide** → **Biological Process Or Activity**:        1 predicates
+- **Polypeptide** → **Gene Or Protein (Gene)**:       32 predicates
+- **Polypeptide** → **Gene Or Protein (Protein)**:       30 predicates
+- **Polypeptide** → **Gene Family**:       11 predicates
+- **Polypeptide** → **Disease Or Phenotypic Feature**:       23 predicates
+- **Polypeptide** → **Anatomical Entity**:       22 predicates
+- **Polypeptide** → **RNA Product**:        9 predicates
+- **Polypeptide** → **Chemical Mixture**:        9 predicates
+- **Polypeptide** → **Small Molecule**:       16 predicates
+- **Polypeptide** → **Polypeptide**:       27 predicates
+- **Polypeptide** → **Protein Family**:        1 predicates
+- **Protein Family** → **Biological Process Or Activity**:        1 predicates
+- **Protein Family** → **Gene Or Protein (Gene)**:        1 predicates
+- **Protein Family** → **Gene Or Protein (Protein)**:        2 predicates
+- **Protein Family** → **Gene Family**:        1 predicates
+- **Protein Family** → **Disease Or Phenotypic Feature**:        1 predicates
+- **Protein Family** → **Anatomical Entity**:        1 predicates
+- **Protein Family** → **RNA Product**:        1 predicates
+- **Protein Family** → **Chemical Mixture**:        1 predicates
+- **Protein Family** → **Small Molecule**:        4 predicates
+- **Protein Family** → **Polypeptide**:        1 predicates
+- **Protein Family** → **Protein Family**:        1 predicates

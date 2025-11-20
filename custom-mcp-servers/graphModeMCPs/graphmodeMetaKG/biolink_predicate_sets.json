@@ -1,0 +1,188 @@
+{
+  "hierarchy_analysis": {
+    "related_to": {
+      "children": [
+        "related_to_at_concept_level",
+        "related_to_at_instance_level"
+      ],
+      "coverage": "universal",
+      "recommendation": "avoid - too broad"
+    },
+    "related_to_at_instance_level": {
+      "children": [
+        "affected_by",
+        "affects",
+        "associated_with",
+        "coexists_with",
+        "interacts_with",
+        "participates_in",
+        "similar_to",
+        "overlaps"
+      ],
+      "coverage": "very_high",
+      "recommendation": "excellent for comprehensive queries"
+    },
+    "related_to_at_concept_level": {
+      "children": [
+        "subclass_of",
+        "superclass_of",
+        "exact_match",
+        "close_match",
+        "broad_match",
+        "narrow_match"
+      ],
+      "coverage": "high",
+      "recommendation": "good for hierarchical queries"
+    },
+    "affected_by": {
+      "children": [
+        "regulated_by",
+        "disrupted_by",
+        "condition_ameliorated_by",
+        "condition_exacerbated_by",
+        "response_affected_by"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for regulatory relationships"
+    },
+    "affects": {
+      "children": [
+        "regulates",
+        "disrupts",
+        "ameliorates_condition",
+        "exacerbates_condition",
+        "affects_response_to",
+        "has_side_effect"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for causal relationships"
+    },
+    "associated_with": {
+      "children": [
+        "correlated_with",
+        "genetically_associated_with",
+        "biomarker_for",
+        "coexpressed_with"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for association queries"
+    },
+    "interacts_with": {
+      "children": [
+        "physically_interacts_with",
+        "genetically_interacts_with",
+        "directly_physically_interacts_with",
+        "binds"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for interaction queries"
+    },
+    "participates_in": {
+      "children": [
+        "catalyzes",
+        "enables",
+        "actively_involved_in",
+        "has_input",
+        "has_output",
+        "is_substrate_of"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for pathway/process queries"
+    },
+    "coexists_with": {
+      "children": [
+        "colocalizes_with",
+        "in_complex_with",
+        "in_pathway_with",
+        "in_cell_population_with"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for co-location queries"
+    },
+    "similar_to": {
+      "children": [
+        "chemically_similar_to",
+        "homologous_to",
+        "orthologous_to",
+        "paralogous_to"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for similarity queries"
+    },
+    "overlaps": {
+      "children": [
+        "part_of",
+        "has_part",
+        "has_food_component",
+        "has_active_ingredient"
+      ],
+      "coverage": "moderate",
+      "recommendation": "good for structural relationships"
+    }
+  },
+  "predicate_sets": {
+    "comprehensive": [
+      "related_to_at_instance_level",
+      "related_to_at_concept_level"
+    ],
+    "focused": [
+      "affected_by",
+      "affects",
+      "associated_with",
+      "interacts_with",
+      "participates_in"
+    ],
+    "minimal": [
+      "regulates",
+      "associated_with",
+      "interacts_with",
+      "participates_in",
+      "similar_to"
+    ],
+    "causal": [
+      "affects",
+      "affected_by",
+      "causes",
+      "contributes_to"
+    ],
+    "associational": [
+      "associated_with",
+      "correlated_with",
+      "coexpressed_with",
+      "biomarker_for"
+    ],
+    "interaction": [
+      "interacts_with",
+      "physically_interacts_with",
+      "binds",
+      "coexists_with"
+    ],
+    "hierarchical": [
+      "subclass_of",
+      "superclass_of",
+      "part_of",
+      "has_part"
+    ]
+  },
+  "recommendations": {
+    "default_set": "focused",
+    "category_specific": {
+      "Gene": [
+        "causal",
+        "associational"
+      ],
+      "Protein": [
+        "interaction",
+        "causal"
+      ],
+      "Disease": [
+        "associational",
+        "causal"
+      ],
+      "Drug": [
+        "causal",
+        "interaction"
+      ]
+    }
+  }
+}

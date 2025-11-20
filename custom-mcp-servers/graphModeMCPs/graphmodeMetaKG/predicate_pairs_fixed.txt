@@ -1,0 +1,2565 @@
+# SmartAPI MetaKG - Complete Predicate Pairs Analysis (Fixed)
+# Generated: $(date)
+# Total Categories: 11
+# Total Pairs: 121
+
+
+## Biological Process Or Activity → Biological Process Or Activity
+**Subject:** BiologicalProcessOrActivity
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- related_to
+- subclass_of
+
+## Biological Process Or Activity → Gene Or Protein (Gene)
+**Subject:** BiologicalProcessOrActivity
+**Object:** Gene
+**Total Associations:** 1
+**Unique Predicates:**        1
+
+**Predicates:**
+- enabled_by
+
+## Biological Process Or Activity → Gene Or Protein (Protein)
+**Subject:** BiologicalProcessOrActivity
+**Object:** Protein
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- enabled_by
+- related_to
+
+## Biological Process Or Activity → Gene Family
+**Subject:** BiologicalProcessOrActivity
+**Object:** GeneFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Biological Process Or Activity → Disease Or Phenotypic Feature
+**Subject:** BiologicalProcessOrActivity
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Biological Process Or Activity → Anatomical Entity
+**Subject:** BiologicalProcessOrActivity
+**Object:** AnatomicalEntity
+**Total Associations:** 1
+**Unique Predicates:**        1
+
+**Predicates:**
+- related_to
+
+## Biological Process Or Activity → RNA Product
+**Subject:** BiologicalProcessOrActivity
+**Object:** RNAProduct
+**Total Associations:** 1
+**Unique Predicates:**        1
+
+**Predicates:**
+- related_to
+
+## Biological Process Or Activity → Chemical Mixture
+**Subject:** BiologicalProcessOrActivity
+**Object:** ChemicalMixture
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Biological Process Or Activity → Small Molecule
+**Subject:** BiologicalProcessOrActivity
+**Object:** SmallMolecule
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- affected_by
+- related_to
+
+## Biological Process Or Activity → Polypeptide
+**Subject:** BiologicalProcessOrActivity
+**Object:** Polypeptide
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Biological Process Or Activity → Protein Family
+**Subject:** BiologicalProcessOrActivity
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Gene Or Protein (Gene) → Biological Process Or Activity
+**Subject:** Gene
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- actively_involved_in
+- acts_upstream_of
+- acts_upstream_of_negative_effect
+- acts_upstream_of_or_within
+- acts_upstream_of_or_within_negative_effect
+- acts_upstream_of_or_within_positive_effect
+- acts_upstream_of_positive_effect
+- contributes_to
+- enables
+
+## Gene Or Protein (Gene) → Gene Or Protein (Gene)
+**Subject:** Gene
+**Object:** Gene
+**Total Associations:** 52
+**Unique Predicates:**       52
+
+**Predicates:**
+- acts_upstream_of_or_within
+- affected_by
+- affects
+- associated_with
+- associated_with_increased_likelihood_of
+- associated_with_resistance_to
+- associated_with_sensitivity_to
+- biomarker_for
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- coexpressed_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- genetically_associated_with
+- genetically_interacts_with
+- has_input
+- has_member
+- has_part
+- has_participant
+- homologous_to
+- in_complex_with
+- interacts_with
+- lacks_part
+- located_in
+- negatively_correlated_with
+- occurs_in
+- orthologous_to
+- overlaps
+- part_of
+- physically_interacts_with
+- positively_correlated_with
+- predisposes_to_condition
+- preventative_for_condition
+- produced_by
+- produces
+- regulated_by
+- regulates
+- related_to
+- resistance_associated_with
+- same_as
+- sensitivity_associated_with
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Gene) → Gene Or Protein (Protein)
+**Subject:** Gene
+**Object:** Protein
+**Total Associations:** 45
+**Unique Predicates:**       45
+
+**Predicates:**
+- affected_by
+- affects
+- associated_with_resistance_to
+- associated_with_sensitivity_to
+- biomarker_for
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- coexpressed_with
+- colocalizes_with
+- correlated_with
+- decreases_response_to
+- derives_from
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- genetically_associated_with
+- genetically_interacts_with
+- has_gene_product
+- has_input
+- has_member
+- has_part
+- has_participant
+- homologous_to
+- in_complex_with
+- increases_response_to
+- interacts_with
+- lacks_part
+- located_in
+- negatively_correlated_with
+- occurs_in
+- overlaps
+- physically_interacts_with
+- positively_correlated_with
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- regulates
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Gene) → Gene Family
+**Subject:** Gene
+**Object:** GeneFamily
+**Total Associations:** 17
+**Unique Predicates:**       17
+
+**Predicates:**
+- affects
+- capable_of
+- close_match
+- coexists_with
+- colocalizes_with
+- derives_from
+- directly_physically_interacts_with
+- has_input
+- has_part
+- interacts_with
+- overlaps
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- regulates
+- related_to
+- subclass_of
+
+## Gene Or Protein (Gene) → Disease Or Phenotypic Feature
+**Subject:** Gene
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 31
+**Unique Predicates:**       31
+
+**Predicates:**
+- actively_involved_in
+- affects
+- applied_to_treat
+- biolink_in_clinical_trials_for
+- biolink_mentioned_in_trials_for
+- biolink_treats
+- biomarker_for
+- causes
+- close_match
+- coexists_with
+- contraindicated_in
+- correlated_with
+- derives_from
+- diagnoses
+- disrupts
+- exacerbates_condition
+- expressed_in
+- gene_associated_with_condition
+- has_part
+- interacts_with
+- located_in
+- manifestation_of
+- physically_interacts_with
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Gene) → Anatomical Entity
+**Subject:** Gene
+**Object:** AnatomicalEntity
+**Total Associations:** 29
+**Unique Predicates:**       29
+
+**Predicates:**
+- active_in
+- actively_involved_in
+- affects
+- associated_with_resistance_to
+- associated_with_sensitivity_to
+- causes
+- close_match
+- coexists_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- disrupts
+- exacerbates_condition
+- expressed_in
+- gene_associated_with_condition
+- genetically_associated_with
+- has_part
+- interacts_with
+- located_in
+- occurs_in
+- overlaps
+- part_of
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- regulates
+- related_to
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Gene) → RNA Product
+**Subject:** Gene
+**Object:** RNAProduct
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Or Protein (Gene) → Chemical Mixture
+**Subject:** Gene
+**Object:** ChemicalMixture
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- has_part
+- interacts_with
+- physically_interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Or Protein (Gene) → Small Molecule
+**Subject:** Gene
+**Object:** SmallMolecule
+**Total Associations:** 43
+**Unique Predicates:**       43
+
+**Predicates:**
+- affected_by
+- affects
+- affects_response_to
+- associated_with
+- associated_with_resistance_to
+- associated_with_sensitivity_to
+- capable_of
+- chemically_similar_to
+- close_match
+- coexists_with
+- correlated_with
+- decreases_response_to
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupted_by
+- disrupts
+- gene_associated_with_condition
+- has_gene_product
+- has_input
+- has_member
+- has_metabolite
+- has_output
+- has_part
+- has_substrate
+- increases_response_to
+- interacts_with
+- located_in
+- negatively_correlated_with
+- occurs_in
+- occurs_together_in_literature_with
+- overlaps
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- regulates
+- related_to
+- related_to_at_instance_level
+- resistance_associated_with
+- same_as
+- sensitivity_associated_with
+- similar_to
+- subclass_of
+
+## Gene Or Protein (Gene) → Polypeptide
+**Subject:** Gene
+**Object:** Polypeptide
+**Total Associations:** 32
+**Unique Predicates:**       32
+
+**Predicates:**
+- affected_by
+- affects
+- biomarker_for
+- capable_of
+- chemically_similar_to
+- close_match
+- coexists_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- has_input
+- has_member
+- has_part
+- has_participant
+- interacts_with
+- lacks_part
+- located_in
+- occurs_in
+- overlaps
+- part_of
+- physically_interacts_with
+- produced_by
+- produces
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Gene) → Protein Family
+**Subject:** Gene
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Gene Or Protein (Protein) → Biological Process Or Activity
+**Subject:** Protein
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 3
+**Unique Predicates:**        3
+
+**Predicates:**
+- acts_upstream_of_or_within
+- enables
+- related_to
+
+## Gene Or Protein (Protein) → Gene Or Protein (Gene)
+**Subject:** Protein
+**Object:** Gene
+**Total Associations:** 44
+**Unique Predicates:**       44
+
+**Predicates:**
+- affected_by
+- affects
+- associated_with_increased_likelihood_of
+- biomarker_for
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- coexpressed_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- genetically_associated_with
+- genetically_interacts_with
+- has_input
+- has_member
+- has_part
+- has_participant
+- homologous_to
+- in_complex_with
+- interacts_with
+- lacks_part
+- located_in
+- negatively_correlated_with
+- occurs_in
+- overlaps
+- physically_interacts_with
+- positively_correlated_with
+- predisposes_to_condition
+- preventative_for_condition
+- produced_by
+- produces
+- regulates
+- related_to
+- resistance_associated_with
+- same_as
+- sensitivity_associated_with
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Protein) → Gene Or Protein (Protein)
+**Subject:** Protein
+**Object:** Protein
+**Total Associations:** 60
+**Unique Predicates:**       60
+
+**Predicates:**
+- affected_by
+- affects
+- assesses
+- associated_with_sensitivity_to
+- biomarker_for
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- coexpressed_with
+- colocalizes_with
+- correlated_with
+- decreases_response_to
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- genetically_associated_with
+- genetically_interacts_with
+- has_active_ingredient
+- has_active_metabolite
+- has_input
+- has_member
+- has_part
+- has_participant
+- has_sequence_variant
+- has_substrate
+- homologous_to
+- in_complex_with
+- increases_response_to
+- interacts_with
+- is_active_ingredient_of
+- is_active_metabolite_of
+- is_assessed_by
+- is_sequence_variant_of
+- is_substrate_of
+- lacks_part
+- located_in
+- negatively_correlated_with
+- occurs_in
+- occurs_together_in_literature_with
+- orthologous_to
+- overlaps
+- part_of
+- physically_interacts_with
+- positively_correlated_with
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- regulates
+- related_to
+- same_as
+- sensitivity_associated_with
+- similar_to
+- subclass_of
+- superclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Protein) → Gene Family
+**Subject:** Protein
+**Object:** GeneFamily
+**Total Associations:** 17
+**Unique Predicates:**       17
+
+**Predicates:**
+- affects
+- capable_of
+- close_match
+- coexists_with
+- colocalizes_with
+- derives_from
+- directly_physically_interacts_with
+- has_input
+- has_part
+- interacts_with
+- overlaps
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- regulates
+- related_to
+- subclass_of
+
+## Gene Or Protein (Protein) → Disease Or Phenotypic Feature
+**Subject:** Protein
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 31
+**Unique Predicates:**       31
+
+**Predicates:**
+- actively_involved_in
+- affects
+- applied_to_treat
+- biolink_in_clinical_trials_for
+- biolink_mentioned_in_trials_for
+- biolink_treats
+- biomarker_for
+- causes
+- close_match
+- coexists_with
+- contraindicated_in
+- correlated_with
+- derives_from
+- diagnoses
+- disrupts
+- exacerbates_condition
+- expressed_in
+- gene_associated_with_condition
+- has_part
+- interacts_with
+- located_in
+- manifestation_of
+- physically_interacts_with
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Protein) → Anatomical Entity
+**Subject:** Protein
+**Object:** AnatomicalEntity
+**Total Associations:** 29
+**Unique Predicates:**       29
+
+**Predicates:**
+- active_in
+- actively_involved_in
+- affects
+- causes
+- close_match
+- coexists_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- develops_from
+- disrupts
+- exacerbates_condition
+- expressed_in
+- gene_associated_with_condition
+- genetically_associated_with
+- has_part
+- interacts_with
+- located_in
+- occurs_in
+- occurs_together_in_literature_with
+- overlaps
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- regulates
+- related_to
+- sensitivity_associated_with
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Protein) → RNA Product
+**Subject:** Protein
+**Object:** RNAProduct
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Or Protein (Protein) → Chemical Mixture
+**Subject:** Protein
+**Object:** ChemicalMixture
+**Total Associations:** 11
+**Unique Predicates:**       11
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- overlaps
+- physically_interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Or Protein (Protein) → Small Molecule
+**Subject:** Protein
+**Object:** SmallMolecule
+**Total Associations:** 48
+**Unique Predicates:**       48
+
+**Predicates:**
+- affected_by
+- affects
+- affects_response_to
+- associated_with
+- associated_with_resistance_to
+- associated_with_sensitivity_to
+- capable_of
+- chemically_similar_to
+- close_match
+- coexists_with
+- correlated_with
+- decreases_response_to
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupted_by
+- disrupts
+- gene_associated_with_condition
+- has_active_ingredient
+- has_active_metabolite
+- has_gene_product
+- has_input
+- has_member
+- has_metabolite
+- has_output
+- has_part
+- has_substrate
+- increases_response_to
+- interacts_with
+- is_active_ingredient_of
+- is_active_metabolite_of
+- is_assessed_by
+- is_metabolite_of
+- is_substrate_of
+- located_in
+- negatively_correlated_with
+- occurs_in
+- occurs_together_in_literature_with
+- overlaps
+- part_of
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- regulates
+- related_to
+- same_as
+- similar_to
+- subclass_of
+
+## Gene Or Protein (Protein) → Polypeptide
+**Subject:** Protein
+**Object:** Polypeptide
+**Total Associations:** 30
+**Unique Predicates:**       30
+
+**Predicates:**
+- affected_by
+- affects
+- biomarker_for
+- capable_of
+- chemically_similar_to
+- close_match
+- coexists_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- has_input
+- has_member
+- has_part
+- has_participant
+- interacts_with
+- lacks_part
+- located_in
+- occurs_in
+- occurs_together_in_literature_with
+- overlaps
+- physically_interacts_with
+- produces
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Or Protein (Protein) → Protein Family
+**Subject:** Protein
+**Object:** ProteinFamily
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- affects
+- directly_physically_interacts_with
+
+## Gene Family → Biological Process Or Activity
+**Subject:** GeneFamily
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Gene Family → Gene Or Protein (Gene)
+**Subject:** GeneFamily
+**Object:** Gene
+**Total Associations:** 19
+**Unique Predicates:**       19
+
+**Predicates:**
+- affects
+- biomarker_for
+- capable_of
+- close_match
+- coexists_with
+- colocalizes_with
+- derives_from
+- directly_physically_interacts_with
+- gene_product_of
+- has_input
+- has_part
+- interacts_with
+- located_in
+- overlaps
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Family → Gene Or Protein (Protein)
+**Subject:** GeneFamily
+**Object:** Protein
+**Total Associations:** 19
+**Unique Predicates:**       19
+
+**Predicates:**
+- affects
+- biomarker_for
+- capable_of
+- close_match
+- coexists_with
+- colocalizes_with
+- derives_from
+- directly_physically_interacts_with
+- gene_product_of
+- has_input
+- has_part
+- interacts_with
+- located_in
+- overlaps
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Family → Gene Family
+**Subject:** GeneFamily
+**Object:** GeneFamily
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- coexists_with
+- has_part
+- interacts_with
+- overlaps
+- produces
+- regulates
+- related_to
+- subclass_of
+
+## Gene Family → Disease Or Phenotypic Feature
+**Subject:** GeneFamily
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 16
+**Unique Predicates:**       16
+
+**Predicates:**
+- actively_involved_in
+- affects
+- biomarker_for
+- causes
+- close_match
+- coexists_with
+- disrupts
+- exacerbates_condition
+- gene_associated_with_condition
+- has_part
+- interacts_with
+- located_in
+- predisposes_to_condition
+- preventative_for_condition
+- related_to
+- treats_or_applied_or_studied_to_treat
+
+## Gene Family → Anatomical Entity
+**Subject:** GeneFamily
+**Object:** AnatomicalEntity
+**Total Associations:** 10
+**Unique Predicates:**       10
+
+**Predicates:**
+- affects
+- causes
+- disrupts
+- expressed_in
+- interacts_with
+- located_in
+- produces
+- related_to
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Gene Family → RNA Product
+**Subject:** GeneFamily
+**Object:** RNAProduct
+**Total Associations:** 3
+**Unique Predicates:**        3
+
+**Predicates:**
+- affects
+- has_part
+- interacts_with
+
+## Gene Family → Chemical Mixture
+**Subject:** GeneFamily
+**Object:** ChemicalMixture
+**Total Associations:** 3
+**Unique Predicates:**        3
+
+**Predicates:**
+- interacts_with
+- related_to
+- subclass_of
+
+## Gene Family → Small Molecule
+**Subject:** GeneFamily
+**Object:** SmallMolecule
+**Total Associations:** 15
+**Unique Predicates:**       15
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- correlated_with
+- derives_from
+- directly_physically_interacts_with
+- has_input
+- has_part
+- interacts_with
+- negatively_correlated_with
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Family → Polypeptide
+**Subject:** GeneFamily
+**Object:** Polypeptide
+**Total Associations:** 14
+**Unique Predicates:**       14
+
+**Predicates:**
+- affects
+- biomarker_for
+- capable_of
+- close_match
+- coexists_with
+- correlated_with
+- derives_from
+- disrupts
+- has_part
+- interacts_with
+- physically_interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Gene Family → Protein Family
+**Subject:** GeneFamily
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Disease Or Phenotypic Feature → Biological Process Or Activity
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Disease Or Phenotypic Feature → Gene Or Protein (Gene)
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** Gene
+**Total Associations:** 21
+**Unique Predicates:**       21
+
+**Predicates:**
+- affected_by
+- affects
+- causes
+- close_match
+- coexists_with
+- derives_from
+- exacerbates_condition
+- gene_product_of
+- has_input
+- has_part
+- has_participant
+- interacts_with
+- is_sequence_variant_of
+- located_in
+- manifestation_of
+- occurs_in
+- precedes
+- predisposes_to_condition
+- produces
+- related_to
+- subclass_of
+
+## Disease Or Phenotypic Feature → Gene Or Protein (Protein)
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** Protein
+**Total Associations:** 20
+**Unique Predicates:**       20
+
+**Predicates:**
+- affects
+- causes
+- close_match
+- coexists_with
+- derives_from
+- exacerbates_condition
+- gene_product_of
+- has_input
+- has_part
+- has_participant
+- interacts_with
+- is_sequence_variant_of
+- located_in
+- manifestation_of
+- occurs_in
+- precedes
+- predisposes_to_condition
+- produces
+- related_to
+- subclass_of
+
+## Disease Or Phenotypic Feature → Gene Family
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** GeneFamily
+**Total Associations:** 10
+**Unique Predicates:**       10
+
+**Predicates:**
+- affects
+- coexists_with
+- has_input
+- has_part
+- has_participant
+- interacts_with
+- located_in
+- occurs_in
+- produces
+- related_to
+
+## Disease Or Phenotypic Feature → Disease Or Phenotypic Feature
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 36
+**Unique Predicates:**       36
+
+**Predicates:**
+- actively_involved_in
+- affects
+- associated_with
+- biomarker_for
+- broad_match
+- causes
+- close_match
+- coexists_with
+- condition_predisposed_by
+- contributes_to
+- correlated_with
+- derives_from
+- diagnoses
+- disrupts
+- exacerbates_condition
+- exact_match
+- gene_product_of
+- has_input
+- has_part
+- has_participant
+- has_phenotype
+- interacts_with
+- is_sequence_variant_of
+- located_in
+- manifestation_of
+- occurs_in
+- opposite_of
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- regulates
+- related_to
+- subclass_of
+- temporally_related_to
+- treats_or_applied_or_studied_to_treat
+
+## Disease Or Phenotypic Feature → Anatomical Entity
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** AnatomicalEntity
+**Total Associations:** 25
+**Unique Predicates:**       25
+
+**Predicates:**
+- affects
+- causes
+- close_match
+- coexists_with
+- derives_from
+- diagnoses
+- disease_has_basis_in
+- disease_has_location
+- disrupts
+- exacerbates_condition
+- exact_match
+- has_output
+- has_part
+- has_phenotype
+- interacts_with
+- located_in
+- manifestation_of
+- occurs_in
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Disease Or Phenotypic Feature → RNA Product
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** RNAProduct
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- produces
+- related_to
+
+## Disease Or Phenotypic Feature → Chemical Mixture
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** ChemicalMixture
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- related_to
+- subclass_of
+
+## Disease Or Phenotypic Feature → Small Molecule
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** SmallMolecule
+**Total Associations:** 21
+**Unique Predicates:**       21
+
+**Predicates:**
+- affected_by
+- affects
+- causes
+- close_match
+- coexists_with
+- derives_from
+- exact_match
+- has_input
+- has_part
+- has_participant
+- interacts_with
+- is_diagnosed_by
+- is_side_effect_of
+- located_in
+- occurs_in
+- precedes
+- predisposes_to_condition
+- produces
+- related_to
+- subclass_of
+- treated_by
+
+## Disease Or Phenotypic Feature → Polypeptide
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** Polypeptide
+**Total Associations:** 17
+**Unique Predicates:**       17
+
+**Predicates:**
+- affected_by
+- affects
+- close_match
+- coexists_with
+- derives_from
+- disrupts
+- has_input
+- has_part
+- has_participant
+- interacts_with
+- is_sequence_variant_of
+- located_in
+- manifestation_of
+- occurs_in
+- produces
+- related_to
+- subclass_of
+
+## Disease Or Phenotypic Feature → Protein Family
+**Subject:** DiseaseOrPhenotypicFeature
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Anatomical Entity → Biological Process Or Activity
+**Subject:** AnatomicalEntity
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 1
+**Unique Predicates:**        1
+
+**Predicates:**
+- related_to
+
+## Anatomical Entity → Gene Or Protein (Gene)
+**Subject:** AnatomicalEntity
+**Object:** Gene
+**Total Associations:** 22
+**Unique Predicates:**       22
+
+**Predicates:**
+- affected_by
+- affects
+- causes
+- close_match
+- coexists_with
+- composed_primarily_of
+- correlated_with
+- derives_from
+- genetically_associated_with
+- has_input
+- has_part
+- interacts_with
+- lacks_part
+- location_of
+- overlaps
+- produced_by
+- produces
+- regulates
+- related_to
+- resistance_associated_with
+- sensitivity_associated_with
+- subclass_of
+
+## Anatomical Entity → Gene Or Protein (Protein)
+**Subject:** AnatomicalEntity
+**Object:** Protein
+**Total Associations:** 20
+**Unique Predicates:**       20
+
+**Predicates:**
+- affects
+- associated_with_sensitivity_to
+- causes
+- close_match
+- coexists_with
+- composed_primarily_of
+- correlated_with
+- derives_from
+- genetically_associated_with
+- has_input
+- has_part
+- interacts_with
+- lacks_part
+- location_of
+- occurs_together_in_literature_with
+- overlaps
+- produces
+- regulates
+- related_to
+- subclass_of
+
+## Anatomical Entity → Gene Family
+**Subject:** AnatomicalEntity
+**Object:** GeneFamily
+**Total Associations:** 7
+**Unique Predicates:**        7
+
+**Predicates:**
+- affects
+- coexists_with
+- has_part
+- interacts_with
+- produces
+- regulates
+- related_to
+
+## Anatomical Entity → Disease Or Phenotypic Feature
+**Subject:** AnatomicalEntity
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 21
+**Unique Predicates:**       21
+
+**Predicates:**
+- affects
+- biomarker_for
+- causes
+- close_match
+- coexists_with
+- derives_from
+- disrupts
+- exacerbates_condition
+- has_part
+- interacts_with
+- located_in
+- location_of
+- manifestation_of
+- occurs_in
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Anatomical Entity → Anatomical Entity
+**Subject:** AnatomicalEntity
+**Object:** AnatomicalEntity
+**Total Associations:** 34
+**Unique Predicates:**       34
+
+**Predicates:**
+- affects
+- causes
+- close_match
+- coexists_with
+- composed_primarily_of
+- contributes_to
+- derives_from
+- derives_into
+- develops_from
+- develops_into
+- disrupts
+- has_input
+- has_member
+- has_part
+- has_participant
+- homologous_to
+- in_taxon
+- interacts_with
+- located_in
+- location_of
+- occurs_together_in_literature_with
+- overlaps
+- part_of
+- physically_interacts_with
+- preceded_by
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- subclass_of
+- superclass_of
+- temporally_related_to
+- treats_or_applied_or_studied_to_treat
+
+## Anatomical Entity → RNA Product
+**Subject:** AnatomicalEntity
+**Object:** RNAProduct
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- has_part
+- produces
+
+## Anatomical Entity → Chemical Mixture
+**Subject:** AnatomicalEntity
+**Object:** ChemicalMixture
+**Total Associations:** 8
+**Unique Predicates:**        8
+
+**Predicates:**
+- coexists_with
+- has_output
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- produces
+- related_to
+- subclass_of
+
+## Anatomical Entity → Small Molecule
+**Subject:** AnatomicalEntity
+**Object:** SmallMolecule
+**Total Associations:** 26
+**Unique Predicates:**       26
+
+**Predicates:**
+- affected_by
+- affects
+- associated_with_resistance_to
+- associated_with_sensitivity_to
+- close_match
+- coexists_with
+- composed_primarily_of
+- correlated_with
+- derives_from
+- disrupted_by
+- has_input
+- has_member
+- has_part
+- interacts_with
+- is_assessed_by
+- is_side_effect_of
+- located_in
+- location_of
+- negatively_correlated_with
+- occurs_together_in_literature_with
+- overlaps
+- positively_correlated_with
+- produces
+- related_to
+- subclass_of
+- treated_by
+
+## Anatomical Entity → Polypeptide
+**Subject:** AnatomicalEntity
+**Object:** Polypeptide
+**Total Associations:** 15
+**Unique Predicates:**       15
+
+**Predicates:**
+- affected_by
+- affects
+- close_match
+- coexists_with
+- correlated_with
+- derives_from
+- has_part
+- interacts_with
+- lacks_part
+- location_of
+- occurs_together_in_literature_with
+- produced_by
+- produces
+- related_to
+- subclass_of
+
+## Anatomical Entity → Protein Family
+**Subject:** AnatomicalEntity
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## RNA Product → Biological Process Or Activity
+**Subject:** RNAProduct
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 1
+**Unique Predicates:**        1
+
+**Predicates:**
+- related_to
+
+## RNA Product → Gene Or Protein (Gene)
+**Subject:** RNAProduct
+**Object:** Gene
+**Total Associations:** 10
+**Unique Predicates:**       10
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- gene_product_of
+- has_part
+- interacts_with
+- produces
+- related_to
+- subclass_of
+
+## RNA Product → Gene Or Protein (Protein)
+**Subject:** RNAProduct
+**Object:** Protein
+**Total Associations:** 10
+**Unique Predicates:**       10
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- gene_product_of
+- has_part
+- interacts_with
+- produces
+- related_to
+- subclass_of
+
+## RNA Product → Gene Family
+**Subject:** RNAProduct
+**Object:** GeneFamily
+**Total Associations:** 1
+**Unique Predicates:**        1
+
+**Predicates:**
+- interacts_with
+
+## RNA Product → Disease Or Phenotypic Feature
+**Subject:** RNAProduct
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 8
+**Unique Predicates:**        8
+
+**Predicates:**
+- affects
+- causes
+- disrupts
+- located_in
+- predisposes_to_condition
+- preventative_for_condition
+- related_to
+- treats_or_applied_or_studied_to_treat
+
+## RNA Product → Anatomical Entity
+**Subject:** RNAProduct
+**Object:** AnatomicalEntity
+**Total Associations:** 5
+**Unique Predicates:**        5
+
+**Predicates:**
+- affects
+- disrupts
+- located_in
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## RNA Product → RNA Product
+**Subject:** RNAProduct
+**Object:** RNAProduct
+**Total Associations:** 7
+**Unique Predicates:**        7
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- interacts_with
+- related_to
+- subclass_of
+
+## RNA Product → Chemical Mixture
+**Subject:** RNAProduct
+**Object:** ChemicalMixture
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- interacts_with
+- subclass_of
+
+## RNA Product → Small Molecule
+**Subject:** RNAProduct
+**Object:** SmallMolecule
+**Total Associations:** 8
+**Unique Predicates:**        8
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- produces
+- related_to
+
+## RNA Product → Polypeptide
+**Subject:** RNAProduct
+**Object:** Polypeptide
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- produces
+- related_to
+- subclass_of
+
+## RNA Product → Protein Family
+**Subject:** RNAProduct
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Chemical Mixture → Biological Process Or Activity
+**Subject:** ChemicalMixture
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Chemical Mixture → Gene Or Protein (Gene)
+**Subject:** ChemicalMixture
+**Object:** Gene
+**Total Associations:** 7
+**Unique Predicates:**        7
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- related_to
+
+## Chemical Mixture → Gene Or Protein (Protein)
+**Subject:** ChemicalMixture
+**Object:** Protein
+**Total Associations:** 10
+**Unique Predicates:**       10
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- overlaps
+- physically_interacts_with
+- related_to
+
+## Chemical Mixture → Gene Family
+**Subject:** ChemicalMixture
+**Object:** GeneFamily
+**Total Associations:** 3
+**Unique Predicates:**        3
+
+**Predicates:**
+- affects
+- interacts_with
+- related_to
+
+## Chemical Mixture → Disease Or Phenotypic Feature
+**Subject:** ChemicalMixture
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 8
+**Unique Predicates:**        8
+
+**Predicates:**
+- affects
+- causes
+- disrupts
+- located_in
+- predisposes_to_condition
+- preventative_for_condition
+- related_to
+- treats_or_applied_or_studied_to_treat
+
+## Chemical Mixture → Anatomical Entity
+**Subject:** ChemicalMixture
+**Object:** AnatomicalEntity
+**Total Associations:** 7
+**Unique Predicates:**        7
+
+**Predicates:**
+- affects
+- disrupts
+- interacts_with
+- located_in
+- occurs_together_in_literature_with
+- related_to
+- treats_or_applied_or_studied_to_treat
+
+## Chemical Mixture → RNA Product
+**Subject:** ChemicalMixture
+**Object:** RNAProduct
+**Total Associations:** 1
+**Unique Predicates:**        1
+
+**Predicates:**
+- interacts_with
+
+## Chemical Mixture → Chemical Mixture
+**Subject:** ChemicalMixture
+**Object:** ChemicalMixture
+**Total Associations:** 7
+**Unique Predicates:**        7
+
+**Predicates:**
+- chemically_similar_to
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- overlaps
+- related_to
+- subclass_of
+
+## Chemical Mixture → Small Molecule
+**Subject:** ChemicalMixture
+**Object:** SmallMolecule
+**Total Associations:** 11
+**Unique Predicates:**       11
+
+**Predicates:**
+- affects
+- chemically_similar_to
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- overlaps
+- related_to
+- subclass_of
+
+## Chemical Mixture → Polypeptide
+**Subject:** ChemicalMixture
+**Object:** Polypeptide
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- related_to
+- subclass_of
+
+## Chemical Mixture → Protein Family
+**Subject:** ChemicalMixture
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Small Molecule → Biological Process Or Activity
+**Subject:** SmallMolecule
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- affects
+- related_to
+
+## Small Molecule → Gene Or Protein (Gene)
+**Subject:** SmallMolecule
+**Object:** Gene
+**Total Associations:** 50
+**Unique Predicates:**       50
+
+**Predicates:**
+- affected_by
+- affects
+- applied_to_treat
+- associated_with
+- associated_with_decreased_likelihood_of
+- associated_with_increased_likelihood_of
+- associated_with_resistance_to
+- associated_with_sensitivity_to
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- correlated_with
+- decreases_response_to
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- gene_product_of
+- has_input
+- has_metabolite
+- has_part
+- has_participant
+- increases_response_to
+- interacts_with
+- is_substrate_of
+- located_in
+- negatively_correlated_with
+- occurs_together_in_literature_with
+- output_of
+- overlaps
+- part_of
+- physically_interacts_with
+- positively_correlated_with
+- preventative_for_condition
+- produced_by
+- produces
+- regulates
+- related_to
+- related_to_at_instance_level
+- resistance_associated_with
+- response_affected_by
+- same_as
+- sensitivity_associated_with
+- similar_to
+- subclass_of
+- transcribed_from
+- translates_to
+- treats_or_applied_or_studied_to_treat
+
+## Small Molecule → Gene Or Protein (Protein)
+**Subject:** SmallMolecule
+**Object:** Protein
+**Total Associations:** 53
+**Unique Predicates:**       53
+
+**Predicates:**
+- affected_by
+- affects
+- applied_to_treat
+- assess
+- assesses
+- associated_with
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- contraindicated_in
+- correlated_with
+- decreases_response_to
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- gene_product_of
+- has_active_ingredient
+- has_active_metabolite
+- has_input
+- has_metabolite
+- has_part
+- has_participant
+- has_substrate
+- increases_response_to
+- interacts_with
+- is_active_ingredient_of
+- is_active_metabolite_of
+- is_substrate_of
+- located_in
+- negatively_correlated_with
+- occurs_together_in_literature_with
+- output_of
+- overlaps
+- part_of
+- physically_interacts_with
+- positively_correlated_with
+- preventative_for_condition
+- produces
+- regulates
+- related_to
+- resistance_associated_with
+- response_affected_by
+- same_as
+- sensitivity_associated_with
+- similar_to
+- subclass_of
+- transcribed_from
+- translates_to
+- treats
+- treats_or_applied_or_studied_to_treat
+
+## Small Molecule → Gene Family
+**Subject:** SmallMolecule
+**Object:** GeneFamily
+**Total Associations:** 16
+**Unique Predicates:**       16
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- correlated_with
+- derives_from
+- directly_physically_interacts_with
+- disrupts
+- has_input
+- has_part
+- interacts_with
+- negatively_correlated_with
+- physically_interacts_with
+- positively_correlated_with
+- produces
+- regulates
+- related_to
+
+## Small Molecule → Disease Or Phenotypic Feature
+**Subject:** SmallMolecule
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 31
+**Unique Predicates:**       31
+
+**Predicates:**
+- actively_involved_in
+- affects
+- ameliorates
+- applied_to_treat
+- beneficial_in_models_for
+- biolink_in_clinical_trials_for
+- biolink_mentioned_in_trials_for
+- biolink_treats
+- causes
+- close_match
+- coexists_with
+- contraindicated_in
+- contributes_to
+- derives_from
+- diagnoses
+- disrupts
+- exacerbates_condition
+- has_part
+- has_side_effect
+- interacts_with
+- located_in
+- physically_interacts_with
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- same_as
+- subclass_of
+- treats
+- treats_or_applied_or_studied_to_treat
+
+## Small Molecule → Anatomical Entity
+**Subject:** SmallMolecule
+**Object:** AnatomicalEntity
+**Total Associations:** 30
+**Unique Predicates:**       30
+
+**Predicates:**
+- affects
+- assesses
+- causes
+- close_match
+- coexists_with
+- contraindicated_in
+- correlated_with
+- derives_from
+- disrupts
+- expressed_in
+- has_input
+- has_part
+- has_side_effect
+- interacts_with
+- located_in
+- negatively_correlated_with
+- occurs_together_in_literature_with
+- overlaps
+- part_of
+- positively_correlated_with
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- regulates
+- related_to
+- resistance_associated_with
+- sensitivity_associated_with
+- subclass_of
+- treats
+- treats_or_applied_or_studied_to_treat
+
+## Small Molecule → RNA Product
+**Subject:** SmallMolecule
+**Object:** RNAProduct
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Small Molecule → Chemical Mixture
+**Subject:** SmallMolecule
+**Object:** ChemicalMixture
+**Total Associations:** 13
+**Unique Predicates:**       13
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- overlaps
+- physically_interacts_with
+- produces
+- related_to
+- same_as
+- subclass_of
+
+## Small Molecule → Small Molecule
+**Subject:** SmallMolecule
+**Object:** SmallMolecule
+**Total Associations:** 45
+**Unique Predicates:**       45
+
+**Predicates:**
+- affected_by
+- affects
+- assesses
+- associated_with
+- chemically_similar_to
+- close_match
+- coexists_with
+- contraindicated_in
+- correlated_with
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- has_active_ingredient
+- has_active_metabolite
+- has_input
+- has_member
+- has_metabolite
+- has_part
+- has_substrate
+- interacts_with
+- is_active_ingredient_of
+- is_active_metabolite_of
+- is_assessed_by
+- is_metabolite_of
+- is_substrate_of
+- located_in
+- negatively_correlated_with
+- occurs_together_in_literature_with
+- overlaps
+- part_of
+- physically_interacts_with
+- positively_correlated_with
+- preceded_by
+- precedes
+- produces
+- regulates
+- related_to
+- related_to_at_instance_level
+- same_as
+- similar_to
+- subclass_of
+- superclass_of
+- treated_by
+- treats
+
+## Small Molecule → Polypeptide
+**Subject:** SmallMolecule
+**Object:** Polypeptide
+**Total Associations:** 24
+**Unique Predicates:**       24
+
+**Predicates:**
+- affected_by
+- affects
+- capable_of
+- chemically_similar_to
+- close_match
+- coexists_with
+- derives_from
+- directly_physically_interacts_with
+- disrupts
+- gene_product_of
+- has_input
+- has_part
+- interacts_with
+- located_in
+- occurs_together_in_literature_with
+- part_of
+- physically_interacts_with
+- produced_by
+- produces
+- regulates
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Small Molecule → Protein Family
+**Subject:** SmallMolecule
+**Object:** ProteinFamily
+**Total Associations:** 4
+**Unique Predicates:**        4
+
+**Predicates:**
+- affects
+- assesses
+- directly_physically_interacts_with
+- is_substrate_of
+
+## Polypeptide → Biological Process Or Activity
+**Subject:** Polypeptide
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Polypeptide → Gene Or Protein (Gene)
+**Subject:** Polypeptide
+**Object:** Gene
+**Total Associations:** 32
+**Unique Predicates:**       32
+
+**Predicates:**
+- affected_by
+- affects
+- biomarker_for
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- has_input
+- has_member
+- has_part
+- has_participant
+- interacts_with
+- lacks_part
+- located_in
+- overlaps
+- part_of
+- physically_interacts_with
+- produced_by
+- produces
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Polypeptide → Gene Or Protein (Protein)
+**Subject:** Polypeptide
+**Object:** Protein
+**Total Associations:** 30
+**Unique Predicates:**       30
+
+**Predicates:**
+- affected_by
+- affects
+- biomarker_for
+- capable_of
+- causes
+- chemically_similar_to
+- close_match
+- coexists_with
+- colocalizes_with
+- correlated_with
+- derives_from
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- has_input
+- has_member
+- has_part
+- has_participant
+- interacts_with
+- lacks_part
+- located_in
+- occurs_together_in_literature_with
+- overlaps
+- physically_interacts_with
+- produces
+- related_to
+- same_as
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Polypeptide → Gene Family
+**Subject:** Polypeptide
+**Object:** GeneFamily
+**Total Associations:** 11
+**Unique Predicates:**       11
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- correlated_with
+- derives_from
+- has_part
+- interacts_with
+- physically_interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Polypeptide → Disease Or Phenotypic Feature
+**Subject:** Polypeptide
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 23
+**Unique Predicates:**       23
+
+**Predicates:**
+- actively_involved_in
+- affects
+- biomarker_for
+- causes
+- close_match
+- coexists_with
+- correlated_with
+- derives_from
+- diagnoses
+- disrupts
+- exacerbates_condition
+- gene_associated_with_condition
+- has_part
+- interacts_with
+- located_in
+- manifestation_of
+- precedes
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Polypeptide → Anatomical Entity
+**Subject:** Polypeptide
+**Object:** AnatomicalEntity
+**Total Associations:** 22
+**Unique Predicates:**       22
+
+**Predicates:**
+- actively_involved_in
+- affects
+- causes
+- close_match
+- coexists_with
+- correlated_with
+- derives_from
+- disrupts
+- expressed_in
+- gene_associated_with_condition
+- has_part
+- interacts_with
+- located_in
+- occurs_in
+- occurs_together_in_literature_with
+- part_of
+- predisposes_to_condition
+- preventative_for_condition
+- produces
+- related_to
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Polypeptide → RNA Product
+**Subject:** Polypeptide
+**Object:** RNAProduct
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- derives_from
+- has_part
+- interacts_with
+- produces
+- related_to
+- subclass_of
+
+## Polypeptide → Chemical Mixture
+**Subject:** Polypeptide
+**Object:** ChemicalMixture
+**Total Associations:** 9
+**Unique Predicates:**        9
+
+**Predicates:**
+- affects
+- close_match
+- coexists_with
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- produces
+- related_to
+- subclass_of
+
+## Polypeptide → Small Molecule
+**Subject:** Polypeptide
+**Object:** SmallMolecule
+**Total Associations:** 16
+**Unique Predicates:**       16
+
+**Predicates:**
+- affected_by
+- affects
+- close_match
+- coexists_with
+- derives_from
+- derives_into
+- has_input
+- has_member
+- has_part
+- interacts_with
+- occurs_together_in_literature_with
+- physically_interacts_with
+- produces
+- related_to
+- same_as
+- subclass_of
+
+## Polypeptide → Polypeptide
+**Subject:** Polypeptide
+**Object:** Polypeptide
+**Total Associations:** 27
+**Unique Predicates:**       27
+
+**Predicates:**
+- affected_by
+- affects
+- biomarker_for
+- capable_of
+- chemically_similar_to
+- close_match
+- coexists_with
+- colocalizes_with
+- derives_from
+- derives_into
+- directly_physically_interacts_with
+- disrupts
+- expressed_in
+- gene_product_of
+- has_input
+- has_part
+- has_participant
+- interacts_with
+- located_in
+- occurs_together_in_literature_with
+- part_of
+- physically_interacts_with
+- produced_by
+- produces
+- related_to
+- subclass_of
+- treats_or_applied_or_studied_to_treat
+
+## Polypeptide → Protein Family
+**Subject:** Polypeptide
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Biological Process Or Activity
+**Subject:** ProteinFamily
+**Object:** BiologicalProcessOrActivity
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Gene Or Protein (Gene)
+**Subject:** ProteinFamily
+**Object:** Gene
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Gene Or Protein (Protein)
+**Subject:** ProteinFamily
+**Object:** Protein
+**Total Associations:** 2
+**Unique Predicates:**        2
+
+**Predicates:**
+- affected_by
+- directly_physically_interacts_with
+
+## Protein Family → Gene Family
+**Subject:** ProteinFamily
+**Object:** GeneFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Disease Or Phenotypic Feature
+**Subject:** ProteinFamily
+**Object:** DiseaseOrPhenotypicFeature
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Anatomical Entity
+**Subject:** ProteinFamily
+**Object:** AnatomicalEntity
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → RNA Product
+**Subject:** ProteinFamily
+**Object:** RNAProduct
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Chemical Mixture
+**Subject:** ProteinFamily
+**Object:** ChemicalMixture
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Small Molecule
+**Subject:** ProteinFamily
+**Object:** SmallMolecule
+**Total Associations:** 4
+**Unique Predicates:**        4
+
+**Predicates:**
+- affected_by
+- directly_physically_interacts_with
+- has_substrate
+- is_assessed_by
+
+## Protein Family → Polypeptide
+**Subject:** ProteinFamily
+**Object:** Polypeptide
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+## Protein Family → Protein Family
+**Subject:** ProteinFamily
+**Object:** ProteinFamily
+**Total Associations:** 0
+**Unique Predicates:** 0
+
+**Predicates:** None found
+
+# Summary
+- Total pairs processed: 121
+- Pairs with predicates: 96
+- Pairs with no predicates: 25
+- Total unique predicates across all pairs: 1573
+- Average predicates per pair with data: 16
+
+# Top Pairs by Predicate Count
+- **Gene Or Protein (Protein) → Gene Or Protein (Protein)**: 60 predicates
+- **Small Molecule → Gene Or Protein (Protein)**: 53 predicates
+- **Gene Or Protein (Gene) → Gene Or Protein (Gene)**: 52 predicates
+- **Small Molecule → Gene Or Protein (Gene)**: 50 predicates
+- **Gene Or Protein (Protein) → Small Molecule**: 48 predicates
+- **Small Molecule → Small Molecule**: 45 predicates
+- **Gene Or Protein (Gene) → Gene Or Protein (Protein)**: 45 predicates
+- **Gene Or Protein (Protein) → Gene Or Protein (Gene)**: 44 predicates
+- **Gene Or Protein (Gene) → Small Molecule**: 43 predicates
+- **Disease Or Phenotypic Feature → Disease Or Phenotypic Feature**: 36 predicates

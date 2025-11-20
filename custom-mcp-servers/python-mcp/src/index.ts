@@ -21,6 +21,26 @@ const logger = makeLogger({
 const PYTHON_EXECUTION_TOOL = {
   name: "execute_python",
   description: "Execute Python code with data science capabilities. Supports numpy, pandas, matplotlib, and other common data science packages. " +
+    "📁 FILE ACCESS INSTRUCTIONS 📁\n" +
+    "This environment has access to uploaded files through helper functions:\n" +
+    "1. Use list_available_files() to see all available files\n" +
+    "2. Use pd.read_csv('filename.csv') directly - it will auto-resolve filenames\n" +
+    "3. Files are accessible by their original names (e.g., 'allergies.csv', 'patients.csv')\n" +
+    "4. Common libraries (pandas, numpy, matplotlib, seaborn) are pre-loaded\n\n" +
+    "Recommended Workflow:\n" +
+    "```python\n" +
+    "# Step 1: Check available files\n" +
+    "files = list_available_files()\n" +
+    "print(f'Available files: {len(files)}')\n" +
+    "\n" +
+    "# Step 2: Load your data\n" +
+    "patients = pd.read_csv('patients.csv')\n" +
+    "conditions = pd.read_csv('conditions.csv')\n" +
+    "observations = pd.read_csv('observations.csv')\n" +
+    "\n" +
+    "# Step 3: Perform analysis\n" +
+    "print(f'Loaded {len(patients)} patients')\n" +
+    "```\n\n" +
     "⚠️ CRITICAL FILE OUTPUT INSTRUCTIONS ⚠️\n" +
     "This runs in a non-interactive environment with strict file output requirements:\n" +
     "1. ALWAYS use os.environ['OUTPUT_DIR'] for ANY file operations\n" +
@@ -43,7 +63,7 @@ const PYTHON_EXECUTION_TOOL = {
     properties: {
       code: {
         type: "string",
-        description: "Python code to execute. ⚠️ MUST use os.environ['OUTPUT_DIR'] for ALL file outputs. Example: plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], 'plot.png'))"
+        description: "Python code to execute. 📁 Start with list_available_files() to see uploaded files, then use pd.read_csv('filename.csv') to load them. Common libraries (pandas, numpy, matplotlib, seaborn) are pre-loaded. ⚠️ For file outputs, MUST use os.environ['OUTPUT_DIR']. Example: files = list_available_files(); df = pd.read_csv('patients.csv'); plt.savefig(os.path.join(os.environ['OUTPUT_DIR'], 'plot.png'))"
       },
       dataFiles: {
         type: "object",
@@ -130,11 +150,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   
   } catch (error) {
     logger.error("Error during tool execution:", error);
+    
+    // Extract Python-specific error details if available
+    const errorObj = error as any;
+    let errorText = '';
+    
+    if (errorObj.pythonError) {
+      // Python execution error with full traceback
+      errorText = errorObj.message || `Python execution failed`;
+      
+      // Add the Python error/traceback (this is the most important part)
+      if (errorObj.pythonError.trim()) {
+        errorText += '\n\n' + '--- Python Error/Traceback ---\n' + errorObj.pythonError;
+      }
+      
+      // Add stdout if it exists and is different from stderr
+      if (errorObj.stdout && errorObj.stdout.trim() && 
+          errorObj.stdout.trim() !== errorObj.pythonError.trim()) {
+        errorText += '\n\n' + '--- Standard Output ---\n' + errorObj.stdout;
+      }
+      
+      // Add exit code if available
+      if (errorObj.exitCode !== undefined) {
+        errorText += `\n\nExit code: ${errorObj.exitCode}`;
+      }
+      
+      // Add timeout indicator if applicable
+      if (errorObj.isTimeout) {
+        errorText += '\n\n⚠️ Execution timed out after 30 seconds';
+      }
+    } else {
+      // Generic error (e.g., argument validation, Docker setup)
+      errorText = error instanceof Error ? error.message : String(error);
+      
+      // Include stack trace for non-Python errors to help with debugging
+      if (error instanceof Error && error.stack && process.env.DEBUG) {
+        errorText += '\n\n--- Stack Trace ---\n' + error.stack;
+      }
+    }
+    
     return {
       content: [
         {
           type: "text",
-          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          text: errorText,
         },
       ],
       isError: true,

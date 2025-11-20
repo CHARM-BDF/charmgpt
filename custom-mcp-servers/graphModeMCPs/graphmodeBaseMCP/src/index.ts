@@ -82,6 +82,89 @@ const RemoveNodesByDegreeArgumentsSchema = z.object({
   ),
 });
 
+// Schema for bulk remove nodes by type tool
+const BulkRemoveNodesByTypeArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  criteria: z.object({
+    nodeTypes: z.array(z.string()).optional().describe("Array of node types to delete (e.g., ['gene', 'disease'])"),
+    excludeTypes: z.array(z.string()).optional().describe("Array of node types to keep (delete everything except these)"),
+    preview: z.boolean().optional().default(false).describe("If true, preview what would be deleted without actually deleting"),
+  }).refine(
+    (criteria) => {
+      // Either nodeTypes or excludeTypes must be provided, but not both
+      const hasNodeTypes = criteria.nodeTypes && criteria.nodeTypes.length > 0;
+      const hasExcludeTypes = criteria.excludeTypes && criteria.excludeTypes.length > 0;
+      return hasNodeTypes || hasExcludeTypes;
+    },
+    {
+      message: "Either nodeTypes or excludeTypes must be provided (but not both)"
+    }
+  ),
+});
+
+// Schema for add node by name tool
+const AddNodeByNameArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  nodeName: z.string().min(1, "Node name is required").describe("The name or description of the node to add (e.g., 'breast cancer', 'BRCA1', 'insulin'). If you see a name with a CURIE like 'CDC25B (NCBIGene:994)', just use 'CDC25B'."),
+  biolinkTypes: z.array(z.string()).optional().describe("Optional Biolink types to filter results (e.g., ['Disease', 'Gene'])"),
+  autoAdd: z.boolean().optional().default(true).describe("If true and there's only one clear match, automatically add the node. If false, always return matches for user selection."),
+  species: z.string().optional().describe("Optional species filter for gene searches only. Use NCBITaxon ID (e.g., 'NCBITaxon:9606' for human). Ignored for non-gene entity types."),
+});
+
+// Schema for normalize node tool
+const NormalizeNodeArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  nodeId: z.string().min(1, "Node ID is required").describe("The CURIE identifier to normalize (e.g., 'NCBIGene:994', 'HGNC:1726')"),
+  conflate: z.boolean().optional().default(true).describe("Whether to apply gene/protein conflation (default: true)"),
+  drugChemicalConflate: z.boolean().optional().default(false).describe("Whether to apply drug/chemical conflation (default: false)"),
+  includeDescriptions: z.boolean().optional().default(false).describe("Whether to return curie descriptions when possible (default: false)"),
+  individualTypes: z.boolean().optional().default(false).describe("Whether to return individual types for equivalent identifiers (default: false)"),
+});
+
+// Schema for add node by CURIE tool
+const AddNodeByCurieArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  nodeId: z.string().min(1, "Node CURIE is required").describe("The CURIE identifier to add (e.g., 'MONDO:0007254', 'NCBIGene:994')"),
+});
+
+// Schema for analyze node relationships tool
+const AnalyzeNodeRelationshipsArgumentsSchema = z.object({
+  databaseContext: DatabaseContextSchema,
+  nodeId: z.string().min(1, "Node ID is required").describe("The ID of the node to analyze relationships for (e.g., 'NCBIGene:7157')"),
+});
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Map of common species taxon IDs to friendly names
+ */
+const SPECIES_NAMES: Record<string, string> = {
+  'NCBITaxon:9606': 'Human',
+  'NCBITaxon:10090': 'Mouse',
+  'NCBITaxon:10116': 'Rat',
+  'NCBITaxon:7955': 'Zebrafish',
+  'NCBITaxon:8355': 'Xenopus', // Xenopus laevis
+  'NCBITaxon:8364': 'Xenopus', // Xenopus tropicalis
+};
+
+/**
+ * Get friendly species name from taxa array
+ * Returns the first recognized species, or null if none found
+ */
+function getSpeciesName(taxa: string[] | undefined): string | null {
+  if (!taxa || taxa.length === 0) return null;
+  
+  for (const taxon of taxa) {
+    if (SPECIES_NAMES[taxon]) {
+      return SPECIES_NAMES[taxon];
+    }
+  }
+  
+  return null;
+}
+
 // =============================================================================
 // SERVER SETUP
 // =============================================================================
@@ -300,6 +383,84 @@ function formatEdgeDetails(edge: any, nodes: any[]): string {
     `- Created: ${edge.createdAt}`;
 }
 
+function formatNodeRelationshipAnalysis(targetNode: any, connectedNodes: any[], edges: any[]): string {
+  if (!targetNode) {
+    return "Target node not found in the graph.";
+  }
+
+  if (connectedNodes.length === 0) {
+    return `**${targetNode.label}** (${targetNode.id})\n\nNo connections found in the graph.`;
+  }
+
+  // Group connected nodes by type
+  const nodesByType: { [key: string]: any[] } = {};
+  connectedNodes.forEach(node => {
+    const type = node.type || 'unknown';
+    if (!nodesByType[type]) {
+      nodesByType[type] = [];
+    }
+    nodesByType[type].push(node);
+  });
+
+  // Group edges by predicate/relationship type
+  const edgesByPredicate: { [key: string]: any[] } = {};
+  edges.forEach(edge => {
+    const predicate = edge.label || edge.type || 'unknown_relationship';
+    if (!edgesByPredicate[predicate]) {
+      edgesByPredicate[predicate] = [];
+    }
+    edgesByPredicate[predicate].push(edge);
+  });
+
+  // Build the analysis
+  let analysis = `**${targetNode.label}** (${targetNode.id})\n\n`;
+  analysis += `**Connected to ${connectedNodes.length} nodes total**\n\n`;
+
+  // Node type summary
+  analysis += `## Connected Node Types:\n`;
+  Object.entries(nodesByType).forEach(([type, nodes]) => {
+    analysis += `- **${type}**: ${nodes.length} nodes\n`;
+  });
+
+  analysis += `\n## Relationship Breakdown by Target Node Type:\n`;
+  
+  // Group edges by target node type, then by predicate
+  const edgesByTargetType: { [key: string]: { [key: string]: number } } = {};
+  
+  edges.forEach(edge => {
+    const connectedNode = connectedNodes.find(n => n.id === edge.source || n.id === edge.target);
+    if (connectedNode) {
+      const nodeType = connectedNode.type || 'unknown';
+      const predicate = edge.label || edge.type || 'unknown_relationship';
+      
+      if (!edgesByTargetType[nodeType]) {
+        edgesByTargetType[nodeType] = {};
+      }
+      edgesByTargetType[nodeType][predicate] = (edgesByTargetType[nodeType][predicate] || 0) + 1;
+    }
+  });
+
+  // Sort node types by total connections (descending)
+  const sortedNodeTypes = Object.entries(edgesByTargetType).sort((a, b) => {
+    const totalA = Object.values(a[1]).reduce((sum, count) => sum + count, 0);
+    const totalB = Object.values(b[1]).reduce((sum, count) => sum + count, 0);
+    return totalB - totalA;
+  });
+
+  sortedNodeTypes.forEach(([nodeType, predicates]) => {
+    const totalConnections = Object.values(predicates).reduce((sum, count) => sum + count, 0);
+    analysis += `\n### ${nodeType} (${totalConnections} connections)\n`;
+    
+    // Sort predicates by count (descending)
+    const sortedPredicates = Object.entries(predicates).sort((a, b) => b[1] - a[1]);
+    sortedPredicates.forEach(([predicate, count]) => {
+      analysis += `- **${predicate}**: ${count} connections\n`;
+    });
+  });
+
+  return analysis;
+}
+
 // =============================================================================
 // TOOL DEFINITIONS
 // =============================================================================
@@ -491,6 +652,202 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
           },
           required: ["databaseContext", "criteria"],
+        },
+      },
+      {
+        name: "bulkRemoveNodesByType",
+        description: "Efficiently remove multiple nodes based on their type or exclusion criteria. " +
+          "This is much faster than calling removeNode multiple times. " +
+          "Supports two modes: 1) Delete specific node types, or 2) Delete everything except specified types. " +
+          "Type matching is case-insensitive (e.g., 'Gene', 'gene', 'GENE' all match). " +
+          "Use this for bulk cleanup operations like 'remove all diseases' or 'keep only genes and proteins'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            criteria: {
+              type: "object",
+              properties: {
+                nodeTypes: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Array of node types to delete (e.g., ['gene', 'disease']). Case-insensitive matching.",
+                },
+                excludeTypes: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Array of node types to keep (delete everything except these). Case-insensitive matching.",
+                },
+                preview: {
+                  type: "boolean",
+                  description: "If true, preview what would be deleted without actually deleting",
+                  default: false,
+                },
+              },
+              required: [],
+            },
+          },
+          required: ["databaseContext", "criteria"],
+        },
+      },
+      {
+        name: "addNodeByName",
+        description: "Add a node to the graph by searching for it using natural language. " +
+          "Uses the SRI Name Resolver API to find the best match for the given name. " +
+          "If there's only one clear match, automatically adds the node. " +
+          "If there are multiple matches, returns the top 10 best matches with interactive buttons for user selection. " +
+          "Supports filtering by Biolink types (e.g., 'Disease', 'Gene', 'Protein'). " +
+          "Supports species filtering for genes (e.g., 'NCBITaxon:9606' for human, 'NCBITaxon:10090' for mouse). " +
+          "Species filter only applies to gene searches and is ignored for other entity types. " +
+          "Use this for natural language node addition like 'add breast cancer' or 'add human BRCA1 gene'. " +
+          "IMPORTANT: If you see a node name with a CURIE in parentheses like 'CDC25B (NCBIGene:994)', " +
+          "just use the text part 'CDC25B' - do not include the CURIE in parentheses. " +
+          "CRITICAL: When multiple matches are found, display the response exactly as returned - do not paraphrase or reformat the interactive buttons.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                artifactId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            nodeName: {
+              type: "string",
+              description: "The name or description of the node to add (e.g., 'breast cancer', 'BRCA1', 'insulin'). " +
+                "If you see a name with a CURIE like 'CDC25B (NCBIGene:994)', just use 'CDC25B'.",
+            },
+            biolinkTypes: {
+              type: "array",
+              items: { type: "string" },
+              description: "Optional Biolink types to filter results (e.g., ['Disease', 'Gene'])",
+            },
+            autoAdd: {
+              type: "boolean",
+              description: "If true and there's only one clear match, automatically add the node. If false, always return matches for user selection.",
+              default: true,
+            },
+            species: {
+              type: "string",
+              description: "Optional species filter for gene searches only. Use NCBITaxon ID (e.g., 'NCBITaxon:9606' for human, 'NCBITaxon:10090' for mouse). Ignored for non-gene entity types.",
+            },
+          },
+          required: ["databaseContext", "nodeName"],
+        },
+      },
+      {
+        name: "normalizeNode",
+        description: "Normalize a node identifier using the Node Normalizer API. " +
+          "Returns the preferred identifier, all equivalent identifiers across different databases, " +
+          "semantic types, and information content score. " +
+          "Supports gene/protein and drug/chemical conflation. " +
+          "Use this to find all equivalent identifiers for a node (e.g., 'normalize NCBIGene:994' or 'normalize HGNC:1726').",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                artifactId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            nodeId: {
+              type: "string",
+              description: "The CURIE identifier to normalize (e.g., 'NCBIGene:994', 'HGNC:1726')",
+            },
+            conflate: {
+              type: "boolean",
+              description: "Whether to apply gene/protein conflation (default: true)",
+              default: true,
+            },
+            drugChemicalConflate: {
+              type: "boolean",
+              description: "Whether to apply drug/chemical conflation (default: false)",
+              default: false,
+            },
+            includeDescriptions: {
+              type: "boolean",
+              description: "Whether to return curie descriptions when possible (default: false)",
+              default: false,
+            },
+            individualTypes: {
+              type: "boolean",
+              description: "Whether to return individual types for equivalent identifiers (default: false)",
+              default: false,
+            },
+          },
+          required: ["databaseContext", "nodeId"],
+        },
+      },
+      {
+        name: "addNodeByCurie",
+        description: "Add a node to the graph using a specific CURIE identifier. " +
+          "Automatically normalizes the node using Node Normalizer API to get complete information. " +
+          "Use this when you have a specific CURIE (e.g., from search results).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                artifactId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            nodeId: {
+              type: "string",
+              description: "The CURIE identifier (e.g., 'MONDO:0007254', 'NCBIGene:994')",
+            },
+          },
+          required: ["databaseContext", "nodeId"],
+        },
+      },
+      {
+        name: "analyzeNodeRelationships",
+        description: "Analyze the relationships and connections of a specific node in the graph. " +
+          "Returns detailed information about what types of nodes are connected to the target node " +
+          "and what types of relationships (predicates) exist between them. " +
+          "Use this when you want to understand the connectivity pattern of a specific node, " +
+          "such as 'show me all the relationships for gene TP53' or 'what types of nodes are connected to this disease'. " +
+          "This tool only analyzes existing connections - it does not modify the graph.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            databaseContext: {
+              type: "object",
+              properties: {
+                conversationId: { type: "string" },
+                artifactId: { type: "string" },
+                apiBaseUrl: { type: "string" },
+                accessToken: { type: "string" },
+              },
+              required: ["conversationId"],
+            },
+            nodeId: {
+              type: "string",
+              description: "The ID of the node to analyze relationships for (e.g., 'NCBIGene:7157', 'MONDO:0007254')",
+            },
+          },
+          required: ["databaseContext", "nodeId"],
         },
       },
     ],
@@ -936,6 +1293,525 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         refreshGraph: true
       };
 
+    } else if (name === "bulkRemoveNodesByType") {
+      const { databaseContext, criteria } = BulkRemoveNodesByTypeArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Bulk removing nodes by type`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      console.error(`[${SERVICE_NAME}] Criteria:`, JSON.stringify(criteria, null, 2));
+      
+      // Make API call to backend
+      const result = await makeAPIRequest(
+        '/nodes/by-type',
+        databaseContext,
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({
+            nodeTypes: criteria.nodeTypes,
+            excludeTypes: criteria.excludeTypes,
+            preview: criteria.preview
+          })
+        }
+      );
+      
+      if (!result || !result.success) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to bulk remove nodes by type: ${result?.error || 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+      
+      if (criteria.preview) {
+        // Preview mode - show what would be deleted
+        const nodesToDelete = result.data?.nodesToDelete || [];
+        const count = result.data?.count || 0;
+        
+        if (count === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No nodes found matching the specified criteria.",
+              },
+            ],
+          };
+        }
+        
+        const nodeList = nodesToDelete.slice(0, 10).map((node: any) => 
+          `${node.label} (${node.type})`
+        ).join(', ');
+        const moreText = count > 10 ? ` and ${count - 10} more...` : '';
+        
+        const criteriaDesc = criteria.nodeTypes && criteria.nodeTypes.length > 0 
+          ? `types: ${criteria.nodeTypes.join(', ')}`
+          : `exclude types: ${criteria.excludeTypes?.join(', ') || 'none'}`;
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Preview: Would delete ${count} nodes matching criteria (${criteriaDesc}).\n\n` +
+                    `Sample nodes: ${nodeList}${moreText}\n\n` +
+                    `Set preview: false to perform the actual deletion.`,
+            },
+          ],
+        };
+      } else {
+        // Actual deletion
+        const deletedCount = result.data?.deletedCount || 0;
+        const criteriaDesc = criteria.nodeTypes && criteria.nodeTypes.length > 0 
+          ? `types: ${criteria.nodeTypes.join(', ')}`
+          : `exclude types: ${criteria.excludeTypes?.join(', ') || 'none'}`;
+        
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Bulk removal completed: ${deletedCount} nodes removed successfully. ` +
+                    `Criteria: ${criteriaDesc}`,
+            },
+          ],
+          refreshGraph: true
+        };
+      }
+
+    } else if (name === "addNodeByName") {
+      const { databaseContext, nodeName, biolinkTypes, autoAdd, species } = AddNodeByNameArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] ===== ADD NODE BY NAME CALLED =====`);
+      console.error(`[${SERVICE_NAME}] Adding node by name: ${nodeName}`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      console.error(`[${SERVICE_NAME}] Biolink types: ${biolinkTypes?.join(', ') || 'none'}`);
+      console.error(`[${SERVICE_NAME}] Species: ${species || 'none'}`);
+      console.error(`[${SERVICE_NAME}] Auto-add: ${autoAdd}`);
+      
+      // Call SRI Name Resolver API
+      const nameResolverUrl = "https://name-lookup.transltr.io/lookup";
+      const queryParams = new URLSearchParams({
+        string: nodeName,
+        autocomplete: "false",
+        highlighting: "true",
+        limit: "10"
+      });
+      
+      if (biolinkTypes && biolinkTypes.length > 0) {
+        queryParams.set('biolink_type', biolinkTypes.join(','));
+      }
+      
+      // Only apply species filter if:
+      // 1. Species is specified AND
+      // 2. Either no biolink types specified OR genes are included in the types
+      const isGeneSearch = !biolinkTypes || 
+        biolinkTypes.length === 0 || 
+        biolinkTypes.some(type => 
+          type.toLowerCase() === 'gene' || 
+          type === 'biolink:Gene'
+        );
+      
+      if (species && isGeneSearch) {
+        queryParams.set('only_taxa', species);
+        console.error(`[${SERVICE_NAME}] Applying species filter for gene search: ${species}`);
+      } else if (species && !isGeneSearch) {
+        console.error(`[${SERVICE_NAME}] Ignoring species filter for non-gene search`);
+      }
+      
+      console.error(`[${SERVICE_NAME}] Calling Name Resolver API: ${nameResolverUrl}?${queryParams}`);
+      const resolverResponse = await fetch(`${nameResolverUrl}?${queryParams}`);
+      console.error(`[${SERVICE_NAME}] Name Resolver API response status: ${resolverResponse.status}`);
+      
+      if (!resolverResponse.ok) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to search for node '${nodeName}': ${resolverResponse.status} ${resolverResponse.statusText}`,
+            },
+          ],
+        };
+      }
+      
+      const matches = await resolverResponse.json();
+      console.error(`[${SERVICE_NAME}] Got ${matches?.length || 0} matches from Name Resolver`);
+      
+      if (!matches || matches.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No matches found for '${nodeName}'. Try a different name or check the spelling.`,
+            },
+          ],
+        };
+      }
+      
+      console.error(`[${SERVICE_NAME}] Best match: ${matches[0]?.label} (${matches[0]?.curie})`);
+      
+      // If autoAdd is true and there's only one match, add it automatically
+      if (autoAdd && matches.length === 1) {
+        console.error(`[${SERVICE_NAME}] Auto-adding single match...`);
+        const match = matches[0];
+        const nodeData = {
+          id: match.curie,
+          label: match.label,
+          type: match.types?.[0] || 'Unknown',
+          data: JSON.stringify({
+            synonyms: match.synonyms || [],
+            taxa: match.taxa || [],
+            types: match.types || [],
+            score: match.score || 0
+          }),
+          position: JSON.stringify({ x: 0, y: 0 })
+        };
+        
+        console.error(`[${SERVICE_NAME}] Node data prepared: ${JSON.stringify(nodeData)}`);
+        console.error(`[${SERVICE_NAME}] Making API request to add node...`);
+        
+        // Add the node to the graph
+        const addResult = await makeAPIRequest('/nodes', databaseContext, {
+          method: 'POST',
+          body: JSON.stringify(nodeData)
+        });
+        
+        console.error(`[${SERVICE_NAME}] Add node result: ${JSON.stringify(addResult)}`);
+        
+        if (!addResult || !addResult.success) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Found match for '${nodeName}' but failed to add it to the graph: ${addResult?.error || 'Unknown error'}`,
+              },
+            ],
+          };
+        }
+        
+        const speciesName = getSpeciesName(match.taxa);
+        const speciesInfo = speciesName ? ` | Species: ${speciesName}` : '';
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ Successfully added node '${match.label}' (${match.curie}) to the graph. ` +
+                    `Type: ${match.types?.[0] || 'Unknown'}${speciesInfo}, Score: ${match.score || 'N/A'}`,
+            },
+          ],
+          refreshGraph: true
+        };
+      }
+      
+      // Multiple matches or autoAdd is false - return matches for user selection
+      const matchList = matches.slice(0, 10).map((match: any, index: number) => {
+        const curie = encodeURIComponent(match.curie);
+        const name = encodeURIComponent(match.label);
+        const types = encodeURIComponent(match.types?.[0] || 'Unknown');
+        
+        // Get species name if available
+        const speciesName = getSpeciesName(match.taxa);
+        const labelWithSpecies = speciesName ? `${match.label} (${speciesName})` : match.label;
+        
+        // Convert to title case (capitalize each word)
+        const titleCaseLabel = labelWithSpecies
+          .split(' ')
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        
+        const linkText = `[**ADD**](graphnode:add:${curie}:${name}:${types})`;
+        console.error(`[${SERVICE_NAME}] Generated link for ${match.label}: ${linkText}`);
+        
+        return `${linkText} **${titleCaseLabel}** (${match.curie})`;
+      }).join('\n\n');
+      
+      const fullResponse = `Found ${matches.length} matches for '${nodeName}':\n\n${matchList}\n\n` +
+                          `Click any button to add that node to the graph.`;
+      
+      console.error(`[${SERVICE_NAME}] Full response with buttons:`, fullResponse);
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: fullResponse,
+          },
+        ],
+      };
+
+    } else if (name === "normalizeNode") {
+      const { databaseContext, nodeId, conflate, drugChemicalConflate, includeDescriptions, individualTypes } = NormalizeNodeArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Normalizing node: ${nodeId}`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      console.error(`[${SERVICE_NAME}] Conflate: ${conflate}, Drug/Chemical Conflate: ${drugChemicalConflate}`);
+      console.error(`[${SERVICE_NAME}] Include descriptions: ${includeDescriptions}, Individual types: ${individualTypes}`);
+      
+      // Call Node Normalizer API
+      const normalizerUrl = "https://nodenorm.transltr.io/1.5/get_normalized_nodes";
+      const queryParams = new URLSearchParams({
+        curie: nodeId,
+        conflate: conflate.toString(),
+        drug_chemical_conflate: drugChemicalConflate.toString(),
+        description: includeDescriptions.toString(),
+        individual_types: individualTypes.toString()
+      });
+      
+      console.error(`[${SERVICE_NAME}] Calling Node Normalizer API: ${normalizerUrl}?${queryParams}`);
+      const normalizerResponse = await fetch(`${normalizerUrl}?${queryParams}`);
+      console.error(`[${SERVICE_NAME}] Node Normalizer API response status: ${normalizerResponse.status}`);
+      
+      if (!normalizerResponse.ok) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to normalize node '${nodeId}': ${normalizerResponse.status} ${normalizerResponse.statusText}`,
+            },
+          ],
+        };
+      }
+      
+      const normalizedData = await normalizerResponse.json();
+      console.error(`[${SERVICE_NAME}] Got normalized data for ${Object.keys(normalizedData).length} nodes`);
+      
+      if (!normalizedData || Object.keys(normalizedData).length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No normalization data found for '${nodeId}'. The identifier may not be recognized by the Node Normalizer.`,
+            },
+          ],
+        };
+      }
+      
+      // Get the normalized data for the requested node
+      const nodeData = normalizedData[nodeId];
+      if (!nodeData) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No normalization data found for '${nodeId}'. The identifier may not be recognized by the Node Normalizer.`,
+            },
+          ],
+        };
+      }
+      
+      // Format the response
+      const preferredId = nodeData.id?.identifier || nodeId;
+      const preferredLabel = nodeData.id?.label || 'Unknown';
+      const equivalentIds = nodeData.equivalent_identifiers || [];
+      const semanticTypes = nodeData.type || [];
+      const informationContent = nodeData.information_content || 0;
+      
+      // Group equivalent identifiers by database
+      const groupedIds: { [key: string]: string[] } = {};
+      equivalentIds.forEach((id: any) => {
+        const prefix = id.identifier.split(':')[0];
+        if (!groupedIds[prefix]) {
+          groupedIds[prefix] = [];
+        }
+        groupedIds[prefix].push(id.identifier + (id.label ? ` (${id.label})` : ''));
+      });
+      
+      const groupedIdList = Object.entries(groupedIds)
+        .map(([prefix, ids]) => `**${prefix}**: ${ids.join(', ')}`)
+        .join('\n');
+      
+      const semanticTypesList = semanticTypes
+        .map((type: string) => type.replace('biolink:', ''))
+        .join(', ');
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: `## Node Normalization Results for ${nodeId}\n\n` +
+                  `**Preferred Identifier**: ${preferredId} (${preferredLabel})\n\n` +
+                  `**Information Content**: ${informationContent.toFixed(2)}%\n\n` +
+                  `**Semantic Types**: ${semanticTypesList}\n\n` +
+                  `**Equivalent Identifiers**:\n${groupedIdList}\n\n` +
+                  `**Total Equivalent Identifiers**: ${equivalentIds.length}`,
+          },
+        ],
+      };
+
+    } else if (name === "addNodeByCurie") {
+      const { databaseContext, nodeId } = AddNodeByCurieArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Adding node by CURIE: ${nodeId}`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      
+      // 1. Normalize the node
+      const normalizerUrl = "https://nodenorm.transltr.io/1.5/get_normalized_nodes";
+      const queryParams = new URLSearchParams({ 
+        curie: nodeId, 
+        conflate: "true",
+        drug_chemical_conflate: "false",
+        description: "false",
+        individual_types: "false"
+      });
+      
+      console.error(`[${SERVICE_NAME}] Calling Node Normalizer API: ${normalizerUrl}?${queryParams}`);
+      const normResponse = await fetch(`${normalizerUrl}?${queryParams}`);
+      console.error(`[${SERVICE_NAME}] Node Normalizer API response status: ${normResponse.status}`);
+      
+      if (!normResponse.ok) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to normalize node '${nodeId}': ${normResponse.status} ${normResponse.statusText}`,
+            },
+          ],
+        };
+      }
+      
+      const normalizedData = await normResponse.json();
+      console.error(`[${SERVICE_NAME}] Got normalized data for ${Object.keys(normalizedData).length} nodes`);
+      
+      const nodeData = normalizedData[nodeId];
+      if (!nodeData) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Could not normalize ${nodeId}. The identifier may not be recognized by the Node Normalizer.`,
+            },
+          ],
+        };
+      }
+      
+      // 2. Add to graph
+      const preferredId = nodeData.id?.identifier || nodeId;
+      const label = nodeData.id?.label || nodeId;
+      const types = nodeData.type || [];
+      const semanticType = types[0]?.replace('biolink:', '') || 'Unknown';
+      
+      const nodeDataForGraph = {
+        id: preferredId,
+        label: label,
+        type: semanticType,
+        data: JSON.stringify({
+          equivalentIds: nodeData.equivalent_identifiers || [],
+          semanticTypes: types,
+          informationContent: nodeData.information_content || 0,
+          originalCurie: nodeId
+        }),
+        position: JSON.stringify({ x: 0, y: 0 })
+      };
+      
+      console.error(`[${SERVICE_NAME}] Node data prepared: ${JSON.stringify(nodeDataForGraph)}`);
+      console.error(`[${SERVICE_NAME}] Making API request to add node...`);
+      
+      const addResult = await makeAPIRequest('/nodes', databaseContext, {
+        method: 'POST',
+        body: JSON.stringify(nodeDataForGraph)
+      });
+      
+      console.error(`[${SERVICE_NAME}] Add node result: ${JSON.stringify(addResult)}`);
+      
+      if (!addResult || !addResult.success) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to add node '${label}' to the graph: ${addResult?.error || 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ Added **${label}** (${preferredId}) to the graph!\n` +
+                  `Type: ${semanticType}\n` +
+                  `Information Content: ${(nodeData.information_content || 0).toFixed(2)}%`,
+          },
+        ],
+        refreshGraph: true
+      };
+
+    } else if (name === "analyzeNodeRelationships") {
+      const { databaseContext, nodeId } = AnalyzeNodeRelationshipsArgumentsSchema.parse(args);
+      
+      console.error(`[${SERVICE_NAME}] Analyzing relationships for node: ${nodeId}`);
+      console.error(`[${SERVICE_NAME}] Conversation ID: ${databaseContext.conversationId}`);
+      
+      // Get current graph state
+      const result = await makeAPIRequest('/state', databaseContext);
+      
+      if (!result || !result.success) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Failed to retrieve graph state from the database.",
+            },
+          ],
+        };
+      }
+      
+      const { nodes, edges } = result.data;
+      
+      if (!nodes || nodes.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "The graph is empty - no nodes to analyze.",
+            },
+          ],
+        };
+      }
+      
+      // Find the target node
+      const targetNode = nodes.find((n: any) => n.id === nodeId);
+      if (!targetNode) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Node '${nodeId}' not found in the graph. Please check the node ID and try again.`,
+            },
+          ],
+        };
+      }
+      
+      // Find all edges connected to this node
+      const connectedEdges = (edges || []).filter((edge: any) => 
+        edge.source === nodeId || edge.target === nodeId
+      );
+      
+      // Find all connected nodes
+      const connectedNodeIds = new Set<string>();
+      connectedEdges.forEach((edge: any) => {
+        if (edge.source === nodeId) {
+          connectedNodeIds.add(edge.target);
+        } else {
+          connectedNodeIds.add(edge.source);
+        }
+      });
+      
+      const connectedNodes = nodes.filter((n: any) => connectedNodeIds.has(n.id));
+      
+      // Format the analysis
+      const analysis = formatNodeRelationshipAnalysis(targetNode, connectedNodes, connectedEdges);
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: analysis,
+          },
+        ],
+      };
+
     } else {
       throw new Error(`Unknown tool: ${name}`);
     }
@@ -973,7 +1849,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   console.error(`[${SERVICE_NAME}] Starting Graph Mode MCP Server`);
   console.error(`[${SERVICE_NAME}] Default API Base URL: ${DEFAULT_API_BASE_URL}`);
-  console.error(`[${SERVICE_NAME}] Available tools: removeNode, removeEdge, getGraphState, bulkRemoveNodes, bulkRemoveEdges, removeNodesByDegree`);
+  console.error(`[${SERVICE_NAME}] Available tools: removeNode, removeEdge, getGraphState, bulkRemoveNodes, bulkRemoveEdges, removeNodesByDegree, bulkRemoveNodesByType, addNodeByName, normalizeNode, addNodeByCurie, analyzeNodeRelationships`);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

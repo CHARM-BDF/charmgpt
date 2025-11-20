@@ -146,16 +146,30 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
   //   isString: typeof content === 'string'
   // });
 
-  // Process content to properly format buttons and sections
+  // Process content and add fallback: convert LLM-emitted <button> rows into graphnode:add links
   const processContent = (rawContent: string): string => {
-    // Split content into sections and wrap each in a div
-    return rawContent
+    let transformed = rawContent;
+
+    // Fallback 1: Convert patterns like
+    //   <button>**ADD**</button> <strong>NAME</strong> (CURIE)
+    // into markdown link: [**ADD**](graphnode:add:CURIE:NAME:TYPE) **NAME** (CURIE)
+    transformed = transformed.replace(
+      /<button[^>]*>\s*\*\*ADD\*\*\s*<\/button>\s*<strong>([^<]+)<\/strong>\s*\(([^)]+)\)/gi,
+      (_m, name, curie) => {
+        const encCurie = encodeURIComponent(curie.trim());
+        const encName = encodeURIComponent(String(name).trim());
+        const encType = encodeURIComponent('Unknown');
+        return `<a href="graphnode:add:${encCurie}:${encName}:${encType}">**ADD**</a> <strong>${name}</strong> (${curie})`;
+      }
+    );
+
+    // Wrap sections in divs for spacing (post-transform)
+    return transformed
       .split(/(<button.*?<\/button>)/g)
       .map((section, _index) => {
         if (section.startsWith('<button')) {
           return `<div class="my-4">${section}</div>`;
         } else if (section.trim()) {
-          // Don't wrap sections that start with heading markers in divs
           if (section.trim().match(/^#+\s/)) {
             return section;
           }
@@ -229,6 +243,10 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       toggleArtifactWindow();
     }
   };
+
+  // Allow custom graphnode:add: links to pass through ReactMarkdown URL sanitization
+  const allowGraphnodeProtocol = (url?: string) =>
+    typeof url === 'string' && url.startsWith('graphnode:add:') ? url : url;
 
   // Clean up content by removing leading spaces while preserving markdown
   const markdownComponents = {
@@ -322,6 +340,8 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
       <hr className="my-8 border-t border-gray-300 dark:border-gray-700" {...props} />
     ),
     a: ({node, href, children, ...props}: any) => {
+      console.log('🔍 AssistantMarkdown: Processing link:', { href, children: children?.[0] });
+      
       if (href?.startsWith('artifact:')) {
         const uuid = href.replace('artifact:', '');
         console.log('AssistantMarkdown: Processing artifact link with uuid:', uuid);
@@ -336,6 +356,122 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
           <button
             onClick={() => selectArtifact(uuid)}
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {children}
+          </button>
+        );
+      }
+      if (href?.startsWith('graphnode:add:')) {
+        console.log('🎯 AssistantMarkdown: Processing graphnode link:', href);
+        const parts = href.replace('graphnode:add:', '').split(':');
+        console.log('🎯 AssistantMarkdown: Parsed parts:', parts);
+        const curie = decodeURIComponent(parts[0]);
+        const name = decodeURIComponent(parts[1]);
+        const type = decodeURIComponent(parts[2] || 'Unknown');
+        console.log('🎯 AssistantMarkdown: Decoded values:', { curie, name, type });
+        
+        const handleAddGraphNode = async () => {
+          console.log('🚀 Button clicked! Adding node:', { curie, name, type });
+          
+          const currentConversationId = useChatStore.getState().currentConversationId;
+          if (!currentConversationId) {
+            console.error('No conversation ID available');
+            return;
+          }
+          
+          try {
+            // 1. Normalize the node using Node Normalizer API
+            const normalizerUrl = "https://nodenorm.transltr.io/1.5/get_normalized_nodes";
+            const queryParams = new URLSearchParams({ 
+              curie: curie, 
+              conflate: "true",
+              drug_chemical_conflate: "false",
+              description: "false",
+              individual_types: "false"
+            });
+            
+            console.log('🔍 Normalizing node:', curie);
+            const normResponse = await fetch(`${normalizerUrl}?${queryParams}`);
+            
+            if (!normResponse.ok) {
+              throw new Error(`Node normalization failed: ${normResponse.statusText}`);
+            }
+            
+            const normalizedData = await normResponse.json();
+            const nodeData = normalizedData[curie];
+            
+            if (!nodeData) {
+              throw new Error(`Could not normalize ${curie}`);
+            }
+            
+            // 2. Prepare node data for graph
+            const preferredId = nodeData.id?.identifier || curie;
+            const label = nodeData.id?.label || name;
+            const types = nodeData.type || [];
+            const semanticType = types[0]?.replace('biolink:', '') || type || 'Unknown';
+            
+            const nodeDataForGraph = {
+              id: preferredId,
+              label: label,
+              type: semanticType,
+              data: JSON.stringify({
+                equivalentIds: nodeData.equivalent_identifiers || [],
+                semanticTypes: types,
+                informationContent: nodeData.information_content || 0,
+                originalCurie: curie
+              }),
+              position: JSON.stringify({ x: 0, y: 0 })
+            };
+            
+            // 3. Add to graph via backend API
+            console.log('➕ Adding node to graph:', preferredId);
+            const response = await fetch(`/api/graph/${currentConversationId}/nodes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(nodeDataForGraph)
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to add node: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log('✅ Node added successfully:', result);
+            
+            // 4. Trigger graph refresh by dispatching custom event
+            window.dispatchEvent(new CustomEvent('graph-node-added', { 
+              detail: { nodeId: preferredId, label } 
+            }));
+            
+            // 5. Show success notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+            notification.textContent = `✅ Added ${label} to graph`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+            
+            console.log(`✅ Successfully added ${label} to the graph!`);
+            
+          } catch (error) {
+            console.error('❌ Error adding node:', error);
+            // Show error notification
+            const errorNotification = document.createElement('div');
+            errorNotification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+            errorNotification.textContent = `❌ Failed to add ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            document.body.appendChild(errorNotification);
+            setTimeout(() => errorNotification.remove(), 5000);
+          }
+        };
+        
+        console.log('🎯 AssistantMarkdown: Rendering graphnode button');
+        return (
+          <button
+            onClick={handleAddGraphNode}
+            className="inline-flex items-center gap-2 px-3 py-1.5 
+                      bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600
+                      text-gray-800 dark:text-gray-200
+                      rounded-md border border-gray-300 dark:border-gray-600
+                      transition-colors duration-200 text-sm font-medium"
           >
             {children}
           </button>
@@ -413,6 +549,8 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
           children={cleanContent}
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeRaw as any]}
+          /* react-markdown v8 */
+          transformLinkUri={allowGraphnodeProtocol as any}
           components={{
             ...markdownComponents,
             button: ({node, ...props}: any) => {
@@ -421,12 +559,16 @@ export const AssistantMarkdown: React.FC<AssistantMarkdownProps> = ({ content })
                 const type = props['data-artifact-type'];
                 const title = props.children[0]?.toString().replace('📎 ', '');
                 
-                if (id && type && title) {
+                if (id && type) {
+                  // Get the actual artifact title from the store if the button title is undefined
+                  const artifact = artifacts.find(a => a.id === id);
+                  const actualTitle = (title && title !== 'undefined') ? title : (artifact?.title || 'Artifact');
+                  
                   return (
                     <ArtifactButton
                       id={id}
                       type={type}
-                      title={title}
+                      title={actualTitle}
                     />
                   );
                 }

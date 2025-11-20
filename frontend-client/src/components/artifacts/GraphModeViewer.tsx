@@ -10,27 +10,51 @@ import { EdgeDetailCard } from './EdgeDetailCard';
 const normalizeCategory = (value?: string) =>
   (value ?? 'other').toString().trim().toLowerCase();
 
-const categoryColors: Record<string, string> = {
-  gene:    '#1f77b4', // blue
-  protein: '#1f77b4', // blue (same as gene)
-  drug:    '#e74c3c', // red
-  disease: '#2ecc71', // green
-  pathway: '#9b59b6', // purple
-  other:   '#bdc3c7', // gray
-};
+  const categoryColors: Record<string, string> = {
+    gene:    '#1f77b4', // blue
+    protein: '#1f77b4', // blue (same as gene)
+    polypeptide: '#1f77b4', // blue (same as gene and protein)
+    drug:    '#e74c3c', // red
+    smallmolecule: '#e74c3c', // red (same as drug)
+    molecularmixture: '#e74c3c', // red (same as drug)
+    disease: '#1e8449', // darker green
+    phenotypicfeature: '#58d68d', // lighter green
+    pathway: '#9b59b6', // purple
+    chemicalentity: '#ff69b4', // pink
+    proteinfamily: '#87ceeb', // light blue
+    biologicalprocess: '#87ceeb', // light blue
+    physiologicalprocess: '#87ceeb', // light blue (same as biological process)
+    molecularactivity: '#87ceeb', // light blue
+    cell: '#d2b48c', // light brown
+    grossanatomicalstructure: '#8b4513', // darker brown
+    anatomicalentity: '#8b4513', // darker brown (same as grossanatomicalstructure)
+    other:   '#bdc3c7', // gray
+  };
 
 /**
  * Enhanced category detection with priority-based assignment
- * Prioritizes: Gene, Protein, Disease, Drug, Pathway over other categories
+ * Prioritizes: Gene, Protein, Polypeptide, Disease, Drug, SmallMolecule, MolecularMixture, PhenotypicFeature, Pathway, ChemicalEntity, ProteinFamily, BiologicalProcess, PhysiologicalProcess, MolecularActivity, Cell, GrossAnatomicalStructure, AnatomicalEntity over other categories
  */
-const detectBestCategory = (rawCategory: string, categoriesArray: string[] = []): string => {
-  const priorityCategories = [
-    { biolink: 'biolink:Gene', clean: 'gene' },
-    { biolink: 'biolink:Protein', clean: 'protein' },
-    { biolink: 'biolink:Disease', clean: 'disease' },
-    { biolink: 'biolink:Drug', clean: 'drug' },
-    { biolink: 'biolink:Pathway', clean: 'pathway' }
-  ];
+  const detectBestCategory = (rawCategory: string, categoriesArray: string[] = []): string => {
+    const priorityCategories = [
+      { biolink: 'biolink:Gene', clean: 'gene' },
+      { biolink: 'biolink:Protein', clean: 'protein' },
+      { biolink: 'biolink:Polypeptide', clean: 'polypeptide' },
+      { biolink: 'biolink:Disease', clean: 'disease' },
+      { biolink: 'biolink:Drug', clean: 'drug' },
+      { biolink: 'biolink:SmallMolecule', clean: 'smallmolecule' },
+      { biolink: 'biolink:MolecularMixture', clean: 'molecularmixture' },
+      { biolink: 'biolink:PhenotypicFeature', clean: 'phenotypicfeature' },
+      { biolink: 'biolink:Pathway', clean: 'pathway' },
+      { biolink: 'biolink:ChemicalEntity', clean: 'chemicalentity' },
+      { biolink: 'biolink:ProteinFamily', clean: 'proteinfamily' },
+      { biolink: 'biolink:BiologicalProcessOrActivity', clean: 'biologicalprocess' },
+      { biolink: 'biolink:PhysiologicalProcess', clean: 'physiologicalprocess' },
+      { biolink: 'biolink:MolecularActivity', clean: 'molecularactivity' },
+      { biolink: 'biolink:Cell', clean: 'cell' },
+      { biolink: 'biolink:GrossAnatomicalStructure', clean: 'grossanatomicalstructure' },
+      { biolink: 'biolink:AnatomicalEntity', clean: 'anatomicalentity' }
+    ];
 
   // First, check the raw category
   for (const { biolink, clean } of priorityCategories) {
@@ -241,6 +265,10 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
   const [hoveredEdge, setHoveredEdge] = useState<any>(null);
   const [pinnedEdgeCard, setPinnedEdgeCard] = useState<any>(null);
   const [cardPosition, setCardPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [tooltip, setTooltip] = useState({ visible: false, content: '', position: { x: 0, y: 0 } });
+  
+  // Track hovered node for edge highlighting
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   
   // Collapsed cluster state - tracks which cluster groups are collapsed
   const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
@@ -413,6 +441,72 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
     
     return unsubscribe;
   }, [currentConversationId, loadGraphDataFromDatabase]);
+
+  // Listen for direct node additions from interactive buttons
+  useEffect(() => {
+    const handleNodeAdded = (event: CustomEvent) => {
+      console.log('📢 Node added event received:', event.detail);
+      // Trigger a graph refresh
+      loadGraphDataFromDatabaseWithRetry(0);
+    };
+    
+    window.addEventListener('graph-node-added', handleNodeAdded as EventListener);
+    
+    return () => {
+      window.removeEventListener('graph-node-added', handleNodeAdded as EventListener);
+    };
+  }, [loadGraphDataFromDatabaseWithRetry]);
+
+  // Listen for SSE notifications from BTE background processing
+  useEffect(() => {
+    if (!currentConversationId) return;
+    
+    console.log(`[GRAPH-NOTIFICATIONS] Setting up SSE connection for conversation: ${currentConversationId}`);
+    
+    const eventSource = new EventSource(`/api/graph/${currentConversationId}/events`);
+    
+    eventSource.onopen = () => {
+      console.log(`[GRAPH-NOTIFICATIONS] SSE connection opened for conversation: ${currentConversationId}`);
+    };
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const notification = JSON.parse(event.data);
+        console.log(`[GRAPH-NOTIFICATIONS] Received notification:`, notification);
+        
+        if (notification.type === 'bte-background-complete') {
+          // Show success notification
+          showNotification(
+            `✅ ${notification.message}`,
+            'success',
+            5000
+          );
+          
+          // Refresh graph
+          loadGraphDataFromDatabase();
+        } else if (notification.type === 'bte-background-error') {
+          // Show error notification
+          showNotification(
+            `❌ ${notification.message}`,
+            'error',
+            8000
+          );
+        }
+      } catch (error) {
+        console.error('[GRAPH-NOTIFICATIONS] Error parsing SSE notification:', error);
+      }
+    };
+    
+    eventSource.onerror = (error) => {
+      console.error('[GRAPH-NOTIFICATIONS] SSE connection error:', error);
+      // Don't close on error - let it auto-reconnect
+    };
+    
+    return () => {
+      console.log(`[GRAPH-NOTIFICATIONS] Closing SSE connection for conversation: ${currentConversationId}`);
+      eventSource.close();
+    };
+  }, [currentConversationId, loadGraphDataFromDatabase, showNotification]);
 
   // Adjust dimensions based on container size
   useEffect(() => {
@@ -1374,6 +1468,26 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
       setCardPosition({ x, y });
     }
   };
+
+  // Handle node hover events
+  const handleNodePointerOver = (node: any, event: any) => {
+    const { clientX, clientY } = event;
+    const category = detectBestCategory(node.category || node.data?.category || '');
+    const nodeName = node.label || node.name || node.id;
+    setTooltip({
+      visible: true,
+      content: `${nodeName} (${category})`,
+      position: { x: clientX, y: clientY }
+    });
+    // Set hovered node ID for edge highlighting
+    setHoveredNodeId(node.id);
+  };
+
+  const handleNodePointerOut = () => {
+    setTooltip({ visible: false, content: '', position: { x: 0, y: 0 } });
+    // Clear hovered node ID
+    setHoveredNodeId(null);
+  };
   
   // Handle edge detail card pin toggle
   const handlePinEdgeCard = useCallback(() => {
@@ -1597,6 +1711,8 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          onNodePointerOver={handleNodePointerOver}
+          onNodePointerOut={handleNodePointerOut}
           onBackgroundClick={() => {
             console.log('🖱️ BACKGROUND CLICKED - Current rendered data:');
             console.log('📊 Rendered nodes:', (filteredNodes.length ? filteredNodes : graphData.nodes).length);
@@ -1620,8 +1736,28 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             console.log('  - graphData.nodes.length:', graphData.nodes.length);
             console.log('  - graphData.edges.length:', graphData.edges.length);
           }}
-          edgeOpacity={0.4}
+          edgeOpacity={(edge: any) => {
+            // Use higher opacity for edges connected to hovered node
+            if (hoveredNodeId && (edge.source === hoveredNodeId || edge.target === hoveredNodeId)) {
+              return 1.0; // Full opacity for highlighted edges
+            }
+            return 0.4; // Default opacity for other edges
+          }}
           clusterAttribute={clusterNodes ? "clusterGroup" : undefined}
+          edgeColor={(edge: any) => {
+            // Highlight edges connected to the hovered node
+            if (hoveredNodeId && (edge.source === hoveredNodeId || edge.target === hoveredNodeId)) {
+              return '#3b82f6'; // Bright blue for highlighted edges
+            }
+            return edge.color || '#888'; // Default edge color
+          }}
+          edgeSize={(edge: any) => {
+            // Make edges thicker when connected to hovered node
+            if (hoveredNodeId && (edge.source === hoveredNodeId || edge.target === hoveredNodeId)) {
+              return Math.max(edge.size || 2, 3); // At least 3px for highlighted edges
+            }
+            return edge.size || 2;
+          }}
           renderNode={({ node, size, color, opacity }) => {
             const isSeed = node.data?.seedNode;
             
@@ -1652,6 +1788,20 @@ export const GraphModeViewer: React.FC<GraphModeViewerProps> = ({
             );
           }}
         />
+        
+        {/* Node hover tooltip */}
+        {tooltip.visible && (
+          <div
+            className="fixed z-50 bg-gray-800 text-white text-sm px-3 py-2 rounded shadow-lg pointer-events-none"
+            style={{
+              left: `${tooltip.position.x + 10}px`,
+              top: `${tooltip.position.y + 10}px`,
+              transform: 'translate(0, -100%)'
+            }}
+          >
+            {tooltip.content}
+          </div>
+        )}
       </div>
     </div>
   );

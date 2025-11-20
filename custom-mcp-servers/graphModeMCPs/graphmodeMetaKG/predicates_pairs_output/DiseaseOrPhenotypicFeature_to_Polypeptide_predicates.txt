@@ -1,0 +1,17 @@
+affected_by
+affects
+close_match
+coexists_with
+derives_from
+disrupts
+has_input
+has_part
+has_participant
+interacts_with
+is_sequence_variant_of
+located_in
+manifestation_of
+occurs_in
+produces
+related_to
+subclass_of

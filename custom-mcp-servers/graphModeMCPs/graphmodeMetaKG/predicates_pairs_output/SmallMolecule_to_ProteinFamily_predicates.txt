@@ -1,0 +1,4 @@
+affects
+assesses
+directly_physically_interacts_with
+is_substrate_of

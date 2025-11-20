@@ -17,12 +17,24 @@ interface GraphReferencePopupProps {
 const getCategoryColor = (category: string): string => {
   const colors: Record<string, string> = {
     gene: '#1f77b4',
-    protein: '#f39c12',
+    protein: '#1f77b4',
+    polypeptide: '#1f77b4', // blue (same as gene and protein)
     drug: '#e74c3c',
-    disease: '#2ecc71',
+    smallmolecule: '#e74c3c', // red (same as drug)
+    molecularmixture: '#e74c3c', // red (same as drug)
+    disease: '#1e8449', // darker green
+    phenotypicfeature: '#58d68d', // lighter green
     pathway: '#9b59b6',
     compound: '#e67e22',
     organism: '#27ae60',
+    chemicalentity: '#ff69b4', // pink
+    proteinfamily: '#87ceeb', // light blue
+    biologicalprocess: '#87ceeb', // light blue
+    physiologicalprocess: '#87ceeb', // light blue (same as biological process)
+    molecularactivity: '#87ceeb', // light blue
+    cell: '#d2b48c', // light brown
+    grossanatomicalstructure: '#8b4513', // darker brown
+    anatomicalentity: '#8b4513', // darker brown (same as grossanatomicalstructure)
     other: '#bdc3c7'
   };
   return colors[category.toLowerCase()] || colors.other;

@@ -400,6 +400,38 @@ export const ChatMessages: React.FC<{ messages: MessageWithThinking[], storageSe
                   </>
                 ) : (
                   <div>
+                    {/* User message header with copy button */}
+                    <div className="absolute top-4 right-4">
+                      <button
+                        onClick={() => copyToClipboard(message.content, message.id)}
+                        className="p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                        title="Copy message"
+                      >
+                        {copiedMessageId === message.id ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="font-extrabold text-sm text-gray-900 dark:text-gray-100">You</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date().toLocaleString(undefined, { 
+                          month: 'numeric',
+                          day: 'numeric',
+                          year: '2-digit',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true 
+                        })}
+                      </span>
+                    </div>
                     {/* Display file attachments for user messages */}
                     {message.attachments && message.attachments.length > 0 && (
                       <div className="mb-3">

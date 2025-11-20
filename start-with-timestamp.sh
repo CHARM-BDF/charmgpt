@@ -17,4 +17,4 @@ echo "Log file: $LOG_FILE"
 echo "Starting services..."
 
 # Use the original npm start command directly to avoid loops
-npm run kill-ports && concurrently -n "VITE,SERVER,PRISMA" -c "blue,green,yellow" "npm run dev --workspace=frontend-client" "npm run server:dev --workspace=backend-mcp-client" "npm run db:studio --workspace=backend-mcp-client" 2>&1 | tee -a "$LOG_FILE"
+npm run kill-ports && concurrently -n "VITE,SERVER" -c "blue,green" "npm run dev --workspace=frontend-client" "npm run server:dev --workspace=backend-mcp-client" 2>&1 | tee -a "$LOG_FILE"

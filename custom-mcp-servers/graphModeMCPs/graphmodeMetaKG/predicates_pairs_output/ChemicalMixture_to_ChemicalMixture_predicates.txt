@@ -1,0 +1,7 @@
+chemically_similar_to
+has_part
+interacts_with
+occurs_together_in_literature_with
+overlaps
+related_to
+subclass_of

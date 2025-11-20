@@ -19,6 +19,19 @@ import { useProjectStore } from '../../store/projectStore';
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import { CodeEditorView } from './CodeEditorView';
 
+// Category color groups for legend
+const CATEGORY_COLOR_GROUPS = [
+  { color: '#1f77b4', categories: ['Gene', 'Protein', 'Polypeptide'] },
+  { color: '#e74c3c', categories: ['Drug', 'SmallMolecule', 'MolecularMixture'] },
+  { color: '#ff69b4', categories: ['ChemicalEntity'] },
+  { color: '#1e8449', categories: ['Disease'] },
+  { color: '#58d68d', categories: ['PhenotypicFeature'] },
+  { color: '#9b59b6', categories: ['Pathway'] },
+  { color: '#87ceeb', categories: ['ProteinFamily', 'BiologicalProcess', 'PhysiologicalProcess', 'MolecularActivity'] },
+  { color: '#d2b48c', categories: ['Cell'] },
+  { color: '#8b4513', categories: ['GrossAnatomicalStructure', 'AnatomicalEntity'] }
+];
+
 // Helper function to parse snippet text with clickable entities
 function parseSnippetWithClickables(snippet: string, onEntityClick: (entity: string) => void) {
   // Find all @@@ markers and work backwards from the end
@@ -1304,23 +1317,39 @@ export const ArtifactContent: React.FC<{
       <div className="flex-1 overflow-y-auto min-h-0 p-4 relative">
         {renderContent()}
       </div>
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-lg flex justify-end">
-        <button
-          onClick={handleCopy}
-          className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
-          title={copySuccess ? "Copied!" : "Copy content"}
-        >
-          {copySuccess ? (
-            <svg className="w-5 h-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-            </svg>
-          )}
-        </button>
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-lg">
+        {(artifact.type === 'application/vnd.knowledge-graph' || artifact.type === 'application/vnd.ant.knowledge-graph') ? (
+          <div className="flex flex-wrap gap-3 items-center justify-start text-xs text-gray-600 dark:text-gray-400">
+            {CATEGORY_COLOR_GROUPS.map((group, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: group.color }}
+                />
+                <span>{group.categories.join(', ')}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <button
+              onClick={handleCopy}
+              className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
+              title={copySuccess ? "Copied!" : "Copy content"}
+            >
+              {copySuccess ? (
+                <svg className="w-5 h-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                  <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

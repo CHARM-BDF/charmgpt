@@ -20,6 +20,7 @@ import { ProjectListView } from '../projects/ProjectListView';
 import { ProjectView } from '../projects/ProjectView';
 import { GrantReviewListView } from '../projects/GrantReviewListView';
 import { useModelStore } from '../../store/modelStore';
+import { FileAttachments } from './FileAttachments';
 
 // Add this new component for the editable conversation title
 const ConversationTitle: React.FC = () => {
@@ -88,6 +89,8 @@ const ConversationTitle: React.FC = () => {
 
 export const ChatInterface: React.FC = () => {
   const { messages, showArtifactWindow, clearChat, artifacts, toggleArtifactWindow, clearArtifacts, showList, setShowList, processMessage, isLoading, streamingEnabled, toggleStreaming } = useChatStore();
+  const getPinnedFiles = useChatStore(state => state.getPinnedFiles);
+  const unpinFile = useChatStore(state => state.unpinFile);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
   const [showProjectList, setShowProjectList] = useState(false);
@@ -98,6 +101,9 @@ export const ChatInterface: React.FC = () => {
   const { setMode, currentMode } = useModeStore();
   const { projects, selectedProjectId, selectProject } = useProjectStore();
   const { selectedModel } = useModelStore();
+
+  // Get pinned files for current conversation
+  const pinnedFiles = getPinnedFiles();
   
   // Get current conversation ID only - avoid excessive re-renders from other conversation data
   const currentConversationId = useChatStore(state => state.currentConversationId);
@@ -352,6 +358,29 @@ export const ChatInterface: React.FC = () => {
                 <ChatMessages messages={messages} storageService={storageService} />
               </div>
             </div>
+
+            {/* Pinned Files Display */}
+            {pinnedFiles.length > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800 px-4 py-3">
+                <div className="w-full max-w-4xl mx-auto">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" />
+                    </svg>
+                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      Pinned Files (available for all messages)
+                    </span>
+                  </div>
+                  <FileAttachments
+                    attachments={pinnedFiles}
+                    onRemove={unpinFile}
+                    editable={true}
+                    showVarNames={true}
+                  />
+                </div>
+              </div>
+            )}
+
             <ChatInput storageService={storageService} />
           </div>
         </div>

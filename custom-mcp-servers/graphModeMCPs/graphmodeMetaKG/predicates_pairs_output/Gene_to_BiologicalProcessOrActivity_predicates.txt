@@ -1,0 +1,9 @@
+actively_involved_in
+acts_upstream_of
+acts_upstream_of_negative_effect
+acts_upstream_of_or_within
+acts_upstream_of_or_within_negative_effect
+acts_upstream_of_or_within_positive_effect
+acts_upstream_of_positive_effect
+contributes_to
+enables

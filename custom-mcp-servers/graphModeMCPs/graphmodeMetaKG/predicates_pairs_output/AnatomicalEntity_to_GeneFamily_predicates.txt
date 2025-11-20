@@ -1,0 +1,7 @@
+affects
+coexists_with
+has_part
+interacts_with
+produces
+regulates
+related_to

@@ -126,8 +126,70 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
   const [filteredEdges, setFilteredEdges] = useState<any[]>([]);
+  const [tooltip, setTooltip] = useState({ visible: false, content: '', position: { x: 0, y: 0 } });
 
-  // Helper function to get color based on entity group
+  // Category-based color assignment (matching GraphModeViewer)
+  const categoryColors: Record<string, string> = {
+    gene:    '#1f77b4', // blue
+    protein: '#1f77b4', // blue (same as gene)
+    polypeptide: '#1f77b4', // blue (same as gene and protein)
+    drug:    '#e74c3c', // red
+    smallmolecule: '#e74c3c', // red (same as drug)
+    molecularmixture: '#e74c3c', // red (same as drug)
+    disease: '#1e8449', // darker green
+    phenotypicfeature: '#58d68d', // lighter green
+    pathway: '#9b59b6', // purple
+    chemicalentity: '#ff69b4', // pink
+    proteinfamily: '#87ceeb', // light blue
+    biologicalprocess: '#87ceeb', // light blue
+    physiologicalprocess: '#87ceeb', // light blue (same as biological process)
+    molecularactivity: '#87ceeb', // light blue
+    cell: '#d2b48c', // light brown
+    grossanatomicalstructure: '#8b4513', // darker brown
+    anatomicalentity: '#8b4513', // darker brown (same as grossanatomicalstructure)
+    other:   '#bdc3c7', // gray
+  };
+
+  const detectBestCategory = (rawCategory: string, categoriesArray: string[] = []): string => {
+    const priorityCategories = [
+      { biolink: 'biolink:Gene', clean: 'gene' },
+      { biolink: 'biolink:Protein', clean: 'protein' },
+      { biolink: 'biolink:Polypeptide', clean: 'polypeptide' },
+      { biolink: 'biolink:Disease', clean: 'disease' },
+      { biolink: 'biolink:Drug', clean: 'drug' },
+      { biolink: 'biolink:SmallMolecule', clean: 'smallmolecule' },
+      { biolink: 'biolink:MolecularMixture', clean: 'molecularmixture' },
+      { biolink: 'biolink:PhenotypicFeature', clean: 'phenotypicfeature' },
+      { biolink: 'biolink:Pathway', clean: 'pathway' },
+      { biolink: 'biolink:ChemicalEntity', clean: 'chemicalentity' },
+      { biolink: 'biolink:ProteinFamily', clean: 'proteinfamily' },
+      { biolink: 'biolink:BiologicalProcessOrActivity', clean: 'biologicalprocess' },
+      { biolink: 'biolink:PhysiologicalProcess', clean: 'physiologicalprocess' },
+      { biolink: 'biolink:MolecularActivity', clean: 'molecularactivity' },
+      { biolink: 'biolink:Cell', clean: 'cell' },
+      { biolink: 'biolink:GrossAnatomicalStructure', clean: 'grossanatomicalstructure' },
+      { biolink: 'biolink:AnatomicalEntity', clean: 'anatomicalentity' }
+    ];
+
+    // First, check the raw category
+    for (const { biolink, clean } of priorityCategories) {
+      if (rawCategory?.toLowerCase().includes(clean) || rawCategory?.toLowerCase().includes(biolink.toLowerCase())) {
+        return clean;
+      }
+    }
+
+    // Then, search through the categories array
+    for (const { biolink, clean } of priorityCategories) {
+      for (const category of categoriesArray) {
+        if (category?.toLowerCase().includes(clean) || category?.toLowerCase().includes(biolink.toLowerCase())) {
+          return clean;
+        }
+      }
+    }
+    return 'other';
+  };
+
+  // Helper function to get color based on entity group (fallback for existing group-based data)
   const getColorForGroup = (group: number): string => {
     const colors = [
       '#e74c3c', // Red - Group 1 (Gene)
@@ -304,20 +366,33 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
   const graphData = useMemo(() => {
     if (!parsedData || !parsedData.nodes) return { nodes: [], edges: [] };
 
-    // Convert nodes
-    const nodes = parsedData.nodes.map((node: any) => ({
-      id: node.id,
-      label: node.name || node.id,
-      color: getColorForGroup(node.group),
-      size: node.val || 10,
-      entityType: node.entityType,
-      startingId: node.startingId,
-      metadata: node.metadata,
-      isStartingNode: node.isStartingNode,
-      data: node.data, // Preserve the data property including seedNode
-      fx: undefined as number | undefined, // Fixed x position
-      fy: undefined as number | undefined  // Fixed y position
-    }));
+    // Convert nodes (use category-based colors, fallback to group-based)
+    const nodes = parsedData.nodes.map((node: any) => {
+      // Get the categories array from the data
+      const categoriesArray = node.data?.categories || [];
+      
+      // Use enhanced category detection
+      const category = detectBestCategory(node.category || node.entityType || 'other', categoriesArray);
+      const color = node.color ?? categoryColors[category] ?? categoryColors.other;
+      
+      // Fallback to group-based color if no category-based color found
+      const finalColor = color === categoryColors.other && node.group ? getColorForGroup(node.group) : color;
+
+      return {
+        id: node.id,
+        label: node.name || node.id,
+        color: finalColor,
+        size: node.val || 10,
+        entityType: node.entityType,
+        category, // Add category for consistency
+        startingId: node.startingId,
+        metadata: node.metadata,
+        isStartingNode: node.isStartingNode,
+        data: node.data, // Preserve the data property including seedNode
+        fx: undefined as number | undefined, // Fixed x position
+        fy: undefined as number | undefined  // Fixed y position
+      };
+    });
 
     // Check if we have exactly 2 starting nodes (connecting path scenario)
     const startingNodes = nodes.filter(node => node.isStartingNode);
@@ -1048,6 +1123,22 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
+  // Handle node hover events
+  const handleNodePointerOver = (node: any, event: any) => {
+    const { clientX, clientY } = event;
+    const category = detectBestCategory(node.category || node.data?.category || '');
+    const nodeName = node.label || node.name || node.id;
+    setTooltip({
+      visible: true,
+      content: `${nodeName} (${category})`,
+      position: { x: clientX, y: clientY }
+    });
+  };
+
+  const handleNodePointerOut = () => {
+    setTooltip({ visible: false, content: '', position: { x: 0, y: 0 } });
+  };
+
   // Notification popup component
   const NotificationPopup = () => {
     if (!notification.show) return null;
@@ -1189,6 +1280,8 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
           labelType="all"
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          onNodePointerOver={handleNodePointerOver}
+          onNodePointerOut={handleNodePointerOut}
           edgeOpacity={0.4}
           renderNode={({ node, size, color, opacity }) => {
             const isSeed = node.data?.seedNode;
@@ -1219,6 +1312,20 @@ export const ReagraphKnowledgeGraphViewer: React.FC<ReagraphKnowledgeGraphViewer
             );
           }}
         />
+        
+        {/* Node hover tooltip */}
+        {tooltip.visible && (
+          <div
+            className="fixed z-50 bg-gray-800 text-white text-sm px-3 py-2 rounded shadow-lg pointer-events-none"
+            style={{
+              left: `${tooltip.position.x + 10}px`,
+              top: `${tooltip.position.y + 10}px`,
+              transform: 'translate(0, -100%)'
+            }}
+          >
+            {tooltip.content}
+          </div>
+        )}
       </div>
     </div>
   );

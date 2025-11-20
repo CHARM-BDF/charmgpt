@@ -3,6 +3,22 @@ import { useChatStore } from '../../store/chatStore';
 import { Conversation } from '../../types/chat';
 import { getRelativeTimeString } from '../../utils/dateUtils';
 
+// Utility function to calculate conversation size
+const getConversationSize = (conversation: Conversation): string => {
+  try {
+    const size = new Blob([JSON.stringify(conversation)]).size;
+    if (size < 1024) {
+      return `${size} B`;
+    } else if (size < 1024 * 1024) {
+      return `${(size / 1024).toFixed(1)} KB`;
+    } else {
+      return `${(size / 1024 / 1024).toFixed(1)} MB`;
+    }
+  } catch (error) {
+    return '? KB';
+  }
+};
+
 interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
@@ -156,8 +172,13 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
         )}
       </div>
       <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        {conversation.metadata.messageCount} messages • 
-        {getRelativeTimeString(new Date(conversation.metadata.created))}
+        <div>
+          {conversation.metadata.messageCount} messages • 
+          {getRelativeTimeString(new Date(conversation.metadata.created))}
+        </div>
+        <div className="text-xs opacity-75 mt-0.5">
+          {getConversationSize(conversation)}
+        </div>
       </div>
     </div>
   );
@@ -171,8 +192,14 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const { conversations, currentConversationId, switchConversation, renameConversation, deleteConversation } = useChatStore();
   
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this conversation?')) {
+    console.log('🗑️ Delete button clicked for conversation:', id);
+    const confirmResult = window.confirm('Are you sure you want to delete this conversation?');
+    console.log('🗑️ Confirm dialog result:', confirmResult);
+    if (confirmResult) {
+      console.log('🗑️ Deleting conversation:', id);
       deleteConversation(id);
+    } else {
+      console.log('🗑️ Delete cancelled');
     }
   };
 

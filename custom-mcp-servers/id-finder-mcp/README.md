@@ -12,7 +12,7 @@ This server can:
 
 ## How It Works
 
-The server receives entity names and calls the ARAX API at `https://arax.ci.transltr.io/api/arax/v1.4/entity` to normalize and identify these entities.
+The server receives entity names and calls the ARAX API at `https://arax.ncats.io/api/arax/v1.4/entity` to normalize and identify these entities.
 
 ## Available Tools
 

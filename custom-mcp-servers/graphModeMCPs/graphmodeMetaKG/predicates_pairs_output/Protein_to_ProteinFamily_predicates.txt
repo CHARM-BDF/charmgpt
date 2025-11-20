@@ -1,0 +1,2 @@
+affects
+directly_physically_interacts_with

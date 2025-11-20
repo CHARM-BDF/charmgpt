@@ -1,0 +1,9 @@
+affects
+coexists_with
+has_part
+interacts_with
+overlaps
+produces
+regulates
+related_to
+subclass_of

@@ -95,7 +95,7 @@ async function testAnthropicToolCalling() {
     console.log('Tool format:', JSON.stringify(claudeTools, null, 2));
     
     const response = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [
         { role: 'user', content: 'Calculate 24 multiplied by 15.' }
@@ -119,7 +119,7 @@ async function testAnthropicToolCalling() {
           
           // Send the tool result back to Claude
           const followUpResponse = await client.messages.create({
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-haiku-4-5',
             max_tokens: 1024,
             messages: [
               { role: 'user', content: 'Calculate 24 multiplied by 15.' },

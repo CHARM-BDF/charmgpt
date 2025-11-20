@@ -1068,7 +1068,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                     sendStructuredLog(server, 'info', `[Pathfinder:${requestId}] Preparing LLM request with prompt data`, {
                         stage: "llm_request_preparation",
                         requestId,
-                        model: "claude-3-opus-20240229",
+                        model: "claude-haiku-4-5",
                         promptLength: {
                             system: generateSystemPrompt().length,
                             user: generateUserPrompt(sourceCurie, targetCurie).length
@@ -1088,7 +1088,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
                         systemPrompt: systemPrompt,
                         responseFormat: 'text',
                         options: {
-                            model: "claude-3-opus-20240229"
+                            model: "claude-haiku-4-5"
                         }
                     });
 

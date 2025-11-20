@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Copy, Pin, PinOff } from 'lucide-react';
+import { useChatStore } from '../../store/chatStore';
 
 interface EdgeDetailCardProps {
   edge: any;
@@ -18,6 +19,9 @@ export const EdgeDetailCard: React.FC<EdgeDetailCardProps> = ({
   onCopyToChat,
   isPinned
 }) => {
+  // Get chat store for updating input
+  const updateChatInput = useChatStore(state => state.updateChatInput);
+  
   // Calculate safe position (prevent card from going off-screen)
   const cardWidth = 400;
   const cardMaxHeight = 500;
@@ -33,6 +37,12 @@ export const EdgeDetailCard: React.FC<EdgeDetailCardProps> = ({
   // Get all edges (aggregated or single)
   const edges = edge.data?.edges || [edge];
   const count = edge.data?.count || 1;
+  
+  // Handler for finding more publications
+  const handleFindPublications = () => {
+    const prompt = `Use the PubTator tool to find publications for the relationship between ${sourceName} (${edge.source}) and ${targetName} (${edge.target})`;
+    updateChatInput(prompt, false);
+  };
   
   return (
     <div
@@ -145,6 +155,12 @@ export const EdgeDetailCard: React.FC<EdgeDetailCardProps> = ({
                   ) : (
                     <p className="text-xs text-gray-500 dark:text-gray-400">None</p>
                   )}
+                  <button
+                    onClick={handleFindPublications}
+                    className="mt-1 px-2 py-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                  >
+                    🔍 Find More Publications
+                  </button>
                 </div>
                 
                 {/* Source information */}

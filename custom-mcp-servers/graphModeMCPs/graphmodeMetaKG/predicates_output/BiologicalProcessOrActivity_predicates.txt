@@ -1,0 +1,4 @@
+affected_by
+enabled_by
+related_to
+subclass_of

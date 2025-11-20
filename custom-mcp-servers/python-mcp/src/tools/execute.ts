@@ -5,7 +5,7 @@ import * as fsSync from 'fs';
 import { setupPythonEnvironment, cleanupPythonEnvironment, TEMP_DIR, LOGS_DIR } from './env.js';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution } from "../shared/mcpCodeUtils.js";
+import { createRunLogger, Logger, ProcessedFile, ExecuteArgs, ExecuteResult, CreatedFile, CONTAINER_TEMP_DIR, CONTAINER_LOGS_DIR, processDataFiles, postExecution, UPLOADS_DIR } from "../shared/mcpCodeUtils.js";
 
 
 const execAsync = promisify(exec);
@@ -27,6 +27,125 @@ try {
   console.error('Created/verified temp directory:', TEMP_DIR); // Debug log
 } catch (error) {
   console.error('Error creating temp directory:', error);
+}
+
+// Add helper function for Python file resolution utilities
+function getPythonHelperCode(): string {
+  return `
+import os
+import json
+import pandas as pd
+from pathlib import Path
+
+# File resolution helper
+def _load_file_mapping():
+    """Load mapping of original filenames to UUIDs from metadata"""
+    metadata_dir = '/app/metadata'
+    uploads_dir = '/app/uploads'
+    mapping = {}
+    
+    if not os.path.exists(metadata_dir):
+        return mapping
+    
+    for meta_file in os.listdir(metadata_dir):
+        if meta_file.endswith('.json'):
+            try:
+                with open(os.path.join(metadata_dir, meta_file), 'r') as f:
+                    metadata = json.load(f)
+                    original_name = metadata.get('description') or metadata.get('originalFilename')
+                    if original_name:
+                        file_id = meta_file.replace('.json', '')
+                        file_path = os.path.join(uploads_dir, file_id)
+                        if os.path.exists(file_path):
+                            mapping[original_name] = file_path
+            except:
+                continue
+    
+    return mapping
+
+# Global file mapping
+_FILE_MAPPING = _load_file_mapping()
+
+def resolve_file(filename):
+    """Resolve a filename to its actual path (supports both UUID and original name)"""
+    # If it's already a valid path, return it
+    if os.path.exists(filename):
+        return filename
+    
+    # Check if it's in the mapping
+    if filename in _FILE_MAPPING:
+        return _FILE_MAPPING[filename]
+    
+    # Check uploads directory directly
+    uploads_path = os.path.join('/app/uploads', filename)
+    if os.path.exists(uploads_path):
+        return uploads_path
+    
+    # Not found - provide helpful error message
+    available_files = list(_FILE_MAPPING.keys())
+    filename_repr = repr(filename)
+    parts = []
+    parts.append("File not found: " + str(filename_repr))
+    parts.append("")
+    parts.append("🔍 DEBUGGING INFO:")
+    parts.append("- Looking for file: " + str(filename_repr))
+    parts.append("- Search locations:")
+    parts.append("  1. Direct path: " + str(filename_repr))
+    parts.append("  2. File mapping: " + str(filename in _FILE_MAPPING))
+    parts.append("  3. Uploads directory: /app/uploads/" + str(filename_repr))
+    parts.append("- Available files (" + str(len(available_files)) + " total):")
+    for i, file in enumerate(available_files[:10], 1):
+        parts.append("  " + str(i) + ". " + str(repr(file)))
+    if len(available_files) > 10:
+        parts.append("  ... and " + str(len(available_files) - 10) + " more files")
+    parts.append("")
+    parts.append("💡 SUGGESTIONS:")
+    parts.append("- Use list_available_files() to see all available files")
+    parts.append("- Check if the filename is spelled correctly")
+    parts.append("- Make sure the file was uploaded through the UI")
+    newline = chr(10)
+    error_msg = newline.join(parts)
+    raise FileNotFoundError(error_msg)
+
+def list_available_files():
+    """List all available files with their original names"""
+    print("Available files:")
+    for original_name, path in _FILE_MAPPING.items():
+        size = os.path.getsize(path)
+        print(f"  - {original_name} ({size:,} bytes)")
+    return list(_FILE_MAPPING.keys())
+
+# Override pandas read functions to use resolve_file
+_original_read_csv = pd.read_csv
+_original_read_excel = pd.read_excel
+
+def read_csv(filepath_or_buffer, *args, **kwargs):
+    """Pandas read_csv with automatic file resolution"""
+    if isinstance(filepath_or_buffer, str):
+        try:
+            resolved_path = resolve_file(filepath_or_buffer)
+            filepath_or_buffer = resolved_path
+        except FileNotFoundError as e:
+            print(str(e))
+            raise
+    return _original_read_csv(filepath_or_buffer, *args, **kwargs)
+
+def read_excel(io, *args, **kwargs):
+    """Pandas read_excel with automatic file resolution"""
+    if isinstance(io, str):
+        try:
+            resolved_path = resolve_file(io)
+            io = resolved_path
+        except FileNotFoundError as e:
+            print(str(e))
+            raise
+    return _original_read_excel(io, *args, **kwargs)
+
+# Monkey-patch pandas
+pd.read_csv = read_csv
+pd.read_excel = read_excel
+
+`;
 }
 
 // Add helper function for code transformation
@@ -131,6 +250,8 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
       '--rm',  // Remove container after execution
       '-v', `${path.dirname(hostScriptPath)}:${CONTAINER_TEMP_DIR}`,
       '-v', `${LOGS_DIR}:${CONTAINER_LOGS_DIR}`,
+      '-v', `${UPLOADS_DIR}:/app/uploads:ro`,  // Add this - read-only uploads
+      '-v', `${path.join(UPLOADS_DIR, 'metadata')}:/app/metadata:ro`,  // Add this - read-only metadata
       '-w', CONTAINER_TEMP_DIR,  // Set working directory
       '--memory', '256m',  // Memory limit
       '--cpus', '1.0',     // CPU limit
@@ -176,41 +297,61 @@ async function runInDocker(scriptPath: string, envConfig: DockerEnvConfig, logge
           if (!logger.isClosed) logger.log('Docker container exited successfully');
           resolve(output.trim());
         } else {
-          // Construct detailed error message
-          const errorMessage = [
-            `Docker container exited with code ${code}`,
-            'Command:',
-            `docker ${dockerArgs.join(' ')}`,
+          // Construct detailed error with all Python output
+          // Prioritize stderr (Python errors/tracebacks) over stdout
+          const pythonError = errorOutput || output || '(no error output)';
+          
+          // Build comprehensive error message
+          let errorMessage = [
+            '❌ Python Execution Error',
+            `Exit code: ${code}`,
             '',
-            'Error output:',
-            errorOutput || '(no error output)',
+            '--- Python Error Output (stderr) ---',
+            pythonError,
             '',
-            'Standard output:',
-            output || '(no standard output)',
           ].join('\n');
+          
+          // Add stdout if it exists and is different from stderr
+          if (output && output.trim() && output.trim() !== pythonError.trim()) {
+            errorMessage += [
+              '--- Standard Output (stdout) ---',
+              output,
+              '',
+            ].join('\n');
+          }
 
           if (!logger.isClosed) logger.log(`Docker execution failed:\n${errorMessage}`);
-          reject(new Error(errorMessage));
+          
+          // Create error with additional properties for better error handling
+          const error = new Error(errorMessage) as any;
+          error.pythonError = pythonError;
+          error.stdout = output;
+          error.stderr = errorOutput;
+          error.exitCode = code;
+          reject(error);
         }
       });
 
       // Handle timeout
       const timeoutId = setTimeout(() => {
         dockerProcess.kill();
+        const pythonError = errorOutput || output || '(no error output)';
         const timeoutMessage = [
-          'Docker execution timed out after 30 seconds',
-          'Command:',
-          `docker ${dockerArgs.join(' ')}`,
+          '⏱️ Python Execution Timeout',
+          'Execution exceeded 30 seconds and was terminated',
           '',
-          'Partial output:',
-          output || '(no output)',
-          '',
-          'Error output:',
-          errorOutput || '(no error output)',
+          '--- Partial Python Output ---',
+          pythonError,
         ].join('\n');
         
         if (!logger.isClosed) logger.log(timeoutMessage);
-        reject(new Error(timeoutMessage));
+        
+        const error = new Error(timeoutMessage) as any;
+        error.pythonError = pythonError;
+        error.stdout = output;
+        error.stderr = errorOutput;
+        error.isTimeout = true;
+        reject(error);
       }, 30000); // 30 seconds timeout
 
       // Clean up timeout on success or error
@@ -241,7 +382,10 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
     }
     
     // Transform code to handle file operations
-    const code = transformPythonCode(originalCode, logger);
+    const transformedCode = transformPythonCode(originalCode, logger);
+    
+    // Prepend helper code
+    const code = getPythonHelperCode() + '\n\n' + transformedCode;
     
     // Log if code was transformed or files were added
     if (code !== originalCode) {
@@ -330,6 +474,15 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
   } catch (error) {
     // Attempt cleanup even if execution failed
     logger.log(`Execution error: ${error}`);
+    
+    // If it's already a Python error with details, preserve those
+    const errorObj = error as any;
+    if (errorObj.pythonError || errorObj.isTimeout) {
+      // This is a Python execution error with full details - just propagate it
+      throw error;
+    }
+    
+    // For other errors (Docker setup, file I/O, etc.), add context
     try {
       await cleanupPythonEnvironment();
       if (scriptPath) {
@@ -343,7 +496,16 @@ export async function execute(args: ExecuteArgs): Promise<ExecuteResult> {
       logger.log(`Cleanup error: ${cleanupError}`);
     }
 
-    // Let the error propagate up to be handled by the MCP server
+    // Enhance error message with context if it doesn't have Python details
+    if (!errorObj.pythonError && !errorObj.isTimeout) {
+      const enhancedError = new Error(
+        `Python execution setup failed: ${error instanceof Error ? error.message : String(error)}`
+      ) as any;
+      enhancedError.originalError = error;
+      throw enhancedError;
+    }
+
+    // For Python errors with details, just propagate them as-is
     throw error;
   } finally {
     logger.close();

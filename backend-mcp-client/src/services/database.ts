@@ -11,35 +11,19 @@ export function getPrismaClient(): PrismaClient {
       process.env.DATABASE_URL = `file:${projectRoot}/backend-mcp-client/prisma/dev.db`;
     }
     
-    console.error('🔍 [DATABASE-DEBUG] DATABASE_URL:', process.env.DATABASE_URL);
-    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
+    // Database connection initialized
     
     prisma = new PrismaClient({
       log: [
-        {
-          emit: 'event',
-          level: 'query',
-        },
         {
           emit: 'event',
           level: 'error',
         },
         {
           emit: 'event',
-          level: 'info',
-        },
-        {
-          emit: 'event',
           level: 'warn',
         },
       ],
-    });
-    
-    // Add event listeners for detailed logging
-    prisma.$on('query', (e) => {
-      console.error('🔍 [DATABASE-QUERY]', e.query);
-      console.error('🔍 [DATABASE-QUERY] Params:', e.params);
-      console.error('🔍 [DATABASE-QUERY] Duration:', e.duration + 'ms');
     });
     
     prisma.$on('error', (e) => {
@@ -70,20 +54,7 @@ export class GraphDatabaseService {
   }
 
   async getGraphProject(conversationId: string) {
-    console.error('🔍 [DATABASE-DEBUG] getGraphProject called with conversationId:', conversationId);
-    console.error('🔍 [DATABASE-DEBUG] Current DATABASE_URL:', process.env.DATABASE_URL);
-    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
-    
     try {
-      // First, let's test if we can connect to the database at all
-      console.error('🔍 [DATABASE-DEBUG] Testing database connection...');
-      const tableCount = await this.prisma.$queryRaw`SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'`;
-      console.error('🔍 [DATABASE-DEBUG] Table count result:', JSON.stringify(tableCount, (key, value) => typeof value === 'bigint' ? value.toString() : value));
-      
-      // List all tables
-      const tables = await this.prisma.$queryRaw`SELECT name FROM sqlite_master WHERE type='table'`;
-      console.error('🔍 [DATABASE-DEBUG] Available tables:', JSON.stringify(tables, (key, value) => typeof value === 'bigint' ? value.toString() : value));
-      
       const result = await this.prisma.graphProject.findUnique({
         where: { conversationId },
         include: {
@@ -96,34 +67,73 @@ export class GraphDatabaseService {
         },
       });
       
-      console.error('🔍 [DATABASE-DEBUG] getGraphProject result:', result ? 'Found project' : 'No project found');
-      
-      // Handle BigInt serialization
+      // Handle BigInt serialization and parse JSON string fields
       if (result) {
         const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
           typeof value === 'bigint' ? value.toString() : value
         ));
+        
+        // Parse node data and position fields from JSON strings
+        if (serializedResult.nodes) {
+          serializedResult.nodes = serializedResult.nodes.map((node: any) => {
+            let parsedData = node.data;
+            let parsedPosition = node.position;
+            
+            try {
+              if (typeof node.data === 'string' && node.data.trim()) {
+                parsedData = JSON.parse(node.data);
+              }
+            } catch (e) {
+              console.error('Error parsing node data:', e, node.data);
+            }
+            
+            try {
+              if (typeof node.position === 'string' && node.position.trim()) {
+                parsedPosition = JSON.parse(node.position);
+              }
+            } catch (e) {
+              console.error('Error parsing node position:', e, node.position);
+            }
+            
+            return {
+              ...node,
+              data: parsedData,
+              position: parsedPosition
+            };
+          });
+        }
+        
+        // Parse edge data fields from JSON strings
+        if (serializedResult.edges) {
+          serializedResult.edges = serializedResult.edges.map((edge: any) => {
+            let parsedData = edge.data;
+            
+            try {
+              if (typeof edge.data === 'string' && edge.data.trim()) {
+                parsedData = JSON.parse(edge.data);
+              }
+            } catch (e) {
+              console.error('Error parsing edge data:', e, edge.data);
+            }
+            
+            return {
+              ...edge,
+              data: parsedData
+            };
+          });
+        }
+        
         return serializedResult;
       }
       
       return result;
     } catch (error) {
-      console.error('❌ [DATABASE-DEBUG] getGraphProject error:', error);
-      console.error('❌ [DATABASE-DEBUG] Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        meta: error.meta
-      });
+      console.error('❌ [DATABASE] getGraphProject error:', error);
       throw error;
     }
   }
 
   async getAllGraphProjects() {
-    console.error('🔍 [DATABASE-DEBUG] getAllGraphProjects called');
-    console.error('🔍 [DATABASE-DEBUG] Current DATABASE_URL:', process.env.DATABASE_URL);
-    console.error('🔍 [DATABASE-DEBUG] Working directory:', process.cwd());
-    
     try {
       const result = await this.prisma.graphProject.findMany({
         include: {
@@ -137,22 +147,68 @@ export class GraphDatabaseService {
         orderBy: { createdAt: 'desc' },
       });
       
-      console.error('🔍 [DATABASE-DEBUG] getAllGraphProjects result count:', result.length);
-      
-      // Handle BigInt serialization
+      // Handle BigInt serialization and parse JSON string fields
       const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => 
         typeof value === 'bigint' ? value.toString() : value
       ));
       
-      return serializedResult;
-    } catch (error) {
-      console.error('❌ [DATABASE-DEBUG] getAllGraphProjects error:', error);
-      console.error('❌ [DATABASE-DEBUG] Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        meta: error.meta
+      // Parse node data and position fields from JSON strings
+      const processedResult = serializedResult.map((project: any) => {
+        if (project.nodes) {
+          project.nodes = project.nodes.map((node: any) => {
+            let parsedData = node.data;
+            let parsedPosition = node.position;
+            
+            try {
+              if (typeof node.data === 'string' && node.data.trim()) {
+                parsedData = JSON.parse(node.data);
+              }
+            } catch (e) {
+              console.error('Error parsing node data:', e, node.data);
+            }
+            
+            try {
+              if (typeof node.position === 'string' && node.position.trim()) {
+                parsedPosition = JSON.parse(node.position);
+              }
+            } catch (e) {
+              console.error('Error parsing node position:', e, node.position);
+            }
+            
+            return {
+              ...node,
+              data: parsedData,
+              position: parsedPosition
+            };
+          });
+        }
+        
+        // Parse edge data fields from JSON strings
+        if (project.edges) {
+          project.edges = project.edges.map((edge: any) => {
+            let parsedData = edge.data;
+            
+            try {
+              if (typeof edge.data === 'string' && edge.data.trim()) {
+                parsedData = JSON.parse(edge.data);
+              }
+            } catch (e) {
+              console.error('Error parsing edge data:', e, edge.data);
+            }
+            
+            return {
+              ...edge,
+              data: parsedData
+            };
+          });
+        }
+        
+        return project;
       });
+      
+      return processedResult;
+    } catch (error) {
+      console.error('❌ [DATABASE] getAllGraphProjects error:', error);
       throw error;
     }
   }
@@ -288,6 +344,63 @@ export class GraphDatabaseService {
     });
   }
 
+  // Bulk delete nodes by type or criteria
+  async bulkDeleteNodesByType(graphId: string, nodeTypes: string[], excludeTypes?: string[]) {
+    if (excludeTypes && excludeTypes.length > 0) {
+      // Delete all nodes EXCEPT the excluded types (case-insensitive)
+      // Use raw SQL for case-insensitive matching
+      const excludeTypesPlaceholders = excludeTypes.map(() => '?').join(',');
+      const excludeTypesValues = excludeTypes.map(type => type.toLowerCase());
+      
+      const result = await this.prisma.$executeRaw`
+        DELETE FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) NOT IN (${excludeTypesValues.join(',')})
+      `;
+      return { count: result };
+    } else if (nodeTypes && nodeTypes.length > 0) {
+      // Delete nodes of specific types (case-insensitive)
+      const nodeTypesPlaceholders = nodeTypes.map(() => '?').join(',');
+      const nodeTypesValues = nodeTypes.map(type => type.toLowerCase());
+      
+      const result = await this.prisma.$executeRaw`
+        DELETE FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) IN (${nodeTypesValues.join(',')})
+      `;
+      return { count: result };
+    }
+    
+    return { count: 0 };
+  }
+
+  // Get nodes by type for preview before deletion
+  async getNodesByType(graphId: string, nodeTypes: string[], excludeTypes?: string[]) {
+    if (excludeTypes && excludeTypes.length > 0) {
+      // Get all nodes EXCEPT the excluded types (case-insensitive)
+      const excludeTypesValues = excludeTypes.map(type => type.toLowerCase());
+      
+      return await this.prisma.$queryRaw`
+        SELECT id, label, type 
+        FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) NOT IN (${excludeTypesValues.join(',')})
+      `;
+    } else if (nodeTypes && nodeTypes.length > 0) {
+      // Get nodes of specific types (case-insensitive)
+      const nodeTypesValues = nodeTypes.map(type => type.toLowerCase());
+      
+      return await this.prisma.$queryRaw`
+        SELECT id, label, type 
+        FROM graph_nodes 
+        WHERE graphId = ${graphId} 
+        AND LOWER(type) IN (${nodeTypesValues.join(',')})
+      `;
+    }
+    
+    return [];
+  }
+
   // Edge Operations
   async addEdge(graphId: string, source: string, target: string, label?: string, type?: string, data?: any) {
     // console.error(`[DATABASE] 📝 Writing edge to database - graphId: ${graphId}, source: ${source}, target: ${target}`);
@@ -339,6 +452,23 @@ export class GraphDatabaseService {
   async deleteEdge(edgeId: string, graphId: string) {
     return await this.prisma.graphEdge.delete({
       where: { id: edgeId },
+    });
+  }
+
+  async updateEdge(edgeId: string, graphId: string, updates: { label?: string; type?: string; data?: any }) {
+    // Serialize data field as JSON string for SQLite
+    const serializedUpdates: any = { ...updates };
+    if (updates.data !== undefined) {
+      // Only serialize if it's not already a string
+      serializedUpdates.data = typeof updates.data === 'string' ? updates.data : JSON.stringify(updates.data);
+    }
+    
+    return await this.prisma.graphEdge.updateMany({
+      where: { 
+        id: edgeId,
+        graphId: graphId
+      },
+      data: serializedUpdates,
     });
   }
 
@@ -442,6 +572,45 @@ export class GraphDatabaseService {
       }
     }
     return result;
+  }
+
+  async bulkUpdateEdges(edges: any[]) {
+    // Update edges one by one since Prisma doesn't support bulk updates with different data
+    let updated = 0;
+    let failed = 0;
+    
+    for (const edge of edges) {
+      try {
+        const { id, graphId, ...updateData } = edge;
+        
+        // Serialize data field if needed
+        const serializedUpdateData: any = { ...updateData };
+        if (updateData.data !== undefined) {
+          serializedUpdateData.data = typeof updateData.data === 'string' 
+            ? updateData.data 
+            : JSON.stringify(updateData.data);
+        }
+        
+        const result = await this.prisma.graphEdge.updateMany({
+          where: {
+            id: id,
+            graphId: graphId
+          },
+          data: serializedUpdateData
+        });
+        
+        if (result.count > 0) {
+          updated++;
+        } else {
+          failed++;
+        }
+      } catch (error: any) {
+        console.error(`Error updating edge ${edge.id}:`, error);
+        failed++;
+      }
+    }
+    
+    return { updated, failed, total: edges.length };
   }
 
   async disconnect() {

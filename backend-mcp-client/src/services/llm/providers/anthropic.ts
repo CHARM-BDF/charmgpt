@@ -45,7 +45,7 @@ export class AnthropicProvider implements LLMProvider {
     // Initialize Anthropic client
     this.client = new Anthropic({ apiKey });
     // Set default model
-    this.defaultModel = options.model || 'claude-3-5-sonnet-20241022';
+    this.defaultModel = options.model || 'claude-haiku-4-5';
     
     console.log(`AnthropicProvider: Initialized with model ${this.defaultModel}`);
   }

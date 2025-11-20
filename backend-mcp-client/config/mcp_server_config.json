@@ -80,6 +80,14 @@
         "NCBI_TOOL_EMAIL": "${NCBI_TOOL_EMAIL}"
       }
     },
+    "clinicaltrials-gov": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/clinicalTrialGov-mcp/dist/index.js"
+      ],
+      "timeout": 60000,
+      "description": "ClinicalTrials.gov MCP - Search clinical trials database with detailed design, intervention, and dosing information"
+    },
     "gene-fetcher": {
       "command": "node",
       "args": [
@@ -255,6 +263,18 @@
       },
       "description": "Graph Mode PubTator MCP - Adds biomedical entities from PubTator to knowledge graphs"
     },
+    "graphmode-gene-add": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphModeGeneAddMCP/dist/index.js"
+      ],
+      "timeout": 30000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode Gene Addition MCP - FIRST CHOICE for adding genes by symbol using ARAX API"
+    },
     "graphmode-translator": {
       "command": "node",
       "args": [
@@ -278,6 +298,62 @@
         "NODE_ENV": "development"
       },
       "description": "BioThings Explorer TRAPI query integration for Graph Mode"
+    },
+    "graphmode-arax-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeARAXMCP/dist/index.js"
+      ],
+      "timeout": 120000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "ARAX Pathfinder integration for Graph Mode - Find paths between biomedical entities"
+    },
+    "kappa_writer": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/kappa-writer-mcp/dist/index.js"
+      ],
+      "timeout": 30000,
+      "description": "Kappa Writer MCP - Provides Kappa syntax validation and writing guidance"
+    },
+    "graphmode-metakg-mcp": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeMetaKG/dist/index.js"
+      ],
+      "timeout": 60000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode MetaKG MCP - Analyzes knowledge graph relationships using SmartAPI MetaKG registry"
+    },
+    "graphmode-bte-mcp-v2": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeBTEMCP2/dist/index.js"
+      ],
+      "timeout": 60000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "BTE MCP V2 - Simplified BioThings Explorer integration with fixed predicates and categories"
+    },
+    "graphmode-gene-enrichment": {
+      "command": "node",
+      "args": [
+        "../custom-mcp-servers/graphModeMCPs/graphmodeGeneEnrichmentMCP/dist/index.js"
+      ],
+      "timeout": 120000,
+      "env": {
+        "API_BASE_URL": "http://localhost:3001",
+        "NODE_ENV": "development"
+      },
+      "description": "Graph Mode Gene Enrichment MCP - Performs gene enrichment analysis and adds enriched pathways/terms to the graph"
     }
   }
 }

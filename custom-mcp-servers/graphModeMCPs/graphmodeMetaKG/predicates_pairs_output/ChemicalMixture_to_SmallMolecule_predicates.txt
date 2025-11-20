@@ -1,0 +1,11 @@
+affects
+chemically_similar_to
+close_match
+coexists_with
+derives_from
+has_part
+interacts_with
+occurs_together_in_literature_with
+overlaps
+related_to
+subclass_of

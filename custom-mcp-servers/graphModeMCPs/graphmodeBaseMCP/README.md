@@ -30,7 +30,57 @@ The MCP makes HTTP calls to the backend API at:
 
 ## Available Tools
 
-### 1. removeNode
+### 1. analyzeNodeRelationships
+
+Analyze the relationships and connections of a specific node in the graph. Returns detailed information about what types of nodes are connected to the target node and what types of relationships (predicates) exist between them.
+
+**Input:**
+```json
+{
+  "nodeId": "NCBIGene:7157",
+  "databaseContext": {
+    "conversationId": "conv_abc123",
+    "apiBaseUrl": "http://localhost:5001"
+  }
+}
+```
+
+**Output:**
+```
+**TP53** (NCBIGene:7157)
+
+**Connected to 8 nodes total**
+
+## Connected Node Types:
+- **Gene**: 3 nodes
+- **Disease**: 4 nodes
+- **Drug**: 1 node
+
+## Relationship Types (Predicates):
+- **associated_with**: 5 connections
+- **interacts_with**: 2 connections
+- **treats**: 1 connection
+
+## Detailed Relationship Analysis:
+
+### associated_with (5 connections)
+  - **Disease** (4): Type 2 Diabetes, Breast Cancer, Lung Cancer, Colorectal Cancer
+  - **Gene** (1): BRCA1
+
+### interacts_with (2 connections)
+  - **Gene** (2): MDM2, ATM
+
+### treats (1 connection)
+  - **Drug** (1): Doxorubicin
+```
+
+**When to use:**
+- User asks "What types of relationships does gene X have?"
+- User wants to understand connectivity patterns of a specific node
+- User asks "Show me all the connections for this disease"
+- Analyzing the role of a node in the network
+
+### 2. removeNode
 
 Remove a node from the knowledge graph (and all connected edges).
 
