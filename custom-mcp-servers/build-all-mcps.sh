@@ -90,6 +90,7 @@ build_docker_images() {
   echo "Building Racket MCP Docker image..."
   cd "$MCP_ROOT/racket-mcp"
   docker build --platform linux/amd64 -t my-racket-mcp .
+  # Note for ARM Mac: need to disable Use Rosetta for x86_64/amd64 emulation on Apple Silicon in Docker Desktop setting
   # docker pull namin/my-racket-mcp
   # docker tag namin/my-racket-mcp my-racket-mcp
   echo "✅ Racket MCP Docker image built successfully."
