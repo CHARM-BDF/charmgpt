@@ -1,4 +1,4 @@
-FROM racket/racket:8.15-full
+FROM racket/racket:9.1-full
 
 # Install system dependencies for GUI/plotting support with Xvfb
 RUN apt-get update && apt-get install -y \
@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     libfontconfig1 \
     libcairo2 \
     libpango-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install required Racket packages
